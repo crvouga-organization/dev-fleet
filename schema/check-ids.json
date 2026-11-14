@@ -1577,6 +1577,14 @@
       }
     },
     {
+      "id": "t3:account-roster",
+      "meaning": "The proxy account roster can be read without changing providers.",
+      "severity": "required",
+      "repair": {
+        "manual": "A worker’s first T3 pairing and its private route are approved by a person; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest."
+      }
+    },
+    {
       "id": "t3:api",
       "meaning": "The local T3 API answers.",
       "severity": "required",
@@ -1683,6 +1691,14 @@
     {
       "id": "t3:providers",
       "meaning": "T3's provider instances are the declared ones.",
+      "severity": "required",
+      "repair": {
+        "manual": "A worker’s first T3 pairing and its private route are approved by a person; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest."
+      }
+    },
+    {
+      "id": "t3:reconciliation",
+      "meaning": "T3 reconciliation can read and validate its local inputs.",
       "severity": "required",
       "repair": {
         "manual": "A worker’s first T3 pairing and its private route are approved by a person; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest."

@@ -1,3 +1,4 @@
+import { T3DiagnosticError } from '../t3/diagnostics';
 import { Command, CommanderError } from 'commander';
 import { FleetUsageError } from '../errors';
 import { indexedCommands } from './command-index';
@@ -165,6 +166,11 @@ function commandError(error: unknown, output: string): CommandOutcome {
       exitCode: 0,
       data: { version: 1, help: output.trim() },
       text: output.trim(),
+    };
+  if (error instanceof T3DiagnosticError)
+    return {
+      exitCode: 1,
+      data: { version: 1, ok: false, checks: [error.check] },
     };
   const usage =
     error instanceof CommanderError || error instanceof FleetUsageError;

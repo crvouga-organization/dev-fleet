@@ -410,6 +410,10 @@ export const CHECK_MEANINGS: Record<string, string> = {
   't3:private-route': "T3's private HTTPS route is served.",
   't3:profile': 'The declared T3 settings are in place on this machine.',
   't3:provider-names': "T3 lists the fleet's provider names.",
+  't3:account-roster':
+    'The proxy account roster can be read without changing providers.',
+  't3:reconciliation':
+    'T3 reconciliation can read and validate its local inputs.',
   't3:providers': "T3's provider instances are the declared ones.",
   't3:running-version':
     'The running T3 server is the installed release; a restart the release needs waits for running agent turns.',

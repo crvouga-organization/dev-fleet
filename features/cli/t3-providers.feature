@@ -184,6 +184,20 @@ Feature: T3 provider instances are reconciled, never taken over
       When the operator runs "devfleet t3-cleanup --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
       Then it exits with 0
 
+    Scenario Outline: An invalid ownership record gives a safe diagnostic
+      Given the ownership record reads "credential-private-sentinel"
+      When the operator runs "devfleet <command> --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
+      Then it exits with 1
+      And it answers with at least:
+        """
+        {"ok": false, "checks": [{"id": "t3:reconciliation", "status": "fail", "summary": "T3_RECONCILIATION_UNAVAILABLE"}]}
+        """
+
+      Examples:
+        | command            |
+        | t3-status          |
+        | t3-apply --dry-run |
+
   Rule: Reading T3 configuration always ends
 
     Scenario: A relative path is read without walking past the root

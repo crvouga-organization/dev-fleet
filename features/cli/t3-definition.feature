@@ -69,6 +69,8 @@ Feature: The T3 providers a machine gets
     Scenario: A proxy that does not answer fails the whole definition
       Providers are never dropped because the accounts could not be read.
       Given the T3 definition the package ships
-      And the CLI proxy does not answer: "proxy down"
+      And the CLI proxy does not answer: "credential-private-sentinel"
       When the providers are worked out for the machine "node" with dev-fleet at "/repo"
-      Then it is refused with "proxy down"
+      Then it is refused with "T3_ACCOUNT_ROSTER_UNAVAILABLE"
+      And the T3 failure provides check "t3:account-roster" and remedy containing "devfleet fleet-accounts"
+      And the T3 failure withholds "credential-private-sentinel"

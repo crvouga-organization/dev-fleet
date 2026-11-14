@@ -1,3 +1,4 @@
+import { T3DiagnosticError } from '../../../src/t3/diagnostics';
 import { expect } from 'bun:test';
 import { mkdir, readFile, stat, symlink, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
@@ -526,4 +527,18 @@ When(
 Then(/^the account found is (?:"([^"]+)"|none)$/, (world, email?: string) => {
   if (email) expect(t3(world).account).toBe(email);
   else expect(t3(world).account).toBeUndefined();
+});
+
+Then(
+  'the T3 failure provides check {string} and remedy containing {string}',
+  (world, id: string, action: string) => {
+    expect(world.failure).toBeInstanceOf(T3DiagnosticError);
+    const failure = world.failure as T3DiagnosticError;
+    expect(failure.check.id).toBe(id);
+    expect(failure.check.remedy?.action).toContain(action);
+  }
+);
+Then('the T3 failure withholds {string}', (world, secret: string) => {
+  expect(JSON.stringify(world.failure)).not.toContain(secret);
+  expect(String(world.failure)).not.toContain(secret);
 });

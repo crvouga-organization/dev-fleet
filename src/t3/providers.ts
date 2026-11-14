@@ -1,3 +1,4 @@
+import { T3DiagnosticError } from './diagnostics';
 import type { Check } from '../types';
 import { desired, nodeId, paths } from './desired';
 import type { Roster } from './accounts';
@@ -63,7 +64,8 @@ export async function machineProviders(
           summary:
             'T3 on this machine offers exactly the managed provider instances every machine gets.',
         };
-  } catch {
+  } catch (error) {
+    if (error instanceof T3DiagnosticError) return error.check;
     return {
       id: 't3:providers',
       status: 'fail',
