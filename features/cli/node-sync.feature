@@ -84,3 +84,13 @@ Feature: fleet-node-sync converges the machine it is run on
         { "applied": true, "stage": "t3" }
         """
       And the checkout has no receipt
+
+    Scenario: Invalid ownership reports the reconciliation precondition without advancing the receipt
+      Given the ownership record reads "credential-private-sentinel"
+      When the operator runs "devfleet fleet-node-sync --id node --t3-home $T3_HOME"
+      Then it exits with 1
+      And it answers with at least:
+        """
+        {"applied": true, "stage": "t3", "checks": [{"id": "t3:reconciliation", "status": "fail", "summary": "T3_RECONCILIATION_UNAVAILABLE"}]}
+        """
+      And the checkout has no receipt

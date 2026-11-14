@@ -2,6 +2,7 @@ import { join, resolve } from 'node:path';
 import { homedir, hostname } from 'node:os';
 import { FleetUsageError } from '../errors';
 import { object, read } from './files';
+import { T3DiagnosticError } from './diagnostics';
 import { proxyName } from './names';
 import { accountInstances, proxyAccounts, type Roster } from './accounts';
 
@@ -76,7 +77,7 @@ export async function desired(
   // Substitute individual strings, not serialized JSON: paths may contain quotes/backslashes.
   return {
     ...(expand(instances, variables) as Record<string, unknown>),
-    ...accountInstances(await roster(), variables),
+    ...accountInstances(await readRoster(roster), variables),
   };
 }
 
@@ -162,4 +163,12 @@ function validEnvironment(
         Object.keys(variable).length === 3
     )
   );
+}
+
+async function readRoster(roster: Roster) {
+  try {
+    return await roster();
+  } catch {
+    throw new T3DiagnosticError();
+  }
 }

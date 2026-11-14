@@ -1,3 +1,4 @@
+import { T3DiagnosticError } from '../t3/diagnostics';
 import { FleetUsageError } from '../errors';
 import type { Settings } from './settings';
 import type { CommandOutcome } from './contracts';
@@ -19,6 +20,9 @@ export async function syncT3(
         ok: false,
         applied: true,
         stage: 't3',
+        ...(error instanceof T3DiagnosticError
+          ? { checks: [error.check] }
+          : {}),
         error:
           error instanceof FleetUsageError
             ? error.message

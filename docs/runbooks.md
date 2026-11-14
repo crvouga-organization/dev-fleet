@@ -8,7 +8,7 @@ person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
 entry here, or a `devfleet` command quoted in the documents does not exist.
 
-There are 302 codes; 46 need a person.
+There are 304 codes; 46 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -273,6 +273,8 @@ There are 302 codes; 46 need a person.
 - `T3_PROFILE_RECORD_INVALID`: t3 profile record invalid.
 - `T3_PROFILE_UNVERIFIED`: t3 profile unverified.
 - `T3_PROVIDERS_PENDING`: t3 providers pending.
+- `T3_RECONCILIATION_UNAVAILABLE`: a local reconciliation precondition failed. Follow the stage-specific remedy to inspect the receipt, installed definition or T3 settings and ownership record locally. Restore a valid backup or correct permissions, then retry `devfleet t3-apply --dry-run`. Never share raw file contents.
+- `T3_ACCOUNT_ROSTER_UNAVAILABLE`: the proxy account roster could not be read. Run `devfleet fleet-accounts` on the affected machine to verify proxy access and the proxy-client-key secret, then retry `devfleet t3-apply --dry-run`. Existing providers are preserved. If access still fails, report this code without credentials.
 - `T3_PROVIDERS_UNVERIFIED`: t3 providers unverified.
 - `T3_PROVIDER_CONFLICT`: t3 provider conflict.
 - `T3_PROVIDER_NAMES_PENDING`: t3 provider names pending.

@@ -1,3 +1,4 @@
+import { diagnoseT3 } from '../../t3/diagnostics';
 import { deployment } from '../node-deployment';
 import type { CommandOutcome } from '../contracts';
 import type { Settings } from '../settings';
@@ -12,21 +13,21 @@ export async function t3Command(
 ): Promise<CommandOutcome> {
   const deployed = options.definition
     ? null
-    : await deployment(settings.workspace);
+    : await diagnoseT3('deployment', () => deployment(settings.workspace));
   const workspace = deployed?.workspace ?? settings.workspace;
   const target = paths(options, workspace);
   if (command === 't3-apply' && options.import !== undefined)
     return importCommand(target, options);
-  const instances = await declared(command, target.definition, workspace, {
-    ...options,
-    id: nodeId(options.id ?? deployed?.node),
-  });
+  const instances = await diagnoseT3('definition', () =>
+    declared(command, target.definition, workspace, {
+      ...options,
+      id: nodeId(options.id ?? deployed?.node),
+    })
+  );
   const apply = shouldApply(command, options);
   if (apply) requireSupportedPlatform(instances);
-  const data = await reconcileT3(
-    target,
-    instances,
-    reconcileOptions(apply, options)
+  const data = await diagnoseT3('reconciliation', () =>
+    reconcileT3(target, instances, reconcileOptions(apply, options))
   );
   return {
     exitCode: outcomeCode(command, data),
