@@ -10,7 +10,7 @@ import {
   workerVersion,
 } from '../../../src/t3/version';
 import { succeeded } from '../../support/commands';
-import { ide, ROOT, type IdeWorld } from './world';
+import { ide, ROOT, withPin, type IdeWorld } from './world';
 
 const { Given, When, Then } = ide;
 
@@ -47,7 +47,7 @@ Then(
   'it is the file {string} with a SHA-256 digest from mise.toml',
   (world, name: string) => {
     const artifact = of(world).artifact!;
-    expect(artifact.url.endsWith(`/${name}`)).toBe(true);
+    expect(artifact.url.endsWith(`/${withPin(name)}`)).toBe(true);
     expect(artifact.sha256).toMatch(/^[a-f0-9]{64}$/);
     expect(mise()).toContain(`"${artifact.sha256}"`);
   }
@@ -62,7 +62,10 @@ Given(
   (world, version: string) => {
     mkdirSync(join(world.t3Home, 'userdata'), { recursive: true });
     if (version)
-      writeFileSync(join(world.t3Home, STARTED_VERSION), `${version}\n`);
+      writeFileSync(
+        join(world.t3Home, STARTED_VERSION),
+        `${withPin(version)}\n`
+      );
   }
 );
 
