@@ -1,5 +1,5 @@
 import { expect } from 'bun:test';
-import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { CommandWorld, commandSteps } from '../../support/command-steps';
@@ -7,6 +7,14 @@ import { steps } from '../../support/gherkin';
 import type { Check, Status } from '../../../src/types';
 
 export const ROOT = resolve(import.meta.dir, '../../..');
+
+/** Replaces `<pinned>` with the T3 version mise.toml pins. */
+export const withPin = (text: string): string => {
+  const config = Bun.TOML.parse(
+    readFileSync(join(ROOT, 'mise.toml'), 'utf8')
+  ) as { vars: { t3_version: string } };
+  return text.replaceAll('<pinned>', config.vars.t3_version);
+};
 
 /** One scenario: a T3 home, what commands answer, and the checks reported. */
 export class IdeWorld extends CommandWorld {
@@ -66,7 +74,7 @@ Then(
 Then(
   'the remedy of the check {string} mentions {string}',
   (world, id: string, text: string) => {
-    expect(named(world, id).remedy?.action).toContain(text);
+    expect(named(world, id).remedy?.action).toContain(withPin(text));
   }
 );
 

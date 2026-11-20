@@ -8,10 +8,10 @@ Feature: The manager runs the T3 release the workers run
     Then it is the file "<file>" with a SHA-256 digest from mise.toml
 
     Examples:
-      | platform | architecture | file                                            |
-      | linux    | x64          | t3-0.1.8-nightly.20261106.4262-linux-x64.tar.gz  |
-      | linux    | arm64        | t3-0.1.8-nightly.20261106.4262-linux-arm64.tar.gz |
-      | darwin   | arm64        | t3-0.1.8-nightly.20261106.4262-darwin-arm64.tar.gz |
+      | platform | architecture | file                                 |
+      | linux    | x64          | t3-<pinned>-linux-x64.tar.gz    |
+      | linux    | arm64        | t3-<pinned>-linux-arm64.tar.gz  |
+      | darwin   | arm64        | t3-<pinned>-darwin-arm64.tar.gz |
 
   Scenario: No T3 is pinned for a Mac on Intel
     Upstream publishes no server archive for it.
@@ -19,6 +19,8 @@ Feature: The manager runs the T3 release the workers run
     Then no archive is pinned
 
   Rule: Every machine reports the version it runs
+    `<pinned>` stands for the t3_version that mise.toml pins, so moving the pin
+    leaves these examples true.
 
     Scenario Outline: The manager running <running> <outcome>
       Given T3 on the manager last started as "<running>"
@@ -27,7 +29,7 @@ Feature: The manager runs the T3 release the workers run
 
       Examples:
         | running                     | outcome                           |
-        | 0.1.8-nightly.20261106.4262 | passes                            |
+        | <pinned>                    | passes                            |
         | 0.1.9-nightly.20261111.4501 | warns with "T3_VERSION_SKEW"      |
         |                             | warns with "T3_VERSION_UNKNOWN"   |
 
@@ -35,7 +37,7 @@ Feature: The manager runs the T3 release the workers run
       Given the worker "worker-one" says over SSH that its T3 last started as "0.1.9-nightly.20261111.4501"
       When the T3 version of the worker "worker-one" is checked
       Then the check "t3:version" warns with "T3_VERSION_SKEW"
-      And the remedy of the check "t3:version" mentions "the fleet pins 0.1.8-nightly.20261106.4262"
+      And the remedy of the check "t3:version" mentions "the fleet pins <pinned>"
 
   Rule: T3 on the manager does not update itself
 
