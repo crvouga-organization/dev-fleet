@@ -328,7 +328,9 @@ def test_desktop(ssh, t3):
     policy = json.loads(Path('/workspace/ansible/ubuntu/policy.json').read_text())
     ceiling = policy['resourceSafety']['rendererMaxMiB'] * 1024**2
     run(ssh + [f'test "$(cat {renderers}/memory.max)" = {ceiling}'])
-    user(ssh, f'systemctl --user stop {APP}')
+    # The recovery check may see the app stopping and start it again, which
+    # cancels the stop job: that is the recovery this measures.
+    user(ssh, f'systemctl --user stop {APP} 2>&1 | grep -v "^Job for {APP} canceled" || true')
     took = wait_for(ssh, answers(APP), 150, 'the recovery timer did not start the stopped desktop app')
     run(ssh + ['test "$(cat ~/.t3/fleet-test-preserved)" = preserved'])
     print(f'desktop T3 app: switched from headless keeping ~/.t3, auto-login after reboot, stopped app started by the timer in {took:.0f} s', flush=True)
