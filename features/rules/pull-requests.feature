@@ -41,6 +41,16 @@ Feature: A pull request reaches a release with nobody attending
     And the "Release" workflow runs on "workflow_dispatch"
     And the "Release" workflow follows the "CI" workflow
 
+  Scenario: The issues a merged pull request fixes are closed, apart from a failing workflow's
+    A merge made with a workflow's own token does not close the issues its
+    pull request names with "Fixes". The issue of a failing workflow is closed
+    by the first passing run on main, not by the merge.
+    Then the "Auto-merge" workflow runs on "workflow_run"
+    And the "Auto-merge" workflow runs on "schedule"
+    And its "reconcile" job runs "gh issue close"
+    And its "reconcile" job runs "closingIssuesReferences"
+    And its "reconcile" job runs "ci-failure"
+
   Scenario: A pull request a workflow opens is checked like any other
     Then the "Pins" workflow runs on "schedule"
     And its "pin" job runs "gh workflow run ci.yml --ref \"$branch\""
