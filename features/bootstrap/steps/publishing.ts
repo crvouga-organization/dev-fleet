@@ -122,11 +122,7 @@ const setup = part(() => {
         state.others = state.others.filter(
           (config) => !line.endsWith(` --id ${config.id}`)
         );
-      if (line.startsWith('npm trust github')) {
-        // npm keeps one trusted publisher per package.
-        if (state.others.length > 0) return false;
-        state.trusted = true;
-      }
+      if (line.startsWith('npm trust github')) state.trusted = true;
       if (line.startsWith('git push')) state.tagRemote = true;
       return true;
     },

@@ -53,9 +53,9 @@ Feature: The one-time npm setup for publishing
       And it does not publish the seed version
 
     Scenario: A trusted publisher left by a moved repository is replaced
-      npm keeps one trusted publisher per package, and its claim names the
-      repository: after the repository moves, every release is refused with a
-      404 until the old one is revoked and the new one made.
+      A trusted publisher names the repository: after the repository moves,
+      every release is refused with a 404 until the new one is made, and the
+      old one could still publish until it is revoked.
       Given "someone" is signed in to npm
       And the seed version is published
       And the package is trusted to "release.yml" of the repository "old-owner/repo", as "trust-1"
