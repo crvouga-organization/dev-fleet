@@ -17,6 +17,10 @@
 # - Running another release than the installed one, or a policy restart that
 #   was deferred: restart it once it runs no agent turn (T3_RESTART_PENDING).
 set -u
+if [ -f /run/personal-fleet-pressure-guard/active ]; then
+  echo "Deferring T3 recovery while the worker is under sustained pressure."
+  exit 0
+fi
 url=http://127.0.0.1:3773/.well-known/t3/environment
 unit=t3code-desktop.service
 headless=

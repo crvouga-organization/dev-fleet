@@ -6,6 +6,7 @@ const AGENT_DROP_IN =
   '/etc/systemd/user/t3code-.scope.d/60-personal-fleet.conf';
 const GUARDS = [
   'systemd-oomd.service',
+  'personal-fleet-pressure-guard.service',
   'personal-fleet-disk-guard.service',
   'personal-fleet-disk-gc.timer',
 ];
@@ -49,6 +50,53 @@ const agentsBounded: Probe = async (run) =>
         'AGENT_MEMORY_LIMIT_MISSING',
         'T3 agent scopes have no per-agent memory limit. Reapply fleet-sync; new agents pick it up without restarts.',
       ];
+
+const agentSliceBounded: Probe = async (run) => {
+  const [slice, memory] = await Promise.all([
+    run([
+      'systemctl',
+      '--user',
+      'show',
+      'app-t3code-agents.slice',
+      '--property=LoadState,MemoryHigh,MemoryMax,MemorySwapMax,TasksMax,CPUWeight,IOWeight',
+    ]),
+    run(['cat', '/proc/meminfo']),
+  ]);
+  const fields = Object.fromEntries(
+    slice.stdout
+      .trim()
+      .split('\n')
+      .map((line) => line.split('='))
+  );
+  if (!slice.ok || fields['LoadState'] !== 'loaded')
+    return [
+      'AGENT_SLICE_MISSING',
+      'Run fleet-sync and verify T3 uses app-t3code-agents.slice.',
+    ];
+  const mib = Math.floor(
+    Number(/^MemTotal:\s+(\d+) kB$/m.exec(memory.stdout)?.[1]) / 1024
+  );
+  const limits = policy.resourceSafety.agentSlice;
+  const expected = {
+    MemoryHigh: Math.floor((mib * limits.highPercent) / 100) * MIB,
+    MemoryMax: Math.floor((mib * limits.maxPercent) / 100) * MIB,
+    MemorySwapMax: limits.swapMiB * MIB,
+    TasksMax: limits.tasks,
+    CPUWeight: limits.weight,
+    IOWeight: limits.weight,
+  };
+  if (
+    !memory.ok ||
+    !Object.entries(expected).every(
+      ([key, value]) => Number(fields[key]) === value
+    )
+  )
+    return [
+      'AGENT_LIMIT_OVERRIDDEN',
+      'Run fleet-sync to restore the aggregate T3 agent limits, then inspect higher-priority drop-ins if the check still fails.',
+    ];
+  return undefined;
+};
 
 const swapActive: Probe = async (run) => {
   // /proc/swaps, not swapon: /usr/sbin is not on the remote worker PATH.
@@ -116,6 +164,7 @@ export async function verifyResourceSafety(
     guardsRunning,
     memoryReserved,
     agentsBounded,
+    agentSliceBounded,
     swapActive,
     diskAboveFloor('/'),
     diskAboveFloor(home),

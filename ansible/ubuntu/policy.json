@@ -149,11 +149,27 @@
     "userMemoryMax": "90%",
     "agentMemoryMax": "30%",
     "agentSwapMax": "2G",
+    "agentSlice": {
+      "highPercent": 60,
+      "maxPercent": 70,
+      "threadHighPercent": 45,
+      "threadMaxPercent": 55,
+      "swapMiB": 4096,
+      "tasks": 3000,
+      "weight": 50,
+      "oomPressurePercent": 40
+    },
     "journalMaxUse": "1G",
     "journalKeepFree": "4G",
     "tmpMaxSize": "25%",
     "tmpAge": "2d",
     "varTmpAge": "14d",
+    "pressureGuard": {
+      "threshold": 50,
+      "duration": 30,
+      "cooldown": 120,
+      "interval": 5
+    },
     "diskGuardWriteMiB": 32,
     "diskGuardIntervalSeconds": 5,
     "diskGcIdleDays": 7,

@@ -547,3 +547,94 @@ When(
 Then(/^the filesystem is (above|below) its floors$/, (world, side: string) => {
   expect(guard(world).low).toBe(side === 'below');
 });
+
+const pressureGuard = part((world) => ({
+  directory: world.directory('pressure-guard-'),
+  scopes: [] as string[],
+  decisions: 0,
+}));
+
+Given(
+  'these scopes hold memory in the worker cgroup tree:',
+  (world, table: DataTable) => {
+    const state = pressureGuard(world);
+    for (const { scope, memory, swap } of table.hashes()) {
+      const path = join(state.directory, scope!);
+      mkdirSync(path, { recursive: true });
+      writeFileSync(join(path, 'memory.current'), memory!);
+      writeFileSync(join(path, 'memory.swap.current'), swap!);
+      writeFileSync(join(path, 'cgroup.kill'), '');
+      state.scopes.push(scope!);
+    }
+  }
+);
+
+When(
+  'the guard measures {int} percent I-O pressure at seconds {string} with threshold {int}, duration {int} and cooldown {int}',
+  (
+    world,
+    psi: number,
+    times: string,
+    threshold: number,
+    duration: number,
+    cooldown: number
+  ) => {
+    const state = pressureGuard(world);
+    const proc = join(state.directory, 'proc');
+    mkdirSync(join(proc, 'pressure'), { recursive: true });
+    for (const [signal, value] of [
+      ['io', psi],
+      ['memory', 0],
+    ] as const)
+      writeFileSync(join(proc, 'pressure', signal), `full avg10=${value}\n`);
+    const simulation = `
+import runpy, sys, json
+from pathlib import Path
+from types import SimpleNamespace
+guard = runpy.run_path(sys.argv[1])['Guard']()
+args = SimpleNamespace(**json.loads(sys.argv[2]))
+args.proc, args.agent_tree = Path(args.proc), Path(args.agent_tree)
+for second in args.times:
+    guard.sample(args,second)
+`;
+    const result = Bun.spawnSync([
+      'python3',
+      '-I',
+      '-B',
+      '-c',
+      simulation,
+      join(checkout, 'ansible/ubuntu/pressure-guard.py'),
+      JSON.stringify({
+        proc,
+        agent_tree: join(state.directory, 'agents'),
+        times: times.split(',').map(Number),
+        threshold,
+        duration,
+        cooldown,
+        dry_run: false,
+        marker: null,
+      }),
+    ]);
+    expect(result.exitCode).toBe(0);
+    state.decisions = result.stdout
+      .toString()
+      .trim()
+      .split('\n')
+      .filter(Boolean).length;
+  }
+);
+
+Then(
+  'it records {int} kills and only {string} receives a kill',
+  (world, count: number, scope: string) => {
+    const state = pressureGuard(world);
+    expect(state.decisions).toBe(count);
+    expect(
+      state.scopes.filter(
+        (name) =>
+          readFileSync(join(state.directory, name, 'cgroup.kill'), 'utf8') ===
+          '1'
+      )
+    ).toEqual(scope === 'none' ? [] : [scope]);
+  }
+);

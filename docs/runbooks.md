@@ -8,7 +8,7 @@ person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
 entry here, or a `devfleet` command quoted in the documents does not exist.
 
-There are 305 codes; 46 need a person.
+There are 307 codes; 46 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -103,6 +103,13 @@ There are 305 codes; 46 need a person.
 - `WORKER_RECOVERY_SCRIPT_MISSING`: worker recovery script missing.
 - `WORKER_RECOVERY_SETUP_FAILED`: worker recovery setup failed.
 - `WORKER_RECOVERY_TIMER_INACTIVE`: worker recovery timer inactive.
+
+Under sustained I/O or memory pressure the pressure guard can stop a build.
+Inspect `journalctl -u personal-fleet-pressure-guard --since yesterday` for
+the scope, memory usage and pressure at each decision. During a stall,
+connect with `ssh -t WORKER bash --noprofile --norc` and inspect
+`memory.current` on the T3 agent scopes. To stop a confirmed runaway,
+write `1` to that agent scope’s `cgroup.kill`.
 
 ## Worker size and features
 
@@ -356,6 +363,8 @@ There are 305 codes; 46 need a person.
 - **Fix:** Run `devfleet fleet-sync`; a rate limit or upstream outage clears on its own.
 - **Escalate:** PROVIDER_AUTH_REJECTED needs a person to sign the account in again on the proxy. AGENT_PROFILE_RENDER_MISMATCH is a defect of the release (a template of `ansible/agents/agents.yml` no longer renders what `src/agents/render.ts` specifies): report it to dev-fleet. No receipt vouches for what that play wrote, so later applies refuse the file until a person reviews it.
 
+- `AGENT_SLICE_MISSING`: the user manager cannot load the T3 agent slice. Check the T3 release and run fleet-sync.
+- `AGENT_LIMIT_OVERRIDDEN`: a higher-priority setting overrides an agent slice limit. Run fleet-sync and inspect the effective properties.
 - `AGENT_MEMORY_LIMIT_MISSING`: agent memory limit missing.
 - `AGENT_MODEL_UNSERVED`: agent model unserved.
 - `AGENT_PROFILE_RENDER_MISMATCH`: agent profile render mismatch.

@@ -9,12 +9,15 @@ Feature: A worker's memory and disk guards are measured where they run
   Background:
     Given these commands answer:
       | command                                                          | answer                                                                 |
+      | systemctl is-active personal-fleet-pressure-guard.service        | prints active\n                                                        |
       | systemctl is-active systemd-oomd.service                         | prints active\n                                                        |
       | systemctl is-active personal-fleet-disk-guard.service            | prints active\n                                                        |
       | systemctl is-active personal-fleet-disk-gc.timer                 | prints active\n                                                        |
       | systemctl show --property=MemoryMax -- user.slice                | prints MemoryMax=29720510464\n                                         |
       | systemctl show --property=ManagedOOMSwap -- -.slice              | prints ManagedOOMSwap=kill\n                                           |
       | test -f /etc/systemd/user/t3code-.scope.d/60-personal-fleet.conf | succeeds                                                               |
+      | systemctl --user show app-t3code-agents.slice …                    | prints LoadState=loaded\nMemoryHigh=5153751040\nMemoryMax=6012534784\nMemorySwapMax=4294967296\nTasksMax=3000\nCPUWeight=50\nIOWeight=50 |
+      | cat /proc/meminfo                                                | prints MemTotal: 8388608 kB |
       | cat /proc/swaps                                                  | prints Filename Type Size Used Priority\n/swap.img file 8388604 0 -2\n |
       | df --output=avail,size -B1 /                                     | prints Avail Size\n107374182400 536870912000\n                         |
       | df --output=avail,size -B1 /home/fixture                         | prints Avail Size\n107374182400 536870912000\n                         |
@@ -36,6 +39,8 @@ Feature: A worker's memory and disk guards are measured where they run
 
     Examples:
       | what is wrong              | command                                               | answer                                    | summary                 |
+      | A missing agent slice | systemctl --user show app-t3code-agents.slice … | prints LoadState=not-found | AGENT_SLICE_MISSING |
+      | An overridden agent cap | systemctl --user show app-t3code-agents.slice … | prints LoadState=loaded\nMemoryMax=infinity | AGENT_LIMIT_OVERRIDDEN |
       | A stopped disk guard       | systemctl is-active personal-fleet-disk-guard.service | fails printing failed\n                   | RESOURCE_GUARD_INACTIVE |
       | A stopped disk GC timer    | systemctl is-active personal-fleet-disk-gc.timer      | fails printing inactive\n                 | RESOURCE_GUARD_INACTIVE |
       | Uncapped user memory       | systemctl show --property=MemoryMax -- user.slice     | prints MemoryMax=infinity\n               | MEMORY_RESERVE_MISSING  |
