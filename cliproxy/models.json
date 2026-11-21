@@ -371,7 +371,7 @@
             "content": "Say hello."
           }
         ],
-        "max_tokens": 256
+        "max_tokens": 400
       },
       "expect": {
         "content": {
@@ -799,7 +799,7 @@
         "tool_choice": {
           "name": "echo_token"
         },
-        "max_tokens": 128
+        "max_tokens": 400
       },
       "expect": {
         "tool_calls": {
