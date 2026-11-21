@@ -638,3 +638,63 @@ Then(
     ).toEqual(scope === 'none' ? [] : [scope]);
   }
 );
+
+// ── The exposure of the desktop app ──────────────────────────────────────
+
+const exposure = part((world) => ({
+  home: world.directory('t3-home-'),
+  output: '',
+}));
+const desktopSettings = (world: BootstrapWorld) =>
+  join(exposure(world).home, 'userdata', 'desktop-settings.json');
+const serviceEnvironment = (world: BootstrapWorld) =>
+  join(exposure(world).home, 'service.env');
+
+Given('the desktop settings are:', (world, text: string) => {
+  mkdirSync(join(exposure(world).home, 'userdata'), { recursive: true });
+  writeFileSync(desktopSettings(world), text);
+});
+
+Given('the desktop settings hold {string}', (world, text: string) => {
+  mkdirSync(join(exposure(world).home, 'userdata'), { recursive: true });
+  writeFileSync(desktopSettings(world), text);
+});
+
+Given('the T3 service environment is:', (world, text: string) => {
+  writeFileSync(serviceEnvironment(world), `${text}\n`);
+});
+
+When('the exposure is set before the app starts', (world) => {
+  const ran = spawnSync(
+    'python3',
+    [
+      '-I',
+      '-B',
+      join(checkout, 'ansible/ubuntu/t3-local-only.py'),
+      '--home',
+      exposure(world).home,
+    ],
+    { encoding: 'utf8' }
+  );
+  world.exit = ran.status;
+  exposure(world).output = ran.stdout;
+  expect(ran.status).toBe(0);
+});
+
+Then('the desktop settings become:', (world, text: string) => {
+  expect(JSON.parse(readFileSync(desktopSettings(world), 'utf8'))).toEqual(
+    JSON.parse(text)
+  );
+});
+
+Then('the desktop settings still hold {string}', (world, text: string) => {
+  expect(readFileSync(desktopSettings(world), 'utf8')).toBe(text);
+});
+
+Then('the T3 service environment becomes:', (world, text: string) => {
+  expect(readFileSync(serviceEnvironment(world), 'utf8')).toBe(`${text}\n`);
+});
+
+Then('it reports:', (world, text: string) => {
+  expect(JSON.parse(exposure(world).output)).toEqual(JSON.parse(text));
+});
