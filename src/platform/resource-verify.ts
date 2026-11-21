@@ -4,26 +4,78 @@ import type { Check, Runner } from '../types';
 
 const AGENT_DROP_IN =
   '/etc/systemd/user/t3code-.scope.d/60-personal-fleet.conf';
-const GUARDS = [
-  'systemd-oomd.service',
-  'personal-fleet-pressure-guard.service',
-  'personal-fleet-disk-guard.service',
-  'personal-fleet-disk-gc.timer',
-];
+const GUARDS = {
+  'systemd-oomd.service': 'OOMD_INACTIVE',
+  'personal-fleet-pressure-guard.service': 'PRESSURE_GUARD_INACTIVE',
+  'personal-fleet-disk-guard.service': 'DISK_GUARD_INACTIVE',
+  'personal-fleet-disk-gc.timer': 'DISK_GC_TIMER_MISSING',
+};
 const MIB = 1024 * 1024;
 
 /** A failure code and remedy, or undefined when the probe passes. */
 type Probe = (run: Runner) => Promise<[string, string] | undefined>;
 
 const guardsRunning: Probe = async (run) => {
-  for (const unit of GUARDS) {
+  for (const [unit, code] of Object.entries(GUARDS)) {
     const active = await run(['systemctl', 'is-active', unit]);
-    if (active.stdout.trim() !== 'active')
+    if (!active.ok || active.stdout.trim() !== 'active')
       return [
-        'RESOURCE_GUARD_INACTIVE',
+        code,
         `${unit} is not running. Reapply fleet-sync; runaway memory or disk use is unguarded until then.`,
       ];
   }
+  const timer = await run([
+    'systemctl',
+    'is-enabled',
+    'personal-fleet-disk-gc.timer',
+  ]);
+  if (!timer.ok || timer.stdout.trim() !== 'enabled')
+    return [
+      'DISK_GC_TIMER_MISSING',
+      'Run fleet-sync for this worker to enable its hourly disk GC timer.',
+    ];
+  return diskGcRecent(run);
+};
+
+async function timerTimestamp(run: Runner, kind: string, field: string) {
+  const result = await run([
+    'busctl',
+    'get-property',
+    'org.freedesktop.systemd1',
+    '/org/freedesktop/systemd1/unit/personal_2dfleet_2ddisk_2dgc_2etimer',
+    'org.freedesktop.systemd1.' + kind,
+    field,
+  ]);
+  return result.ok
+    ? Number(/^t (\d+)$/.exec(result.stdout.trim())?.[1]) / 1000000
+    : NaN;
+}
+
+const diskGcRecent: Probe = async (run) => {
+  const last = await timerTimestamp(run, 'Timer', 'LastTriggerUSec');
+  const since =
+    last === 0
+      ? await timerTimestamp(run, 'Unit', 'ActiveEnterTimestamp')
+      : last;
+  const clock = await run(['date', '+%s']);
+  const service = await run([
+    'systemctl',
+    'show',
+    'personal-fleet-disk-gc.service',
+    '--property=Result',
+    '--value',
+  ]);
+  const age = Number(clock.stdout.trim()) - since;
+  if (
+    !clock.ok ||
+    !service.ok ||
+    service.stdout.trim() !== 'success' ||
+    !(age >= 0 && age <= 7200)
+  )
+    return [
+      'DISK_GC_RUN_STALE',
+      'Inspect the disk GC service journal and run fleet-sync for this worker.',
+    ];
   return undefined;
 };
 
@@ -101,12 +153,42 @@ const agentSliceBounded: Probe = async (run) => {
 const swapActive: Probe = async (run) => {
   // /proc/swaps, not swapon: /usr/sbin is not on the remote worker PATH.
   const swaps = await run(['cat', '/proc/swaps']);
-  return swaps.ok && swaps.stdout.trim().split('\n').length > 1
-    ? undefined
-    : [
-        'SWAP_MISSING',
-        'No swap is active. Reapply fleet-sync with enough free disk for the swap file.',
-      ];
+  const rows = swaps.stdout
+    .trim()
+    .split('\n')
+    .slice(1)
+    .map((line) => line.trim().split(/\s+/));
+  if (!swaps.ok || !rows.length)
+    return [
+      'SWAP_MISSING',
+      'Reapply fleet-sync with enough free disk for overflow swap.',
+    ];
+  const zram = policy.resourceSafety.zram;
+  const priority = (row: string[]) => Number(row[4]);
+  const primary = rows.find((row) => row[0] === '/dev/zram0');
+  if (
+    !primary ||
+    priority(primary) !== zram.priority ||
+    rows.some((row) => row !== primary && priority(row) >= zram.priority)
+  )
+    return [
+      'ZRAM_PRIORITY_MISMATCH',
+      'Run fleet-sync and inspect dev-zram0.swap and the priority of the disk swap.',
+    ];
+  const tuning = await run([
+    'cat',
+    '/proc/sys/vm/swappiness',
+    '/proc/sys/vm/page-cluster',
+  ]);
+  if (
+    !tuning.ok ||
+    tuning.stdout.trim() !== [zram.swappiness, zram.pageCluster].join('\n')
+  )
+    return [
+      'ZRAM_RECLAIM_MISMATCH',
+      'Run fleet-sync to restore the reclaim settings for compressed swap.',
+    ];
+  return undefined;
 };
 
 /** The disk guard's floor scales with the filesystem

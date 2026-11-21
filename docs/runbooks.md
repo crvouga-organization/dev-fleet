@@ -8,7 +8,7 @@ person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
 entry here, or a `devfleet` command quoted in the documents does not exist.
 
-There are 307 codes; 46 need a person.
+There are 313 codes; 46 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -83,7 +83,11 @@ There are 307 codes; 46 need a person.
 - `DOCKER_OWNER_CONFLICT`: docker owner conflict. **Needs a person.**
 - `MEMORY_RESERVE_MISSING`: memory reserve missing.
 - `RESOURCE_CAPACITY_REQUIRED`: resource capacity required.
-- `RESOURCE_GUARD_INACTIVE`: resource guard inactive.
+- `OOMD_INACTIVE`: systemd-oomd has stopped.
+- `PRESSURE_GUARD_INACTIVE`: the pressure guard has stopped.
+- `DISK_GUARD_INACTIVE`: the disk guard has stopped.
+- `DISK_GC_TIMER_MISSING`: the disk GC timer is missing, stopped or disabled.
+- `DISK_GC_RUN_STALE`: the disk GC failed or its timer has not fired for two hours.
 - `SERVICE_NOT_ENABLED`: service not enabled.
 - `SERVICE_NOT_INSTALLED`: service not installed.
 - `SERVICE_NOT_RUNNING`: service not running.
@@ -92,6 +96,8 @@ There are 307 codes; 46 need a person.
 - `SUDOERS_OWNERSHIP_CONFLICT`: sudoers ownership conflict. **Needs a person.**
 - `SUDO_AUTHORIZATION_REQUIRED`: sudo authorization required. **Needs a person.**
 - `SWAP_CAPACITY_REQUIRED`: swap capacity required.
+- `ZRAM_PRIORITY_MISMATCH`: verify dev-zram0.swap is active with priority above disk swap and reapply fleet-sync.
+- `ZRAM_RECLAIM_MISMATCH`: reapply fleet-sync to restore the VM reclaim settings.
 - `SWAP_MISSING`: swap missing.
 - `TMP_QUOTA_EXHAUSTED`: tmp quota exhausted.
 - `UBUNTU_BASELINE_INCOMPLETE`: ubuntu baseline incomplete.

@@ -2214,6 +2214,14 @@
       }
     },
     {
+      "id": "worker:package:systemd-zram-generator",
+      "meaning": "The pinned Ubuntu package is installed at or past its pin.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
       "id": "worker:package:tailscale",
       "meaning": "The pinned Ubuntu package is installed at or past its pin.",
       "severity": "required",

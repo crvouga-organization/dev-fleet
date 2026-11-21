@@ -55,7 +55,46 @@
   ansible.builtin.include_tasks: install.yml
   vars:
     install_pins:
+      systemd-zram-generator: "{{ packages['systemd-zram-generator'] }}"
       systemd-oomd: "{{ packages['systemd-oomd'] }}"
+- name: Declare compressed memory as the primary swap device
+  ansible.builtin.copy:
+    dest: /etc/systemd/zram-generator.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      # Managed by personal fleet-sync.
+      [zram0]
+      zram-size = min(ram / {{ resourceSafety.zram.memoryDivisor }}, {{ resourceSafety.zram.maximumMiB }})
+      swap-priority = {{ resourceSafety.zram.priority }}
+  register: zram_config
+- name: Start compressed swap and retain any disk swap for overflow
+  ansible.builtin.systemd_service:
+    name: dev-zram0.swap
+    daemon_reload: '{{ zram_config.changed }}'
+    state: started
+- name: Declare reclaim tuning for compressed swap
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/60-personal-fleet-zram.conf
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      # Managed by personal fleet-sync.
+      vm.swappiness = {{ resourceSafety.zram.swappiness }}
+      vm.page-cluster = {{ resourceSafety.zram.pageCluster }}
+- name: Read the running reclaim settings
+  ansible.builtin.command:
+    argv: [/usr/sbin/sysctl, -n, vm.swappiness, vm.page-cluster]
+  changed_when: false
+  check_mode: false
+  register: reclaim_settings
+- name: Apply reclaim tuning once compressed swap is active
+  ansible.builtin.command:
+    argv: [/usr/sbin/sysctl, -p, /etc/sysctl.d/60-personal-fleet-zram.conf]
+  when: reclaim_settings.stdout_lines != [resourceSafety.zram.swappiness | string, resourceSafety.zram.pageCluster | string]
+  changed_when: true
 - name: Create memory and disk policy directories
   ansible.builtin.file:
     path: '{{ item }}'
