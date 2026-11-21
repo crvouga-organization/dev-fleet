@@ -20,6 +20,8 @@
   loop:
     - t3-health.sh
     - t3-idle.py
+    - t3-renderers.py
+    - t3-local-only.py
 - name: Declare bounded recovery of the worker T3 desktop app
   ansible.builtin.copy:
     dest: '{{ development_home }}/.config/systemd/user/personal-worker-recovery.service'
@@ -31,6 +33,7 @@
       Description=Keep the worker T3 desktop app running and responsive
       [Service]
       Type=oneshot
+      Environment=T3_RENDERER_HIGH_MIB={{ resourceSafety.rendererHighMiB }} T3_RENDERER_MAX_MIB={{ resourceSafety.rendererMaxMiB }}
       ExecStart=/bin/sh /usr/local/lib/personal-fleet/t3-health.sh
       TimeoutStartSec=90
 - name: Declare persistent service recovery checks

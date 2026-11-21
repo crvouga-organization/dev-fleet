@@ -414,3 +414,31 @@ Then('the stand-in for mise was run with {string}', (world, args: string) => {
     `${args}\n`
   );
 });
+
+Then(
+  /^the cache child "([^"]+)" is (removed|kept)$/,
+  (world, child: string, state: string) => {
+    expect(existsSync(join(collector(world).home, child))).toBe(
+      state === 'kept'
+    );
+  }
+);
+
+When(
+  'the disk GC runs with the stand-in for mise and these limits:',
+  (world, table: DataTable) => {
+    const state = collector(world);
+    state.options.push('--mise', state.mise, ...table.raw().flat());
+    runCollector(world, false);
+  }
+);
+
+Then(
+  /^the package store command "([^"]+)" (ran|was skipped)$/,
+  (world, args: string, verdict: string) => {
+    const lines = readFileSync(collector(world).mise + '.log', 'utf8')
+      .trim()
+      .split('\n');
+    expect(lines.includes('exec -- ' + args)).toBe(verdict === 'ran');
+  }
+);

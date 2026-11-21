@@ -24,6 +24,7 @@
   },
   "fleetSync": {
     "label": "personal-fleet-sync",
+    "convergenceWarnHours": 2,
     "intervalMinutes": 30
   },
   "fleetWatch": {

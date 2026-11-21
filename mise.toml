@@ -92,15 +92,15 @@ mise_macos_x64_sha256 = "7784da9fd85c77a0f0df6e6e39a6908089afc2a3f2c7ade78d36214
 mise_macos_arm64_sha256 = "3a0b7a727d86bd15a64c6df9ef6531111a4741b07e6f1e2bb6f6bb5b09e2663f"
 # Official native server distribution (Ubuntu workers, and the manager's
 # pinned CLI); bootstrap/native-t3.ts owns installation. From the release's SHA256SUMS.
-t3_version = "0.1.10-nightly.20261116.4761"
-t3_linux_x64_sha256 = "1353fa42529386bbd1eae55bd92960ba3d813cb614ab710c85b5af7bd69afd15"
-t3_linux_arm64_sha256 = "5b652de5a22556b31e190038e5795beba9dfc94a0f77c5b4d2bfdf23aff10603"
-t3_darwin_arm64_sha256 = "695896ea1f05052a7dca25cf7311f94e38f41b63ba08f102640d6126f3f1be7d"
+t3_version = "0.1.12-nightly.20261121.5024"
+t3_linux_x64_sha256 = "44f2f1856d952a97c4fb7ea600c1b29a03bfcb1cc520cc6d5e48accc98412f03"
+t3_linux_arm64_sha256 = "e641da28a98cae572ff862bbb6faed1bd20816add706c3d6875337879a8d92ec"
+t3_darwin_arm64_sha256 = "6dc6f34959ec90fbf3d6995ec8c53f67d7ff43d45e30e61de79e89942394bf23"
 # Official T3 Code desktop .deb (same release). Workers run this GUI app as their
 # only T3 process; it embeds the server. Upstream SHA256SUMS omits .deb files,
 # so these digests were computed from the release assets.
-t3_desktop_amd64_sha256 = "28bbd84f3eebed22ee762b98e5b48d2032b32ca6a1a2e4f9fe8e74abf7a8d8d9"
-t3_desktop_arm64_sha256 = "8734acdc0961d32208edd7c3b9bb8fd72d0bca7ac32ed240ef6c25795a96c17f"
+t3_desktop_amd64_sha256 = "fd4b1826c1151360d7f5497f9efd091af458a3e62dc8716aa057cdd7af8cac0d"
+t3_desktop_arm64_sha256 = "a9b71f66210e5ed864e84974c28169f53d1970640cf4fa8dae700a699ef5e4ef"
 # Official AWS v2 Windows MSI, same version as tools.aws; checked before execution.
 aws_windows_msi_sha256 = "c7857d5981e68396852e8b7eca0b1772f1c99b34d4938075857d45ec9c232113"
 # Docker Desktop supplies the macOS engine, Compose and Buildx as one vendor bundle.

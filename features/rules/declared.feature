@@ -175,6 +175,13 @@ Feature: What a machine becomes is declared, once
         | pin  |
         | mise |
         | t3   |
+        | codex |
+        | claude |
+        | gemini |
+        | copilot |
+        | opencode |
+        | grok |
+        | antigravity |
 
     Scenario: Renovate moves the tunnel image of the monitoring hub by tag and digest
       Then a custom manager of Renovate reads the tag and digest of "tunnelImage" in "ansible/monitoring/lock.json"

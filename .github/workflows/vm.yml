@@ -7,7 +7,12 @@ name: Ubuntu VM
 on:
   schedule:
     - cron: '17 4 * * 1'
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      desktop:
+        description: Also verify the desktop worker and renderer limits
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       ref:
@@ -40,6 +45,8 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Run the VM test
+        env:
+          FLEET_TEST_DESKTOP: ${{ inputs.desktop && '1' || '0' }}
         run: bun ansible/ubuntu/tests/run-vm.ts ${{ matrix.mode }}
       # The evidence of a failed run, for whoever fixes it: the redacted
       # results and the logs of the disposable guest. The fixture keys and

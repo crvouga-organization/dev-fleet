@@ -135,11 +135,13 @@ Configured fleet-watch targets receive disk warnings before they become failures
 | `worker:capacity:disk` fails under | 2% of disk    | 1024 MiB | 2048 MiB   |
 
 `worker:agent-sessions` reports how many agent sessions run and how many the
-memory policy supports at once: the memory user workloads may use (90%), less
-what T3 keeps for itself (1536 MiB), in sessions of an estimated 1024 MiB each
-(`sizing.agentSessionMiB`, also an estimate). More sessions than that warn
-with `AGENT_SESSION_CAPACITY_EXHAUSTED`; each agent is still capped at 30% of
-memory, so the largest is stopped under pressure rather than the machine.
+memory policy supports while each runs a build. The estimate deducts the
+system and T3 reserves, then budgets 512 MiB per session and 4096 MiB per
+build. Both T3 worker units set the Node old-space limit to the build budget.
+More active sessions than the recommendation warn with `AGENTS_OVER_CAPACITY`.
+Projects can serialize heavy builds across their worktrees by running them
+under the same user-owned lock, for example
+`flock "$XDG_RUNTIME_DIR/project-build.lock" npm run build`.
 
 ## Package pins and security updates
 

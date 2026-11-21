@@ -130,3 +130,26 @@ Feature: The disk GC removes only what a worker can rebuild
       Given a stand-in for mise that records how it is run
       When the disk GC runs with the stand-in for mise
       Then the stand-in for mise was run with "prune --yes"
+
+    Scenario: A cache over the total budget loses rebuildable children while exclusions survive
+      Given the cache ".cache/rebuildable" holds 3 files of 1 MiB, written an hour apart
+      And the cache ".cache/mise" holds 2 files of 1 MiB, written an hour apart
+      When the disk GC runs with these limits:
+        | --home-cache-mib | 1    |
+        | --exclude-cache  | mise |
+      Then the cache child ".cache/rebuildable" is removed
+      And the cache child ".cache/mise" is kept
+      And the run reports at least 3 MiB reclaimed
+
+    Scenario Outline: A package store uses its own pruning command when over budget
+      Given a stand-in for mise that records how it is run
+      And the cache ".npm/_cacache" holds 3 files of 1 MiB, written an hour apart
+      When the disk GC runs with the stand-in for mise and these limits:
+        | --home-cache-mib | 32        |
+        | --store-cap      | npm=<cap> |
+      Then the package store command "npm cache clean --force" <result>
+
+      Examples:
+        | cap | result      |
+        | 1   | ran         |
+        | 8   | was skipped |

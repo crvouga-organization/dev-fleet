@@ -1,3 +1,4 @@
+import { managedUpdateRemedy } from '../../../agents/managed-proxy';
 import { expect } from 'bun:test';
 import {
   mkdir,
@@ -417,3 +418,17 @@ Then('the play reported no change', (world) => {
 Then('the profile holds no file', async (world) => {
   expect(await filesUnder((await plan(context(world))).directory)).toEqual([]);
 });
+
+When(
+  'the managed {string} launcher receives {string}',
+  (world, tool: string, command: string) => {
+    profile(world).settings = managedUpdateRemedy(tool, [command]);
+  }
+);
+
+Then(
+  'the launcher directs the operator to {string}',
+  (world, remedy: string) => {
+    expect(profile(world).settings).toContain(remedy);
+  }
+);

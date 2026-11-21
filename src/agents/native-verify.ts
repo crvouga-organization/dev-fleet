@@ -80,6 +80,8 @@ export const NATIVE_AGENTS = [
 
 type Agent = (typeof NATIVE_AGENTS)[number];
 
+export const ADDITIONAL_PROVIDER_CLIS = ['gemini', 'copilot'] as const;
+
 /** The user service T3 runs as on a worker, and so the environment every
  * agent it starts inherits.
  */
@@ -169,7 +171,17 @@ export async function verifyNativeAgents(
               })
           )
         : [];
-    return [...environment.checks, ...results.flat(), ...accounts];
+    const extraVersions = await Promise.all(
+      ADDITIONAL_PROVIDER_CLIS.map((binary) =>
+        versionCheck({ name: binary, binary, pin: binary }, pins[binary], run)
+      )
+    );
+    return [
+      ...environment.checks,
+      ...results.flat(),
+      ...extraVersions,
+      ...accounts,
+    ];
   } finally {
     await rm(cwd, { recursive: true, force: true });
   }
@@ -287,27 +299,32 @@ export function parsePins(source: string): Record<string, string> {
  * rewrote it) is reinstalled from the locked artifact, then checked again.
  */
 async function versionCheck(
-  agent: Agent,
+  agent: { name: string; binary: string; pin: string },
   pin: string | undefined,
   run: Runner
 ): Promise<Check> {
-  const matches = async () => {
+  const observe = async () => {
     const result = await run([agent.binary, '--version'], {
       env: { PATH: pinnedPath() },
       timeoutMs: 30_000,
     });
-    return Boolean(pin) && result.ok && result.stdout.includes(pin!);
+    return result.ok
+      ? /(?:^|[\s/])v?(\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?)(?=[\s)]|$)/m.exec(
+          result.stdout
+        )?.[1]
+      : undefined;
   };
-  let ok = await matches();
-  if (!ok && pin) {
+  let observed = await observe();
+  if (observed !== pin && pin) {
     await run(
       ['mise', 'install', '--locked', '--force', `${agent.pin}@${pin}`],
       {
         timeoutMs: 600_000,
       }
     );
-    ok = await matches();
+    observed = await observe();
   }
+  const ok = Boolean(pin) && observed === pin;
   return {
     id: `agent:${agent.name}:version`,
     status: ok ? 'pass' : 'fail',
@@ -318,7 +335,7 @@ async function versionCheck(
       ? {}
       : {
           remedy: {
-            action: `Every node runs the ${agent.binary} pinned in mise.toml/mise.lock; reinstalling it from the lock failed. Inspect mise install --locked ${agent.pin} on this node; never install it with a vendor self-updater.`,
+            action: `Expected ${pin ?? 'unknown'}, observed ${observed ?? 'unavailable'}. Every node runs the ${agent.binary} pinned in mise.toml/mise.lock; reinstalling it from the lock failed. Inspect mise install --locked ${agent.pin} on this node; never install it with a vendor self-updater.`,
           },
         }),
   };

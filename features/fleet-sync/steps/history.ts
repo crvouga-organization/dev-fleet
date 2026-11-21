@@ -1,6 +1,7 @@
 import { expect } from 'bun:test';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { convergenceCheck } from '../../../src/cli/worker-usage-report';
 import { fleetReport } from '../../../src/cli/fleet-report';
 import { FleetUsageError } from '../../../src/errors';
 import { parse } from 'yaml';
@@ -407,3 +408,30 @@ Then('it is checked with newsyslog before it is installed', (world) => {
     '/usr/sbin/newsyslog -n -f %s'
   );
 });
+
+Then(
+  'worker {string} with applied revision {string} and approval {string} at {string} reports:',
+  (
+    _world,
+    id: string,
+    applied: string,
+    approved: string,
+    at: string,
+    table: DataTable
+  ) => {
+    const check = convergenceCheck(
+      id,
+      {
+        id: 'manager',
+        version: 1,
+        approvedRevision: approved,
+        workers: { [id]: applied },
+      },
+      readHistory(),
+      new Date(at)
+    );
+    expect(check.status).toBe('warn');
+    for (const fragment of table.list())
+      expect(check.summary).toContain(fragment);
+  }
+);

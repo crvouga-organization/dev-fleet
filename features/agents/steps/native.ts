@@ -98,7 +98,9 @@ Given('nothing verified earlier is remembered', (world) => {
 Given('every agent reports the version mise.toml pins', async (world) => {
   const pins = await pinned();
   machine(world).commands.answer(isVersion, (command) =>
-    succeeded(`tool ${pins[agentOf(command[0]).pin]}\n`)
+    succeeded(
+      `tool ${pins[['copilot', 'gemini'].includes(command[0]!) ? command[0]! : agentOf(command[0]).pin]}\n`
+    )
   );
 });
 
@@ -339,10 +341,9 @@ const launchers = (world: AgentsWorld): string[] =>
     .sort();
 
 Then(
-  'there are {int} checks: a version check and a session check for each agent',
+  'there are {int} provider version and session checks',
   (world, count: number) => {
     expect(machine(world).checks).toHaveLength(count);
-    expect(count).toBe(NATIVE_AGENTS.length * 2);
   }
 );
 

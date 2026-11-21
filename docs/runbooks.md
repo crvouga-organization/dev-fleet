@@ -8,7 +8,7 @@ person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
 entry here, or a `devfleet` command quoted in the documents does not exist.
 
-There are 304 codes; 46 need a person.
+There are 316 codes; 46 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -83,7 +83,11 @@ There are 304 codes; 46 need a person.
 - `DOCKER_OWNER_CONFLICT`: docker owner conflict. **Needs a person.**
 - `MEMORY_RESERVE_MISSING`: memory reserve missing.
 - `RESOURCE_CAPACITY_REQUIRED`: resource capacity required.
-- `RESOURCE_GUARD_INACTIVE`: resource guard inactive.
+- `OOMD_INACTIVE`: systemd-oomd has stopped.
+- `PRESSURE_GUARD_INACTIVE`: the pressure guard has stopped.
+- `DISK_GUARD_INACTIVE`: the disk guard has stopped.
+- `DISK_GC_TIMER_MISSING`: the disk GC timer is missing, stopped or disabled.
+- `DISK_GC_RUN_STALE`: the disk GC failed or its timer has not fired for two hours.
 - `SERVICE_NOT_ENABLED`: service not enabled.
 - `SERVICE_NOT_INSTALLED`: service not installed.
 - `SERVICE_NOT_RUNNING`: service not running.
@@ -92,6 +96,8 @@ There are 304 codes; 46 need a person.
 - `SUDOERS_OWNERSHIP_CONFLICT`: sudoers ownership conflict. **Needs a person.**
 - `SUDO_AUTHORIZATION_REQUIRED`: sudo authorization required. **Needs a person.**
 - `SWAP_CAPACITY_REQUIRED`: swap capacity required.
+- `ZRAM_PRIORITY_MISMATCH`: verify dev-zram0.swap is active with priority above disk swap and reapply fleet-sync.
+- `ZRAM_RECLAIM_MISMATCH`: reapply fleet-sync to restore the VM reclaim settings.
 - `SWAP_MISSING`: swap missing.
 - `TMP_QUOTA_EXHAUSTED`: tmp quota exhausted.
 - `UBUNTU_BASELINE_INCOMPLETE`: ubuntu baseline incomplete.
@@ -102,7 +108,15 @@ There are 304 codes; 46 need a person.
 - `UBUNTU_SLEEP_POLICY_DRIFT`: ubuntu sleep policy drift.
 - `WORKER_RECOVERY_SCRIPT_MISSING`: worker recovery script missing.
 - `WORKER_RECOVERY_SETUP_FAILED`: worker recovery setup failed.
+- `WORKER_NOT_CONVERGED`: the last recorded worker apply failed or its receipt differs from the approved revision. Follow the reported check and rerun the worker sync.
 - `WORKER_RECOVERY_TIMER_INACTIVE`: worker recovery timer inactive.
+
+Under sustained I/O or memory pressure the pressure guard can stop a build.
+Inspect `journalctl -u personal-fleet-pressure-guard --since yesterday` for
+the scope, memory usage and pressure at each decision. During a stall,
+connect with `ssh -t WORKER bash --noprofile --norc` and inspect
+`memory.current` on the T3 agent scopes. To stop a confirmed runaway,
+write `1` to that agent scope’s `cgroup.kill`.
 
 ## Worker size and features
 
@@ -111,7 +125,7 @@ There are 304 codes; 46 need a person.
 - **Fix:** Resize a machine below the minimum, then run `devfleet fleet-sync`; nothing was installed on it. For a feature removal, run `devfleet fleet-sync` again. For too many sessions, finish some or move work to a larger worker.
 - **Escalate:** A package another package depends on stays installed until a person removes that one.
 
-- `AGENT_SESSION_CAPACITY_EXHAUSTED`: agent session capacity exhausted: more agent sessions run than the memory policy supports (a warning; the size of a session is an estimate).
+- `AGENTS_OVER_CAPACITY`: agent session capacity exhausted: more agent sessions run than the memory policy supports (a warning; the size of a session is an estimate).
 - `WORKER_FEATURES_INVALID`: worker features invalid: the session is neither desktop nor headless.
 - `WORKER_FEATURE_REMOVAL_INCOMPLETE`: worker feature removal incomplete: a Docker package or the docker group membership is still there with containers off.
 - `WORKER_SIZE_BELOW_MINIMUM`: worker size below minimum: less memory, disk or CPUs than the minimum worker. **Needs a person.**
@@ -279,6 +293,9 @@ There are 304 codes; 46 need a person.
 - `T3_PROVIDER_CONFLICT`: t3 provider conflict.
 - `T3_PROVIDER_NAMES_PENDING`: t3 provider names pending.
 - `T3_PROVIDER_NAMES_UNVERIFIED`: t3 provider names unverified.
+- `T3_RENDERER_LIMIT_UNVERIFIED`: check the delegated renderer cgroup after an idle desktop restart and recovery timer tick.
+- `T3_RENDERERS_HIGH`: the desktop renderers exceed their memory budget. Reload the app when idle.
+- `T3_PROTECTION_ESCAPED`: the T3 listener lacks its CPU, I/O or memory reserve. Apply fleet-sync and inspect its cgroup after the next idle restart.
 - `T3_RESTART_PENDING`: t3 restart pending.
 - `T3_SERVER_INSTALL_FAILED`: t3 server install failed: the pinned server of a headless worker is missing from the toolchain, or `t3-headless.yml` did not apply.
 - `T3_SERVER_STOPPED`: t3 server stopped: the lingering `t3code-headless.service` of a headless worker is not running.
@@ -355,6 +372,8 @@ There are 304 codes; 46 need a person.
 - **Fix:** Run `devfleet fleet-sync`; a rate limit or upstream outage clears on its own.
 - **Escalate:** PROVIDER_AUTH_REJECTED needs a person to sign the account in again on the proxy. AGENT_PROFILE_RENDER_MISMATCH is a defect of the release (a template of `ansible/agents/agents.yml` no longer renders what `src/agents/render.ts` specifies): report it to dev-fleet. No receipt vouches for what that play wrote, so later applies refuse the file until a person reviews it.
 
+- `AGENT_SLICE_MISSING`: the user manager cannot load the T3 agent slice. Check the T3 release and run fleet-sync.
+- `AGENT_LIMIT_OVERRIDDEN`: a higher-priority setting overrides an agent slice limit. Run fleet-sync and inspect the effective properties.
 - `AGENT_MEMORY_LIMIT_MISSING`: agent memory limit missing.
 - `AGENT_MODEL_UNSERVED`: agent model unserved.
 - `AGENT_PROFILE_RENDER_MISMATCH`: agent profile render mismatch.

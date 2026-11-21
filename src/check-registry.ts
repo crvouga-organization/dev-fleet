@@ -2,7 +2,10 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join, relative, resolve } from 'node:path';
 import agents from '../agents/registry.json';
 import ubuntu from '../ansible/ubuntu/policy.json';
-import { NATIVE_AGENTS } from './agents/native-verify';
+import {
+  ADDITIONAL_PROVIDER_CLIS,
+  NATIVE_AGENTS,
+} from './agents/native-verify';
 import { CHECK_OWNERS } from './check-owners';
 import { CAPABILITIES } from './config';
 import { FINGERPRINT_FILES } from './input-hashes';
@@ -129,7 +132,7 @@ function expansions(root: string): Record<string, string[]> {
   return {
     'auth:*': [...CAPABILITIES, ...SERVICE_IDS, ...Object.keys(PROXY_ROUTED)],
     'agent:*': Object.keys(agents.tools),
-    'agent:*:version': natives,
+    'agent:*:version': [...natives, ...ADDITIONAL_PROVIDER_CLIS],
     'agent:*:session': natives,
     'bootstrap:*': bootstrapPhases(root),
     'notify:*': Object.keys(NOTIFY_TARGETS),
@@ -513,6 +516,13 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'worker:sudo': 'Designated worker user has noninteractive sudo.',
   'worker:t3-health':
     'T3 local API answers with its environment identity within 10 seconds.',
+  'worker:convergence':
+    'The worker last applied the approved revision and its last apply succeeded.',
+  'worker:pressure-events': 'The pressure guard reports recent agent stops.',
+  'worker:t3-renderers':
+    'Desktop renderer memory is within its declared budget.',
+  'worker:t3-protection':
+    'The T3 listener has its CPU, I/O and memory reserve.',
   'worker:t3-recovery':
     "The worker's T3 service is active, enabled for boot and restarts after a failure.",
   'worker:ubuntu': 'Required Ubuntu release and architecture.',

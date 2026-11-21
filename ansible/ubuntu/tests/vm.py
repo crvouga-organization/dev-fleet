@@ -37,6 +37,40 @@ def run(args, **kwargs):
     return result
 
 
+def test_agent_pressure(ssh):
+    """Exercise reclaim inside a small test cgroup in the disposable guest."""
+    run(ssh + ["""test "$(swapon --show=NAME,PRIO --noheadings | sort -k2,2nr | head -1 | awk '{print $1}')" = /dev/zram0"""])
+    # Keep the fixture small enough that even without oomd its hard cap bounds
+    # the damage. File-backed pages drive reclaim on repeated scans.
+    script = """import mmap, tempfile
+with tempfile.TemporaryFile() as f:
+    f.truncate(160 * 1024 * 1024)
+    with mmap.mmap(f.fileno(), 0) as pages:
+        while True:
+            for i in range(0, len(pages), 4096):
+                pages[i] = (pages[i] + 1) % 256
+"""
+    subprocess.run(ssh + ['cat > pressure-fixture.py'], input=script.encode(),
+                   capture_output=True, check=True)
+    unit = 'devfleet-pressure-fixture.service'
+    start = run(ssh + ['date +%s']).stdout.strip()
+    run(ssh + [f'XDG_RUNTIME_DIR=/run/user/1000 systemd-run --user --unit={unit} --slice=app-t3code-agents.slice '
+               '--property=MemoryHigh=24M --property=MemoryMax=256M '
+               '--property=RuntimeMaxSec=120 /usr/bin/python3 -I -B /home/fleettest/pressure-fixture.py'])
+    try:
+        deadline = time.monotonic() + 100
+        while time.monotonic() < deadline:
+            subprocess.run(ssh + [answers(SERVER)], check=True, capture_output=True, timeout=5)
+            journal = run(ssh + [f'sudo journalctl -u systemd-oomd --since=@{start} --no-pager -o cat'])
+            if unit in journal.stdout and 'Killed' in journal.stdout:
+                print('oomd relieved agent pressure while SSH stayed reachable', flush=True)
+                return
+            time.sleep(2)
+        raise RuntimeError('oomd did not report killing the pressured fixture in time')
+    finally:
+        subprocess.run(ssh + [f'systemctl --user stop {unit}'], capture_output=True, timeout=10)
+
+
 def main():
     ROOT.mkdir(exist_ok=True)
     image = ROOT / 'ubuntu.img'
@@ -123,6 +157,7 @@ ssh_keys:
         # loads, but keeps SSH open rather than lock the test out.
         run(ssh + ['sudo sshd -T | grep -qx "passwordauthentication no" && sudo sshd -T | grep -qx "permitrootlogin no" && sudo nft list table inet personal_fleet | grep -q "policy drop" && sudo nft list table inet personal_fleet | grep -q public-ssh'])
         t3 = test_headless(ssh)
+        test_agent_pressure(ssh)
         test_agent(ssh)
         reboot(ssh)
         run(ssh + ['test "$(systemctl is-enabled sleep.target)" = masked && test "$(cat work/uncommitted)" = preserved && sudo nft list table inet personal_fleet | grep -q "policy drop"'])
@@ -137,7 +172,7 @@ ssh_keys:
             (ROOT / 'boot-policy-evidence.json').write_text(evidence.stdout)
             print('production boot-policy observer passed after VM reboot', flush=True)
         run(ssh + ['systemctl is-active beszel-agent.service && test \"$(sudo cat /var/lib/beszel-agent/fixture-preserved)\" = preserved'])
-        print(json.dumps({'passed': ['Ubuntu baseline apply', 'repeat no-op', 'sudoers validation', 'sleep target masked', 'reboot and fresh SSH', 'uncommitted file preserved', 'sleep/SSH drift repair and injected capacity gate', 'native Beszel agent no-op/crash/reboot with intentionally unreachable fixture hub', 'keys-only sshd without root login, and the fleet firewall loaded at apply and boot with SSH kept open while no tailnet session proves the manager path'] + (['headless T3 server: install, no-op, killed process restarted, stopped server started by the recovery timer, started at boot with nobody logged in, managed update policy'] if t3 else []) + (['desktop T3 app: switch from headless keeping ~/.t3, auto-login after reboot, stopped app started by the recovery timer'] if t3 and DESKTOP else []), 'unverified': ['Tailscale', 'closing public SSH over a tailnet session', 'paired T3', 'Beszel agent/private metrics', 'full remote bootstrap'] + ([] if DESKTOP else ['desktop session (FLEET_TEST_DESKTOP=1)'])}), flush=True)
+        print(json.dumps({'passed': ['Ubuntu baseline apply', 'repeat no-op', 'sudoers validation', 'sleep target masked', 'reboot and fresh SSH', 'uncommitted file preserved', 'sleep/SSH drift repair and injected capacity gate', 'native Beszel agent no-op/crash/reboot with intentionally unreachable fixture hub', 'keys-only sshd without root login, and the fleet firewall loaded at apply and boot with SSH kept open while no tailnet session proves the manager path'] + (['headless T3 server: install, no-op, killed process restarted, stopped server started by the recovery timer, started at boot with nobody logged in, managed update policy'] if t3 else []) + (['desktop T3 app: switch from headless keeping ~/.t3, auto-login after reboot, serving on loopback only, stopped app started by the recovery timer'] if t3 and DESKTOP else []), 'unverified': ['Tailscale', 'closing public SSH over a tailnet session', 'paired T3', 'Beszel agent/private metrics', 'full remote bootstrap'] + ([] if DESKTOP else ['desktop session (FLEET_TEST_DESKTOP=1)'])}), flush=True)
     finally:
         # Preserve failure evidence on disk before terminating the disposable VM.
         # This is fixture cleanup, not a claimed power-loss acceptance test.
@@ -278,10 +313,24 @@ def test_desktop(ssh, t3):
     applied = play(ssh, 't3-desktop.yml', t3_desktop_url=f'https://github.com/pingdotgg/t3code/releases/download/v{version}/{name}', t3_desktop_name=name, t3_desktop_sha256=desktop_sha)
     (ROOT / 't3-desktop-first.log').write_text(applied.stdout + applied.stderr)
     run(ssh + [f'! test -e ~/.config/systemd/user/{SERVER} && test "$(cat ~/.t3/fleet-test-preserved)" = preserved'])
-    play(ssh, 'recovery.yml')
+    # The app serves on loopback only whatever its desktop settings say.
+    run(ssh + ['mkdir -p ~/.t3/userdata && echo \'{"serverExposureMode": "network-accessible"}\' > ~/.t3/userdata/desktop-settings.json'])
     reboot(ssh)
     wait_for(ssh, answers(APP), 300, 'the desktop app did not start in the auto-login session after a reboot')
-    user(ssh, f'systemctl --user stop {APP}')
+    run(ssh + ['test "$(ss -H -l -n -t "sport = :3773" | awk \'{print $4}\' | sort -u)" = 127.0.0.1:3773'])
+    # As fleet-sync does: recovery only once the app runs, which a desktop
+    # worker does only after the reboot into its graphical session.
+    play(ssh, 'recovery.yml')
+    group = user(ssh, f'systemctl --user show {APP} -p ControlGroup --value').stdout.strip()
+    renderers = '/sys/fs/cgroup' + group + '/renderers'
+    wait_for(ssh, f'grep -q "[0-9]" {renderers}/cgroup.procs', 150,
+             'desktop recovery did not place renderers in their own cgroup')
+    policy = json.loads(Path('/workspace/ansible/ubuntu/policy.json').read_text())
+    ceiling = policy['resourceSafety']['rendererMaxMiB'] * 1024**2
+    run(ssh + [f'test "$(cat {renderers}/memory.max)" = {ceiling}'])
+    # The recovery check may see the app stopping and start it again, which
+    # cancels the stop job: that is the recovery this measures.
+    user(ssh, f'systemctl --user stop {APP} 2>&1 | grep -v "^Job for {APP} canceled" || true')
     took = wait_for(ssh, answers(APP), 150, 'the recovery timer did not start the stopped desktop app')
     run(ssh + ['test "$(cat ~/.t3/fleet-test-preserved)" = preserved'])
     print(f'desktop T3 app: switched from headless keeping ~/.t3, auto-login after reboot, stopped app started by the timer in {took:.0f} s', flush=True)

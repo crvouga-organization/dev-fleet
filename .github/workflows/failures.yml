@@ -15,7 +15,7 @@ name: Failure issues
 # is read again, the same way.
 on:
   workflow_run:
-    workflows: [CI, Release, Ubuntu VM, Tailnet, Pins, Auto-merge]
+    workflows: [CI, Release, Ubuntu VM, Tailnet, Pins, Renovate, Auto-merge]
     types: [completed]
   schedule:
     - cron: '47 * * * *'
@@ -38,7 +38,7 @@ jobs:
       fail-fast: false
       # The run that ended, or on the hour every workflow followed above.
       matrix:
-        workflow: ${{ github.event_name == 'workflow_run' && fromJSON(format('["{0}"]', github.event.workflow_run.name)) || fromJSON('["CI", "Release", "Ubuntu VM", "Tailnet", "Pins", "Auto-merge"]') }}
+        workflow: ${{ github.event_name == 'workflow_run' && fromJSON(format('["{0}"]', github.event.workflow_run.name)) || fromJSON('["CI", "Release", "Ubuntu VM", "Tailnet", "Pins", "Renovate", "Auto-merge"]') }}
     concurrency:
       group: failure-issues-${{ matrix.workflow }}
       cancel-in-progress: false
