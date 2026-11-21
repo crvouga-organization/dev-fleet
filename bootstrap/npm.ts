@@ -49,7 +49,7 @@ export interface State {
   /** Null until the package exists: there is nothing to look at yet. */
   trusted: boolean | null;
   /** Trusted publishers that are not this repository's Release workflow, as
-   * after the repository moved: npm keeps one per package, so they go first.
+   * after the repository moved. Each could still publish, so they are revoked.
    */
   staleTrust: string[];
   tagLocal: boolean;

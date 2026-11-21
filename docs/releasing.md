@@ -113,10 +113,11 @@ passing.
 `Publish to npm` failing with `E404 Not Found - PUT` after provenance was
 signed means npm does not trust the workflow that asked: the trusted
 publisher names another repository or workflow file, as after the repository
-moves. Run `bun run bootstrap` from `main`: it revokes the trusted publisher
-that names something else (npm keeps one per package) and makes `release.yml`
-of the repository in `package.json` the trusted publisher, then re-run the
-release.
+moves. Run `bun run bootstrap` from `main`: it makes `release.yml` of the
+repository in `package.json` a trusted publisher and revokes any that name
+something else, which could otherwise still publish. Then re-run the release:
+npm validates a new trusted publisher on its first publish, and drops one that
+has not published within two days.
 
 ## One-time setup
 
