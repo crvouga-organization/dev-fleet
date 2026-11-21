@@ -1324,7 +1324,11 @@ async function failureCodes(): Promise<string[]> {
       for (const match of read(path).matchAll(code))
         if (
           FAILURE.test(match[1]!) ||
-          ['AGENTS_OVER_CAPACITY', 'T3_PROTECTION_ESCAPED'].includes(match[1]!)
+          [
+            'AGENTS_OVER_CAPACITY',
+            'T3_PROTECTION_ESCAPED',
+            'T3_RENDERERS_HIGH',
+          ].includes(match[1]!)
         )
           codes.add(match[1]!);
   return [...codes].sort();

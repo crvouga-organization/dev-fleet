@@ -1,4 +1,8 @@
-import { t3Protection } from './platform/resource-verify';
+import {
+  pressureEvents,
+  rendererCheck,
+  t3Protection,
+} from './platform/resource-verify';
 import { workerCapacity } from './worker-capacity';
 import { userInfo, hostname } from 'node:os';
 import { hostId } from './topology';
@@ -81,6 +85,8 @@ export async function workerReadiness(
     ),
     await exposureCheck(workerExposure(fleet, nodeId), run),
     ...(await gitChecks(fleet.git, run)),
+    await pressureEvents(run),
+    ...(features.session === 'desktop' ? [await rendererCheck(run)] : []),
     await t3Protection(workerExposure(fleet, nodeId).t3Port, run),
     ...(await workerCapacity(root, nodeId, run)),
   ];

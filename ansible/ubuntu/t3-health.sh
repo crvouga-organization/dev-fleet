@@ -77,6 +77,11 @@ if ! systemctl --user is-active --quiet "$unit"; then
   systemctl --user reset-failed "$unit" 2>/dev/null
   exec systemctl --user start "$unit"
 fi
+if [ -z "$headless" ] && [ -n "${T3_RENDERER_HIGH_MIB:-}" ]; then
+  group=$(systemctl --user show "$unit" --property=ControlGroup --value)
+  python3 -I -B "$here/t3-renderers.py" "$group" "$T3_RENDERER_HIGH_MIB" "$T3_RENDERER_MAX_MIB" ||
+    echo "T3 renderer limits could not be applied."
+fi
 if ! environment=$(curl --fail --silent --max-time 10 "$url"); then
   failed=$(count "$failures")
   echo "T3 local API did not answer ($failed/$limit)."

@@ -91,7 +91,7 @@ batch, the riskiest way to change a fleet. Each pin is moved by a machine,
 one pull request at a time, which CI, the fresh workers and the VM test then
 judge like any change, unless it says below why a person moves it.
 
-The repository runs Renovate daily with its tracked configuration. Its dependency dashboard records pending updates.
+The repository runs Renovate daily with its tracked configuration. The Pins workflow owns provider CLI versions, resolves stable releases and opens one pull request per provider with platform integrity locks. A failed resolution fails Pins and is tracked in its CI failure issue. A consumer adopts the published revision by updating its dev-fleet dependency and running fleet-sync. Existing agent processes pick up a new executable on their next launch. Its dependency dashboard records pending updates.
 
 | Pin                                      | Moved by                                                                                      |
 | ---------------------------------------- | --------------------------------------------------------------------------------------------- |

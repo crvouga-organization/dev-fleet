@@ -197,6 +197,8 @@
           StartLimitBurst=5
           [Service]
           Type=simple
+          Delegate=memory
+          DelegateSubgroup=app
           WorkingDirectory=%h
           Environment=T3CODE_HOME=%h/.t3
           # /tmp is RAM with a per-user quota that agent and build caches

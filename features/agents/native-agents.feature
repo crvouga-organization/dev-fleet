@@ -14,7 +14,7 @@ Feature: Native agents are verified on every machine
         | grok        | http:grok               |
         | antigravity | http:antigravity        |
         | muse        | aqua:anomalyco/opencode |
-      And "http:grok" is pinned to "1.0.77"
+      And "http:grok" is pinned to a release number
       And "claude" is pinned to a release number
 
   Rule: A machine's agents match the lock and run signed in
@@ -26,7 +26,7 @@ Feature: Native agents are verified on every machine
       Given every agent reports the version mise.toml pins
       And every launcher answers "OK"
       When the agents of the machine "node-a" are verified
-      Then there are 10 checks: a version check and a session check for each agent
+      Then there are 12 provider version and session checks
       And every check passes
       And exactly these launchers were run:
         | claude-proxy.ts      |

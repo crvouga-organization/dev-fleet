@@ -58,6 +58,8 @@ report drift, and only that drift (`features/monitoring/agent-lifecycle.feature`
 | The manager's own convergence: proxy, profiles, hub, agent                              | `src/cli/fleet-sync-manager.ts`                                                             | Orchestrates the manager playbooks and the proxy's own installer; the proxy is not a playbook yet (`docs/declared.md`)      |
 | Scheduled runs                                                                          | `src/cli/fleet-sync-schedule.ts`, `src/platform/launchd.ts`, `src/platform/systemd-user.ts` | Writes a launchd job or systemd timer from TypeScript; listed in `docs/declared.md` as a schedule that should be a playbook |
 
+Worker safety units are installed when fleet-sync reaches the Ubuntu baseline. Run fleet-sync for a worker whose last apply failed. Fleet status reports its last applied revision, recorded time and failed check when that evidence is available.
+
 ## Still to do
 
 Roles with a common interface (`baseline`, `toolchain`, `agents`, `t3`,

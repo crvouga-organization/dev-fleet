@@ -13,7 +13,14 @@ else
   # Clock synchronisation, as systemd sees it: 1 or 0.
   timedatectl show -p NTPSynchronized -p NTP 2>/dev/null | awk -F= '{v=($2=="yes")?1:0} $1=="NTP"{print "ntp=" v} $1=="NTPSynchronized"{print "ntpsync=" v}'
   # Agent sessions running now: the scopes T3 starts its agents in.
-  echo "agentsessions=$(systemctl --user list-units --type=scope --state=active --no-legend 't3code-*.scope' 2>/dev/null | grep -c .)"
+  uid=$(id -u)
+  agents="/sys/fs/cgroup/user.slice/user-$uid.slice/user@$uid.service/app.slice/app-t3code.slice/app-t3code-agents.slice"
+  if [ -d "$agents" ]; then
+    scopes=$(find "$agents" -type d -name 't3code-*.scope' -printf '1\n' 2>/dev/null) &&
+      echo "agentsessions=$(echo "$scopes" | awk '/1/{n++} END{print n+0}')"
+  elif [ -d "/sys/fs/cgroup/user.slice/user-$uid.slice/user@$uid.service" ]; then
+    echo 'agentsessions=0'
+  fi
   awk '/MemTotal/{t=$2} /MemAvailable/{a=$2} /SwapTotal/{st=$2} /SwapFree/{sf=$2} END{print "memfree=" int(a*100/t); print "memtotalmb=" int(t/1024); if (st>0) print "swap=" int((st-sf)*100/st); else print "swap=0"}' /proc/meminfo
 fi
 echo "diskmb=$(df -Pk "$HOME" | awk 'NR==2{print int($4/1024)}')"

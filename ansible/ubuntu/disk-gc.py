@@ -10,7 +10,7 @@ What it deletes:
     directory is ignored, the checkout has been idle for --idle-days and no
     process is running inside it;
   * Docker images and build cache that no container uses and that are older
-    than --docker-age-hours (never containers or volumes);
+    than --docker-age-hours, plus unused anonymous volumes under pressure;
   * the apt package cache;
   * agent worktrees under each --worktree-root that nobody has used for
     --worktree-idle-days, only when Git says they hold no uncommitted,
@@ -27,7 +27,7 @@ qualify after --pressure-idle-hours, Docker leftovers after
 directory are removed too.
 
 It never deletes a main checkout, a tracked file, uncommitted or unpushed
-work, a container or a volume. Every decision is one JSON line on stdout, and
+work, a container or a named volume. Every decision is one JSON line on stdout, and
 the last one says how many MiB were reclaimed.
 
 Usage: disk-gc.py --home H [--path P ...] [--idle-days N] [--pressure-mib N]
@@ -466,6 +466,49 @@ def command(argv, dry_run, name):
         log(event='ran', step=name, ok=False, error=type(exc).__name__)
 
 
+def cache_children(home, cap, excluded, pressure, idle, now, dry_run):
+    """Remove whole cache entries; keep protected stores for their own managers."""
+    directory = os.path.join(home, '.cache')
+    if not is_real_dir(directory):
+        return 0
+    entries = []
+    for entry in os.scandir(directory):
+        if entry.name in excluded or not entry.is_dir(follow_symlinks=False):
+            continue
+        files = files_under(entry.path)
+        latest = max([mtime(entry.path)] + [stamp for stamp, _, _ in files])
+        entries.append((latest, sum(size for _, size, _ in files), entry.path))
+    total = sum(size for _, size, _ in entries)
+    freed = 0
+    for latest, size, path in sorted(entries):
+        if total - freed <= cap and not (pressure and now - latest >= idle):
+            break
+        freed += remove(path, dry_run)
+    return freed
+
+
+STORES = {
+    'pnpm': ('.local/share/pnpm/store', ['pnpm', 'store', 'prune']),
+    'npm': ('.npm/_cacache', ['npm', 'cache', 'clean', '--force']),
+    'bun': ('.bun/install/cache', ['bun', 'pm', 'cache', 'rm']),
+    'uv': ('.cache/uv', ['uv', 'cache', 'prune']),
+}
+
+
+def prune_stores(args, home, pressure):
+    freed = 0
+    for name, cap in args.store_cap:
+        relative, argv = STORES[name]
+        path = os.path.join(home, relative)
+        if not is_real_dir(path):
+            continue
+        before = size_of(path)
+        if pressure or before > cap * MIB:
+            command([args.mise, 'exec', '--'] + argv, args.dry_run, name + '_store')
+            freed += max(0, before - size_of(path))
+    return freed
+
+
 def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('--home', required=True)
@@ -478,6 +521,11 @@ def main(argv):
     parser.add_argument('--pressure-docker-age-hours', type=int, default=24)
     # A worker without containers (fleet.json features.containers) has no
     # Docker to prune.
+    parser.add_argument('--docker-cap-percent', type=float)
+    parser.add_argument('--home-cache-mib', type=int)
+    parser.add_argument('--exclude-cache', action='append', default=[])
+    parser.add_argument('--store-cap', action='append', default=[], type=lambda text: pair(text, 'MIB'))
+    parser.add_argument('--user-caches-only', action='store_true')
     parser.add_argument('--no-docker', action='store_true')
     parser.add_argument('--pressure-cache', action='append', default=[])
     parser.add_argument('--worktree-root', action='append', default=[])
@@ -505,19 +553,43 @@ def main(argv):
         docker_age_hours=docker_age, dry_run=args.dry_run,
         free_mib={p: v // MIB for p, v in before.items()})
 
+    if args.user_caches_only:
+        caches = cache_children(home, args.home_cache_mib * MIB, args.exclude_cache,
+                                pressure, idle, now, args.dry_run)
+        stores = prune_stores(args, home, pressure)
+        log(cache_bytes=caches, store_bytes=stores)
+        return
+    categories = {}
+    if args.home_cache_mib is not None:
+        # Only the development user removes cache entries or runs package tools.
+        argv = [sys.executable, '-I', '-B', __file__, *sys.argv[1:], '--user-caches-only']
+        if args.user:
+            argv = ['runuser', '-u', args.user, '--', 'env', f'HOME={home}'] + argv
+        out = subprocess.run(argv, cwd=home, capture_output=True, timeout=3600)
+        if out.returncode == 0:
+            evidence = json.loads(out.stdout.splitlines()[-1])
+            categories.update(cache=evidence['cache_bytes'], stores=evidence['store_bytes'])
+        else:
+            log(event='user_cache_cleanup_failed')
     freed = collect_checkouts(home, idle, args.max_depth, args.proc, now, args.dry_run)
+    categories['checkouts'] = freed
+    reclaimed = 0
     if pressure:
         for cache in args.pressure_cache:
-            freed += collect_cache(os.path.join(home, cache), idle, now, args.dry_run)
-    reclaimed = freed
+            reclaimed += collect_cache(os.path.join(home, cache), idle, now, args.dry_run)
+    categories['pressure_caches'] = reclaimed
+    reclaimed = 0
     for root in args.worktree_root:
         reclaimed += collect_worktrees(os.path.join(home, root),
-                                       args.worktree_idle_days * 24 * HOUR,
+                                       idle if pressure else args.worktree_idle_days * 24 * HOUR,
                                        args.proc, now, args.dry_run)
+    categories['worktrees'] = reclaimed
+    reclaimed = 0
     for cache, cap_mib in args.cache_cap:
         reclaimed += cap_cache(os.path.join(home, cache), cap_mib * MIB, args.dry_run)
     for directory, count in args.keep_newest:
         reclaimed += keep_newest(os.path.join(home, directory), count, args.dry_run)
+    categories['limited_caches'] = reclaimed
     if args.mise:
         installs = os.path.join(home, '.local', 'share', 'mise', 'installs')
         before_mise = size_of(installs)
@@ -525,18 +597,32 @@ def main(argv):
         if args.user:
             prune = ['runuser', '-u', args.user, '--', 'env', f'HOME={home}'] + prune
         command(prune, args.dry_run, 'mise_prune')
-        reclaimed += max(0, before_mise - size_of(installs))
+        categories['mise'] = max(0, before_mise - size_of(installs))
     if not args.home_only and not args.no_docker:
-        command(['docker', 'image', 'prune', '--all', '--force', '--filter',
-                 f'until={docker_age}h'], args.dry_run, 'docker_images')
-        command(['docker', 'builder', 'prune', '--all', '--force', '--filter',
-                 f'until={docker_age}h'], args.dry_run, 'docker_build_cache')
+        before_docker = free_bytes('/')
+        age_filter = [] if pressure else ['--filter', f'until={docker_age}h']
+        command(['docker', 'image', 'prune', '--all', '--force', *age_filter],
+                args.dry_run, 'docker_images')
+        if pressure or args.docker_cap_percent is None:
+            build_limit = age_filter
+        else:
+            disk = os.statvfs('/')
+            cap_mib = max(1, int(disk.f_blocks * disk.f_frsize * args.docker_cap_percent / 100 / MIB))
+            build_limit = ['--keep-storage', f'{cap_mib}MB']
+        command(['docker', 'builder', 'prune', '--all', '--force', *build_limit],
+                args.dry_run, 'docker_build_cache')
+        if pressure:
+            command(['docker', 'volume', 'prune', '--force'], args.dry_run, 'docker_anonymous_volumes')
+        categories['docker'] = max(0, free_bytes('/') - before_docker)
     if not args.home_only:
+        before_apt = free_bytes('/')
         command(['apt-get', 'clean'], args.dry_run, 'apt_cache')
+        categories['apt'] = max(0, free_bytes('/') - before_apt)
 
     after = {p: free_bytes(p) for p in paths}
     log(event='finished', checkout_mib=freed // MIB,
-        reclaimed_mib=reclaimed // MIB, dry_run=args.dry_run,
+        categories_mib={k: v // MIB for k, v in categories.items()},
+        reclaimed_mib=sum(categories.values()) // MIB, dry_run=args.dry_run,
         free_mib={p: v // MIB for p, v in after.items()})
 
 

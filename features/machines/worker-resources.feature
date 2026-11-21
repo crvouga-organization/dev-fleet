@@ -84,3 +84,18 @@ Feature: A worker's memory and disk guards are measured where they run
       | cpu  | verdict |
       | 1000 | passes  |
       | 100  | fails   |
+
+  Scenario Outline: The desktop renderer subgroup warns above its memory budget
+    Given these commands answer:
+      | command                                                 | answer |
+      | systemctl --user show t3code-desktop.service --property=ControlGroup --value | prints /app.slice/t3code-desktop.service |
+      | cat /sys/fs/cgroup/app.slice/t3code-desktop.service/renderers/memory.current | prints <used> |
+      | cat /sys/fs/cgroup/app.slice/t3code-desktop.service/renderers/memory.high | prints 6442450944 |
+      | cat /sys/fs/cgroup/app.slice/t3code-desktop.service/renderers/memory.max | prints 8589934592 |
+    When the desktop renderer budget is measured
+    Then the check <verdict>
+
+    Examples:
+      | used       | verdict |
+      | 4000000000 | passes  |
+      | 7000000000 | warns   |

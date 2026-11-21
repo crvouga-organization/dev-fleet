@@ -34,6 +34,25 @@
     {
       "matchManagers": ["github-actions"],
       "groupName": "actions"
+    },
+    {
+      "description": "The Pins workflow locks stable provider releases across every supported platform.",
+      "matchManagers": ["mise"],
+      "matchPackageNames": [
+        "codex",
+        "claude",
+        "gemini",
+        "copilot",
+        "aqua:anomalyco/opencode",
+        "http:grok",
+        "http:antigravity",
+        "anomalyco/opencode",
+        "openai/codex",
+        "anthropics/claude-code",
+        "google-gemini/gemini-cli",
+        "github/copilot-cli"
+      ],
+      "enabled": false
     }
   ]
 }

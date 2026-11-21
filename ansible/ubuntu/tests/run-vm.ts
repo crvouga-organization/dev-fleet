@@ -76,6 +76,9 @@ export function run(mode: Mode): number {
       '--rm',
       '--device',
       '/dev/kvm',
+      ...(process.env['FLEET_TEST_DESKTOP'] === '1' && mode === 'baseline'
+        ? ['-e', 'FLEET_TEST_DESKTOP=1']
+        : []),
       ...mounts.flatMap((mount) => ['-v', mount]),
       image,
     ],

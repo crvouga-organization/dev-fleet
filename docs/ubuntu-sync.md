@@ -414,3 +414,11 @@ Docker engine, Compose and Buildx on every enrolled Linux workstation, preservin
 third-party engine ownership conflicts and existing running workloads. Workstation
 launcher/link convergence is part of the node apply, with credentials still checked
 separately. A dependency receipt proves frozen installation inputs only.
+
+The hourly disk GC limits Docker build cache to a share of the root disk.
+Under pressure it also prunes unused images, build cache and anonymous dangling
+volumes. It trims older children of the development user's cache directory,
+excluding the fleet, mise and package stores. pnpm, npm, Bun and uv prune
+their own stores when over budget or under pressure. Idle worktrees qualify
+sooner under pressure and Git still verifies that their work is saved.
+The final journal event reports reclaimed MiB by category.

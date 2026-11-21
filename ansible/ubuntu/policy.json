@@ -148,6 +148,8 @@
     }
   },
   "resourceSafety": {
+    "rendererHighMiB": 6144,
+    "rendererMaxMiB": 8192,
     "userMemoryMax": "90%",
     "agentMemoryMax": "30%",
     "agentSwapMax": "2G",
@@ -185,15 +187,18 @@
     "diskGcPressureIdleHours": 12,
     "diskGcDockerAgeHours": 168,
     "diskGcPressureDockerAgeHours": 24,
-    "diskGcPressureCaches": [".bun/install/cache"],
+    "diskGcBuildCachePercent": 5,
+    "diskGcHomeCacheMiB": 8192,
+    "diskGcExcludedCaches": ["mise", "personal", "dev-fleet", "uv", "pip"],
+    "diskGcStoreCapsMiB": {
+      "pnpm": 4096,
+      "bun": 4096,
+      "npm": 2048,
+      "uv": 4096
+    },
     "diskGcWorktreeRoots": [".t3/worktrees"],
     "diskGcWorktreeIdleDays": 30,
-    "diskGcCacheCapsMiB": {
-      ".bun/install/cache": 4096,
-      ".npm/_cacache": 2048,
-      ".cache/uv": 4096,
-      ".cache/pip": 1024
-    },
+    "diskGcCacheCapsMiB": { ".cache/pip": 1024 },
     "diskGcPackagesKept": 2,
     "dockerLogMaxSize": "50m",
     "dockerLogMaxFiles": "3",

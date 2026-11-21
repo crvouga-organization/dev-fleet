@@ -22,6 +22,8 @@ export interface SyncRun {
   failing: string[];
   /** The machines that were not ready when the run ended. */
   notReady: string[];
+  /** Evidence for workers actually attempted by this run. Older histories omit it. */
+  workers?: Record<string, { applied?: string; failed?: string }>;
 }
 
 /** The schedule the manager was last told to keep. */
@@ -35,6 +37,7 @@ export interface History {
   version: 1;
   schedule?: ScheduleRecord;
   runs: SyncRun[];
+  lastApplied?: Record<string, { revision: string; at: string }>;
 }
 
 /** The history is capped twice: by age and by count, so the document stays
@@ -49,19 +52,53 @@ function strings(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((v) => typeof v === 'string');
 }
 
+function validWorkerEvidence(value: unknown): boolean {
+  if (value === undefined) return true;
+  return (
+    record(value) &&
+    Object.values(value).every(
+      (entry) =>
+        record(entry) &&
+        ((typeof entry['applied'] === 'string' &&
+          /^[a-f0-9]{40}$/.test(entry['applied']) &&
+          entry['failed'] === undefined) ||
+          (typeof entry['failed'] === 'string' &&
+            /^[a-zA-Z0-9:._-]{1,200}$/.test(entry['failed']) &&
+            entry['applied'] === undefined))
+    )
+  );
+}
+
 function syncRun(value: unknown): value is SyncRun {
   return (
     record(value) &&
     typeof value['startedAt'] === 'string' &&
     typeof value['finishedAt'] === 'string' &&
     typeof value['durationMs'] === 'number' &&
-    (value['trigger'] === 'operator' || value['trigger'] === 'schedule') &&
+    ['operator', 'schedule'].includes(String(value['trigger'])) &&
     (value['revision'] === null || typeof value['revision'] === 'string') &&
     typeof value['ok'] === 'boolean' &&
     typeof value['exitCode'] === 'number' &&
     strings(value['failing']) &&
-    strings(value['notReady'])
+    strings(value['notReady']) &&
+    validWorkerEvidence(value['workers'])
   );
+}
+
+function appliedTimes(value: unknown): NonNullable<History['lastApplied']> {
+  const result: NonNullable<History['lastApplied']> = {};
+  if (!record(value)) return result;
+  for (const [id, entry] of Object.entries(value)) {
+    if (
+      record(entry) &&
+      typeof entry['revision'] === 'string' &&
+      /^[a-f0-9]{40}$/.test(entry['revision']) &&
+      typeof entry['at'] === 'string' &&
+      Number.isFinite(Date.parse(entry['at']))
+    )
+      result[id] = { revision: entry['revision'], at: entry['at'] };
+  }
+  return result;
 }
 
 function scheduleRecord(value: unknown): value is ScheduleRecord {
@@ -88,6 +125,9 @@ export function parseHistory(text: string | null): History {
     version: 1,
     ...(scheduleRecord(value['schedule'])
       ? { schedule: value['schedule'] }
+      : {}),
+    ...(value['lastApplied']
+      ? { lastApplied: appliedTimes(value['lastApplied']) }
       : {}),
     runs: Array.isArray(value['runs']) ? value['runs'].filter(syncRun) : [],
   };
@@ -119,7 +159,15 @@ export function appendRun(
   now = new Date()
 ): History {
   const history = readHistory(env);
-  const next = { ...history, runs: capped([...history.runs, run], now) };
+  const lastApplied = { ...history.lastApplied };
+  for (const [id, evidence] of Object.entries(run.workers ?? {}))
+    if (evidence.applied)
+      lastApplied[id] = { revision: evidence.applied, at: run.finishedAt };
+  const next = {
+    ...history,
+    ...(Object.keys(lastApplied).length ? { lastApplied } : {}),
+    runs: capped([...history.runs, run], now),
+  };
   writeHistory(next, env);
   return next;
 }
@@ -131,6 +179,26 @@ export function recordSchedule(
   writeHistory({ ...readHistory(env), schedule }, env);
 }
 
+const checks = (value: unknown): Record<string, unknown>[] =>
+  Array.isArray(value) ? value.filter(record) : [];
+
+function workerResults(nodes: Record<string, unknown>[]) {
+  const workers: NonNullable<SyncRun['workers']> = {};
+  for (const node of nodes) {
+    const id = node['node'];
+    if (node['role'] !== 'worker' || typeof id !== 'string') continue;
+    const failed = checks(node['checks']).find(
+      (check) => check['status'] === 'fail' && check['required'] !== false
+    )?.['id'];
+    const applied = node['appliedRevision'];
+    if (typeof failed === 'string' && /^[a-zA-Z0-9:._-]+$/.test(failed))
+      workers[id] = { failed };
+    else if (typeof applied === 'string' && /^[a-f0-9]{40}$/.test(applied))
+      workers[id] = { applied };
+  }
+  return workers;
+}
+
 /** What a fleet-sync report says about one run. */
 export function summarizeRun(
   data: unknown,
@@ -139,8 +207,6 @@ export function summarizeRun(
   exitCode: number
 ): SyncRun {
   const report = record(data) ? data : {};
-  const checks = (value: unknown): Record<string, unknown>[] =>
-    Array.isArray(value) ? value.filter(record) : [];
   const nodes = checks(report['nodes']);
   const failing = new Set<string>();
   for (const check of [
@@ -155,6 +221,7 @@ export function summarizeRun(
     )
     .map((node) => node['node'])
     .filter((node): node is string => typeof node === 'string');
+  const workers = workerResults(nodes);
   return {
     startedAt: timing.startedAt.toISOString(),
     finishedAt: timing.finishedAt.toISOString(),
@@ -166,6 +233,7 @@ export function summarizeRun(
         : null,
     ok: exitCode === 0 && report['ok'] !== false,
     exitCode,
+    ...(Object.keys(workers).length ? { workers } : {}),
     failing: [...failing].sort(),
     notReady: [...new Set(notReady)].sort(),
   };

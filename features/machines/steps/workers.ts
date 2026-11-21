@@ -1,5 +1,6 @@
 import { expect } from 'bun:test';
 import {
+  rendererCheck,
   t3Protection,
   verifyResourceSafety,
 } from '../../../src/platform/resource-verify';
@@ -162,3 +163,7 @@ When(
     world.checks = [await t3Protection(port, world.run)];
   }
 );
+
+When('the desktop renderer budget is measured', async (world) => {
+  world.checks = [await rendererCheck(world.run)];
+});

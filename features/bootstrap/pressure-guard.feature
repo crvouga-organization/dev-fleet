@@ -7,7 +7,7 @@ Feature: Sustained pressure sheds one agent and leaves the server running
       | app-com.t3tools.T3Code-42.scope            | 1000   | 500  |
 
   Scenario Outline: Only sustained pressure above the threshold triggers a kill
-    When the guard measures <psi> percent I-O pressure at seconds "<times>" with threshold 50, duration 30 and cooldown 120
+    When the guard measures <psi> percent I/O pressure at seconds "<times>" with threshold 50, duration 30 and cooldown 120
     Then it records <kills> kills and only "<scope>" receives a kill
 
     Examples:

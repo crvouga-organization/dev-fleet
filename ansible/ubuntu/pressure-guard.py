@@ -80,6 +80,8 @@ def main():
             guard.sample(args, time.monotonic())
         except (OSError, KeyError, ValueError):
             guard.since = None
+            if args.marker and not args.dry_run:
+                args.marker.unlink(missing_ok=True)
         time.sleep(args.interval)
 
 

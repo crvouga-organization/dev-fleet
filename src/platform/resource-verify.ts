@@ -319,3 +319,93 @@ export async function t3Protection(port: number, run: Runner): Promise<Check> {
         },
       };
 }
+
+export async function pressureEvents(run: Runner): Promise<Check> {
+  const id = 'worker:pressure-events';
+  const events = await run([
+    'sudo',
+    '-n',
+    'journalctl',
+    '--quiet',
+    '--unit=personal-fleet-pressure-guard.service',
+    '--since=24 hours ago',
+    '--output=cat',
+    '--grep="event": "agent_pressure"',
+    '--lines=1000',
+  ]);
+  // journalctl returns 1 when --grep found no entries. Avoid treating an
+  // authorization or journal failure as evidence that no agents were stopped.
+  if (!events.ok && (events.stderr.trim() || events.reason !== 'exit'))
+    return {
+      id,
+      status: 'warn',
+      summary: 'Recent pressure guard activity could not be read.',
+    };
+  const count = events.stdout
+    .split('\n')
+    .filter((line) => line.includes('"event": "agent_pressure"')).length;
+  return {
+    id,
+    status: count ? 'warn' : 'pass',
+    summary: `The pressure guard stopped ${count} agent scopes in the last 24 hours.`,
+  };
+}
+
+export async function rendererCheck(run: Runner): Promise<Check> {
+  const id = 'worker:t3-renderers';
+  const unit = await run([
+    'systemctl',
+    '--user',
+    'show',
+    't3code-desktop.service',
+    '--property=ControlGroup',
+    '--value',
+  ]);
+  const group = unit.stdout.trim();
+  if (
+    unit.ok &&
+    /^\/(?:[\w@.:-]+\/)*t3code-desktop\.service$/.test(group) &&
+    !group.split('/').includes('..')
+  ) {
+    const read = (name: string) =>
+      run(['cat', '/sys/fs/cgroup' + group + '/renderers/' + name]);
+    const [current, high, max] = await Promise.all([
+      read('memory.current'),
+      read('memory.high'),
+      read('memory.max'),
+    ]);
+    if (
+      current.ok &&
+      high.ok &&
+      max.ok &&
+      Number(high.stdout) === policy.resourceSafety.rendererHighMiB * MIB &&
+      Number(max.stdout) === policy.resourceSafety.rendererMaxMiB * MIB
+    ) {
+      const used = Number(current.stdout.trim());
+      if (Number.isSafeInteger(used) && used >= 0)
+        return used <= Number(high.stdout)
+          ? {
+              id,
+              status: 'pass',
+              summary: 'Desktop renderer memory is within its budget.',
+            }
+          : {
+              id,
+              status: 'warn',
+              summary: 'T3_RENDERERS_HIGH',
+              remedy: {
+                action: 'Reload desktop T3 when no agent turn is running.',
+              },
+            };
+    }
+  }
+  return {
+    id,
+    status: 'warn',
+    summary: 'T3_RENDERER_LIMIT_UNVERIFIED',
+    remedy: {
+      action:
+        'Apply fleet-sync and check the renderer subgroup after the desktop service next restarts and its recovery timer runs.',
+    },
+  };
+}

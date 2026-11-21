@@ -570,7 +570,7 @@ Given(
 );
 
 When(
-  'the guard measures {int} percent I-O pressure at seconds {string} with threshold {int}, duration {int} and cooldown {int}',
+  'the guard measures {int} percent I\\/O pressure at seconds {string} with threshold {int}, duration {int} and cooldown {int}',
   (
     world,
     psi: number,

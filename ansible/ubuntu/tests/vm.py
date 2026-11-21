@@ -37,6 +37,40 @@ def run(args, **kwargs):
     return result
 
 
+def test_agent_pressure(ssh):
+    """Exercise reclaim inside a small test cgroup in the disposable guest."""
+    run(ssh + ["""test "$(swapon --show=NAME,PRIO --noheadings | sort -k2,2nr | head -1 | awk '{print $1}')" = /dev/zram0"""])
+    # Keep the fixture small enough that even without oomd its hard cap bounds
+    # the damage. File-backed pages drive reclaim on repeated scans.
+    script = """import mmap, tempfile
+with tempfile.TemporaryFile() as f:
+    f.truncate(160 * 1024 * 1024)
+    with mmap.mmap(f.fileno(), 0) as pages:
+        while True:
+            for i in range(0, len(pages), 4096):
+                pages[i] = (pages[i] + 1) % 256
+"""
+    subprocess.run(ssh + ['cat > pressure-fixture.py'], input=script.encode(),
+                   capture_output=True, check=True)
+    unit = 'devfleet-pressure-fixture.service'
+    start = run(ssh + ['date +%s']).stdout.strip()
+    run(ssh + [f'XDG_RUNTIME_DIR=/run/user/1000 systemd-run --user --unit={unit} --slice=app-t3code-agents.slice '
+               '--property=MemoryHigh=24M --property=MemoryMax=256M '
+               '--property=RuntimeMaxSec=120 /usr/bin/python3 -I -B /home/fleettest/pressure-fixture.py'])
+    try:
+        deadline = time.monotonic() + 100
+        while time.monotonic() < deadline:
+            subprocess.run(ssh + [answers(SERVER)], check=True, capture_output=True, timeout=5)
+            journal = run(ssh + [f'sudo journalctl -u systemd-oomd --since=@{start} --no-pager -o cat'])
+            if unit in journal.stdout and 'Killed' in journal.stdout:
+                print('oomd relieved agent pressure while SSH stayed reachable', flush=True)
+                return
+            time.sleep(2)
+        raise RuntimeError('oomd did not report killing the pressured fixture in time')
+    finally:
+        subprocess.run(ssh + [f'systemctl --user stop {unit}'], capture_output=True, timeout=10)
+
+
 def main():
     ROOT.mkdir(exist_ok=True)
     image = ROOT / 'ubuntu.img'
@@ -123,6 +157,7 @@ ssh_keys:
         # loads, but keeps SSH open rather than lock the test out.
         run(ssh + ['sudo sshd -T | grep -qx "passwordauthentication no" && sudo sshd -T | grep -qx "permitrootlogin no" && sudo nft list table inet personal_fleet | grep -q "policy drop" && sudo nft list table inet personal_fleet | grep -q public-ssh'])
         t3 = test_headless(ssh)
+        test_agent_pressure(ssh)
         test_agent(ssh)
         reboot(ssh)
         run(ssh + ['test "$(systemctl is-enabled sleep.target)" = masked && test "$(cat work/uncommitted)" = preserved && sudo nft list table inet personal_fleet | grep -q "policy drop"'])
@@ -281,6 +316,13 @@ def test_desktop(ssh, t3):
     play(ssh, 'recovery.yml')
     reboot(ssh)
     wait_for(ssh, answers(APP), 300, 'the desktop app did not start in the auto-login session after a reboot')
+    group = user(ssh, f'systemctl --user show {APP} -p ControlGroup --value').stdout.strip()
+    renderers = '/sys/fs/cgroup' + group + '/renderers'
+    wait_for(ssh, f'grep -q "[0-9]" {renderers}/cgroup.procs', 150,
+             'desktop recovery did not place renderers in their own cgroup')
+    policy = json.loads(Path('/workspace/ansible/ubuntu/policy.json').read_text())
+    ceiling = policy['resourceSafety']['rendererMaxMiB'] * 1024**2
+    run(ssh + [f'test "$(cat {renderers}/memory.max)" = {ceiling}'])
     user(ssh, f'systemctl --user stop {APP}')
     took = wait_for(ssh, answers(APP), 150, 'the recovery timer did not start the stopped desktop app')
     run(ssh + ['test "$(cat ~/.t3/fleet-test-preserved)" = preserved'])
