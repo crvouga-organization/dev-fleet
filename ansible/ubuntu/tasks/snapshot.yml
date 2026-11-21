@@ -9,6 +9,21 @@
     owner: root
     group: root
     mode: '0755'
+# Indexes come only from the snapshot: they are what pins every version.
+# Packages come first from Ubuntu's own mirrors, which are fast, and from the
+# snapshot when a mirror no longer holds that version. APT checks every
+# package against the snapshot's signed index wherever it came from. The list
+# is named after the snapshot so its index files are too (see below).
+- name: Declare where snapshot indexes and packages are fetched from
+  ansible.builtin.copy:
+    dest: /etc/personal-fleet/ubuntu-mirrors-{{ snapshot }}.list
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      https://archive.ubuntu.com/ubuntu/	priority:1 type:deb arch:amd64 arch:all
+      https://ports.ubuntu.com/ubuntu-ports/	priority:1 type:deb arch:arm64 arch:all
+      https://snapshot.ubuntu.com/ubuntu/{{ snapshot }}/	priority:2
 - name: Declare snapshot sources used only for managed package transactions
   ansible.builtin.copy:
     dest: /etc/personal-fleet/ubuntu.sources
@@ -18,7 +33,7 @@
     backup: true
     content: |
       Types: deb
-      URIs: https://snapshot.ubuntu.com/ubuntu/{{ snapshot }}/
+      URIs: mirror+file:/etc/personal-fleet/ubuntu-mirrors-{{ snapshot }}.list
       Suites: {{ ubuntu_release.codename }} {{ ubuntu_release.codename }}-updates {{ ubuntu_release.codename }}-security
       Components: main universe restricted multiverse
       Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
@@ -37,7 +52,8 @@
     mode: '0755'
 # The snapshot server stalls now and then: a download that stops moving is
 # dropped after a minute and fetched again, rather than holding the run
-# until whatever runs it gives up.
+# until whatever runs it gives up. Translated descriptions are never read
+# here, so they are not fetched from it either.
 - name: Isolate snapshot selection from unrelated APT operations
   ansible.builtin.copy:
     dest: /etc/personal-fleet/apt.conf
@@ -53,9 +69,10 @@
       Acquire::Retries "3";
       Acquire::http::Timeout "60";
       Acquire::https::Timeout "60";
+      Acquire::Languages "none";
 - name: Inspect immutable snapshot package index
   ansible.builtin.stat:
-    path: '/var/lib/personal-fleet/apt-lists/snapshot.ubuntu.com_ubuntu_{{ snapshot }}_dists_{{ ubuntu_release.codename }}_InRelease'
+    path: '/var/lib/personal-fleet/apt-lists/_etc_personal-fleet_ubuntu-mirrors-{{ snapshot }}.list_dists_{{ ubuntu_release.codename }}_InRelease'
   register: snapshot_index
 - name: Fetch signed snapshot indexes after source change or interrupted setup
   ansible.builtin.apt:

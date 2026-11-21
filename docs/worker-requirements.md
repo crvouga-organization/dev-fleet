@@ -61,8 +61,9 @@ No inbound connection from the internet is needed: the manager reaches a
 worker over the tailnet. A fixed or public address is not needed either.
 Outbound, the worker opens HTTPS (TCP 443) to:
 
-- the Ubuntu archive its image is configured with, and `snapshot.ubuntu.com`
-  (every pinned package);
+- the Ubuntu archive its image is configured with, `snapshot.ubuntu.com` (the
+  indexes that pin every package) and `archive.ubuntu.com` (amd64) or
+  `ports.ubuntu.com` (arm64), where pinned packages are fetched from first;
 - `pkgs.tailscale.com` (Tailscale) and the fleet's tailnet control plane:
   `tailnet.url` in `fleet.json`, or the hosted control plane when it names
   none; Tailscale also uses UDP 41641 and its relays (UDP 3478, TCP 443);
