@@ -5,7 +5,7 @@
 
 ## Machine setup: macOS, Windows and Linux
 
-This is the shared development setup for **crvouga/dev-fleet**. One versioned
+This is the shared development setup for **crvouga-organization/dev-fleet**. One versioned
 manifest, `mise.toml`, owns the developer tools; `mise.lock` and `.mise/locks/`
 own resolved artifacts and dependency graphs. Both bootstraps apply that same
 manifest to the current user globally. Other projects can override versions with

@@ -77,7 +77,7 @@
   <path d="M 1140 600 H 1048 V 704 H 880" class="storage"/>
 
   <rect x="54" y="903" width="330" height="112" rx="15" class="box"/>
-  <text x="219" y="938" text-anchor="middle" class="label">GitHub · crvouga/dev-fleet</text>
+  <text x="219" y="938" text-anchor="middle" class="label">GitHub · crvouga-organization/dev-fleet</text>
   <text x="219" y="967" text-anchor="middle" class="detail">Tracked runtime code + OpenTofu</text>
   <text x="219" y="992" text-anchor="middle" class="detail">Reviewed main-branch CI deployment</text>
   <path d="M 384 935 H 470 V 854" class="control"/>
