@@ -12,10 +12,24 @@ import gzip
 import json
 from pathlib import Path
 import sys
+import time
+import urllib.error
 import urllib.request
 
 POLICY = Path(__file__).resolve().parents[1] / 'policy.json'
 COMPONENTS = ('main', 'universe', 'restricted', 'multiverse')
+
+
+def fetch(url):
+    """The snapshot server answers 503 now and then: try it a few times."""
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(url, timeout=120) as response:
+                return response.read()
+        except (urllib.error.URLError, TimeoutError) as error:
+            if attempt == 3 or (isinstance(error, urllib.error.HTTPError) and error.code < 500):
+                raise
+            time.sleep(10 * (attempt + 1))
 
 
 def versions(snapshot, codename, architecture):
@@ -24,8 +38,7 @@ def versions(snapshot, codename, architecture):
     for suite in (codename, f'{codename}-updates', f'{codename}-security'):
         for component in COMPONENTS:
             url = f'https://snapshot.ubuntu.com/ubuntu/{snapshot}/dists/{suite}/{component}/binary-{architecture}/Packages.gz'
-            with urllib.request.urlopen(url, timeout=120) as response:
-                index = gzip.decompress(response.read()).decode()
+            index = gzip.decompress(fetch(url)).decode()
             name = None
             for line in index.splitlines():
                 if line.startswith('Package: '):
