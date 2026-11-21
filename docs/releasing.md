@@ -110,6 +110,14 @@ workflow reads the newest finished run of every workflow it follows each
 hour as well. A merge is therefore released within about an hour of its CI
 passing.
 
+`Publish to npm` failing with `E404 Not Found - PUT` after provenance was
+signed means npm does not trust the workflow that asked: the trusted
+publisher names another repository or workflow file, as after the repository
+moves. Run `bun run bootstrap` from `main`: it revokes the trusted publisher
+that names something else (npm keeps one per package) and makes `release.yml`
+of the repository in `package.json` the trusted publisher, then re-run the
+release.
+
 ## One-time setup
 
 npm can publish new versions through OIDC but cannot create a package that does
