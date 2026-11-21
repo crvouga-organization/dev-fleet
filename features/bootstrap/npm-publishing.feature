@@ -52,6 +52,20 @@ Feature: The one-time npm setup for publishing
       And the first thing it runs starts with "npm trust github"
       And it does not publish the seed version
 
+    Scenario: A trusted publisher left by a moved repository is replaced
+      A trusted publisher names the repository: after the repository moves,
+      every release is refused with a 404 until the new one is made, and the
+      old one could still publish until it is revoked.
+      Given "someone" is signed in to npm
+      And the seed version is published
+      And the package is trusted to "release.yml" of the repository "old-owner/repo", as "trust-1"
+      And the seed tag exists here and on the remote
+      When the setup is run with "--yes --skip-check"
+      Then it exits with 0
+      And it runs, in order:
+        | npm trust revoke @scope/pkg --id trust-1                                               |
+        | npm trust github @scope/pkg --repo owner/repo --file release.yml --allow-publish --yes |
+
   Rule: The seed is published from the commit that is main, and only when asked
 
     Scenario: It will not publish from uncommitted work
