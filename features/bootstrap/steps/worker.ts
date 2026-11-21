@@ -701,8 +701,7 @@ Then('it reports:', (world, text: string) => {
 
 // ── The renderer subgroup of the desktop app ─────────────────────────────
 
-const DESKTOP_GROUP =
-  '/user.slice/user-1000.slice/user@1000.service/app.slice/t3code-desktop.service';
+const DESKTOP_GROUP = '/app.slice/t3code-desktop.service';
 const renderers = part((world) => ({
   cgroups: world.directory('t3-cgroups-'),
   proc: world.directory('t3-proc-'),
@@ -738,7 +737,7 @@ Given(
   (world, pid: number) => {
     writeFileSync(
       join(renderers(world).proc, String(pid), 'cgroup'),
-      `0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-com.t3tools.T3Code-${pid}.scope\n`
+      `0::/app.slice/app-com.t3tools.T3Code-${pid}.scope\n`
     );
   }
 );
