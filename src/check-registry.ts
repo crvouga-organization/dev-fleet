@@ -513,6 +513,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'worker:sudo': 'Designated worker user has noninteractive sudo.',
   'worker:t3-health':
     'T3 local API answers with its environment identity within 10 seconds.',
+  'worker:t3-protection':
+    'The T3 listener has its CPU, I/O and memory reserve.',
   'worker:t3-recovery':
     "The worker's T3 service is active, enabled for boot and restarts after a failure.",
   'worker:ubuntu': 'Required Ubuntu release and architecture.',

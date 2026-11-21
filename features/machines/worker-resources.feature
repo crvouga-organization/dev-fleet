@@ -53,3 +53,19 @@ Feature: A worker's memory and disk guards are measured where they run
       | 40 GiB  | 1228  | 1536 | 1610612736 | 42949672960  | passes  |
       | 40 GiB  | 1228  | 1024 | 1073741824 | 42949672960  | fails   |
       | 500 GiB | 3072  | 2048 | 2147483648 | 536870912000 | fails   |
+
+  Scenario Outline: The listener's actual cgroup provides its reserve
+    Given these commands answer:
+      | command                                    | answer                       |
+      | ss -Hltnp sport = 3773                     | prints users:(("t3",pid=42)) |
+      | cat /proc/42/cgroup                        | prints 0::/app.scope         |
+      | cat /sys/fs/cgroup/app.scope/cpu.weight    | prints <cpu>                 |
+      | cat /sys/fs/cgroup/app.scope/io.weight     | prints default 1000          |
+      | cat /sys/fs/cgroup/app.scope/memory.low    | prints 1610612736            |
+    When the protection of the T3 listener on port 3773 is measured
+    Then the check <verdict>
+
+    Examples:
+      | cpu  | verdict |
+      | 1000 | passes  |
+      | 100  | fails   |

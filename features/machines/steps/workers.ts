@@ -1,5 +1,8 @@
 import { expect } from 'bun:test';
-import { verifyResourceSafety } from '../../../src/platform/resource-verify';
+import {
+  t3Protection,
+  verifyResourceSafety,
+} from '../../../src/platform/resource-verify';
 import { auditUbuntu } from '../../../src/platform/ubuntu-audit';
 import { verifyUbuntuBoot } from '../../../src/platform/ubuntu-verify';
 import { pinnedPackage } from '../../../src/worker-host-checks';
@@ -150,5 +153,12 @@ Then(
   'the browser library {string} is pinned at {string}',
   (world, name: string, version: string) => {
     expect(world.browserPins?.[name]).toBe(version);
+  }
+);
+
+When(
+  'the protection of the T3 listener on port {int} is measured',
+  async (world, port: number) => {
+    world.checks = [await t3Protection(port, world.run)];
   }
 );

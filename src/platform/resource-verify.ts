@@ -1,3 +1,4 @@
+import policy from '../../ansible/ubuntu/policy.json';
 import { threshold } from '../worker-sizing';
 import type { Check, Runner } from '../types';
 
@@ -140,4 +141,50 @@ export async function verifyResourceSafety(
         'systemd-oomd, the disk guard and the disk GC timer are running, user workloads are capped below physical memory, T3 agents have per-agent limits, swap is active, free disk is above the guard floor and /tmp is writable.',
     },
   ];
+}
+
+async function groupProtected(group: string, run: Runner): Promise<boolean> {
+  const read = (file: string) =>
+    run(['cat', '/sys/fs/cgroup' + group + '/' + file]);
+  const [cpu, io, memory] = await Promise.all([
+    read('cpu.weight'),
+    read('io.weight'),
+    read('memory.low'),
+  ]);
+  return (
+    cpu.ok &&
+    io.ok &&
+    memory.ok &&
+    Number(cpu.stdout.trim()) >= 1000 &&
+    Number(/^default (\d+)$/m.exec(io.stdout)?.[1]) >= 1000 &&
+    Number(memory.stdout.trim()) >= policy.sizing.t3ReservedMiB * MIB
+  );
+}
+
+/** Measure the listener itself: Electron can leave the service's cgroup. */
+export async function t3Protection(port: number, run: Runner): Promise<Check> {
+  const listener = await run(['ss', '-Hltnp', 'sport', '=', String(port)]);
+  const pid = listener.ok && /\bpid=(\d+)\b/.exec(listener.stdout)?.[1];
+  let protectedServer = false;
+  if (pid) {
+    const membership = await run(['cat', `/proc/${pid}/cgroup`]);
+    const group = /^0::(\/[^\n]*)$/m.exec(membership.stdout)?.[1];
+    if (membership.ok && group && !group.split('/').includes('..'))
+      protectedServer = await groupProtected(group, run);
+  }
+  return protectedServer
+    ? {
+        id: 'worker:t3-protection',
+        status: 'pass',
+        summary: 'The T3 listener has its CPU, I/O and memory reserve.',
+      }
+    : {
+        id: 'worker:t3-protection',
+        status: 'fail',
+        summary: 'T3_PROTECTION_ESCAPED',
+        remedy: {
+          action:
+            'Run fleet-sync on this worker and check the cgroup of the T3 listener after its next idle restart.',
+        },
+      };
 }

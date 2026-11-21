@@ -30,6 +30,26 @@
       - libxtst6
       - xdg-utils
   tasks:
+    - name: Create the desktop application scope policy directory
+      ansible.builtin.file:
+        path: /etc/systemd/user/app-com.t3tools.T3Code-.scope.d
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+    - name: Protect the desktop server after it enters its application scope
+      ansible.builtin.copy:
+        dest: /etc/systemd/user/app-com.t3tools.T3Code-.scope.d/60-personal-fleet.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          # Managed by personal fleet-sync.
+          [Scope]
+          CPUWeight=1000
+          IOWeight=1000
+          MemoryLow={{ sizing.t3ReservedMiB }}M
+          ManagedOOMPreference=avoid
     - name: Create the package cache
       ansible.builtin.file:
         path: /var/cache/personal-fleet
@@ -191,7 +211,7 @@
           RestartSec=5
           CPUWeight=1000
           IOWeight=1000
-          MemoryLow=1536M
+          MemoryLow={{ sizing.t3ReservedMiB }}M
           OOMScoreAdjust=100
           ManagedOOMPreference=avoid
           [Install]
