@@ -188,12 +188,12 @@ Then('the policy sets these settings:', (world, table: DataTable) => {
   );
 });
 
-Then('the policy was not staged', (world) => {
-  expect(world.staged).toBe(false);
+Then(/^the policy was (not )?staged$/, (world, not?: string) => {
+  expect(world.staged).toBe(!not);
 });
 
-Then('the desktop app was not installed', (world) => {
-  expect(world.installed).toBe(false);
+Then(/^the desktop app was (not )?installed$/, (world, not?: string) => {
+  expect(world.installed).toBe(!not);
 });
 
 // ── The private route ────────────────────────────────────────────────────
