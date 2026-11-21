@@ -698,3 +698,109 @@ Then('the T3 service environment becomes:', (world, text: string) => {
 Then('it reports:', (world, text: string) => {
   expect(JSON.parse(exposure(world).output)).toEqual(JSON.parse(text));
 });
+
+// ── The renderer subgroup of the desktop app ─────────────────────────────
+
+const DESKTOP_GROUP =
+  '/user.slice/user-1000.slice/user@1000.service/app.slice/t3code-desktop.service';
+const renderers = part((world) => ({
+  cgroups: world.directory('t3-cgroups-'),
+  proc: world.directory('t3-proc-'),
+}));
+const desktopUnit = (world: BootstrapWorld) =>
+  join(renderers(world).cgroups, DESKTOP_GROUP);
+
+Given(
+  "the desktop app's subgroup holds these processes:",
+  (world, table: DataTable) => {
+    const app = join(desktopUnit(world), 'app');
+    mkdirSync(app, { recursive: true });
+    writeFileSync(join(desktopUnit(world), 'cgroup.subtree_control'), '');
+    const rows = table.hashes();
+    writeFileSync(
+      join(app, 'cgroup.procs'),
+      rows.map((row) => `${row['pid']}\n`).join('')
+    );
+    for (const row of rows) {
+      const process = join(renderers(world).proc, row['pid']!);
+      mkdirSync(process);
+      writeFileSync(
+        join(process, 'cmdline'),
+        `${row['arguments']!.replaceAll('\\0', '\0')}\0`
+      );
+      writeFileSync(join(process, 'cgroup'), `0::${DESKTOP_GROUP}/app\n`);
+    }
+  }
+);
+
+Given(
+  'process {int} now runs in the application scope of the app',
+  (world, pid: number) => {
+    writeFileSync(
+      join(renderers(world).proc, String(pid), 'cgroup'),
+      `0::/user.slice/user-1000.slice/user@1000.service/app.slice/app-com.t3tools.T3Code-${pid}.scope\n`
+    );
+  }
+);
+
+When(
+  'the renderer limits of {int} MiB high and {int} MiB max are applied',
+  (world, high: number, maximum: number) => {
+    const ran = spawnSync(
+      'python3',
+      [
+        '-I',
+        '-B',
+        join(checkout, 'ansible/ubuntu/t3-renderers.py'),
+        DESKTOP_GROUP,
+        String(high),
+        String(maximum),
+        '--cgroup-root',
+        renderers(world).cgroups,
+        '--proc',
+        renderers(world).proc,
+      ],
+      { encoding: 'utf8' }
+    );
+    expect(ran.stderr).toBe('');
+    expect(ran.status).toBe(0);
+  }
+);
+
+const moved = (world: BootstrapWorld): string[] => {
+  const procs = join(desktopUnit(world), 'renderers', 'cgroup.procs');
+  return existsSync(procs)
+    ? readFileSync(procs, 'utf8').split('\n').filter(Boolean)
+    : [];
+};
+
+Then(
+  'the renderers subgroup holds {int} and {int}',
+  (world, first: number, second: number) => {
+    expect(moved(world)).toEqual([String(first), String(second)]);
+  }
+);
+
+Then('the renderers subgroup holds no process', (world) => {
+  expect(moved(world)).toEqual([]);
+});
+
+Then(
+  'the renderers subgroup has memory.high {int} and memory.max {int}',
+  (world, high: number, maximum: number) => {
+    const group = join(desktopUnit(world), 'renderers');
+    expect(readFileSync(join(group, 'memory.high'), 'utf8')).toBe(String(high));
+    expect(readFileSync(join(group, 'memory.max'), 'utf8')).toBe(
+      String(maximum)
+    );
+  }
+);
+
+Then(
+  "the desktop app's unit has the memory controller enabled for its subgroups",
+  (world) => {
+    expect(
+      readFileSync(join(desktopUnit(world), 'cgroup.subtree_control'), 'utf8')
+    ).toBe('+memory');
+  }
+);
