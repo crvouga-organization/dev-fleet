@@ -165,6 +165,13 @@ class UsageBounds(unittest.TestCase):
         agent = next(c for c in support.RAW["checks"] if c["id"] == "agent_workflow")
         self.assertLessEqual(agent["max_tokens"], 400)
 
+    def test_checks_flaky_on_hidden_output_keep_headroom(self):
+        # Claude models can spend unseen output tokens before the reply or tool
+        # call; at 128/256 these checks hit finish_reason=length (issue: personal#292).
+        for check_id in ("system", "concurrency_isolation"):
+            check = next(c for c in support.RAW["checks"] if c["id"] == check_id)
+            self.assertGreaterEqual(check["turn"]["max_tokens"], 400, check_id)
+
     def test_light_profile_costs_two_requests_per_model(self):
         with support.served() as (emulator, base):
             support.run(emulator, base, "light")
