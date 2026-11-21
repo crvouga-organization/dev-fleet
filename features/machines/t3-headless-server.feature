@@ -52,11 +52,23 @@ Feature: A headless worker runs the pinned T3 server, with no display
 
   Scenario: A launcher of another release stops the installation, as on a desktop worker
     Given these commands answer:
-      | command      | answer           |
-      | t3 --version | prints t3 v0.1.9 |
+      | command                                                                    | answer           |
+      | t3 --version                                                               | prints t3 v0.1.9 |
+      | systemctl --user show --property=ExecStart --value t3code-headless.service | fails            |
     When the headless worker's T3 server is converged
     Then the summary of the check is "T3_EXECUTABLE_OWNER_CONFLICT"
     And the policy was not staged
+
+  Scenario: The release the fleet installed last is upgraded to the pin, as on a desktop worker
+    Given these commands answer:
+      | command                                                                    | answer                                                                                     |
+      | t3 --version                                                               | prints t3 v0.1.6                                                                           |
+      | systemctl --user show --property=ExecStart --value t3code-headless.service | prints { path=/home/dev/.local/share/personal/tools/t3-0.1.6-linux-x64/t3 ; argv[]=/home/dev/.local/share/personal/tools/t3-0.1.6-linux-x64/t3 serve ; } |
+      | systemctl --user is-active t3code-headless.service                         | succeeds                                                                                   |
+      | systemctl --user is-enabled t3code-headless.service                        | succeeds                                                                                   |
+    When the headless worker's T3 server is converged
+    Then the check passes
+    And the policy was staged
 
   Scenario: The installed release is the versioned server the unit runs
     Given these commands answer:

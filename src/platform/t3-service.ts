@@ -18,7 +18,8 @@ export function t3Unit(session: Session = 'desktop'): string {
  * worker the pinned native server as a lingering user service
  * (`t3-headless.yml`). The play installs it, retires the other session
  * type's unit and starts it; this only refuses a foreign launcher beforehand
- * and measures the result afterwards.
+ * and measures the result afterwards. A launcher of the release the fleet
+ * installed last is not foreign: the play upgrades it to the pin.
  */
 export async function convergeT3Service(
   artifact: { path: string; version: string },
@@ -37,7 +38,10 @@ export async function convergeT3Service(
     session = 'desktop',
   } = steps;
   const existing = await run(['t3', '--version']);
-  if (conflictingVersion(existing, artifact.version))
+  if (
+    conflictingVersion(existing, artifact.version) &&
+    conflictingVersion(existing, await installedRelease(run, session))
+  )
     return pending(
       'T3_EXECUTABLE_OWNER_CONFLICT',
       'The existing T3 launcher has a different version. Review the pinned release; preserve its application data and active sessions.'
@@ -248,7 +252,7 @@ function pending(code: string, action: string): Check[] {
 
 function conflictingVersion(
   result: { ok: boolean; stdout: string },
-  version: string
+  version: string | undefined
 ): boolean {
   return result.ok && result.stdout.trim() !== `t3 v${version}`;
 }
