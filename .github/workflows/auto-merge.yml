@@ -16,6 +16,11 @@ name: Auto-merge
 #
 # The hourly run also enables auto-merge on any open pull request that missed
 # its event (one opened by another workflow, for example).
+#
+# A merge made with the workflow's own token does not close the issues its
+# pull request says it fixes either, so each run closes them for the pull
+# requests merged in the last three hours. Issues labelled ci-failure are left
+# to failures.yml, which closes one at the first passing run on main.
 on:
   pull_request:
     types: [opened, reopened, ready_for_review, synchronize]
@@ -28,6 +33,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write
   actions: write
 concurrency:
   group: auto-merge-${{ github.event.pull_request.number || 'main' }}
@@ -93,6 +99,20 @@ jobs:
             echo "No CI run for $commit: starting one."
             gh workflow run ci.yml --repo "$REPO" --ref "$MAIN"
           fi
+      - name: Close the issues that merged pull requests fix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          since=$(date -u -d '3 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          gh pr list --repo "$REPO" --state merged --base "$MAIN" --limit 50 \
+            --json number,mergedAt,closingIssuesReferences \
+            --jq ".[] | select(.mergedAt >= \"$since\") | .number as \$pr | .closingIssuesReferences[] | select(.repository.owner.login + \"/\" + .repository.name == \"$REPO\") | [.number, \$pr] | @tsv" |
+          while read -r issue pr; do
+            gh issue view "$issue" --repo "$REPO" --json state,labels \
+              --jq 'select(.state == "OPEN" and ([.labels[].name] | index("ci-failure") | not)) | 1' | grep -q 1 || continue
+            gh issue close "$issue" --repo "$REPO" --reason completed --comment "Fixed by #$pr." ||
+              echo "::warning::Issue #$issue could not be closed."
+          done
       - name: Start the release when CI passed on main and nothing released it
         env:
           GH_TOKEN: ${{ github.token }}
