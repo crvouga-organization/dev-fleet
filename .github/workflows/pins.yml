@@ -25,7 +25,18 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pin: [mise, t3]
+        pin:
+          [
+            mise,
+            t3,
+            codex,
+            claude,
+            gemini,
+            copilot,
+            opencode,
+            grok,
+            antigravity,
+          ]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -37,12 +48,21 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
+      - uses: ./.github/actions/mise
+        if: matrix.pin != 'mise' && matrix.pin != 't3'
+        with:
+          install_args: python
       - name: Move the pin to its newest release
         id: update
         env:
           GH_TOKEN: ${{ github.token }}
           PIN: ${{ matrix.pin }}
-        run: echo "summary=$(bun bootstrap/pins.ts "$PIN")" >> "$GITHUB_OUTPUT"
+        run: |
+          case "$PIN" in
+            mise|t3) summary=$(bun bootstrap/pins.ts "$PIN") ;;
+            *) summary=$(python3 .github/scripts/provider-pin.py "$PIN") ;;
+          esac
+          echo "summary=$summary" >> "$GITHUB_OUTPUT"
       - name: Open the pull request
         env:
           GH_TOKEN: ${{ secrets.PINS_TOKEN || github.token }}
@@ -57,9 +77,12 @@ jobs:
           git config user.name "$bot"
           git config user.email "41898282+${bot}@users.noreply.github.com"
           git switch -C "$branch"
+          git add -- mise.toml mise.lock .mise/locks
           git commit --all --message "chore(deps): $SUMMARY"
           git push --force origin "$branch"
-          gh pr view "$branch" >/dev/null 2>&1 ||
+          open=$(gh pr list --base main --head "$branch" --state open --json number --jq length)
+          if [ "$open" = 0 ]; then
             gh pr create --head "$branch" --label deps --title "chore(deps): $SUMMARY" \
-              --body "Moves the $PIN pin, with every digest, to its newest release: $SUMMARY (bootstrap/pins.ts)."
+              --body "Moves the $PIN pin, with every digest, to its newest release: $SUMMARY."
+          fi
           if [ "$OWN_TOKEN" = true ]; then gh workflow run ci.yml --ref "$branch"; fi

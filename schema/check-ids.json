@@ -131,6 +131,14 @@
       }
     },
     {
+      "id": "agent:copilot:version",
+      "meaning": "A coding agent runs the version the fleet pins.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the machine with fleet-sync; an agent that needs a sign-in is a person’s."
+      }
+    },
+    {
       "id": "agent:cursor",
       "meaning": "A coding agent CLI is installed at its pinned version on this machine.",
       "severity": "required",
@@ -141,6 +149,14 @@
     {
       "id": "agent:gemini",
       "meaning": "A coding agent CLI is installed at its pinned version on this machine.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the machine with fleet-sync; an agent that needs a sign-in is a person’s."
+      }
+    },
+    {
+      "id": "agent:gemini:version",
+      "meaning": "A coding agent runs the version the fleet pins.",
       "severity": "required",
       "repair": {
         "manual": "Re-converge the machine with fleet-sync; an agent that needs a sign-in is a person’s."
@@ -2012,6 +2028,14 @@
       }
     },
     {
+      "id": "worker:convergence",
+      "meaning": "The worker last applied the approved revision and its last apply succeeded.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
       "id": "worker:credential-renewal",
       "meaning": "Worker credential renewal timer is active.",
       "severity": "required",
@@ -2214,6 +2238,14 @@
       }
     },
     {
+      "id": "worker:package:systemd-zram-generator",
+      "meaning": "The pinned Ubuntu package is installed at or past its pin.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
       "id": "worker:package:tailscale",
       "meaning": "The pinned Ubuntu package is installed at or past its pin.",
       "severity": "required",
@@ -2267,6 +2299,14 @@
       "severity": "required",
       "repair": {
         "manual": "It is a property of the hardware, the firmware or the operating system release, which no command changes."
+      }
+    },
+    {
+      "id": "worker:pressure-events",
+      "meaning": "The pressure guard reports recent agent stops.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
       }
     },
     {
@@ -2376,8 +2416,24 @@
       }
     },
     {
+      "id": "worker:t3-protection",
+      "meaning": "The T3 listener has its CPU, I/O and memory reserve.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
       "id": "worker:t3-recovery",
       "meaning": "The worker's T3 service is active, enabled for boot and restarts after a failure.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
+      "id": "worker:t3-renderers",
+      "meaning": "Desktop renderer memory is within its declared budget.",
       "severity": "required",
       "repair": {
         "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."

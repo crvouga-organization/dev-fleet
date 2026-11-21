@@ -80,6 +80,7 @@
           # /tmp is RAM with a per-user quota that agent and build caches
           # exhaust; agents use disk-backed /var/tmp (aged by tasks/resources.yml).
           Environment=TMPDIR=/var/tmp
+          Environment=NODE_OPTIONS=--max-old-space-size={{ sizing.agentBuildMiB }}
           ExecStart="{{ t3_server_path }}" serve --mode web --host 127.0.0.1 --port 3773 --base-dir %h/.t3 --no-browser
           KillMode=mixed
           Restart=always

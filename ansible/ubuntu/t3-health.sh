@@ -17,6 +17,10 @@
 # - Running another release than the installed one, or a policy restart that
 #   was deferred: restart it once it runs no agent turn (T3_RESTART_PENDING).
 set -u
+if [ -f /run/personal-fleet-pressure-guard/active ]; then
+  echo "Deferring T3 recovery while the worker is under sustained pressure."
+  exit 0
+fi
 url=http://127.0.0.1:3773/.well-known/t3/environment
 unit=t3code-desktop.service
 headless=
@@ -72,6 +76,11 @@ if ! systemctl --user is-active --quiet "$unit"; then
   echo "T3 is not running; starting it."
   systemctl --user reset-failed "$unit" 2>/dev/null
   exec systemctl --user start "$unit"
+fi
+if [ -z "$headless" ] && [ -n "${T3_RENDERER_HIGH_MIB:-}" ]; then
+  group=$(systemctl --user show "$unit" --property=ControlGroup --value)
+  python3 -I -B "$here/t3-renderers.py" "$group" "$T3_RENDERER_HIGH_MIB" "$T3_RENDERER_MAX_MIB" ||
+    echo "T3 renderer limits could not be applied."
 fi
 if ! environment=$(curl --fail --silent --max-time 10 "$url"); then
   failed=$(count "$failures")

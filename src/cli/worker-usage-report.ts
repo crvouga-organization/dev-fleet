@@ -1,3 +1,8 @@
+import managerPolicy from '../../ansible/macos/policy.json';
+import { loadEnrollment } from '../state/enrollment';
+import { readHistory, type History } from '../state/history';
+import type { Enrollment } from '../machine/state';
+import type { Check } from '../types';
 import { fleet } from '../fleet-config';
 import { readParked } from '../state/workers';
 import type { TailnetComputer } from '../tailscale';
@@ -22,6 +27,68 @@ function reportOf(reports: NodeReport[], id: string): NodeReport {
   const added: NodeReport = { node: id, checks: [] };
   reports.push(added);
   return added;
+}
+
+function appliedSummary(
+  revision: string | undefined,
+  appliedAt: string | undefined,
+  approved: string,
+  now: Date
+) {
+  const details = [
+    `Applied ${revision ?? 'unknown'} at ${appliedAt ?? 'unknown'}.`,
+    `Approved ${approved}.`,
+  ];
+  const hours =
+    appliedAt === undefined
+      ? null
+      : Math.max(
+          0,
+          Math.floor((now.getTime() - Date.parse(appliedAt)) / 3600000)
+        );
+  if (hours !== null) details.push(`Last applied ${hours} hours ago.`);
+  return { hours, details };
+}
+
+export function convergenceCheck(
+  id: string,
+  enrollment: Enrollment,
+  history: History,
+  now: Date
+): Check {
+  const revision = enrollment.workers?.[id];
+  const recent = [...history.runs].reverse();
+  const last = recent.find((run) => run.workers?.[id]);
+  const receipt = history.lastApplied?.[id];
+  const appliedAt =
+    receipt && receipt.revision === revision ? receipt.at : undefined;
+  const failure = last && last.workers![id]!.failed;
+  const behind = revision !== enrollment.approvedRevision;
+  const { details, hours } = appliedSummary(
+    revision,
+    appliedAt,
+    enrollment.approvedRevision,
+    now
+  );
+  if (failure)
+    details.push(`Last failure at ${last!.finishedAt} in ${failure}.`);
+  const stale =
+    Boolean(failure) ||
+    (behind &&
+      (hours === null ||
+        hours >= managerPolicy.fleetSync.convergenceWarnHours));
+  return {
+    id: 'worker:convergence',
+    ...(stale
+      ? {
+          status: 'warn',
+          summary: ['WORKER_NOT_CONVERGED', details.join(' ')].join(': '),
+          remedy: {
+            action: `Run devfleet fleet-sync --node ${id} and inspect the failed check.`,
+          },
+        }
+      : { status: behind ? 'skip' : 'pass', summary: details.join(' ') }),
+  };
 }
 
 /** Adds to fleet-status what it says about each worker beyond its health:
@@ -51,6 +118,15 @@ export async function appendUsage(
       computers
     );
     if (online) report.checks.push(online);
+  }
+  const enrollment = await loadEnrollment(null);
+  if (enrollment) {
+    const history = readHistory();
+    for (const worker of fleet.workers)
+      if (!parked[worker.id])
+        reportOf(reports, worker.id).checks.push(
+          convergenceCheck(worker.id, enrollment, history, now)
+        );
   }
   const { workers, checks } = await fleetUsage(fleet, {
     nodes: nodes.filter((node) => !parked[node.id]),

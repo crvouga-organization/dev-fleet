@@ -72,5 +72,10 @@ function userShare(): number {
  */
 export function supportedSessions(memoryMiB: number): number {
   const usable = memoryMiB * userShare() - policy.sizing.t3ReservedMiB;
-  return Math.max(0, Math.floor(usable / policy.sizing.agentSessionMiB));
+  return Math.max(
+    0,
+    Math.floor(
+      usable / (policy.sizing.agentSessionMiB + policy.sizing.agentBuildMiB)
+    )
+  );
 }
