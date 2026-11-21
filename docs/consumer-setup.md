@@ -37,7 +37,7 @@ version in `package.json` is the commit every machine runs.
 - **Do not clone, vendor or patch dev-fleet.** Not `node_modules`, not a
   checkout `fleet-sync` puts on a machine, not a file it manages there. The
   next install or sync replaces them. A bug or a missing feature is an issue
-  at <https://github.com/crvouga/dev-fleet/issues>; tell the human what is
+  at <https://github.com/crvouga-organization/dev-fleet/issues>; tell the human what is
   blocked and link it. Issues are public: no credentials, hostnames,
   accounts, domains or `fleet.json` contents.
 - **Never put a secret in an argument, in `fleet.json`, in a commit or in a
@@ -161,7 +161,7 @@ Then replace every placeholder. Each field, from
 | Field                                                 | Value                                                                                                                    |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `version`                                             | `3`                                                                                                                      |
-| `source.repository`                                   | `https://github.com/crvouga/dev-fleet.git`, or your fork if you publish one. Machines only accept code from it.          |
+| `source.repository`                                   | `https://github.com/crvouga-organization/dev-fleet.git`, or your fork if you publish one. Machines only accept code from it.          |
 | `state`                                               | `{ "bucket", "endpoint"?, "region"?, "prefix"? }` or `{ "directory": "/absolute/path" }`. Never credentials.             |
 | `secrets`                                             | See [secrets](#secrets).                                                                                                 |
 | `manager.id`                                          | A short lowercase id, `^[a-z][a-z0-9-]{0,62}$`, e.g. `manager-mac`.                                                      |
@@ -252,7 +252,7 @@ The fleet is managed with dev-fleet (`npx devfleet`, pinned in package.json).
 Read `npx devfleet commands --json` before using it. Never edit dev-fleet
 itself: not node_modules, not a clone, not what it installs on a machine. A
 bug in dev-fleet or a feature it lacks is a GitHub issue at
-https://github.com/crvouga/dev-fleet/issues; tell me what is blocked and link
+https://github.com/crvouga-organization/dev-fleet/issues; tell me what is blocked and link
 it. Issues are public: no credentials, hostnames, accounts, domains or
 fleet.json contents.
 ```
@@ -383,7 +383,7 @@ Read `summary` and `remedy.action` of the failing check. The common ones:
 | `BESZEL_ACCOUNT_REQUIRED`                 | The monitoring hub has no account yet. Follow the remedy; other workers are not blocked.                                      |
 
 A failure the remedy does not explain, or one you believe is a defect, is an
-issue at <https://github.com/crvouga/dev-fleet/issues>: include
+issue at <https://github.com/crvouga-organization/dev-fleet/issues>: include
 `npx devfleet --version`, the command and flags, and the failing check IDs
 and codes; leave out everything private.
 
