@@ -48,6 +48,10 @@ export interface State {
   published: boolean;
   /** Null until the package exists: there is nothing to look at yet. */
   trusted: boolean | null;
+  /** Trusted publishers that are not this repository's Release workflow, as
+   * after the repository moved: npm keeps one per package, so they go first.
+   */
+  staleTrust: string[];
   tagLocal: boolean;
   tagRemote: boolean;
   /** Commit npm recorded for the seed version, when it was published. */
@@ -84,6 +88,26 @@ export function npmIsRecent(version: string | null): boolean {
   return major > MIN_NPM[0] || (major === MIN_NPM[0] && minor >= MIN_NPM[1]);
 }
 
+interface TrustConfig {
+  id?: string;
+  repository?: string;
+  file?: string;
+}
+
+/** `npm trust list --json` prints one JSON object per trusted publisher,
+ * separated by blank lines, rather than one array.
+ */
+export function trustConfigs(stdout: string): TrustConfig[] {
+  return stdout.split(/\n\s*\n/).flatMap((chunk) => {
+    try {
+      const value = JSON.parse(chunk) as TrustConfig | TrustConfig[];
+      return Array.isArray(value) ? value : [value];
+    } catch {
+      return [];
+    }
+  });
+}
+
 export function measure(exec: Exec, target: Target): State {
   const { name, repo, root } = target;
   const npm = exec.capture(['npm', '--version']);
@@ -101,6 +125,9 @@ export function measure(exec: Exec, target: Target): State {
   const trust = published
     ? exec.capture(['npm', 'trust', 'list', name, '--json'])
     : null;
+  const configs = trust?.ok ? trustConfigs(trust.stdout) : [];
+  const current = (config: TrustConfig) =>
+    config.repository === repo && config.file === WORKFLOW_FILE;
   exec.capture(['git', 'fetch', '--quiet', 'origin', 'main', '--tags'], root);
   const head = exec.capture(['git', 'rev-parse', 'HEAD'], root).stdout.trim();
   const main = exec
@@ -110,11 +137,10 @@ export function measure(exec: Exec, target: Target): State {
     npmVersion: npm.ok ? npm.stdout.trim() : null,
     user: whoami.ok ? whoami.stdout.trim() : null,
     published,
-    trusted: trust
-      ? trust.ok &&
-        trust.stdout.includes(repo) &&
-        trust.stdout.includes(WORKFLOW_FILE)
-      : null,
+    trusted: trust ? configs.some(current) : null,
+    staleTrust: configs
+      .filter((config) => !current(config) && config.id)
+      .map((config) => config.id!),
     tagLocal: exec.capture(
       ['git', 'rev-parse', '--verify', '--quiet', `refs/tags/${seedTag}`],
       root
@@ -297,6 +323,11 @@ async function run(
     case 'publish':
       return deps.seed(target);
     case 'trust':
+      for (const id of state.staleTrust)
+        if (
+          !exec.interactive(['npm', 'trust', 'revoke', target.name, '--id', id])
+        )
+          return false;
       return exec.interactive([
         'npm',
         'trust',
