@@ -11,10 +11,26 @@ import { pinnedPath } from '../src/agents/toolchain';
 const SYNC_HINT =
   'Run devfleet fleet-sync from a terminal to repair this machine.';
 
+export function managedUpdateRemedy(tool: string, args: string[]) {
+  const command = args[0];
+  if (
+    ((tool === 'grok' || tool === 'claude') && command === 'update') ||
+    (tool === 'opencode' && command === 'upgrade')
+  )
+    return 'Provider versions come from the pinned dev-fleet release. Update the project dependency and run devfleet fleet-sync.';
+  return undefined;
+}
+
 export async function runManagedProxy(
   tool: 'codex' | 'opencode' | 'claude' | 'grok' | 'antigravity'
 ): Promise<void> {
   const args = process.argv.slice(2);
+  const update = managedUpdateRemedy(tool, args);
+  if (update) {
+    process.stderr.write(update + '\n');
+    process.exitCode = 1;
+    return;
+  }
   // Version probes need no credentials; answering them lets T3 report the real
   // launch error instead of "unable to determine version".
   if (args.length === 1 && ['--version', '-v'].includes(args[0]!)) {
@@ -28,6 +44,13 @@ export async function runManagedProxy(
     const selection = select(process.env['WS_AGENT_NODE'] ?? '', tool, 'proxy');
     const root = agentRoot(homedir(), currentPlatform().name);
     const result = await plan({ root, selection, revision: 'unverified' });
+    if (result.files.some((file) => file.state === 'conflict')) {
+      process.stderr.write(
+        `Review the modified ${tool} proxy profile. To back it up and replace it, run bun src/agents/cli.ts --yes agents apply --node ${selection.node} --tool ${tool} --profile proxy --adopt from the fleet-owned checkout on this machine.\n`
+      );
+      process.exitCode = 1;
+      return;
+    }
     if (
       !result.previous ||
       result.previous.fingerprint !== result.fingerprint ||

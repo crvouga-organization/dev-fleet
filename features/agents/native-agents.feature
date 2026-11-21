@@ -171,3 +171,13 @@ Feature: Native agents are verified on every machine
       Then the check "agent:service-environment" warns
       And the check "agent:service-environment" reports "AGENT_SERVICE_ENVIRONMENT_UNVERIFIED"
       And the check "agent:claude:session" passes
+
+    Scenario Outline: A provider update through a managed launcher directs the operator to fleet-sync
+      When the managed "<tool>" launcher receives "<command>"
+      Then the launcher directs the operator to "devfleet fleet-sync"
+
+      Examples:
+        | tool     | command |
+        | grok     | update  |
+        | claude   | update  |
+        | opencode | upgrade |

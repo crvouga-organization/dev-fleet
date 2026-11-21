@@ -59,7 +59,9 @@ jobs:
           git switch -C "$branch"
           git commit --all --message "chore(deps): $SUMMARY"
           git push --force origin "$branch"
-          gh pr view "$branch" >/dev/null 2>&1 ||
+          open=$(gh pr list --base main --head "$branch" --state open --json number --jq length)
+          if [ "$open" = 0 ]; then
             gh pr create --head "$branch" --label deps --title "chore(deps): $SUMMARY" \
               --body "Moves the $PIN pin, with every digest, to its newest release: $SUMMARY (bootstrap/pins.ts)."
+          fi
           if [ "$OWN_TOKEN" = true ]; then gh workflow run ci.yml --ref "$branch"; fi

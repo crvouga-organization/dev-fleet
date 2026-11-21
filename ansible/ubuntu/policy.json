@@ -103,7 +103,8 @@
       "checkouts": 1024,
       "profiles": { "web": 256, "go": 1024, "rust": 2048, "jvm": 640 }
     },
-    "agentSessionMiB": 1024,
+    "agentSessionMiB": 512,
+    "agentBuildMiB": 4096,
     "t3ReservedMiB": 1536,
     "thresholds": {
       "swapFile": {

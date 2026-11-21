@@ -1,0 +1,48 @@
+name: Renovate
+on:
+  schedule:
+    - cron: '33 4 * * *'
+  workflow_dispatch: {}
+concurrency:
+  group: renovate
+  cancel-in-progress: false
+permissions: {}
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    container:
+      image: ghcr.io/renovatebot/renovate:44.257.5@sha256:d57dca79611ee02af29f1243d27956618a291e6364294ea8ae17629b2e66696f
+    steps:
+      - name: Update this repository using its Renovate configuration
+        env:
+          RENOVATE_TOKEN: ${{ secrets.PINS_TOKEN || github.token }}
+          REPOSITORY: ${{ github.repository }}
+          RENOVATE_ONBOARDING: 'false'
+        run: renovate "$REPOSITORY"
+
+  checks:
+    needs: update
+    if: always() && needs.update.result != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+      pull-requests: read
+    steps:
+      - name: Start CI for dependency updates whose push did not trigger it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh pr list --limit 200 --json headRefName,headRefOid,isCrossRepository \
+            --jq '.[] | select(.isCrossRepository == false and (.headRefName | startswith("renovate/"))) | [.headRefName,.headRefOid] | @tsv' |
+          while read -r branch commit; do
+            count=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$commit" --jq .total_count)
+            if [ "$count" = 0 ]; then gh workflow run ci.yml --ref "$branch"; fi
+          done

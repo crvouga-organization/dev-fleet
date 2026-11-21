@@ -60,7 +60,7 @@ Feature: A worker's disk and memory lines scale with the machine
   Rule: fleet-status says how many agent sessions the memory policy supports, and how many run
 
     The memory user workloads may use (90%), less what T3 keeps for itself
-    (1536 MiB), in sessions of an estimated 1024 MiB each. The size of a
+    (1536 MiB), in sessions of 512 MiB plus a 4096 MiB build. The size of a
     session is an estimate, so running more only warns.
 
     Scenario Outline: A worker with <memory> MiB running <running> sessions <verdict>
@@ -70,9 +70,9 @@ Feature: A worker's disk and memory lines scale with the machine
 
       Examples:
         | memory | running | verdict | summary                                                                                                |
-        | 8192   | 2       | passes  | 2 agent sessions running; the memory policy supports 5 at once on 8192 MiB (an estimated 1024 MiB each). |
-        | 16384  | 3       | passes  | the memory policy supports 12 at once                                                                  |
-        | 8192   | 6       | warns   | AGENT_SESSION_CAPACITY_EXHAUSTED: 6 agent sessions running                                             |
+        | 8192   | 1       | passes  | 1 agent sessions running; the memory policy supports 1 at once on 8192 MiB (an estimated 4608 MiB each). |
+        | 16384  | 2       | passes  | the memory policy supports 2 at once                                                                  |
+        | 8192   | 6       | warns   | AGENTS_OVER_CAPACITY: 6 agent sessions running                                             |
 
     Scenario: The capacity probe of a worker reports its sessions
       Given every command prints:
@@ -88,5 +88,5 @@ Feature: A worker's disk and memory lines scale with the machine
         """
       When the capacity of the worker is checked
       Then the check "worker:agent-sessions" passes
-      And the summary of the check "worker:agent-sessions" mentions "1 agent sessions running; the memory policy supports 5 at once"
+      And the summary of the check "worker:agent-sessions" mentions "1 agent sessions running; the memory policy supports 1 at once"
       And the check "worker:capacity:disk" passes

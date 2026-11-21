@@ -50,7 +50,7 @@ export async function workerCapacity(
   ];
 }
 
-const SESSIONS_EXHAUSTED = 'AGENT_SESSION_CAPACITY_EXHAUSTED';
+const SESSIONS_EXHAUSTED = 'AGENTS_OVER_CAPACITY';
 
 /** How many agent sessions this worker's memory policy supports, and how
  * many run. The size of a session is an estimate (`sizing.agentSessionMiB`),
@@ -58,7 +58,7 @@ const SESSIONS_EXHAUSTED = 'AGENT_SESSION_CAPACITY_EXHAUSTED';
  */
 export function sessionsCheck(memoryMiB: number, running?: number): Check {
   const supported = supportedSessions(memoryMiB);
-  const each = policy.sizing.agentSessionMiB;
+  const each = policy.sizing.agentSessionMiB + policy.sizing.agentBuildMiB;
   const now = running === undefined ? 'an unknown number' : String(running);
   const over = running !== undefined && running > supported;
   return {

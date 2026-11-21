@@ -91,6 +91,8 @@ batch, the riskiest way to change a fleet. Each pin is moved by a machine,
 one pull request at a time, which CI, the fresh workers and the VM test then
 judge like any change, unless it says below why a person moves it.
 
+The repository runs Renovate daily with its tracked configuration. Its dependency dashboard records pending updates.
+
 | Pin                                      | Moved by                                                                                      |
 | ---------------------------------------- | --------------------------------------------------------------------------------------------- |
 | Tools in `mise.toml` and `mise.lock`     | Renovate (`mise`), one pull request per tool                                                  |

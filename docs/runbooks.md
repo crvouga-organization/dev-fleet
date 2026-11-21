@@ -111,7 +111,7 @@ There are 304 codes; 46 need a person.
 - **Fix:** Resize a machine below the minimum, then run `devfleet fleet-sync`; nothing was installed on it. For a feature removal, run `devfleet fleet-sync` again. For too many sessions, finish some or move work to a larger worker.
 - **Escalate:** A package another package depends on stays installed until a person removes that one.
 
-- `AGENT_SESSION_CAPACITY_EXHAUSTED`: agent session capacity exhausted: more agent sessions run than the memory policy supports (a warning; the size of a session is an estimate).
+- `AGENTS_OVER_CAPACITY`: agent session capacity exhausted: more agent sessions run than the memory policy supports (a warning; the size of a session is an estimate).
 - `WORKER_FEATURES_INVALID`: worker features invalid: the session is neither desktop nor headless.
 - `WORKER_FEATURE_REMOVAL_INCOMPLETE`: worker feature removal incomplete: a Docker package or the docker group membership is still there with containers off.
 - `WORKER_SIZE_BELOW_MINIMUM`: worker size below minimum: less memory, disk or CPUs than the minimum worker. **Needs a person.**
