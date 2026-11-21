@@ -126,8 +126,11 @@ export function measure(exec: Exec, target: Target): State {
     ? exec.capture(['npm', 'trust', 'list', name, '--json'])
     : null;
   const configs = trust?.ok ? trustConfigs(trust.stdout) : [];
+  // Read as `owner/repo` and a file name, or as a URL and a path.
+  const is = (value: string | undefined, want: string) =>
+    value === want || (value ?? '').endsWith(`/${want}`);
   const current = (config: TrustConfig) =>
-    config.repository === repo && config.file === WORKFLOW_FILE;
+    is(config.repository, repo) && is(config.file, WORKFLOW_FILE);
   exec.capture(['git', 'fetch', '--quiet', 'origin', 'main', '--tags'], root);
   const head = exec.capture(['git', 'rev-parse', 'HEAD'], root).stdout.trim();
   const main = exec
