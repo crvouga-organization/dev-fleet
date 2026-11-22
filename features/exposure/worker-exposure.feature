@@ -16,6 +16,7 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
       | docker0    | 172.17.0.1      |
     And the worker is not a container
     And the fleet firewall is loaded
+    And the worker hands out ports 32768 to 60999 for outgoing connections
     And the exposure policy is:
       """
       {}
@@ -92,10 +93,10 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
       And these sockets listen:
         | protocol | address | port | unit                                 |
         | tcp      | 0.0.0.0 | 3773 | app-com.t3tools.T3Code-4242.scope    |
-        | udp      | 0.0.0.0 | 50123 | app-com.t3tools.T3Code-4242.scope    |
+        | udp      | 0.0.0.0 | 3478 | app-com.t3tools.T3Code-4242.scope    |
       When the exposure of the worker is checked
       Then the check fails
-      And the summary of the check is "WORKER_LISTENER_UNRESTRICTED tcp 0.0.0.0:3773 (app-com.t3tools.T3Code-4242.scope), udp 0.0.0.0:50123 (app-com.t3tools.T3Code-4242.scope)"
+      And the summary of the check is "WORKER_LISTENER_UNRESTRICTED tcp 0.0.0.0:3773 (app-com.t3tools.T3Code-4242.scope), udp 0.0.0.0:3478 (app-com.t3tools.T3Code-4242.scope)"
       And the remedy of the check contains "returns to loopback when it next starts"
 
     Scenario: The report names a unit and a port, never what the process was started with
@@ -106,6 +107,36 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
       Then the checks do not contain "pid="
       And the checks do not contain "users:"
       And the checks do not contain "--token"
+
+  Rule: A client's UDP socket on a port the kernel handed out is not a listener
+    `ss -l -u` lists every unconnected UDP socket. The tunnel T3 runs speaks
+    QUIC from such sockets, on ports the kernel picks for outgoing
+    connections; the fleet firewall admits only the replies they asked for.
+
+    Scenario: The tunnel T3 runs, on ports the kernel handed out, passes
+      Given these sockets listen:
+        | protocol | address | port  | unit                              |
+        | tcp      | 0.0.0.0 | 22    | ssh.service                       |
+        | udp      | 0.0.0.0 | 47658 | app-com.t3tools.T3Code-4242.scope |
+        | udp      | ::      | 35043 | app-com.t3tools.T3Code-4242.scope |
+      When the exposure of the worker is checked
+      Then the check passes
+
+    Scenario: A UDP socket outside the range the kernel hands out is still a listener
+      Given the worker hands out ports 50000 to 60000 for outgoing connections
+      And these sockets listen:
+        | protocol | address | port  | unit                              |
+        | udp      | 0.0.0.0 | 47658 | app-com.t3tools.T3Code-4242.scope |
+      When the exposure of the worker is checked
+      Then the check fails
+      And the summary of the check is "WORKER_LISTENER_UNRESTRICTED udp 0.0.0.0:47658 (app-com.t3tools.T3Code-4242.scope)"
+
+    Scenario: A TCP listener on a port in that range is a listener
+      Given these sockets listen:
+        | protocol | address | port  | unit                   |
+        | tcp      | 0.0.0.0 | 47658 | t3code-desktop.service |
+      When the exposure of the worker is checked
+      Then the check fails
 
   Rule: An agent's development server is reported by the declared policy
 

@@ -189,6 +189,17 @@ Given(
   }
 );
 
+Given(
+  'the worker hands out ports {int} to {int} for outgoing connections',
+  (world, low: number, high: number) => {
+    world.commands.answer(
+      (command) =>
+        command.join(' ') === 'cat /proc/sys/net/ipv4/ip_local_port_range',
+      succeeded(`${low}\t${high}\n`)
+    );
+  }
+);
+
 Given('the exposure policy is:', (world, text: string) => {
   const declared = parseExposure(JSON.parse(text));
   expect(declared).not.toBeNull();

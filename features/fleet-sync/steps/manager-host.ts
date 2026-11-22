@@ -191,6 +191,10 @@ Given(
   ),
   (world, host: string, except?: string) => recoverable(world, host, except)
 );
+Given('the macOS manager is a laptop with no autorestart setting', (world) => {
+  const { autorestart: _none, ...laptop } = policy.pmset;
+  pmsetAc(world, laptop);
+});
 Given('FileVault is on on the macOS manager', (world) => {
   world.commands.answer('fdesetup status', succeeded('FileVault is On.\n'));
 });

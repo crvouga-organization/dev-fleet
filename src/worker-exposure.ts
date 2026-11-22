@@ -239,6 +239,19 @@ interface Observed {
   interfaces: Interface[];
   listeners: Listener[];
   firewall: Firewall;
+  /** The ports the kernel hands out to outgoing connections. */
+  ephemeral: [number, number];
+}
+
+/** Linux's default ip_local_port_range, used when the worker's cannot be
+ * read. */
+const EPHEMERAL: [number, number] = [32768, 60999];
+
+function portRange(text: string): [number, number] | null {
+  const [low, high] = text.trim().split(/\s+/).map(Number);
+  return Number.isInteger(low) && Number.isInteger(high) && low! <= high!
+    ? [low!, high!]
+    : null;
 }
 
 /** What the worker shows, or the check itself when exposure is not
@@ -291,17 +304,28 @@ async function observe(run: Runner): Promise<Observed | Check> {
     'table',
     ...FIREWALL_TABLE,
   ]);
+  const range = await run(['cat', '/proc/sys/net/ipv4/ip_local_port_range']);
   return {
     interfaces,
     listeners: parseListeners(sockets.stdout),
     firewall: table.ok
       ? parseFirewall(table.stdout)
       : { active: false, publicSsh: false },
+    ephemeral: (range.ok && portRange(range.stdout)) || EPHEMERAL,
   };
 }
 
-/** The listeners beyond loopback, the tailnet and the container bridges. */
+/** The listeners beyond loopback, the tailnet and the container bridges.
+ * `ss -l -u` lists every unconnected UDP socket, and a client's on a port the
+ * kernel handed out (a QUIC tunnel, a DNS lookup) is one: it is not a
+ * listener. The fleet firewall, which this check requires, admits only the
+ * replies it asked for. */
 function exposedListeners(observed: Observed): Listener[] {
+  const [low, high] = observed.ephemeral;
+  const client = (listener: Listener) =>
+    listener.protocol === 'udp' &&
+    listener.port >= low &&
+    listener.port <= high;
   const bridged = new Set(
     observed.interfaces
       .filter((entry) => internal(entry.name))
@@ -312,7 +336,8 @@ function exposedListeners(observed: Observed): Listener[] {
       !(listener.device && internal(listener.device)) &&
       !isLoopback(listener.address) &&
       !isTailnet(listener.address) &&
-      !bridged.has(listener.address)
+      !bridged.has(listener.address) &&
+      !client(listener)
   );
 }
 
