@@ -102,6 +102,24 @@ Feature: A worker is bootstrapped over SSH with one verified revision
         | keeps running agent turns           | keep-turns   |
         | restarts a busy T3 (--restart-busy) | restart-busy |
 
+    Scenario Outline: The bootstrap tells the worker when the older mise its revision pins is to be installed (<request>)
+      A worker's toolchain bootstrap keeps a newer mise unless fleet-sync was
+      given --allow-mise-downgrade. The word follows every other argument,
+      and nothing is passed without the flag.
+      Given the sync <request>
+      And the worker answers that it holds the revision
+      And the bootstrap on the worker succeeds, printing:
+        """
+        { "version": 1, "checks": [ { "id": "fixture:configuration", "status": "pass", "summary": "Verified fixture" } ] }
+        """
+      When the worker is bootstrapped
+      Then the last thing the bootstrap was passed is "<last>"
+
+      Examples:
+        | request                                        | last                 |
+        | keeps a newer mise                             | keep-turns           |
+        | may downgrade mise (--allow-mise-downgrade)    | allow-mise-downgrade |
+
     Scenario: A worker held by another fleet operation reports the lock, and nothing else is claimed
       Given the worker answers that it does not hold the revision
       And the bootstrap on the worker fails, printing:

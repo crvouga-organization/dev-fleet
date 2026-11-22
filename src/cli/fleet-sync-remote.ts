@@ -27,6 +27,7 @@ import {
   prepareBootstrap,
   bootstrapRemote,
   readsTailnetKey,
+  type BootstrapPayload,
 } from '../remote-bootstrap';
 import { secret } from '../fleet-config';
 import { fleetTailnetControl, type TailnetControl } from '../tailnet-control';
@@ -34,6 +35,7 @@ import { discoverTailnet, type TailnetComputer } from '../tailscale';
 import { deployWorker } from './fleet-sync-worker';
 import { packagePlaybook } from '../platform/ansible';
 import { machineRoot } from './fleet-sync';
+import { allowsMiseDowngrade } from './fleet-sync-mise';
 import {
   blocking,
   type Check,
@@ -112,10 +114,7 @@ export async function selected(
         checkout: settings.workspace,
       })
     : null;
-  const payload =
-    prepared && options.restartBusy
-      ? { ...prepared, restartBusy: true }
-      : prepared;
+  const payload = prepared && { ...prepared, ...requested(options) };
   const started = Date.now();
   const report = await synchronizeManager(
     {
@@ -154,6 +153,18 @@ export async function selected(
   if (notes.some(blocking)) report.ok = false;
   if (settle) report.checks.push(await settle(report));
   return outcome(report, planFingerprint, started);
+}
+
+/** What the request asks of each worker's bootstrap. */
+function requested(
+  options: FleetSyncOptions
+): Pick<BootstrapPayload, 'restartBusy' | 'allowMiseDowngrade'> {
+  return {
+    ...(options.restartBusy ? { restartBusy: true } : {}),
+    ...(allowsMiseDowngrade(options, options.revision)
+      ? { allowMiseDowngrade: true }
+      : {}),
+  };
 }
 
 /** What selected the run's revision, and the approved one it replaces. */

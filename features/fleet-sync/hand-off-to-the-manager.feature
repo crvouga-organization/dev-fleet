@@ -110,6 +110,44 @@ Feature: fleet-sync started on a worker is handed to the manager
         | DEVFLEET_SELECTED_BY                                        |
         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:checkout@worker-one |
 
+    Scenario: The mise guard runs after the question about the default branch and before the run script
+      A revision whose bootstrap is from before the rule that keeps a newer
+      mise would replace the manager's with the older one it pins.
+      When a worker prepares to hand "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      Then what the manager is asked to run contains:
+        | $HOME/.local/bin/mise                    |
+        | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
+      And what the manager is asked to run names "fleet-revision-guard" before "fleet-mise-guard"
+      And what the manager is asked to run names "fleet-mise-guard" before "fleet-manager-run"
+
+    Scenario: --allow-mise-downgrade skips the mise guard, and the manager is told rather than given a flag
+      The run on the manager is the revision's own code, which may be older
+      than the flag: it is told in its environment, about the one revision.
+      When a worker prepares to hand "fleet-sync --allow-mise-downgrade --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      Then what the manager is asked to run does not contain "fleet-mise-guard"
+      And what the manager is asked to run contains:
+        | DEVFLEET_MISE_DOWNGRADE_ALLOWED=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
+        | fleet-revision-guard                                                   |
+      And the manager is asked for exactly "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --json"
+
+    Scenario: With no revision to say it about, --allow-mise-downgrade reaches the manager's launcher
+      When a worker prepares to hand "fleet-sync --allow-mise-downgrade" with no revision to the manager
+      Then what the manager is asked to run names "fleet-sync" directly followed by "--allow-mise-downgrade"
+
+    Scenario: A request about the schedule converges nothing now, so the mise guard is left out
+      The runs the schedule starts are asked when they start.
+      When a worker prepares to hand "fleet-sync --schedule enable --apply --yes" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      Then what the manager is asked to run does not contain "fleet-mise-guard"
+
+    Scenario: A mise guard that exits with 67 is reported as FLEET_MISE_DOWNGRADE, and nothing ran
+      Given the manager answers the hand-off with exit code 67 and nothing
+      When "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
+      Then the command exits with 1
+      And the report has:
+        | code     | FLEET_MISE_DOWNGRADE                     |
+        | revision | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
+      And the report mentions "--allow-mise-downgrade"
+
     Scenario Outline: A guard that exits with <exit> is reported as <code>, and nothing ran
       Given the manager answers the hand-off with exit code <exit> and nothing
       When "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager

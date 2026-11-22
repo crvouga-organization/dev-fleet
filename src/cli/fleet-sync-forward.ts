@@ -9,6 +9,7 @@ import { shellQuote, sshArgs } from '../ssh';
 import type { FleetNode } from '../types';
 import type { CommandOutcome } from './contracts';
 import type { FleetSyncOptions } from './fleet-sync';
+import { ALLOW_MISE_DOWNGRADE_ENV, miseGuard } from './fleet-sync-mise';
 
 /** Set on the manager side of a hand-off (and in tests): never hand off again. */
 export const NO_FORWARD_ENV = 'PERSONAL_FLEET_NO_FORWARD';
@@ -33,8 +34,23 @@ export function asksAncestry(options: FleetSyncOptions): boolean {
   );
 }
 
-/** What the guard below exits with; nothing else on the manager uses them. */
-const GUARD_EXIT = { unmerged: 65, unverified: 66 } as const;
+/** Whether a request's revision may not replace a newer mise with the older
+ * one it pins: always, unless --allow-mise-downgrade says otherwise or the
+ * request is about the schedule, whose own runs are asked when they start.
+ */
+export function asksMise(options: FleetSyncOptions): boolean {
+  return !options.allowMiseDowngrade && !options.schedule;
+}
+
+/** What the guards below exit with; nothing else on the manager uses them. */
+const GUARD_EXIT = { unmerged: 65, unverified: 66, miseDowngrade: 67 } as const;
+
+/** Run on the manager after the ancestry guard and before a handed-off
+ * revision's own run script: a revision whose bootstrap is from before the
+ * rule that keeps a newer mise may not replace the manager's with the older
+ * one it pins.
+ */
+export const MISE_GUARD = miseGuard(GUARD_EXIT.miseDowngrade);
 
 /** Run on the manager before a handed-off revision's own run script, which
  * installs that revision's toolchain there: the manager's own copy of the
@@ -120,6 +136,12 @@ function handOffFailure(
       `The manager changed nothing: it has no copy of ${repository} yet, or could not fetch it, so it is not known whether its default branch holds the revision. Run fleet-sync once on the manager itself, and check its network and Git access; --allow-unmerged converges without asking.`,
       { revision: revision ?? null }
     );
+  if (exitCode === GUARD_EXIT.miseDowngrade)
+    return failed(
+      'FLEET_MISE_DOWNGRADE',
+      `The manager changed nothing: the revision pins an older mise than the manager runs, and its toolchain bootstrap is from before the rule that keeps a newer mise, so it would replace it. Every checkout on the manager whose mise.toml asks for a newer mise would then stop working. Converge to a revision whose bootstrap keeps a newer mise (any release since that rule), or pass --allow-mise-downgrade to install the older mise on purpose.`,
+      { revision: revision ?? null }
+    );
   if (exitCode === 255)
     return failed(
       'FLEET_MANAGER_UNREACHABLE',
@@ -132,7 +154,8 @@ function handOffFailure(
  * fleet-sync from a clean checkout of that exact revision; otherwise (no
  * revision, or an older one without the script) its installed launcher.
  * Either way the manager is first asked whether the default branch holds the
- * revision, and is told what selected it.
+ * revision and whether it would replace the manager's mise with an older
+ * one, and is told what selected it.
  */
 export function managerCommand(
   definition: FleetDefinition,
@@ -169,6 +192,9 @@ export function managerCommand(
           ...forwardedFlags(options, revision),
           // With no revision to say it about, the manager is told directly.
           ...(!revision && options.allowUnmerged ? ['--allow-unmerged'] : []),
+          ...(!revision && options.allowMiseDowngrade
+            ? ['--allow-mise-downgrade']
+            : []),
         ];
   const color = process.stdout.isTTY && !process.env['NO_COLOR'];
   // A login shell gives the manager's normal PATH (mise, Docker, Tailscale).
@@ -180,29 +206,37 @@ export function managerCommand(
 }
 
 /** What a hand-off that names a revision adds to the manager's command: what
- * selected the revision, exported for the run there, and the guard that runs
- * before it.
+ * selected the revision and whether mise may be downgraded for it, exported
+ * for the run there, and the guards that run before it.
  */
 function aboutRevision(
   options: FleetSyncOptions,
   revision: string,
   selection: RevisionSelection | undefined
 ): { told: string; guard: string } {
-  const quoted = (words: string[]) => words.map(shellQuote).join(' ');
+  const guard = (script: string, name: string) =>
+    `${['sh', '-c', script, name, revision].map(shellQuote).join(' ')} || exit $?; `;
   return {
-    told: selection
-      ? ` ${SELECTED_BY_ENV}=${shellQuote(encodeSelection(revision, selection))}`
-      : '',
-    guard: asksAncestry(options)
-      ? `${quoted(['sh', '-c', ANCESTRY_GUARD, 'fleet-revision-guard', revision])} || exit $?; `
-      : '',
+    told:
+      (selection
+        ? ` ${SELECTED_BY_ENV}=${shellQuote(encodeSelection(revision, selection))}`
+        : '') +
+      (options.allowMiseDowngrade
+        ? ` ${ALLOW_MISE_DOWNGRADE_ENV}=${revision}`
+        : ''),
+    guard:
+      (asksAncestry(options)
+        ? guard(ANCESTRY_GUARD, 'fleet-revision-guard')
+        : '') +
+      (asksMise(options) ? guard(MISE_GUARD, 'fleet-mise-guard') : ''),
   };
 }
 
 /** The flags of a request, for the run of the revision's own code. That code
- * may be older than a flag, so --allow-unmerged is not among them: the run
- * that hands the request on answers for it, and says so in what it tells the
- * next (SELECTED_BY_ENV).
+ * may be older than a flag, so --allow-unmerged and --allow-mise-downgrade
+ * are not among them: the run that hands the request on answers for them,
+ * and says so in what it tells the next (SELECTED_BY_ENV,
+ * ALLOW_MISE_DOWNGRADE_ENV).
  */
 export function forwardedFlags(
   options: FleetSyncOptions,

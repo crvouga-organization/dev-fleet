@@ -114,7 +114,7 @@ export function agentGuide(release: Release) {
       state:
         'The approved and applied revision are kept in the fleet state and uploaded to its bucket after every run; the report carries the state:replica check',
       revision:
-        'The fleet moves only to a revision on the default branch of the source repository, which every release is; any other is refused with FLEET_REVISION_UNMERGED before anything changes. --allow-unmerged converges to one on purpose: use it only when the person who owns the fleet asked for that revision. The report says what selected the revision (selectedBy).',
+        'The fleet moves only to a revision on the default branch of the source repository, which every release is; any other is refused with FLEET_REVISION_UNMERGED before anything changes. --allow-unmerged converges to one on purpose: use it only when the person who owns the fleet asked for that revision. The report says what selected the revision (selectedBy). A revision whose own toolchain bootstrap would replace a newer mise with the older one it pins (a rollback to an earlier release) is refused with FLEET_MISE_DOWNGRADE before anything changes; --allow-mise-downgrade lets it, and breaks every checkout on those machines that needs the newer mise: use it only when the person who owns the fleet asked for that.',
       readiness:
         'Full Ubuntu acceptance is incomplete and fails closed; do not override it or claim deployment success.',
     },

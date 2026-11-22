@@ -30,7 +30,7 @@ const watch = part(() => ({
   answer: 200,
   store: undefined as WatchStore | null | undefined,
   nodes: [] as NodeReport[],
-  revision: null as WatchedRevision | null,
+  revision: null as WatchedRevision | null | 'unreadable',
 }));
 
 function nodes(failing: Record<string, string>): NodeReport[] {
@@ -102,6 +102,43 @@ Given(
   }
 );
 
+Given(
+  'the watcher ran while the fleet state said of the approved revision:',
+  async (world, json: string) => {
+    watch(world).revision = JSON.parse(json) as WatchedRevision;
+    await run(world, false, '2026-11-10T23:45:00Z');
+  }
+);
+
+Given(
+  'the watcher ran while the fleet state could not be read',
+  async (world) => {
+    watch(world).revision = 'unreadable';
+    await run(world, false, '2026-11-10T23:50:00Z');
+  }
+);
+
+When('the watcher runs twice', async (world) => {
+  await run(world, false, '2026-11-11T00:00:00Z');
+  await run(world, false, '2026-11-11T00:15:00Z');
+});
+
+Then(
+  'the webhook receiver was told of the revision:',
+  (world, json: string) => {
+    const body = JSON.parse(watch(world).received.at(-1)!.body) as Record<
+      string,
+      unknown
+    >;
+    expect({
+      event: body['event'],
+      node: body['node'],
+      revision: body['revision'],
+      text: body['text'],
+    }).toEqual(JSON.parse(json));
+  }
+);
+
 Then('fleet-watch reports the revision:', (world, json: string) => {
   expect((outcome(world).data as { revision?: unknown }).revision).toEqual(
     JSON.parse(json)
@@ -125,7 +162,10 @@ async function run(world: CliWorld, test: boolean, at: string) {
   world.outcome = await fleetWatch(test ? { test } : {}, {
     notify: state.notify,
     status: () => Promise.resolve(state.nodes),
-    revision: () => Promise.resolve(state.revision),
+    revision: () =>
+      state.revision === 'unreadable'
+        ? Promise.reject(new Error('The fleet state cannot be read.'))
+        : Promise.resolve(state.revision),
     store: state.store ?? null,
     secrets: (name) => Promise.resolve(state.secrets[name] ?? null),
     send: fetch,

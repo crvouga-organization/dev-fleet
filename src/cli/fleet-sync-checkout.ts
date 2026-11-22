@@ -14,6 +14,7 @@ import type { Runner } from '../types';
 import type { CommandOutcome } from './contracts';
 import type { FleetSyncOptions } from './fleet-sync';
 import { forwardedFlags, type ForwardSpawn } from './fleet-sync-forward';
+import { ALLOW_MISE_DOWNGRADE_ENV } from './fleet-sync-mise';
 
 /** Exported by `fleet-manager-run.sh`: this process already runs from the
  * fleet-owned checkout of that revision.
@@ -39,6 +40,8 @@ export interface RunSource {
   root: string;
   /** What selected the revision; the run in the checkout is told. */
   selection?: RevisionSelection;
+  /** The run was given --allow-mise-downgrade; the run in the checkout is told. */
+  allowMiseDowngrade?: boolean;
 }
 
 /** The revision's run script: tracked in a checkout, or shipped in the
@@ -89,6 +92,8 @@ export async function runFromCheckout(
   // It is given --revision, which does not say what selected the revision.
   if (source.selection)
     process.env[SELECTED_BY_ENV] = encodeSelection(revision, source.selection);
+  if (source.allowMiseDowngrade)
+    process.env[ALLOW_MISE_DOWNGRADE_ENV] = revision;
   const result = await spawnLocal([
     'sh',
     '-c',

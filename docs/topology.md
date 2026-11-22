@@ -118,7 +118,7 @@ then on `fleet-sync` and `fleet-status` list it as parked with the time since
 canary, and it never changes an exit code. Parking refuses while agent turns
 run on it (`WORKER_BUSY`) unless `--force`. `devfleet fleet-node-resume --id
 ID` marks it active and runs `fleet-sync --node ID`, which converges and
-verifies it. `parking.stop` and `parking.start` in `fleet.json` name commands
+verifies it (`--allow-unmerged` is passed on to that sync). `parking.stop` and `parking.start` in `fleet.json` name commands
 (an infrastructure tool, never a provider dev-fleet calls) run with the worker
 ID as their last argument. A parked worker found online on the tailnet is a
 warning (`worker:parked-online`); one that comes back as a new machine goes

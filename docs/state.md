@@ -23,8 +23,8 @@ those words only: never an account, a host name or a command line. The
 history and `fleet-watch` (`revision`) repeat it.
 
 `devfleet fleet-watch` also keeps `watch.json` in the bucket, beside the
-database: the health of each worker when it last looked, and when that was
-(the manager's heartbeat). Losing it costs at most one repeated notification.
+database: the health of each worker when it last looked, the approved
+revision it saw (`revision`) and when that was (the manager's heartbeat). Losing it costs at most one repeated notification.
 
 The three documents live in one SQLite database, and [Litestream](https://litestream.io)
 replicates that database to a storage bucket you own. The bucket is the source

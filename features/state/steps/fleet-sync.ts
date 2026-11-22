@@ -36,17 +36,26 @@ const sync = scratch<{
   unmerged: Set<string>;
   /** Whether the source repository answers a fetch. */
   reachable: boolean;
+  /** The revisions whose files the source repository shows: the mise each
+   * pins, and whether its toolchain bootstrap keeps a newer one.
+   */
+  pins: Map<string, { mise: string; keepsNewer: boolean }>;
+  /** The mise the manager runs, when it runs one. */
+  mise: string | null;
 }>(() => ({
   restarts: 0,
   enrollmentBefore: null,
   unmerged: new Set(),
   reachable: true,
+  pins: new Map(),
+  mise: null,
 }));
 
 /** Git on the manager, as far as fleet-sync asks it here: its own copy of
  * the fleet's source repository, whose default branch holds every revision
- * but the ones a scenario names. Anything else Git is asked fails, as it
- * does where there is no checkout.
+ * but the ones a scenario names, and which shows the files of the revisions
+ * a scenario describes. Anything else Git is asked fails, as it does where
+ * there is no checkout.
  */
 function git(world: StateWorld, argv: string[]) {
   const answer = (ok: boolean, stdout = '') => ({
@@ -55,7 +64,21 @@ function git(world: StateWorld, argv: string[]) {
     stderr: '',
     reason: 'exit' as const,
   });
-  const { unmerged, reachable } = sync(world);
+  const { unmerged, reachable, pins } = sync(world);
+  const described = [...pins].find(([revision]) =>
+    argv.some((word) => word.startsWith(revision))
+  );
+  if (described && argv[1] === 'rev-parse')
+    return answer(true, `${described[0]}\n`);
+  if (described && argv[1] === 'show') {
+    const [, { mise, keepsNewer }] = described;
+    return argv[2]!.endsWith(':mise.toml')
+      ? answer(true, `min_version = "${mise}"\n`)
+      : answer(
+          true,
+          `#!/usr/bin/env bash\n${keepsNewer ? 'for arg; do [[ "$arg" != --allow-mise-downgrade ]] || allow_downgrade=true; done\n' : ''}`
+        );
+  }
   if (argv[1] === 'remote') return answer(true, `${fleet.source.repository}\n`);
   if (argv[1] === 'merge-base') return answer(!unmerged.has(argv[3]!));
   if (argv[1] === 'fetch') return answer(reachable);
@@ -72,6 +95,14 @@ Given('fleet-sync runs on a manager with no worker enrolled', (world) => {
     if (argv[0] === 'mise' || argv[0] === '/pinned/litestream')
       return world.litestream.run(argv, options);
     if (argv[0] === 'git') return Promise.resolve(git(world, argv));
+    const { mise } = sync(world);
+    if (argv[0] === join(manager.home, '.local/bin/mise') && mise)
+      return Promise.resolve({
+        ok: true,
+        stdout: `${mise} macos-arm64 (2026-11-01)\n`,
+        stderr: '',
+        reason: 'exit',
+      });
     return Promise.resolve({
       ok: false,
       stdout: '',
@@ -88,6 +119,20 @@ Given(
     sync(world).unmerged.add(revision);
   }
 );
+
+Given(
+  /^revision "([a-f0-9]{40})" pins mise "([^"]+)", and its toolchain bootstrap (is from before the rule that keeps a newer mise|keeps a newer mise)$/,
+  (world, revision: string, mise: string, kind: string) => {
+    sync(world).pins.set(revision, {
+      mise,
+      keepsNewer: kind.startsWith('keeps'),
+    });
+  }
+);
+
+Given('the manager runs mise {string}', (world, mise: string) => {
+  sync(world).mise = mise;
+});
 
 Given('the source repository cannot be fetched', (world) => {
   sync(world).reachable = false;
@@ -134,6 +179,7 @@ function run(
     dryRun?: boolean;
     rollback?: boolean;
     allowUnmerged?: boolean;
+    allowMiseDowngrade?: boolean;
   }
 ): Promise<CommandOutcome> {
   const manager = world.manager();
@@ -152,12 +198,21 @@ function run(
   return managerSync(options, settings, services);
 }
 
+/** `--allow-unmerged` is `{ allowUnmerged: true }`. */
+const allowing = (flag: string | undefined) =>
+  flag === '--allow-unmerged'
+    ? { allowUnmerged: true }
+    : flag === '--allow-mise-downgrade'
+      ? { allowMiseDowngrade: true }
+      : {};
+const ALLOWING = '(?: with (--allow-unmerged|--allow-mise-downgrade))?';
+
 Given(
-  /^fleet-sync (runs|ran) for revision "([a-f0-9]{40})"( with --allow-unmerged)?$/,
-  (world, verb: string, revision: string, allowed: string | undefined) =>
-    act(world, verb, () =>
-      run(world, { revision, ...(allowed ? { allowUnmerged: true } : {}) })
-    )
+  new RegExp(
+    `^fleet-sync (runs|ran) for revision "([a-f0-9]{40})"${ALLOWING}$`
+  ),
+  (world, verb: string, revision: string, flag: string | undefined) =>
+    act(world, verb, () => run(world, { revision, ...allowing(flag) }))
 );
 When(
   /^fleet-sync previews revision "([a-f0-9]{40})"$/,
@@ -165,10 +220,10 @@ When(
     world.attempt(() => run(world, { revision, dryRun: true }))
 );
 
-When(/^fleet-sync rolls back( with --allow-unmerged)?$/, (world, allowed) =>
-  world.attempt(() =>
-    run(world, { rollback: true, ...(allowed ? { allowUnmerged: true } : {}) })
-  )
+When(
+  new RegExp(`^fleet-sync rolls back${ALLOWING}$`),
+  (world, flag: string | undefined) =>
+    world.attempt(() => run(world, { rollback: true, ...allowing(flag) }))
 );
 
 Then(

@@ -264,7 +264,9 @@ sync/repairs.
 `devfleet fleet-watch` runs `fleet-status --workers`, compares the result with
 the previous run and notifies only when a worker changes between ready and
 degraded, and again every `repeatHours` (default 24) while it stays degraded.
-Name the targets in `fleet.json`; the address of each is a secret, read through
+It also notifies once when the approved revision of the fleet is another one
+than at its last run (`revision-changed`, about the node `fleet`), with the
+revision, the one it replaced and what selected it. Name the targets in `fleet.json`; the address of each is a secret, read through
 the secret provider like any other:
 
 ```json
@@ -276,7 +278,9 @@ the secret provider like any other:
 | `webhook` | `notify-webhook-url` | A JSON POST: `source`, `event`, `node`, `checks` (check IDs), `text` |
 | `ntfy`    | `notify-ntfy-url`    | A text POST to the topic URL                                         |
 
-A notification carries node and check IDs only. `devfleet fleet-watch --test`
+A notification carries node and check IDs only; `revision-changed` adds
+`revision` (`approved`, `replaced`, and `selectedBy` in the fixed words of the
+fleet state). `devfleet fleet-watch --test`
 sends one test notification to every target.
 
 Every run stores what it saw, and when, as `watch.json` beside the fleet state

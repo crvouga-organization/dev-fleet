@@ -47,6 +47,7 @@ Feature: devfleet fleet-sync refuses before it changes anything
         | --yes      |
         | --revision |
         | --allow-unmerged |
+        | --allow-mise-downgrade |
 
   Rule: An approval is bound to the plan it approved
 
@@ -101,3 +102,5 @@ Feature: devfleet fleet-sync refuses before it changes anything
         | fleet-sync --restart-busy --schedule enable |
         | fleet-sync --allow-unmerged --schedule enable |
         | fleet-sync --allow-unmerged --only accounts |
+        | fleet-sync --allow-mise-downgrade --schedule enable |
+        | fleet-sync --allow-mise-downgrade --only accounts |

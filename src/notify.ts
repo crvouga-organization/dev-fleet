@@ -53,6 +53,8 @@ export interface WatchMemory {
     string,
     { state: 'ready' | 'degraded'; since: string; notifiedAt: string | null }
   >;
+  /** The approved revision the watcher last saw, once it saw one. */
+  revision?: string;
 }
 
 /** One machine as fleet-status saw it: the IDs of its failing checks. */
@@ -62,9 +64,37 @@ export interface Observation {
 }
 
 export interface Notification {
-  event: 'degraded' | 'recovered' | 'still-degraded' | 'test';
+  event:
+    'degraded' | 'recovered' | 'still-degraded' | 'revision-changed' | 'test';
   node: string;
   checks: string[];
+  /** `revision-changed`: the approved revision now, the one it replaced and
+   * what selected it, in the fixed words of the fleet state.
+   */
+  revision?: { approved: string; replaced: string; selectedBy?: string };
+}
+
+/** What a notification about the fleet as a whole names as its node. */
+export const FLEET = 'fleet';
+
+/** The notification for an approved revision that is not the one the watcher
+ * saw last. The first revision the watcher ever sees is only remembered.
+ */
+export function revisionChange(
+  previous: WatchMemory | null,
+  approved: string | undefined,
+  selectedBy?: string
+): Notification[] {
+  const replaced = previous?.revision;
+  if (!approved || !replaced || replaced === approved) return [];
+  return [
+    {
+      event: 'revision-changed',
+      node: FLEET,
+      checks: [],
+      revision: { approved, replaced, ...(selectedBy ? { selectedBy } : {}) },
+    },
+  ];
 }
 
 /** Required failures and early disk warnings reach the configured targets. */
@@ -152,10 +182,30 @@ const WORDS: Record<Notification['event'], string> = {
   degraded: 'is degraded',
   recovered: 'is ready again',
   'still-degraded': 'is still degraded',
+  'revision-changed': 'has a new approved revision',
   test: 'sent a test notification',
 };
 
+const REVISION = /^[a-f0-9]{40}$/;
+
+/** The revisions of a notification, when both are commit SHAs. */
+function revisions(
+  notification: Notification
+): NonNullable<Notification['revision']> | null {
+  const { revision } = notification;
+  return revision &&
+    REVISION.test(revision.approved) &&
+    REVISION.test(revision.replaced)
+    ? revision
+    : null;
+}
+
 export function notificationText(notification: Notification): string {
+  const changed = revisions(notification);
+  if (notification.event === 'revision-changed' && changed)
+    return `dev-fleet: the approved revision of the fleet changed from ${changed.replaced.slice(0, 12)} to ${changed.approved.slice(0, 12)}${
+      changed.selectedBy ? `, selected by ${changed.selectedBy}` : ''
+    }`;
   const node = safe(notification.node) ? notification.node : 'a machine';
   const checks = notification.checks.filter(safe);
   return `dev-fleet: ${node} ${WORDS[notification.event]}${
@@ -236,6 +286,7 @@ function request(
       event: notification.event,
       node: safe(notification.node) ? notification.node : null,
       checks: notification.checks.filter(safe),
+      ...(revisions(notification) ? { revision: revisions(notification) } : {}),
       text,
     }),
     signal,
