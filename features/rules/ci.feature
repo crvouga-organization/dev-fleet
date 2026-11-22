@@ -21,6 +21,7 @@ Feature: Every pull request is checked the way machines run
       | state     |
       | fresh-box |
       | agent-box |
+      | proxy-box |
       | workflows |
       | ansible   |
       | manager   |
@@ -60,6 +61,12 @@ Feature: Every pull request is checked the way machines run
     And its "agent-box" job has no condition
     And its "agent-box" job runs "bun test features/monitoring"
     And its "agent-box" job sets "DEVFLEET_TEST_AGENT_BOX" to "required"
+
+  Scenario: The pinned CLI proxy is asked about an account it holds back on every pull request
+    Then the "CI" workflow runs on "pull_request"
+    And its "proxy-box" job has no condition
+    And its "proxy-box" job runs "bun test features/accounts"
+    And its "proxy-box" job sets "DEVFLEET_TEST_PROXY_BOX" to "required"
 
   Scenario: The agents play renders every CLI's configuration on every pull request and cannot skip
     Then the "CI" workflow runs on "pull_request"

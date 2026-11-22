@@ -11,7 +11,7 @@ import {
   ACCOUNT_LAUNCH,
   verifyNativeAgents,
 } from '../../src/agents/native-verify';
-import { select } from '../../src/agents/registry';
+import { registry, select } from '../../src/agents/registry';
 import { cacheKey, cachedCheck } from '../../src/agents/verify-cache';
 import {
   nativeLoginCheck,
@@ -40,6 +40,7 @@ import {
 import { fleetAccounts } from '../../src/cli/fleet-accounts';
 import type { CommandOutcome } from '../../src/cli/contracts';
 import type { Check, CommandResult, FleetNode } from '../../src/types';
+import type { ProxyBox } from './proxy-box';
 
 /** 2027-01-15T08:00:00Z */
 const NOW = 1_800_000_000_000;
@@ -91,6 +92,10 @@ export class AccountsWorld extends World {
   launches: number[] = [];
   /** Where this node remembers what its sessions found; nowhere when unset. */
   remembers?: string;
+  /** The pinned proxy in a container, where a scenario runs one
+   * (`proxy-box.ts`): it answers instead of `proxyAnswer`.
+   */
+  box?: ProxyBox;
   cache?: string;
   computed = 0;
 
@@ -773,10 +778,12 @@ async function verifySessions(world: AccountsWorld): Promise<void> {
     }
   );
   const now = () => world.clock ?? Date.now();
-  const send = (async (_url: string, init: RequestInit) => {
+  const send = (async (url: string, init: RequestInit) => {
     world.asked.push(
       (JSON.parse(String(init.body)) as { model: string }).model
     );
+    if (world.box)
+      return fetch(url.replace(registry.proxy.endpoint, world.box.url), init);
     if (!world.proxyAnswer) throw new TypeError('The proxy does not answer.');
     return new Response(world.proxyAnswer.body, {
       status: world.proxyAnswer.status,
@@ -799,7 +806,8 @@ async function verifySessions(world: AccountsWorld): Promise<void> {
         exposed: world.exposed,
         rosterVersion: liveVersion(live),
         keyVersion: 'key-1',
-        consult: (account) => proxyVerdict(account, 'client-key', send, now),
+        consult: (account) =>
+          proxyVerdict(account, world.box?.key ?? 'client-key', send, now),
         now,
       },
     }
