@@ -87,6 +87,10 @@ export class AccountsWorld extends World {
   proxyAnswer?: { status: number; body: string; headers?: HeadersInit };
   /** The models the proxy was asked for directly. */
   asked: string[] = [];
+  /** The deadline of each account session a launcher was started for. */
+  launches: number[] = [];
+  /** Where this node remembers what its sessions found; nowhere when unset. */
+  remembers?: string;
   cache?: string;
   computed = 0;
 
@@ -752,14 +756,21 @@ Given(
   }
 );
 
-When("this node's account sessions are verified", async (world) => {
+When("this node's account sessions are verified", verifySessions);
+
+async function verifySessions(world: AccountsWorld): Promise<void> {
   const live = accountsFrom(world.models);
   // Every launcher is a stand-in: an account's session ends as the scenario
   // says, and nothing else on the node answers.
   world.commands.answer(
     (command) => command.some((word) => word.includes('/agents/')),
-    (_command, options) =>
-      world.launched[options?.env?.['WS_AGENT_ACCOUNT'] ?? ''] ?? failed()
+    (_command, options) => {
+      if (options?.env?.['WS_AGENT_ACCOUNT'])
+        world.launches.push(options.timeoutMs ?? 0);
+      return (
+        world.launched[options?.env?.['WS_AGENT_ACCOUNT'] ?? ''] ?? failed()
+      );
+    }
   );
   const now = () => world.clock ?? Date.now();
   const send = (async (_url: string, init: RequestInit) => {
@@ -779,8 +790,9 @@ When("this node's account sessions are verified", async (world) => {
     REPOSITORY,
     world.commands.run,
     {
-      // Unwritable: nothing verified earlier is remembered.
-      cache: { directory: '/dev/null/verify' },
+      // Unwritable unless the scenario gives the node a memory: nothing
+      // verified earlier is remembered.
+      cache: { directory: world.remembers ?? '/dev/null/verify', now: now() },
       profiles: '/dev/null/profiles',
       accounts: {
         live,
@@ -795,10 +807,46 @@ When("this node's account sessions are verified", async (world) => {
   world.checks = checks.filter((check) =>
     /:account-\d+:session$/.test(check.id)
   );
-});
+}
 
 Then('the proxy was asked for the model {string}', (world, model: string) => {
-  expect(world.asked).toEqual([model]);
+  expect([...new Set(world.asked)]).toEqual([model]);
+});
+
+Then('the proxy was asked {int} time(s)', (world, times: number) => {
+  expect(world.asked.length).toBe(times);
+});
+
+Then('{int} session(s) was/were launched', (world, sessions: number) => {
+  expect(world.launches.length).toBe(sessions);
+});
+
+Then(
+  'the last session was given {int} seconds to end',
+  (world, seconds: number) => {
+    expect(world.launches.at(-1)).toBe(seconds * 1000);
+  }
+);
+
+Given('this node remembers what its account sessions found', (world) => {
+  world.remembers = world.temporary();
+});
+
+Given(
+  "this node's account sessions were verified {int} minutes ago",
+  async (world, minutes: number) => {
+    const now = world.clock ?? Date.now();
+    world.clock = now - minutes * 60_000;
+    await verifySessions(world);
+    world.clock = now;
+    world.asked = [];
+    world.launches = [];
+  }
+);
+
+Given('the account {string} answers its session again', (world, account) => {
+  world.launched[account] = succeeded('OK');
+  delete world.proxyAnswer;
 });
 
 Then('no check repeats what the proxy answered', (world) => {
