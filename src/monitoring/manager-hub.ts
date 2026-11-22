@@ -8,8 +8,8 @@ import { publicViewerIdentity, fleetAccount } from './hub-access';
 import { ensurePublicViewer, type HubLogin } from './hub-viewer';
 import { verifyHubBackups } from './hub-backup';
 import type { FleetDefinition } from '../definition';
-import { secretsLogin, secretVia } from '../fleet-config';
-import { blockedBySecretsLogin } from '../secrets-blocked';
+import { secretVia } from '../fleet-config';
+import { blockedBySecretsLogin, secretsFault } from '../secrets-blocked';
 import { hostId, hubUrl } from '../topology';
 import { publicHubUrl, privateHub } from './beszel';
 import type { Check, Runner } from '../types';
@@ -151,9 +151,10 @@ async function credentialChecks(
   options: ManagerHubOptions,
   { tunnel, account }: { tunnel: string | null; account: HubLogin | null }
 ): Promise<Check[]> {
-  const blocked =
-    (tunnel === null || account === null) &&
-    (await secretsLogin(run)) === 'required';
+  const fault =
+    tunnel === null || account === null
+      ? await secretsFault(secretVia(run))
+      : null;
   const backups =
     options.backups ??
     ((login: HubLogin | null) =>
@@ -161,13 +162,13 @@ async function credentialChecks(
         declared: definition.services.monitoring.backups,
       }));
   return [
-    blocked && tunnel === null
-      ? blockedBySecretsLogin('beszel:public-endpoint', 'warn')
+    fault && tunnel === null
+      ? blockedBySecretsLogin('beszel:public-endpoint', 'warn', fault)
       : publicEndpointCheck(tunnel !== null),
-    ...(blocked && account === null
+    ...(fault && account === null
       ? [
-          blockedBySecretsLogin('beszel:public-viewer', 'warn'),
-          blockedBySecretsLogin('beszel:backup', 'skip'),
+          blockedBySecretsLogin('beszel:public-viewer', 'warn', fault),
+          blockedBySecretsLogin('beszel:backup', 'skip', fault),
         ]
       : [await ensureViewer(options, account), await backups(account)]),
   ];

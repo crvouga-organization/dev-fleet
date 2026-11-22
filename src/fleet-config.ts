@@ -18,10 +18,9 @@ import { FleetUsageError } from './errors';
 import { pinnedPath } from './agents/toolchain';
 import type { Runner } from './types';
 import {
-  secretsLogin as providerLogin,
   secretsProvider,
   type SecretCommand,
-  type SecretsLogin,
+  type SecretName,
   type SecretsProvider,
 } from './secrets';
 import { isOperator, stateDefinition } from './state/operator';
@@ -247,8 +246,11 @@ export const fleet: FleetDefinition = new Proxy({} as FleetDefinition, {
 /** Reads one of this fleet's secrets for this node. Tools run from the pinned
  * toolchain, whatever PATH the caller (T3, launchd, systemd) started with.
  */
-export const secret: SecretsProvider = (name) =>
-  secretsProvider(fleet.secrets, { run: pinned })(name);
+export const secret: SecretsProvider = Object.assign(
+  (name: SecretName, node?: string) =>
+    secretsProvider(fleet.secrets, { run: pinned })(name, node),
+  { login: () => secretsProvider(fleet.secrets, { run: pinned }).login() }
+);
 
 /** The same, through an injected runner (fleet-sync phases and their tests). */
 export const secretVia = (run: Runner): SecretsProvider =>
@@ -258,20 +260,6 @@ export const secretVia = (run: Runner): SecretsProvider =>
       return result.ok ? result.stdout : null;
     },
   });
-
-/** Whether a secret that could not be read is behind a login this node does
- * not hold (`secretsLogin` in src/secrets.ts), through the same commands as
- * `secret`, or as `secretVia` through an injected runner.
- */
-export const secretsLogin = (run?: Runner): Promise<SecretsLogin> =>
-  providerLogin(fleet.secrets, {
-    run: run
-      ? async (argv) => {
-          const result = await run(argv, { timeoutMs: 20_000 });
-          return result.ok ? result.stdout : null;
-        }
-      : pinned,
-  })();
 
 const pinned: SecretCommand = (argv) =>
   new Promise((resolve) => {

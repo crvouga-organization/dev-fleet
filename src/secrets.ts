@@ -65,10 +65,14 @@ export type SecretCommand = (
  * value is never logged, printed or placed in argv. `node` names a node's own
  * copy of a secret that is kept once per node (`secretVariant`).
  */
-export type SecretsProvider = (
-  name: SecretName,
-  node?: string
-) => Promise<string | null>;
+export interface SecretsProvider {
+  (name: SecretName, node?: string): Promise<string | null>;
+  /** Why a read gave nothing (`secretsLogin`). A reader that got no secret
+   * answers through `unreadSecret` in src/secrets-blocked.ts, which asks
+   * this: the provider it read from is all it needs.
+   */
+  login: () => Promise<SecretsLogin>;
+}
 
 const present = (value: string | null | undefined): string | null =>
   value?.trim() ? value.trim() : null;
@@ -118,8 +122,18 @@ export function secretsProvider(
     home?: string;
   } = {}
 ): SecretsProvider {
-  const env = options.env ?? process.env;
   const run = options.run ?? execute;
+  return Object.assign(reader(config, { ...options, run }), {
+    login: secretsLogin(config, { run }),
+  });
+}
+
+function reader(
+  config: SecretsConfig,
+  options: { env?: NodeJS.ProcessEnv; run: SecretCommand; home?: string }
+): (name: SecretName, node?: string) => Promise<string | null> {
+  const env = options.env ?? process.env;
+  const run = options.run;
   if (config.provider === 'env')
     return async (name, node) => present(env[envName(name, node)]);
   if (config.provider === 'file') {
@@ -164,18 +178,22 @@ export function secretsProvider(
   };
 }
 
-/** Why this node's provider gave no secret: `required` when the provider
- * needs a login this node does not hold, `held` when it can be read, so the
- * secret itself is not there.
+/** Why this node's provider gave no secret: `held` when it can be read, so
+ * the secret itself is not there; `required` when the provider answers but
+ * this node holds no login to it; `unreachable` when the provider does not
+ * answer at all, which no login repairs.
  */
-export type SecretsLogin = 'held' | 'required';
+export type SecretsLogin = 'held' | 'required' | 'unreachable';
 
 /** Tells a provider that cannot be read from a secret it does not hold, for
  * a check that got no secret: asked only then, never before a read. Only
  * Vault has a login (the node's own session); a secret the environment, a
  * file or a sops document does not hold is absent. The session is measured
  * the way the check that owns it does, by looking the token up, and nothing
- * the lookup prints is kept: it holds the token.
+ * the lookup prints is kept: it holds the token. A lookup that fails says
+ * nothing about why, so Vault is then asked for its status, which needs no
+ * login: an unsealed Vault that answers leaves the login, and one that is
+ * sealed, absent or out of reach is unreachable.
  */
 export function secretsLogin(
   config: SecretsConfig,
@@ -183,18 +201,32 @@ export function secretsLogin(
 ): () => Promise<SecretsLogin> {
   if (config.provider !== 'vault') return () => Promise.resolve('held');
   const run = options.run ?? execute;
-  return async () =>
-    (await run([
-      'vault',
-      'token',
-      'lookup',
-      `-address=${config.address}`,
-      '-format=json',
-    ])) === null
-      ? 'required'
-      : 'held';
+  return async () => {
+    if ((await run(vaultTokenLookup(config.address))) !== null) return 'held';
+    return (await run(vaultStatus(config.address))) === null
+      ? 'unreachable'
+      : 'required';
+  };
 }
 
+/** Whether this machine's Vault session answers. Prints the token. */
+export const vaultTokenLookup = (address: string): string[] => [
+  'vault',
+  'token',
+  'lookup',
+  `-address=${address}`,
+  '-format=json',
+];
+
+/** Whether Vault answers and is unsealed; needs no login. It exits 0 only
+ * then: 2 when sealed, 1 when it cannot be reached.
+ */
+export const vaultStatus = (address: string): string[] => [
+  'vault',
+  'status',
+  `-address=${address}`,
+  '-format=json',
+];
 const execute: SecretCommand = (argv) =>
   new Promise((resolve) => {
     const child = spawn(argv[0]!, argv.slice(1), {

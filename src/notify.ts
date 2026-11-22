@@ -1,6 +1,7 @@
 import { record } from './config';
 import type { SecretName, SecretsProvider } from './secrets';
 import type { Check, NodeReport } from './types';
+import { unreadSecret } from './secrets-blocked';
 
 /** Where fleet-watch sends a notification. The address of each target is a
  * secret, read by purpose: a webhook or ntfy URL often carries its own token.
@@ -178,14 +179,20 @@ export async function deliver(
     const id = `notify:${target}`;
     const url = await secrets(NOTIFY_TARGETS[target]);
     if (!url || !/^https?:\/\//.test(url)) {
-      checks.push({
+      const unavailable: Check = {
         id,
         status: 'fail',
         summary: 'NOTIFY_TARGET_UNAVAILABLE',
         remedy: {
           action: `Store the address of the ${target} target as the secret "${NOTIFY_TARGETS[target]}" with the secret provider fleet.json names.`,
         },
-      });
+      };
+      // An address that was read and is not one is the target's own fault.
+      checks.push(
+        url
+          ? unavailable
+          : await unreadSecret(secrets, { ...unavailable, status: 'fail' })
+      );
       continue;
     }
     const ok = await send(url, request(target, notification, text))

@@ -11,7 +11,17 @@ import {
   type TailnetConfig,
   type TailnetDevice,
 } from '../../../src/tailnet-control';
+import type {
+  SecretName,
+  SecretsLogin,
+  SecretsProvider,
+} from '../../../src/secrets';
 import type { DataTable } from '../../support/gherkin';
+import {
+  SECRETS_FAULT,
+  secretsFault,
+  standInSecrets,
+} from '../../support/secrets';
 import { fleetSync, ROOT, type FleetSyncWorld } from '../support/world';
 
 /** The tailnet control plane, answered from memory: what it was asked, and
@@ -23,6 +33,8 @@ export interface ControlPlane {
   config?: TailnetConfig;
   /** Made per scenario, so no credential-shaped literal is committed. */
   credential: string | null;
+  /** Whether the manager can read its secrets provider at all. */
+  login: SecretsLogin;
   answer: ControlResponse;
   requests: ControlRequest[];
   key?: string;
@@ -36,6 +48,7 @@ export function controlPlane(world: FleetSyncWorld): ControlPlane {
   if (!found) {
     found = {
       credential: null,
+      login: 'held',
       answer: { status: 200, body: {} },
       requests: [],
     };
@@ -43,6 +56,23 @@ export function controlPlane(world: FleetSyncWorld): ControlPlane {
   }
   return found;
 }
+
+/** The manager's secrets: the control plane's credential, and whatever else
+ * a scenario stored.
+ */
+export const controlSecrets = (
+  world: FleetSyncWorld,
+  others: Partial<Record<SecretName, string>> = {}
+): SecretsProvider =>
+  standInSecrets(
+    (name) =>
+      name === 'tailnet-admin' ? controlPlane(world).credential : others[name],
+    () => controlPlane(world).login
+  );
+
+Given(SECRETS_FAULT, (world, fault: string) => {
+  controlPlane(world).login = secretsFault(fault);
+});
 
 /** What the control plane is asked with: it keeps every request. */
 export const http =
@@ -89,7 +119,7 @@ async function ask(
   try {
     const control = await fleetTailnetControl(
       plane.config,
-      async (name) => (name === 'tailnet-admin' ? plane.credential : null),
+      controlSecrets(world),
       http(world)
     );
     await call(control!);
