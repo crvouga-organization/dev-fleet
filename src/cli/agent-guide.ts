@@ -73,7 +73,7 @@ export function agentGuide(release: Release) {
       roster:
         '--config PATH, PERSONAL_FLEET_CONFIG, closest ancestor .fleet.local.json, then the roster in the fleet state',
       definition:
-        'DEVFLEET_CONFIG, then the closest fleet.json in the working directory or above it (the operator’s project), then the configuration fleet-sync last applied from the fleet state (the devfleet CLI on the manager), then the copy fleet-sync installed at ~/.config/dev-fleet/fleet.json',
+        'DEVFLEET_CONFIG, then the closest fleet.json in the working directory or above it (the operator’s project), then the configuration fleet-sync last applied from the fleet state (the devfleet CLI on the manager), then the copy fleet-sync installed at ~/.config/dev-fleet/fleet.json. Never edit that copy: fleet-sync replaces it, and refuses with FLEET_CONFIGURATION_COPY_CHANGED when it was edited by hand',
       state:
         'DEVFLEET_STATE or ~/.local/share/dev-fleet/state: a local copy of the roster, the approved revision and the configuration last applied. The bucket named under "state" in the fleet configuration is the source of truth; its credentials are passed in DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY, or saved by devfleet fleet-state --init in ~/.config/dev-fleet/bucket.json for unattended runs. devfleet fleet-state --json compares the copies',
       revision:
@@ -113,6 +113,8 @@ export function agentGuide(release: Release) {
         'Whole enrolled Ubuntu fleet over verified SSH; --node filters diagnostics/rollout',
       state:
         'The approved and applied revision are kept in the fleet state and uploaded to its bucket after every run; the report carries the state:replica check',
+      revision:
+        'The fleet moves only to a revision on the default branch of the source repository, which every release is; any other is refused with FLEET_REVISION_UNMERGED before anything changes. --allow-unmerged converges to one on purpose: use it only when the person who owns the fleet asked for that revision. The report says what selected the revision (selectedBy).',
       readiness:
         'Full Ubuntu acceptance is incomplete and fails closed; do not override it or claim deployment success.',
     },

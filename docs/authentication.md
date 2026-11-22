@@ -43,7 +43,28 @@ Rotate a secret where the provider keeps it; the next read uses it. Only the
 proxy client key is remembered, and only as a fallback; a rotated key reaches
 every node at its next launch, and `retire-key` should wait until every node
 has launched an agent since the rotation. A Vault token that is not renewed expires: `worker:vault-renewal`
-fails and the fix is one login of that machine. A GitHub token that stops
+fails and the fix is one login of that machine.
+
+Renewal does not keep every login alive. Vault extends a token only up to
+its maximum lifetime (its own `explicit_max_ttl`, or the maximum of the auth
+method that issued it, 32 days unless the Vault says otherwise) and answers a
+renewal that reaches it with success and a shorter lifetime. A worker's token
+is periodic and has no such end. The manager's is whatever its person logged
+in with: a password login ends at that maximum however often it is renewed.
+So the manager's renewal job asks for more than a day at every run
+(`vaultRenewal` in `ansible/macos/policy.json`), and `manager:vault-renewal`
+warns with `VAULT_LOGIN_EXPIRY_PENDING` from 24 hours before a login that
+renewal cannot extend ends: one whose renewal was capped, one with a maximum
+lifetime of its own, or one that is not renewable. The fix is one login of
+the manager before then. A renewal job whose last run failed warns with
+`VAULT_RENEWAL_FAILING`.
+
+When the manager's login has lapsed, that is one fault:
+`manager:vault-renewal` fails with `VAULT_LOGIN_REQUIRED`, and every check
+that needed a secret the manager could not read (the hub's account, tunnel,
+viewer and backups) reports `SECRET_READ_BLOCKED by manager:vault-renewal`
+instead of a code of its own. A secret that is absent while the manager is
+logged in keeps the code of the check that needs it. A GitHub token that stops
 working fails `auth:github` and `worker:git-push-auth`; store the new one in
 Vault and the worker restores itself within ten minutes. During a proxy
 outage agents on workers wait: no worker is configured for native clients.

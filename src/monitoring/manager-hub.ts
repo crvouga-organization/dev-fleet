@@ -8,7 +8,8 @@ import { publicViewerIdentity, fleetAccount } from './hub-access';
 import { ensurePublicViewer, type HubLogin } from './hub-viewer';
 import { verifyHubBackups } from './hub-backup';
 import type { FleetDefinition } from '../definition';
-import { secretVia } from '../fleet-config';
+import { secretsLogin, secretVia } from '../fleet-config';
+import { blockedBySecretsLogin } from '../secrets-blocked';
 import { hostId, hubUrl } from '../topology';
 import { publicHubUrl, privateHub } from './beszel';
 import type { Check, Runner } from '../types';
@@ -135,15 +136,40 @@ export async function convergeManagerHub(
       status: 'pass',
       summary: `Pinned hub on the manager is healthy locally and at ${hub}; authentication and agent metrics are separate checks.`,
     },
-    publicEndpointCheck(tunnel !== null),
-    await ensureViewer(options, account),
-    await (
-      options.backups ??
-      ((login) =>
-        verifyHubBackups(login, fetch, LOCAL_HUB, {
-          declared: definition.services.monitoring.backups,
-        }))
-    )(account),
+    ...(await credentialChecks(definition, run, options, { tunnel, account })),
+  ];
+}
+
+/** The checks that need a credential from the manager's secrets. One that
+ * could not be read is absent, or behind a login the manager does not hold:
+ * then each names that login (`blockedBySecretsLogin`) instead of asking for
+ * a tunnel, an account or a viewer.
+ */
+async function credentialChecks(
+  definition: FleetDefinition,
+  run: Runner,
+  options: ManagerHubOptions,
+  { tunnel, account }: { tunnel: string | null; account: HubLogin | null }
+): Promise<Check[]> {
+  const blocked =
+    (tunnel === null || account === null) &&
+    (await secretsLogin(run)) === 'required';
+  const backups =
+    options.backups ??
+    ((login: HubLogin | null) =>
+      verifyHubBackups(login, fetch, LOCAL_HUB, {
+        declared: definition.services.monitoring.backups,
+      }));
+  return [
+    blocked && tunnel === null
+      ? blockedBySecretsLogin('beszel:public-endpoint', 'warn')
+      : publicEndpointCheck(tunnel !== null),
+    ...(blocked && account === null
+      ? [
+          blockedBySecretsLogin('beszel:public-viewer', 'warn'),
+          blockedBySecretsLogin('beszel:backup', 'skip'),
+        ]
+      : [await ensureViewer(options, account), await backups(account)]),
   ];
 }
 

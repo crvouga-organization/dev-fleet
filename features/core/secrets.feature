@@ -82,6 +82,61 @@ Feature: Secrets are read by purpose
       When the secret "monitoring-tunnel-token" is read
       Then the secret is not available
 
+  Rule: A provider this machine is not logged in to is told apart from a secret it does not hold
+    A check that got no secret asks which it was, so that a Vault login that
+    has expired is reported once, by the check that owns it, and a secret that
+    is really absent keeps the code of the check that needs it. Only Vault has
+    a login; what the lookup prints holds the token and is never kept.
+
+    Background:
+      Given a fleet whose secrets block is:
+        """
+        {
+          "provider": "vault",
+          "address": "https://vault.example.org",
+          "mount": "secret",
+          "locations": {
+            "proxy-client-key": { "path": "team/prd", "field": "KEY" },
+            "monitoring-account-password": { "path": "team/prd", "field": "KEY" },
+            "monitoring-tunnel-token": { "path": "missing", "field": "TOKEN" },
+            "proxy-tunnel-token": { "path": "team/prd", "field": "KEY" }
+          }
+        }
+        """
+
+    Scenario: A Vault session that answers is a login this machine holds
+      Given the command "vault token lookup" prints '{"data":{"id":"hvs.PRIVATE_SENTINEL","ttl":3600}}'
+      When this machine's login to the secrets provider is measured
+      Then the login is held
+      And the only command run was:
+        | vault | token | lookup | -address=https://vault.example.org | -format=json |
+
+    Scenario Outline: A Vault session that <answer> is a login that is required
+      Given the command "vault token lookup" fails with the error "<error>"
+      When this machine's login to the secrets provider is measured
+      Then the login is required
+
+      Examples:
+        | answer                 | error                                  |
+        | Vault refuses          | Code: 403. Errors: * permission denied |
+        | gives no reason at all |                                        |
+
+    Scenario Outline: A fleet that keeps its secrets in <where> has no login to lose
+      Given a fleet whose secrets block is:
+        """
+        <block>
+        """
+      And every command fails
+      When this machine's login to the secrets provider is measured
+      Then the login is held
+      And exactly 0 commands were run
+
+      Examples:
+        | where           | block                                             |
+        | the environment | { "provider": "env" }                             |
+        | private files   | { "provider": "file" }                            |
+        | a sops document | { "provider": "sops", "file": "/x/secrets.yaml" } |
+
   Rule: The secrets block says where every secret is kept, or it is rejected
 
     Scenario: The example fleet keeps its secrets in Vault

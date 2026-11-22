@@ -1,5 +1,5 @@
 # Native Windows, PowerShell 5.1+. Download and run this file (not a bash script).
-param([string]$WorkspaceDir = "$HOME\workspace")
+param([string]$WorkspaceDir = "$HOME\workspace", [switch]$AllowMiseDowngrade)
 $ErrorActionPreference = 'Stop'
 function Invoke-Checked([string]$Program, [string[]]$Arguments) {
   & $Program @Arguments
@@ -27,24 +27,44 @@ if (Test-Path (Join-Path $LocalRoot 'mise.toml')) {
 # from the checkout because mise cannot read it before it exists.
 $MiseVersion = (Select-String -Path (Join-Path $WorkspaceDir 'mise.toml') -Pattern '^min_version = "(.*)"$' | Select-Object -First 1).Matches.Groups[1].Value
 if (-not $MiseVersion) { throw 'mise.toml does not pin mise.' }
+# min_version is a minimum: a newer mise satisfies this checkout's pin, and a
+# checkout whose pin is newer needs it. A newer mise is kept, and replaced with
+# the older pinned one only when -AllowMiseDowngrade asks for that.
+$Bin = "$HOME\.local\bin"
+$KeepMise = $false
+if (Test-Path "$Bin\mise.exe") {
+  $InstalledMise = ''
+  $Newer = $false
+  try {
+    $InstalledMise = ((& "$Bin\mise.exe" --version) -split '\s+')[0]
+    $Newer = [version]$InstalledMise -gt [version]$MiseVersion
+  } catch { $Newer = $false }
+  if ($Newer -and $AllowMiseDowngrade) {
+    Write-Warning "TOOLCHAIN_DOWNGRADE: replacing mise $InstalledMise with the older $MiseVersion this checkout pins, as -AllowMiseDowngrade asks."
+  } elseif ($Newer) {
+    $KeepMise = $true
+    Write-Warning "TOOLCHAIN_DOWNGRADE: this checkout pins mise $MiseVersion and the machine runs the newer $InstalledMise, which is kept. Pass -AllowMiseDowngrade to install the older one."
+  }
+}
 # The baseline uses Windows x64; ARM machines can use an x64 PowerShell/process.
 if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { throw 'Use Windows x64 PowerShell. Native Windows ARM64 tool coverage is not yet validated.' }
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $Temp = Join-Path ([IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $Temp | Out-Null
 try {
-  $Asset = "mise-v$MiseVersion-windows-x64.zip"
-  $Base = "https://github.com/jdx/mise/releases/download/v$MiseVersion"
-  Invoke-WebRequest "$Base/$Asset" -OutFile "$Temp\$Asset" -UseBasicParsing
-  Invoke-WebRequest "$Base/SHASUMS256.txt" -OutFile "$Temp\SHASUMS256.txt" -UseBasicParsing
-  $Line = Get-Content "$Temp\SHASUMS256.txt" | Where-Object { $_ -match ('\s+\./' + [regex]::Escape($Asset) + '$') }
-  if (-not $Line) { throw 'Missing mise checksum.' }
-  $Expected = ($Line -split '\s+')[0]
-  if ((Get-FileHash "$Temp\$Asset" -Algorithm SHA256).Hash -ne $Expected) { throw 'mise checksum mismatch.' }
-  Expand-Archive "$Temp\$Asset" -DestinationPath $Temp
-  $Bin = "$HOME\.local\bin"
-  New-Item -ItemType Directory -Force -Path $Bin | Out-Null
-  Copy-Item "$Temp\mise\bin\*.exe" $Bin -Force
+  if (-not $KeepMise) {
+    $Asset = "mise-v$MiseVersion-windows-x64.zip"
+    $Base = "https://github.com/jdx/mise/releases/download/v$MiseVersion"
+    Invoke-WebRequest "$Base/$Asset" -OutFile "$Temp\$Asset" -UseBasicParsing
+    Invoke-WebRequest "$Base/SHASUMS256.txt" -OutFile "$Temp\SHASUMS256.txt" -UseBasicParsing
+    $Line = Get-Content "$Temp\SHASUMS256.txt" | Where-Object { $_ -match ('\s+\./' + [regex]::Escape($Asset) + '$') }
+    if (-not $Line) { throw 'Missing mise checksum.' }
+    $Expected = ($Line -split '\s+')[0]
+    if ((Get-FileHash "$Temp\$Asset" -Algorithm SHA256).Hash -ne $Expected) { throw 'mise checksum mismatch.' }
+    Expand-Archive "$Temp\$Asset" -DestinationPath $Temp
+    New-Item -ItemType Directory -Force -Path $Bin | Out-Null
+    Copy-Item "$Temp\mise\bin\*.exe" $Bin -Force
+  }
   $env:Path = "$Bin;$env:Path"
   Set-Location $WorkspaceDir
   Invoke-Checked mise @('trust', $WorkspaceDir)

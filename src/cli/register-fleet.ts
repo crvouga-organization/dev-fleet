@@ -224,6 +224,10 @@ function registerSync({ program, defaults, complete }: Registration) {
       'Restart a worker T3 for a new release or policy even while agent turns run, which ends them; by default the restart waits until T3 is idle'
     )
     .option(
+      '--allow-unmerged',
+      'Converge to a revision that is not on the default branch of the source repository; without it such a revision is refused before anything changes'
+    )
+    .option(
       '--canary <id>',
       'The worker that proves a new revision first when it is reachable; defaults to canary in fleet.json, then the first worker'
     )

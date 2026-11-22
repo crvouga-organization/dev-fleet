@@ -1,4 +1,5 @@
 import { record } from '../config';
+import { parseSelection, type RevisionSelection } from '../revision-selection';
 import { databasePath, stateRoot } from './paths';
 import { readDocument, writeDocument } from './store';
 
@@ -16,6 +17,8 @@ export interface SyncRun {
   durationMs: number;
   trigger: Trigger;
   revision: string | null;
+  /** What selected the revision. Older histories omit it. */
+  selectedBy?: RevisionSelection;
   ok: boolean;
   exitCode: number;
   /** The IDs of the checks that failed, once each. */
@@ -85,6 +88,13 @@ function syncRun(value: unknown): value is SyncRun {
   );
 }
 
+/** A run whose selection is not in words this version knows keeps the rest. */
+function knownSelection(run: SyncRun): SyncRun {
+  const { selectedBy, ...rest } = run;
+  const selection = parseSelection(selectedBy);
+  return selection ? { ...rest, selectedBy: selection } : rest;
+}
+
 function appliedTimes(value: unknown): NonNullable<History['lastApplied']> {
   const result: NonNullable<History['lastApplied']> = {};
   if (!record(value)) return result;
@@ -129,7 +139,9 @@ export function parseHistory(text: string | null): History {
     ...(value['lastApplied']
       ? { lastApplied: appliedTimes(value['lastApplied']) }
       : {}),
-    runs: Array.isArray(value['runs']) ? value['runs'].filter(syncRun) : [],
+    runs: Array.isArray(value['runs'])
+      ? value['runs'].filter(syncRun).map(knownSelection)
+      : [],
   };
 }
 
@@ -222,6 +234,7 @@ export function summarizeRun(
     .map((node) => node['node'])
     .filter((node): node is string => typeof node === 'string');
   const workers = workerResults(nodes);
+  const selection = parseSelection(report['selectedBy']);
   return {
     startedAt: timing.startedAt.toISOString(),
     finishedAt: timing.finishedAt.toISOString(),
@@ -231,6 +244,7 @@ export function summarizeRun(
       typeof report['desiredRevision'] === 'string'
         ? report['desiredRevision']
         : null,
+    ...(selection ? { selectedBy: selection } : {}),
     ok: exitCode === 0 && report['ok'] !== false,
     exitCode,
     ...(Object.keys(workers).length ? { workers } : {}),

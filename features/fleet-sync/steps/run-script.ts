@@ -34,7 +34,7 @@ const IDENTITY = {
 /** A manager's home in a temporary directory. `origin` is the fleet's source
  * repository; the real run script runs against it with the real Git.
  */
-interface Manager {
+export interface Manager {
   home: string;
   origin: string;
   /** The manager's own copy of the source repository, as fleet-sync makes it. */
@@ -51,19 +51,19 @@ interface Manager {
 }
 const managers = new WeakMap<FleetSyncWorld, Manager>();
 
-function manager(world: FleetSyncWorld): Manager {
+export function manager(world: FleetSyncWorld): Manager {
   const found = managers.get(world);
   if (!found) throw new Error("No manager's home in this scenario.");
   return found;
 }
 
-function git(node: Manager, cwd: string, ...args: string[]): string {
+export function git(node: Manager, cwd: string, ...args: string[]): string {
   const result = Bun.spawnSync(['git', '-C', cwd, ...args], { env: node.env });
   if (result.exitCode !== 0) throw new Error(result.stderr.toString());
   return result.stdout.toString().trim();
 }
 
-function sha(node: Manager, message: string): string {
+export function sha(node: Manager, message: string): string {
   const commit = node.commits.get(message);
   if (!commit) throw new Error(`No commit "${message}" in this scenario.`);
   return commit;

@@ -135,12 +135,19 @@ the first reachable worker, or the one `canary` in `fleet.json` (or
 `--canary`) names when it is reachable. An offline worker never holds the
 others back.
 
-A sync never ends a running agent turn. A worker's T3 that must restart for
-a new release or provider policy restarts only once it runs no agent turn;
-until then the restart is pending and the worker's recovery timer applies it
-at the first idle check. `fleet-sync --restart-busy` restarts it at once and
-ends those turns, and `fleet-sync --dry-run` (with or without the flag) says
-which of the two a sync would do.
+A sync itself never ends a running agent turn. A worker's T3 that must
+restart for a new release or provider policy restarts only once it runs no
+agent turn; until then the restart is pending and the worker's recovery timer
+applies it at the first idle check. The wait has a deadline, because a worker that
+always runs a turn would otherwise never converge: 24 hours after the restart
+was first deferred (`t3RestartMaxDeferralHours` in
+`ansible/ubuntu/policy.json`) the recovery timer restarts T3 although turns
+run, and those turns end. T3 Code has no way to stop accepting turns first.
+Until then `t3:running-version` warns with how long the restart has waited
+and when the deadline falls; afterwards `worker:t3-deadline-restarts` warns
+for a day that turns ended. `fleet-sync --restart-busy` restarts it at once
+and ends those turns, and `fleet-sync --dry-run` (with or without the flag)
+says which of the two a sync would do, and the deadline.
 
 To go back, run `npx devfleet fleet-sync --rollback` on the manager: it
 converges every machine to the revision applied before the approved one, which
@@ -150,6 +157,22 @@ checkout, the pinned tools and T3 Code. System packages roll forward only
 (apt never downgrades them), so a release that moved one keeps it. Installing
 an older version and running `fleet-sync` does the same for any earlier
 release.
+
+The fleet moves only to a revision on the default branch of the source
+repository, which every release is. `fleet-sync` asks the manager's own copy
+of that repository, whatever selected the revision (the package, `--revision`,
+`--rollback`, the schedule, a checkout, a hand-off from a worker), and refuses
+any other with `FLEET_REVISION_UNMERGED` before anything changes.
+`--allow-unmerged` converges to such a revision on purpose. The report, the
+fleet state and `fleet-watch` say what selected the approved revision.
+
+mise's own pin (`min_version`) is a minimum. A machine that runs a newer mise
+than a revision pins keeps it, after a rollback too: replacing it would break
+every checkout on the machine whose pin is newer. `fleet-status` reports that
+as the warning `TOOLCHAIN_DOWNGRADE` of `tool:mise`, and
+[the runbook](docs/runbooks.md#the-pinned-toolchain) says how to install the
+older one on purpose. Each revision runs its own bootstrap, so a revision
+from before this rule still installs exactly the mise it pins.
 
 ## Your project's own tools
 
@@ -286,6 +309,13 @@ names the first field that breaks a rule (`{code, path, expected, actual}`);
 `--ansible` also renders the Ansible inventory and syntax-checks every
 playbook with the pinned Ansible.
 
+Edit the `fleet.json` of your project, never the copy `fleet-sync` installs
+at `~/.config/dev-fleet/fleet.json` for launchers and scheduled jobs:
+`fleet-sync` replaces that copy, and refuses to run
+(`FLEET_CONFIGURATION_COPY_CHANGED`) rather than lose an edit made to it by
+hand. [docs/state.md](docs/state.md#day-to-day) says how to keep or discard
+one.
+
 | Block      | What it declares                                                    |
 | ---------- | ------------------------------------------------------------------- |
 | `source`   | The Git repository nodes accept code from (this one, or your fork)  |
@@ -313,8 +343,18 @@ Under `t3.profile`, `fleet.json` names top-level T3 settings every machine
 holds the same, such as tool servers. A setting not named there stays the
 machine's own, and one edited on a machine since `fleet-sync` last wrote it
 is reported as `T3_PROFILE_CONFLICT` by the check `t3:profile`, never
-overwritten. The check `t3:models` reports a model T3 offers that the proxy
-does not serve, and a model in `t3.requiredModels` that is missing.
+overwritten.
+
+Accounts of one tool are not entitled to the same models. On each per-account
+instance `fleet-sync` hides the models of T3's catalogue that its account does
+not serve and lists the preferred default it serves first, so the instance
+shows, and opens on, a model that works. Which catalogue models are hidden
+there is the fleet's: one hidden by hand is shown again while its account
+serves it. Until a sync, the check `t3:models` says what it would change
+(`T3_MODELS_PENDING`). It reports as `T3_MODELS_MISMATCH` only what cannot
+work: a custom model or a T3 default the proxy does not serve, an account that
+serves none of its tool's preferred defaults, and a model in
+`t3.requiredModels` that is missing.
 
 Secrets are asked for by purpose (`proxy-client-key`,
 `monitoring-account-password`, `monitoring-tunnel-token`,
@@ -410,7 +450,8 @@ bun run check
 
 Run from a checkout, `fleet-sync` converges the fleet to the checkout's `HEAD`
 commit (never to uncommitted files). The checkout's `origin` must be the
-repository `fleet.json` names under `source`. Every merge to `main` publishes a release;
+repository `fleet.json` names under `source`, and a `HEAD` that is not on its
+default branch needs `--allow-unmerged`. Every merge to `main` publishes a release;
 see [releasing](docs/releasing.md).
 
 What dev-fleet does is specified in Gherkin, under

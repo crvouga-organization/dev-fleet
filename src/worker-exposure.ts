@@ -3,6 +3,7 @@ import policy from '../ansible/ubuntu/policy.json';
 import { record } from './config';
 import type { PublicPort, WorkerExposure } from './exposure';
 import type { Check, Runner, Status } from './types';
+import { fleetJson } from './fleet-config';
 
 /** The beszel agent's port: it opens no listener (DISABLE_SSH), so one
  * listening on it is never the fleet's intention. */
@@ -261,12 +262,15 @@ const REMEDY: Record<string, string> = {
     'The fleet firewall is not loaded: run devfleet fleet-sync, which applies ansible/ubuntu/tasks/firewall.yml. Until then every listener below is reachable from every network the worker is on.',
   WORKER_PUBLIC_SSH_UNDECLARED:
     'SSH is still open beyond the tailnet because fleet-sync could not prove the manager reaches the worker over the tailnet. Point the SSH alias of this worker at its tailnet name, then run devfleet fleet-sync; declare exposure.publicSsh only for break-glass access.',
-  WORKER_LISTENER_UNRESTRICTED:
-    'Bind the named service to 127.0.0.1 or the tailnet address, or declare its port in exposure.publicPorts of fleet.json. A service that cannot bind one address, such as a remote desktop, is declared in exposure.tailnetOnlyPorts instead, which opens nothing. A fleet service on a public address is a fault of its unit: run devfleet fleet-sync. The T3 desktop app returns to loopback when it next starts; fleet-sync restarts it once it runs no agent turn.',
-  WORKER_AGENT_LISTENER_UNRESTRICTED:
-    'A process an agent started (a development server, say) listens on every address. It is no fleet service and fleet-sync does not change it; the fleet firewall, once loaded, admits it only over the tailnet. Have the agent bind it to 127.0.0.1 (most development servers take --host 127.0.0.1 or HOST=127.0.0.1) or stop it, or declare its port in exposure.publicPorts of fleet.json. It ends with the agent session that started it.',
-  WORKER_TAILNET_ONLY_RULE_MISSING:
-    'The named service listens on a port declared in exposure.tailnetOnlyPorts of fleet.json, but the loaded fleet firewall holds no tailnet-only rule for that port: run devfleet fleet-sync, which writes the rule and loads it (ansible/ubuntu/tasks/firewall.yml).',
+  get WORKER_LISTENER_UNRESTRICTED() {
+    return `Bind the named service to 127.0.0.1 or the tailnet address, or declare its port in exposure.publicPorts of ${fleetJson()}. A service that cannot bind one address, such as a remote desktop, is declared in exposure.tailnetOnlyPorts instead, which opens nothing. A fleet service on a public address is a fault of its unit: run devfleet fleet-sync. The T3 desktop app returns to loopback when it next starts; fleet-sync restarts it once it runs no agent turn, and ${policy.t3RestartMaxDeferralHours} hours after it first deferred the restart at the latest (t3:running-version reports the wait).`;
+  },
+  get WORKER_AGENT_LISTENER_UNRESTRICTED() {
+    return `A process an agent started (a development server, say) listens on every address. It is no fleet service and fleet-sync does not change it; the fleet firewall, once loaded, admits it only over the tailnet. Have the agent bind it to 127.0.0.1 (most development servers take --host 127.0.0.1 or HOST=127.0.0.1) or stop it, or declare its port in exposure.publicPorts of ${fleetJson()}. It ends with the agent session that started it.`;
+  },
+  get WORKER_TAILNET_ONLY_RULE_MISSING() {
+    return `The named service listens on a port declared in exposure.tailnetOnlyPorts of ${fleetJson()}, but the loaded fleet firewall holds no tailnet-only rule for that port: run devfleet fleet-sync, which writes the rule and loads it (ansible/ubuntu/tasks/firewall.yml).`;
+  },
   WORKER_EXPOSURE_UNOBSERVED:
     'The listening sockets or the firewall could not be read with sudo -n; check worker:sudo, then rerun devfleet fleet-status --workers.',
 };

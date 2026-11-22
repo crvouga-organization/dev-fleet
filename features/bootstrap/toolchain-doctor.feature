@@ -31,6 +31,36 @@ Feature: The doctor checks a machine's toolchain
         | GitHub Copilot CLI 1.0.1050  | fails   |
         | GitHub Copilot CLI 1.0.105.1 | fails   |
 
+  Rule: mise itself is pinned as a minimum, and a newer one is reported as the downgrade the bootstrap withheld
+    The bootstrap never replaces mise with an older release unasked: every
+    other checkout on the machine whose pin is newer needs the newer one. A
+    mise older than the pin refuses to run this checkout's tools.
+
+    Scenario Outline: A machine that runs mise <installed> against the pin <pinned> <verdict>
+      Given the command "mise" prints "<installed> linux-arm64 (2026-11-01)"
+      When the doctor checks mise itself against the pin "<pinned>"
+      Then the check "mise" <verdict>
+
+      Examples:
+        | installed  | pinned     | verdict |
+        | 2026.11.11 | 2026.11.11 | passes  |
+        | 2026.11.11 | 2026.10.24 | warns   |
+        | 2027.1.0   | 2026.11.11 | warns   |
+        | 2026.10.24 | 2026.11.11 | fails   |
+        | 2026.10.3  | 2026.10.24 | fails   |
+
+    Scenario: A newer mise is reported as TOOLCHAIN_DOWNGRADE, with how to install the older one
+      Given the command "mise" prints "2026.11.11 linux-arm64 (2026-11-01)"
+      When the doctor checks mise itself against the pin "2026.10.24"
+      Then the check says "TOOLCHAIN_DOWNGRADE"
+      And the check says "pins mise 2026.10.24 and the machine runs the newer 2026.11.11"
+      And the check says "--allow-mise-downgrade"
+
+    Scenario: A mise that does not answer fails the check
+      Given no command can be run
+      When the doctor checks mise itself against the pin "2026.11.11"
+      Then the check "mise" fails
+
   Rule: A tool with no artifact for this platform is skipped, but not native Windows AWS
     On Windows aws is installed by its own installer, not by mise.
 

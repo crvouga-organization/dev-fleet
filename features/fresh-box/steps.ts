@@ -133,6 +133,13 @@ Then(
   }
 );
 
+Then('the machine holds the record of that copy beside it', async (world) => {
+  const copy = '"$HOME/.config/dev-fleet/fleet.json"';
+  expect(
+    (await world.remote(`sha256sum <${copy} | cut -d' ' -f1`)).stdout
+  ).toBe((await world.remote(`cat ${copy}.sha256`)).stdout);
+});
+
 const miseToml = async (): Promise<{
   min_version: string;
   tools: Record<string, string | { version: string }>;

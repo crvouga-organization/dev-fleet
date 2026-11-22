@@ -16,6 +16,7 @@ import './monitoring';
 import './project';
 import './report';
 import './run-script';
+import './unmerged';
 
 export { FleetSyncWorld, fleetSync } from '../support/world';
 import './history';

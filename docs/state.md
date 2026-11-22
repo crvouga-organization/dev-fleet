@@ -7,10 +7,20 @@ cannot rebuild from Git is the **fleet state**:
 | Document     | What it is                                                                                                                                                                    |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `roster`     | The enrolled connection to each worker (SSH alias, Tailscale device)                                                                                                          |
-| `enrollment` | The revision `fleet-sync` approved and the one it last applied                                                                                                                |
+| `enrollment` | The revision `fleet-sync` approved, what selected it and when, and the one it last applied                                                                                    |
 | `definition` | The fleet configuration `fleet-sync` last applied: your `fleet.json`                                                                                                          |
-| `history`    | The last 90 days of `fleet-sync` runs (at most 500), and the schedule                                                                                                         |
+| `history`    | The last 90 days of `fleet-sync` runs (at most 500), each with what selected its revision, and the schedule                                                                   |
 | `workers`    | Per worker: its pinned SSH host key, whether it is parked and since when, whether it came from a worker record, and whether the manager is to pair its T3 after a replacement |
+
+The `enrollment` says what selected the approved revision, under
+`selectedBy`: `by` is one of `package`, `revision`, `rollback`, `schedule`,
+`checkout` or `approved`; `handOff.worker` is the fleet id of the worker that
+handed the run to the manager; `allowUnmerged` says the run was given
+`--allow-unmerged`; `at` is when the revision became the approved one. A run
+that approves the same revision again leaves the record as it is. It holds
+those words only: never an account, a host name or a command line. The
+`fleet-sync` report (`selectedBy`, `replacedRevision`), each run of the
+history and `fleet-watch` (`revision`) repeat it.
 
 `devfleet fleet-watch` also keeps `watch.json` in the bucket, beside the
 database: the health of each worker when it last looked, and when that was
@@ -30,6 +40,8 @@ your project (Git)
     definition.json                     the stored configuration as a file, rewritten from fleet.db
     replicated.json, litestream.yml     bookkeeping
 ~/.config/dev-fleet/bucket.json         optional: credentials saved for unattended runs
+~/.config/dev-fleet/fleet.json          the copy fleet-sync installs for launchers; never edited
+~/.config/dev-fleet/fleet.json.sha256   what that copy was when fleet-sync last wrote it
 ```
 
 ## Set it up
@@ -145,6 +157,32 @@ Which configuration a command uses, in this order:
 
 `fleet-state --import PATH` stores a configuration in the state without
 running `fleet-sync`.
+
+**The installed copy is not the configuration.** `fleet-sync` writes
+`~/.config/dev-fleet/fleet.json` on every machine on every run, and beside it
+`fleet.json.sha256`, the record of what it wrote. A copy that no longer
+matches its record was edited by hand, and replacing it would lose the edit,
+so the run stops with `FLEET_CONFIGURATION_COPY_CHANGED` before anything is
+changed, with or without a person at the terminal, and names the way forward:
+
+- From a project, or with `DEVFLEET_CONFIG`: make the change in that
+  `fleet.json` (the refusal names it by path).
+- With the configuration kept in the fleet state, import the copy:
+  `devfleet fleet-state --import ~/.config/dev-fleet/fleet.json`.
+  The copy never holds the `state` block, so importing that file keeps the
+  bucket the stored configuration names.
+- To discard the edit, delete the copy; the next `fleet-sync` installs it
+  again.
+
+An edit that says what the run would install anyway, or what the fleet state
+records as last applied, is not refused: nothing would be lost. On a worker
+the same edit stops that worker's bootstrap with the same code. A worker
+takes its configuration from the manager, so the change belongs in
+`fleet.json` and the copy on the worker is deleted. A check that tells you to
+declare something in `fleet.json` names the file for the way the command
+found its configuration: its path, the export, edit and import of a
+configuration kept in the fleet state, or, on a machine that holds only the
+copy, the project on the manager.
 
 ## How it stays correct
 

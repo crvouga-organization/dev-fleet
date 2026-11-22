@@ -52,6 +52,7 @@ remedy() {
     DPKG_INTERRUPTED) echo 'An interrupted package installation could not be finished: dpkg --configure -a, run once and bounded, left the package database inconsistent. Read sudo dpkg --audit on the worker, repair the packages it names, then rerun fleet-sync.';;
     APT_UPDATE_FAILED|APT_INSTALL_FAILED) echo 'Run sudo apt-get update and install the bootstrap packages by hand to see the error, then rerun fleet-sync.';;
     SOURCE_CACHE_CHANGED|SOURCE_STATUS_FAILED|SOURCE_CHECKOUT_CONFLICT) echo 'The fleet-owned checkout of this revision holds changes fleet-sync did not make. Inspect and remove that revisions directory, then rerun fleet-sync.';;
+    FLEET_CONFIGURATION_COPY_CHANGED) echo 'The copy of the fleet configuration on this worker (~/.config/dev-fleet/fleet.json) was edited there since fleet-sync last wrote it, so it was not replaced and nothing was installed. A worker takes its configuration from the manager: make the change in the fleet.json the fleet is synced from, then delete the copy on this worker (rm ~/.config/dev-fleet/fleet.json) and rerun fleet-sync.';;
     CONFIGURATION_INSTALL_FAILED) echo 'The fleet configuration could not be written under ~/.config/dev-fleet. Check that directory, then rerun fleet-sync.';;
     TOOLCHAIN_*) echo 'The pinned toolchain did not converge. Rerun fleet-sync; it resumes where it stopped. If it repeats, run devfleet fleet-status --node for this worker.';;
     *) echo 'Inspect the remote operation lock and rerun the approved revision. No success receipt advanced.';;
@@ -120,9 +121,27 @@ IFS= read -r configuration || configuration=''
 IFS= read -r tailnet_key || tailnet_key=''
 if [ -n "$configuration" ]; then
   config_dir="$HOME/.config/dev-fleet"
+  # configuration-install: begin
+  # Beside the copy is its record: the SHA-256 of the copy as fleet-sync last
+  # wrote it. A copy that no longer matches its record was edited on this
+  # machine, and is refused instead of replaced unless it already is what is
+  # being installed. A copy from before the record existed is replaced, as it
+  # always was: nothing says whether it was edited.
   mkdir -p "$config_dir" || die CONFIGURATION_INSTALL_FAILED
   printf '%s' "$configuration" | base64 -d >"$config_dir/fleet.json.new" || die CONFIGURATION_INSTALL_FAILED
+  sent=$(sha256sum <"$config_dir/fleet.json.new" | cut -d' ' -f1)
+  [ "${#sent}" = 64 ] || die CONFIGURATION_INSTALL_FAILED
+  if [ -f "$config_dir/fleet.json" ] && [ -f "$config_dir/fleet.json.sha256" ]; then
+    held=$(sha256sum <"$config_dir/fleet.json" | cut -d' ' -f1)
+    if [ "$held" != "$sent" ] && [ "$held" != "$(cat "$config_dir/fleet.json.sha256")" ]; then
+      rm -f -- "$config_dir/fleet.json.new"
+      die FLEET_CONFIGURATION_COPY_CHANGED
+    fi
+  fi
   mv "$config_dir/fleet.json.new" "$config_dir/fleet.json" || die CONFIGURATION_INSTALL_FAILED
+  printf '%s\n' "$sent" >"$config_dir/fleet.json.sha256.new" || die CONFIGURATION_INSTALL_FAILED
+  mv "$config_dir/fleet.json.sha256.new" "$config_dir/fleet.json.sha256" || die CONFIGURATION_INSTALL_FAILED
+  # configuration-install: end
 fi
 phase=first-boot
 # first-boot: begin

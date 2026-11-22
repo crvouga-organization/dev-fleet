@@ -3,6 +3,8 @@ import type { ManagerReport } from '../manager-sync';
 import { localCheckoutRevision } from '../machine/local-source';
 import {
   definitionSource,
+  editedCopyRemedy,
+  editedInstalledCopy,
   fleet as canonicalDefinition,
   reloadFleet,
 } from '../fleet-config';
@@ -11,7 +13,7 @@ import { managerText, stdoutColor } from './fleet-sync-output';
 import { managerSchedule, type ScheduleAction } from './fleet-sync-schedule';
 import { enrollManager, type EnrollmentResult } from './fleet-sync-enrollment';
 import { authorizeManager } from './fleet-sync-vault';
-import { homedir } from 'node:os';
+import { homedir, hostname } from 'node:os';
 import { join } from 'node:path';
 import { existsSync, renameSync } from 'node:fs';
 import {
@@ -47,19 +49,34 @@ import { FleetUsageError } from '../errors';
 import { FleetLockError } from '../machine/lock-error';
 import { selected } from './fleet-sync-remote';
 import { managerIdentity } from './fleet-sync-manager';
-import { managerRunScript, rehome } from './fleet-sync-checkout';
+import { inRunCheckout, managerRunScript, rehome } from './fleet-sync-checkout';
 import { syncAccounts } from './fleet-sync-accounts';
 import { packageInfo } from '../package-info';
 import {
+  asksAncestry,
   forwardingDisabled,
   forwardToManager,
   type ForwardSpawn,
 } from './fleet-sync-forward';
+import { defaultBranchHolds } from '../machine/source';
+import {
+  decodeSelection,
+  SELECTED_BY_ENV,
+  selectionText,
+  type RevisionSelection,
+  type Selector,
+} from '../revision-selection';
+import { hostId } from '../topology';
 
 export interface FleetSyncOptions {
   revision?: string;
   /** Converge to the revision applied before the current one. */
   rollback?: boolean;
+  /** Converge to a revision that is not on the default branch of the source
+   * repository. Without it such a revision is refused before anything
+   * changes.
+   */
+  allowUnmerged?: boolean;
   dryRun?: boolean;
   apply?: boolean;
   yes?: boolean;
@@ -104,6 +121,10 @@ export interface FleetSyncOptions {
    * did may be rebooted once after its first converge.
    */
   readyBefore?: string[];
+  /** Internal: what selected the revision, for the report and the history. */
+  selection?: RevisionSelection;
+  /** Internal: the approved revision this run replaces, when it is another. */
+  replaces?: string;
 }
 export function machineRoot(): string {
   const root = join(homedir(), '.local/share/personal/fleet/manager');
@@ -169,6 +190,8 @@ export interface ManagerSync {
   root: string;
   /** Starts the request over once the fleet state has been replaced. */
   restart: () => Promise<CommandOutcome>;
+  /** The home directory that holds this machine's installed copy. */
+  home?: string;
 }
 
 /** Why the fleet state stops this run before any machine or the state is
@@ -196,21 +219,42 @@ function stateRefusal(
     : null;
 }
 
+/** Why this machine's copy of the configuration stops the run, if it does:
+ * a sync installs the copy again, and an edit made to it by hand would be
+ * lost. Refused the same way with or without a person, and never asked.
+ */
+function copyRefusal(
+  home: string | undefined,
+  revision: string
+): CommandOutcome | null {
+  const edited = editedInstalledCopy(process.env, home);
+  return edited
+    ? actionRequired(
+        'FLEET_CONFIGURATION_COPY_CHANGED',
+        editedCopyRemedy(edited, process.env, home),
+        revision
+      )
+    : null;
+}
+
 /** fleet-sync on the machine already known to be the manager. */
 export async function managerSync(
   options: FleetSyncOptions,
   settings: Settings,
-  { run, root, restart }: ManagerSync
+  { run, root, restart, home }: ManagerSync
 ): Promise<CommandOutcome> {
   await ensurePrivateRoot(root);
   const state = await loadEnrollment(legacyHome() ? root : null);
-  const revision = await managerRevision(options, state, settings, run);
-  if (typeof revision !== 'string') return revision;
+  const chosen = await managerRevision(options, state, settings, run);
+  if ('exitCode' in chosen) return chosen;
+  const { revision, selection } = chosen;
+  const unmerged = await unmergedRefusal(options, chosen, root, run);
+  if (unmerged) return unmerged;
   if (options.schedule)
     return scheduleRequest(options, revision, settings, run);
   const rehomed = await rehome(
     options,
-    { revision, workspace: settings.workspace, root },
+    { revision, workspace: settings.workspace, root, selection },
     run
   );
   if (rehomed === 'unavailable')
@@ -232,35 +276,82 @@ export async function managerSync(
     reloadFleet();
     return restart();
   }
+  return (
+    copyRefusal(home, revision) ??
+    previewOrApply(options, settings, state, {
+      run,
+      root,
+      chosen,
+      standing: fresh.standing,
+    })
+  );
+}
+
+/** The preview of a run for the chosen revision, or the run itself. */
+function previewOrApply(
+  options: FleetSyncOptions,
+  settings: Settings,
+  state: Enrollment | null,
+  {
+    run,
+    root,
+    chosen: { revision, selection },
+    standing,
+  }: { run: Runner; root: string; chosen: Chosen; standing: Standing }
+): Promise<CommandOutcome> {
+  const request = {
+    ...options,
+    revision,
+    selection,
+    ...replaced(state, revision),
+  };
   if (options.dryRun)
-    return preview({ ...options, revision }, settings, {
+    return preview(request, settings, {
       run,
       root,
       applied: state?.appliedRevision ?? null,
-      standing: fresh.standing,
+      standing,
     });
-  return authorizeAndApply(root, state, options, {
+  return authorizeAndApply(root, state, request, {
     settings,
     run,
     revision,
-    standing: fresh.standing,
+    standing,
   });
 }
 
-/** The revision the manager converges to, or why there is none. */
+/** The approved revision a run for another one replaces. */
+function replaced(
+  state: Enrollment | null,
+  revision: string
+): { replaces?: string } {
+  return state?.approvedRevision && state.approvedRevision !== revision
+    ? { replaces: state.approvedRevision }
+    : {};
+}
+
+/** A run's revision and what selected it. */
+interface Chosen {
+  revision: string;
+  selection: RevisionSelection;
+}
+
+/** The revision the manager converges to and what selected it, or why there
+ * is none.
+ */
 async function managerRevision(
   options: FleetSyncOptions,
   state: Enrollment | null,
   settings: Settings,
   run: Runner
-): Promise<string | CommandOutcome> {
+): Promise<Chosen | CommandOutcome> {
   const explicit = requestedRevision(options, state);
   if (explicit === null)
     return actionRequired(
       'FLEET_ROLLBACK_UNAVAILABLE',
       'Nothing was changed: the fleet state records no revision applied before the approved one. Install the dev-fleet version to go back to and run fleet-sync.'
     );
-  const revision = await selectedRevision(
+  const { revision, by } = await selectedRevision(
     explicit,
     state?.approvedRevision,
     settings,
@@ -271,7 +362,65 @@ async function managerRevision(
       'FLEET_REVISION_REQUIRED',
       'No revision to converge to. Run the published dev-fleet package (it names the commit it was built from), or select a full commit SHA with --revision.'
     );
-  return revision;
+  return {
+    revision,
+    selection: selectionOf(options, {
+      revision,
+      by: options.rollback ? 'rollback' : by,
+    }),
+  };
+}
+
+/** What selected this run's revision. A run started from the fleet-owned
+ * checkout, or on the manager after a hand-off, is always given --revision:
+ * the run that started it says what selected the revision. So does the
+ * schedule, which names the revision it was enabled with.
+ */
+function selectionOf(
+  options: FleetSyncOptions,
+  { revision, by }: { revision: string; by: Selector },
+  env = process.env
+): RevisionSelection {
+  const told =
+    by === 'revision' ? decodeSelection(env[SELECTED_BY_ENV], revision) : null;
+  const scheduled = by === 'revision' && runTrigger(env) === 'schedule';
+  return {
+    ...(told ?? { by: scheduled ? 'schedule' : by }),
+    ...(options.allowUnmerged ? { allowUnmerged: true as const } : {}),
+  };
+}
+
+/** Why the revision may not become the fleet's, if it may not: without
+ * --allow-unmerged it has to be on the default branch of the source
+ * repository, as the manager's own copy of that repository says. Asked by
+ * the run a person, the schedule or a worker started, before it leaves for
+ * the fleet-owned checkout of the revision and before anything changes; the
+ * run in that checkout is the revision's own code and is not asked again.
+ */
+async function unmergedRefusal(
+  options: FleetSyncOptions,
+  { revision, selection }: Chosen,
+  root: string,
+  run: Runner
+): Promise<CommandOutcome | null> {
+  // The run that started this one may have been given --allow-unmerged.
+  if (selection.allowUnmerged) return null;
+  if (!asksAncestry(options) || inRunCheckout(revision)) return null;
+  const ancestry = await defaultBranchHolds(root, revision, run);
+  if (ancestry === 'merged') return null;
+  const { repository } = canonicalDefinition.source;
+  const selected = `selected by ${selectionText(selection)}`;
+  return ancestry === 'unmerged'
+    ? actionRequired(
+        'FLEET_REVISION_UNMERGED',
+        `Revision ${revision} (${selected}) is not on the default branch of ${repository}, so nothing was changed. Merge it first, or pass --allow-unmerged to converge the fleet to an unmerged revision on purpose: every machine, the manager included, then gets that revision's toolchain and policy.`,
+        revision
+      )
+    : actionRequired(
+        'FLEET_REVISION_UNVERIFIED',
+        `Nothing was changed: ${repository} could not be fetched into the manager's own copy of it, so it is not known whether its default branch holds revision ${revision} (${selected}). Check the network and Git access to it, then run fleet-sync again; --allow-unmerged converges without asking.`,
+        revision
+      );
 }
 
 /** The preview: the read-only report of every machine, and the plan of what
@@ -382,6 +531,7 @@ function applyLocked(
       ? { definition: JSON.stringify(canonicalDefinition, null, 2) + '\n' }
       : {}),
     scoped: Boolean(request.node?.length),
+    ...(request.selection ? { selection: request.selection } : {}),
   });
   return withMachineLock(root, async () => {
     record.approve();
@@ -429,10 +579,12 @@ async function offManager(
       'FLEET_NOT_MANAGER',
       `fleet-sync --rollback runs only on the manager (${definition.manager.id}); nothing was changed.`
     );
-  const revision =
-    options.revision ??
-    packageRevision() ??
-    (await localCheckoutRevision(settings.workspace, run));
+  const { revision, by } = await selectedRevision(
+    options.revision,
+    undefined,
+    settings,
+    run
+  );
   if (forwardingDisabled())
     return actionRequired(
       'FLEET_NOT_MANAGER',
@@ -442,9 +594,20 @@ async function offManager(
   const runScript = revision
     ? await managerRunScript(settings.workspace, revision, run)
     : null;
+  const local = hostId(hostname());
   return forwardToManager(definition, options, revision, {
     spawn: forward,
     script: runScript,
+    selection: {
+      by,
+      ...(options.allowUnmerged ? { allowUnmerged: true as const } : {}),
+      // Only a declared worker is named: no other host name is recorded.
+      handOff: {
+        worker: definition.workers.some((worker) => worker.id === local)
+          ? local
+          : null,
+      },
+    },
   });
 }
 
@@ -486,6 +649,7 @@ function validate(options: FleetSyncOptions): void {
     );
   validateOnly(options);
   validateRollback(options);
+  validateUnmerged(options);
   if (options.restartBusy && (options.only || options.schedule))
     throw new FleetUsageError(
       '--restart-busy applies to one full sync: it takes neither --only nor --schedule.'
@@ -494,6 +658,12 @@ function validate(options: FleetSyncOptions): void {
   if (options.dryRun && (options.apply || options.yes))
     throw new FleetUsageError(
       '--dry-run cannot be combined with apply confirmation.'
+    );
+}
+function validateUnmerged(options: FleetSyncOptions): void {
+  if (options.allowUnmerged && (options.only || options.schedule))
+    throw new FleetUsageError(
+      '--allow-unmerged applies to one sync a person starts: it takes neither --only nor --schedule.'
     );
 }
 function validateMaintenance(options: FleetSyncOptions): void {
@@ -543,7 +713,8 @@ async function onlyAccounts(
   const state = await loadEnrollment(legacyHome() ? root : null);
   const revision =
     state?.approvedRevision ??
-    (await selectedRevision(options.revision, undefined, settings, run));
+    (await selectedRevision(options.revision, undefined, settings, run))
+      .revision;
   if (!isRevision(revision))
     return actionRequired(
       'FLEET_REVISION_REQUIRED',
@@ -647,18 +818,22 @@ function requestedRevision(
   return state?.previousRevision ?? null;
 }
 
+/** The revision a run converges to and where it came from: the request, the
+ * commit the installed package was published from, the HEAD of the checkout
+ * the CLI runs from, then the revision already approved.
+ */
 async function selectedRevision(
   explicit: string | undefined,
   approved: string | undefined,
   settings: Settings,
   run: Runner
-): Promise<string | undefined> {
-  return (
-    explicit ??
-    packageRevision() ??
-    (await localCheckoutRevision(settings.workspace, run)) ??
-    approved
-  );
+): Promise<{ revision: string | undefined; by: Selector }> {
+  if (explicit) return { revision: explicit, by: 'revision' };
+  const published = packageRevision();
+  if (published) return { revision: published, by: 'package' };
+  const head = await localCheckoutRevision(settings.workspace, run);
+  if (head) return { revision: head, by: 'checkout' };
+  return { revision: approved, by: 'approved' };
 }
 
 /** The revision each worker holds after this run, for the fleet state: a

@@ -34,6 +34,7 @@
       [Service]
       Type=oneshot
       Environment=T3_RENDERER_HIGH_MIB={{ resourceSafety.rendererHighMiB }} T3_RENDERER_MAX_MIB={{ resourceSafety.rendererMaxMiB }}
+      Environment=T3_RESTART_MAX_DEFERRAL_HOURS={{ t3RestartMaxDeferralHours }}
       ExecStart=/bin/sh /usr/local/lib/personal-fleet/t3-health.sh
       TimeoutStartSec=90
 - name: Declare persistent service recovery checks

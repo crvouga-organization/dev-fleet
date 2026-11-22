@@ -224,3 +224,100 @@ Feature: The manager converges itself before any worker
       When an applying sync holds the manager's Vault session
       Then the check's summary is "VAULT_LOGIN_REQUIRED"
       And the check's remedy contains "vault login -address=https://vault.example.com -method=userpass"
+
+  Rule: The manager warns a day before a login that renewal cannot extend ends
+    Renewal does not keep every login alive. Vault extends a token only up to
+    its maximum lifetime (its own, or that of the auth method that issued
+    it), and answers a renewal that reaches it with success and a shorter
+    lifetime. So the renewal job asks for more than the warning's lead time
+    at every run: a renewal that left less is a login that ends then, and the
+    manager says so while a person can still log in again.
+
+    Background:
+      Given the manager's Vault renewal job is loaded
+
+    Scenario: The renewal job asks for more than the lead time of the warning
+      Then the macOS policy has the renewal job ask Vault for 48 hours, and the manager warn 24 hours before a login ends
+      And "ansible/macos/vault-renew.yml" renews for the hours the macOS policy names
+
+    Scenario Outline: A login <situation> passes
+      Given the manager's Vault token is renewable, with <left> seconds left, 600 seconds after a renewal that left it <granted>
+      When the manager's Vault session is measured
+      Then the check's status is "pass"
+
+      Examples:
+        | situation                                               | left   | granted |
+        | renewed in full                                         | 172200 | 172800  |
+        | whose renewal was capped two days before its end        | 171000 | 171600  |
+        | whose renewal was capped just over a day before its end | 86400  | 87000   |
+
+    Scenario Outline: A login whose renewal was capped <situation> warns, and names the login that replaces it
+      Given the manager's Vault token is renewable, with <left> seconds left, 600 seconds after a renewal that left it <granted>
+      When the manager's Vault session is measured
+      Then the check's status is "warn"
+      And the check's summary is "VAULT_LOGIN_EXPIRY_PENDING"
+      And the check's remedy contains "ends <when>"
+      And the check's remedy contains "vault login -address=https://vault.example.com -method=userpass"
+
+      Examples:
+        | situation                       | left  | granted | when              |
+        | just under a day before its end | 85700 | 86300   | in about 23 hours |
+        | hours before its end            | 7500  | 8100    | in about 2 hours  |
+        | minutes before its end          | 300   | 900     | within the hour   |
+
+    Scenario Outline: A token that is not renewable ends at its lifetime, whatever the job does
+      Renewing it fails, which is its nature and not a fault of the job.
+      Given the manager's Vault token is not renewable, with <left> seconds left
+      And the last run of the manager's Vault renewal job ended with the exit code 2
+      When the manager's Vault session is measured
+      Then the check's status is "<status>"
+
+      Examples:
+        | left   | status |
+        | 864000 | pass   |
+        | 36000  | warn   |
+
+    Scenario: A token that is not renewable says so a day before it ends
+      Given the manager's Vault token is not renewable, with 36000 seconds left
+      When the manager's Vault session is measured
+      Then the check's summary is "VAULT_LOGIN_EXPIRY_PENDING"
+      And the check's remedy contains "ends in about 10 hours"
+      And the check's remedy contains "its token is not renewable"
+
+    Scenario: A login nobody renewed yet is not judged by the lifetime it was issued with
+      The job renews it within ten minutes; a capped renewal shows then.
+      Given the manager's Vault token is renewable, with 3600 seconds left
+      When the manager's Vault session is measured
+      Then the check's status is "pass"
+
+    Scenario: A periodic token is renewed for as long as the job runs
+      Given the manager's Vault token is renewable, with 3000 seconds left, 600 seconds after a renewal that left it 3600
+      And that token is periodic, renewed for 3600 seconds at a time
+      When the manager's Vault session is measured
+      Then the check's status is "pass"
+
+    Scenario: A token with a maximum lifetime of its own warns a day before it, however much a renewal left
+      Given the manager's Vault token is renewable, with 86400 seconds left, 0 seconds after a renewal that left it 86400
+      And that token is periodic, renewed for 86400 seconds at a time
+      And that token was created 90000 seconds ago with a maximum lifetime of 108000 seconds
+      When the manager's Vault session is measured
+      Then the check's summary is "VAULT_LOGIN_EXPIRY_PENDING"
+      And the check's remedy contains "ends in about 5 hours"
+
+    Scenario: A renewal job whose last run failed is reported, not hidden with its output
+      The job's output is dropped because a renewal prints the token, so how
+      its last run ended is the only thing that says it fails.
+      Given the manager's Vault token is renewable, with 100000 seconds left, 72800 seconds after a renewal that left it 172800
+      And the last run of the manager's Vault renewal job ended with the exit code 2
+      When the manager's Vault session is measured
+      Then the check's status is "warn"
+      And the check's summary is "VAULT_RENEWAL_FAILING"
+      And the check's remedy contains "exit 2"
+      And the check's remedy contains "lapses in about 27 hours"
+
+    Scenario: Looking the token up prints the token, which reaches no report
+      Given the manager's Vault token is renewable, with 300 seconds left, 600 seconds after a renewal that left it 900
+      And looking that token up also prints the token "hvs.PRIVATE_SENTINEL_TOKEN"
+      When the manager's Vault session is measured
+      Then the check's summary is "VAULT_LOGIN_EXPIRY_PENDING"
+      And the checks do not mention "hvs.PRIVATE_SENTINEL_TOKEN"

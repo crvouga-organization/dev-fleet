@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { fleet, secret } from '../fleet-config';
+import { fleet, secret, fleetJson } from '../fleet-config';
 import {
   deliver,
   observe,
@@ -10,6 +10,9 @@ import {
   type NotifyConfig,
 } from '../notify';
 import { connection } from '../state/connection';
+import { loadEnrollment } from '../state/enrollment';
+import type { Enrollment } from '../machine/state';
+import { selectionText } from '../revision-selection';
 import type { Bucket } from '../state/bucket';
 import type { SecretsProvider } from '../secrets';
 import type { Check, NodeReport } from '../types';
@@ -27,8 +30,18 @@ export interface WatchStore {
   write: (text: string) => Promise<void>;
 }
 
+/** The revision the fleet is to run, as the fleet state records it. */
+export interface WatchedRevision {
+  approved: string;
+  applied: string | null;
+  /** What selected the approved revision and when, once a run recorded it. */
+  selectedBy?: NonNullable<Enrollment['selectedBy']>;
+}
+
 export interface FleetWatchServices {
   notify: NotifyConfig | undefined;
+  /** The approved revision and what selected it; null when none is approved. */
+  revision?: () => Promise<WatchedRevision | null>;
   /** The machines as `fleet-status --workers` sees them now. */
   status: () => Promise<NodeReport[]>;
   store: WatchStore | null;
@@ -87,7 +100,8 @@ export async function fleetWatch(
   if (!notify) checks.push(unconfigured('warn'));
   if (services.autoPark) checks.push(...(await services.autoPark(reports)));
   checks.push(await heartbeat(services.store, JSON.stringify(memory)));
-  return outcome(checks, notifications);
+  const revision = await services.revision?.().catch(() => null);
+  return outcome(checks, notifications, revision ?? null);
 }
 
 function unconfigured(status: 'warn' | 'fail'): Check {
@@ -96,8 +110,7 @@ function unconfigured(status: 'warn' | 'fail'): Check {
     status,
     summary: 'NOTIFY_NOT_CONFIGURED',
     remedy: {
-      action:
-        'Add a "notify" block to fleet.json with its targets, and store each target address as its secret (notify-webhook-url, notify-ntfy-url).',
+      action: `Add a "notify" block with its targets to ${fleetJson()}, and store each target address as its secret (notify-webhook-url, notify-ntfy-url).`,
     },
   };
 }
@@ -113,8 +126,7 @@ async function heartbeat(
       status: 'warn',
       summary: 'WATCH_HEARTBEAT_NO_BUCKET',
       remedy: {
-        action:
-          'Name the bucket under "state" in fleet.json: the heartbeat and what the watcher remembers are kept there.',
+        action: `Name the bucket under "state" in ${fleetJson()}: the heartbeat and what the watcher remembers are kept there.`,
       },
     };
   return store.write(text).then(
@@ -135,12 +147,22 @@ async function heartbeat(
   );
 }
 
+/** `revision 0123456789ab selected by --revision at 2026-11-01T10:00:00.000Z`. */
+function revisionLine(revision: WatchedRevision): string {
+  const by = revision.selectedBy;
+  return `revision ${revision.approved.slice(0, 12)}${
+    by ? ` selected by ${selectionText(by)} at ${by.at}` : ''
+  }${revision.applied === revision.approved ? '' : ' (not applied to the whole fleet)'}`;
+}
+
 function outcome(
   checks: Check[],
-  notifications: Notification[]
+  notifications: Notification[],
+  revision: WatchedRevision | null = null
 ): CommandOutcome {
   const ok = !checks.some((check) => check.status === 'fail');
   const lines = [
+    ...(revision ? [revisionLine(revision)] : []),
     ...notifications.map(
       (entry) =>
         `${entry.event} ${entry.node}${entry.checks.length ? `: ${entry.checks.join(', ')}` : ''}`
@@ -149,7 +171,14 @@ function outcome(
   ];
   return {
     exitCode: ok ? 0 : 1,
-    data: { version: 1, command: 'fleet-watch', ok, notifications, checks },
+    data: {
+      version: 1,
+      command: 'fleet-watch',
+      ok,
+      ...(revision ? { revision } : {}),
+      notifications,
+      checks,
+    },
     text: lines.join('\n') || 'Nothing changed.',
   };
 }
@@ -195,10 +224,22 @@ export function watchServices(
 ): FleetWatchServices {
   return {
     notify: fleet.notify,
+    revision: watchedRevision,
     status,
     store: bucketStore(connection().bucket),
     secrets: secret,
     send: fetch,
     now: () => new Date(),
+  };
+}
+
+/** What the fleet state says the fleet is to run, and what selected it. */
+async function watchedRevision(): Promise<WatchedRevision | null> {
+  const enrollment = await loadEnrollment(null);
+  if (!enrollment) return null;
+  return {
+    approved: enrollment.approvedRevision,
+    applied: enrollment.appliedRevision ?? null,
+    ...(enrollment.selectedBy ? { selectedBy: enrollment.selectedBy } : {}),
   };
 }

@@ -77,6 +77,21 @@ Feature: The health of the workers includes what the dashboard knows of them
         | beszel:access          | skip   |
       And the health reports do not mention "private connection detail"
 
+    Scenario: A manager logged out of Vault leaves the evidence unverified, blocked by that login
+      The fleet login could not be read, so nothing says whether a worker
+      reports. That is the fault of the manager's own login, which one check
+      owns, not a hub account that is missing.
+      Given the hub and its public address answer their health checks
+      And logging in to the hub fails with "SECRET_READ_BLOCKED"
+      When the evidence of the dashboard is added to the health reports
+      Then the health report of "dashboard" has exactly these checks:
+        | check                  | status |
+        | beszel:hub             | pass   |
+        | beszel:public-endpoint | pass   |
+        | beszel:access          | skip   |
+      And the health reports mention "SECRET_READ_BLOCKED by manager:vault-renewal"
+      But the health reports do not mention "BESZEL_ACCOUNT_REQUIRED"
+
     Scenario: With the manager not visible on the tailnet no evidence can be gathered
       Given the tailnet shows no computer
       When the evidence of the dashboard is added to the health reports

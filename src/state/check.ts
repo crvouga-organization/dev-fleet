@@ -1,8 +1,9 @@
 import type { Check, Status } from '../types';
 import { DIVERGED_REMEDY, type Standing } from './sync';
+import { fleetJson } from '../fleet-config';
 
-const INIT =
-  'Name a bucket under "state" in fleet.json and pass its credentials in DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY (see docs/state.md); without a fleet.json, devfleet fleet-state --init --bucket NAME --endpoint https://HOST. Until then a lost manager loses the roster, the approved revision and the configuration last applied.';
+const init = (): string =>
+  `Name a bucket under "state" in ${fleetJson()} and pass its credentials in DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY (see docs/state.md); without a fleet.json, devfleet fleet-state --init --bucket NAME --endpoint https://HOST. Until then a lost manager loses the roster, the approved revision and the configuration last applied.`;
 
 const FINDINGS: Record<
   Standing,
@@ -16,7 +17,9 @@ const FINDINGS: Record<
     status: 'warn',
     summary:
       'No bucket is configured: this machine holds the only copy of the fleet state.',
-    action: INIT,
+    get action() {
+      return init();
+    },
   },
   empty: {
     status: 'warn',

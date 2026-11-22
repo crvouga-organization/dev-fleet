@@ -147,12 +147,22 @@ export async function selected(
     })
   ).finally(() => ui.progress.stop());
   if (options.enrollment) reportEnrollment(report, options.enrollment);
+  reportSelection(report, options);
   report.checks.push(...notes);
   // A worker that could not be retired, like any other failed check of the
   // fleet, means the run did not converge: it is not recorded as applied.
   if (notes.some(blocking)) report.ok = false;
   if (settle) report.checks.push(await settle(report));
   return outcome(report, planFingerprint, started);
+}
+
+/** What selected the run's revision, and the approved one it replaces. */
+function reportSelection(
+  report: ManagerReport,
+  options: FleetSyncOptions
+): void {
+  if (options.selection) report.selectedBy = options.selection;
+  if (options.replaces) report.replacedRevision = options.replaces;
 }
 
 /** Maintenance reboots go one worker at a time, and a worker that does not

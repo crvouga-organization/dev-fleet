@@ -1,4 +1,5 @@
 import { join } from 'node:path';
+import policy from '../../ansible/ubuntu/policy.json';
 import type { Standing } from '../state/sync';
 import type { Runner } from '../types';
 import { featureRemovals, workerFeatures } from '../worker-features';
@@ -14,7 +15,11 @@ export interface ToolChange {
 export interface Restart {
   service: string;
   reason: string;
+  /** The sync itself ends them, at once. */
   endsRunningTurns: boolean;
+  /** A restart that waits for running turns is applied this many hours
+   * after it was first deferred, although turns run: they end then. */
+  deadlineHours?: number;
 }
 
 /** What `fleet-sync --dry-run` says a sync would change. It is read from
@@ -90,8 +95,12 @@ export function toolChanges(
 /** What restarts follow from the changes, as the playbooks and the toolchain
  * setup act on them. A worker's T3 restarts only while it runs no agent turn
  * (`ansible/ubuntu/tasks/t3-restart.yml`) unless `--restart-busy` asks for it
- * anyway: only then do running turns end.
+ * anyway, which ends running turns at once. A restart that waits is applied
+ * at its deadline (`t3RestartMaxDeferralHours`), and ends the turns that
+ * still run then.
  */
+const deadlineHours = policy.t3RestartMaxDeferralHours;
+
 export function restarts(
   tools: ToolChange[],
   files: string[],
@@ -100,12 +109,14 @@ export function restarts(
   const found: Restart[] = [];
   const when = restartBusy
     ? 'at once (--restart-busy): its running agent turns end.'
-    : 'once it runs no agent turn: running turns keep going and the restart is pending until then.';
+    : `once it runs no agent turn: running turns keep going and the restart is pending until then, for ${deadlineHours} hours at most. Turns still running at that deadline end.`;
+  const waits = restartBusy ? {} : { deadlineHours };
   if (tools.some((change) => change.tool === 't3'))
     found.push({
       service: 't3',
       reason: `T3 is upgraded on every worker and restarted ${when}`,
       endsRunningTurns: restartBusy,
+      ...waits,
     });
   else if (
     files.some((file) =>
@@ -116,6 +127,7 @@ export function restarts(
       service: 't3',
       reason: `The managed T3 policy may change: a T3 that has not loaded it is restarted ${when}`,
       endsRunningTurns: restartBusy,
+      ...waits,
     });
   const agents = tools.filter((change) => AGENT_TOOLS.includes(change.tool));
   if (agents.length)

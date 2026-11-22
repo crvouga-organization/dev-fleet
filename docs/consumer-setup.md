@@ -362,8 +362,10 @@ Read `summary` and `remedy.action` of the failing check. The common ones:
 | `FLEET_MANAGER_ENROLLMENT_REQUIRED`       | No worker is enrolled yet. The human runs the first `fleet-sync` in a terminal.                                               |
 | `FLEET_NOT_MANAGER`                       | You are not on the machine `manager` names. Run there, or from a worker that can SSH to it.                                   |
 | `FLEET_REVISION_REQUIRED`                 | No revision to converge to. Run the installed package (`npx devfleet`), not a copy of its source.                             |
+| `FLEET_REVISION_UNMERGED`                 | The revision is not on the default branch of the source repository. Nothing changed; a release always is.                     |
 | `FLEET_SOURCE_UNAVAILABLE`                | The revision could not be fetched from `source.repository`. Check the network and that the URL is right.                      |
 | `FLEET_STATE_DIVERGED`                    | This machine and the bucket hold different fleet states. `fleet-state --json` explains; never pick one without the human.     |
+| `FLEET_CONFIGURATION_COPY_CHANGED`        | `~/.config/dev-fleet/fleet.json` was edited by hand. The remedy says how to keep the edit or discard it; the human chooses.   |
 | `FLEET_MANAGER_LOCKED`                    | Another run holds the manager's lock. Wait for it; do not delete the lock while a run is alive.                               |
 | `FLEET_PLAN_STALE`                        | The plan changed after it was approved. Preview again.                                                                        |
 | `ssh:host-key`                            | Host key unknown or changed. The human verifies the fingerprint out of band; never disable checking.                          |
@@ -379,6 +381,8 @@ Read `summary` and `remedy.action` of the failing check. The common ones:
 | `FLEET_REMOTE_LOCKED`                     | Another operation is running on that worker. Wait and run again.                                                              |
 | `FLEET_PROMOTION_BLOCKED`                 | The canary (the report names it under `canary`) failed, so the new revision went no further. Fix the canary first.            |
 | `VAULT_LOGIN_REQUIRED`                    | The manager is not logged in to Vault. The human logs in; the next sync issues worker tokens.                                 |
+| `VAULT_LOGIN_EXPIRY_PENDING` (warning)    | The manager's Vault login ends within a day and renewal cannot extend it. The human logs in again before then.                |
+| `SECRET_READ_BLOCKED`                     | The check needed a secret the manager could not read while logged out of Vault. Fix the check it names, not this one.         |
 | `PROVIDER_UNATTENDED_CREDENTIAL_REQUIRED` | A coding agent has no credential a background service can use. The human signs in on the proxy.                               |
 | `BESZEL_ACCOUNT_REQUIRED`                 | The monitoring hub has no account yet. Follow the remedy; other workers are not blocked.                                      |
 

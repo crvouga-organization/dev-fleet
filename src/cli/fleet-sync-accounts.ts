@@ -3,6 +3,7 @@ import { selectNodes } from '../config';
 import { fleet as definition } from '../fleet-config';
 import { bundleProbe } from '../transport';
 import { machineProviders } from '../t3/providers';
+import { accountModels } from '../t3/models';
 import { accountContext, nodeAccountChecks } from '../accounts/context';
 import { propagateAccounts } from '../accounts/propagate';
 import { loadRoster } from './roster';
@@ -36,7 +37,9 @@ export async function syncAccounts(
   });
 }
 
-/** The manager's own account instances, from the checkout it runs. */
+/** The manager's own account instances and the models each shows, from the
+ * checkout it runs.
+ */
 export async function managerAccounts(workspace: string): Promise<Check[]> {
   const checkout = ownerCheckout(workspace);
   if (!checkout)
@@ -53,6 +56,7 @@ export async function managerAccounts(workspace: string): Promise<Check[]> {
     ];
   return [
     await machineProviders(definition.manager.id, checkout, true),
+    await accountModels(),
     ...(await nodeAccountChecks(await accountContext())),
   ];
 }
