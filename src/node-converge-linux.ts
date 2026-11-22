@@ -218,6 +218,7 @@ async function applyBaseline(
             ? 'Ubuntu baseline unchanged since its last successful apply and its services are active (re-applied in full at least daily).'
             : 'Ubuntu baseline tasks completed, including always-on service recovery; effective boot/session policies require separate verification.'
           : 'UBUNTU_BASELINE_INCOMPLETE',
+        ...(result.ok && result.cached ? { reused: 'receipt' as const } : {}),
       },
     ],
   };

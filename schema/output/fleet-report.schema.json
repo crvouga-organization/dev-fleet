@@ -25,6 +25,16 @@
     "succeeded": { "type": "integer" },
     "successRate": { "type": ["number", "null"] },
     "meanDurationMs": { "type": ["number", "null"] },
+    "slowdown": {
+      "description": "Set when the last run took at least twice the median of the runs before it, and at least a minute more.",
+      "type": ["object", "null"],
+      "required": ["lastDurationMs", "medianDurationMs", "earlier"],
+      "properties": {
+        "lastDurationMs": { "type": "number" },
+        "medianDurationMs": { "type": "number" },
+        "earlier": { "type": "integer" }
+      }
+    },
     "failingChecks": {
       "type": "array",
       "items": {

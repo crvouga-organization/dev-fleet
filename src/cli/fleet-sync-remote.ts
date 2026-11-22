@@ -133,6 +133,8 @@ export async function selected(
             revision: options.revision!,
             apply: Boolean(options.apply),
             workspace: settings.workspace,
+            progress: (step) =>
+              ui.progress.step(canonical.manager.id, `Manager: ${step}`),
           },
           run
         ),
