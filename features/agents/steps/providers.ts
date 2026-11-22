@@ -296,6 +296,18 @@ Then('the result passes', (world) => {
   expect(remembered(world).result!.status).toBe('pass');
 });
 
+Then('the result says it was reused from the verify cache', (world) => {
+  expect(remembered(world).result!.reused).toBe('verify-cache');
+});
+
+Then('the result says how long it took', (world) => {
+  expect(remembered(world).result!.durationMs).toBeGreaterThanOrEqual(0);
+});
+
+Then('the result does not say it was reused', (world) => {
+  expect(remembered(world).result!.reused).toBeUndefined();
+});
+
 Then('the summary of the result contains {string}', (world, text: string) => {
   expect(remembered(world).result!.summary).toContain(text);
 });

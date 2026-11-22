@@ -48,11 +48,18 @@ export async function cachedCheck(
   const directory = options.directory ?? join(receiptDirectory(), 'verify');
   const path = join(directory, `${name.replace(/[^a-z0-9-]/gi, '_')}.json`);
   const now = options.now ?? Date.now();
+  const started = Date.now();
   if (!options.bypass) {
     const hit = await fresh(path, key, now);
-    if (hit) return hit;
+    if (hit)
+      return {
+        ...hit,
+        durationMs: Date.now() - started,
+        reused: 'verify-cache',
+      };
   }
-  const check = await compute();
+  const computed = await compute();
+  const check = { ...computed, durationMs: Date.now() - started };
   const reusable =
     check.status === 'pass' && (options.reuse ? options.reuse(check) : true);
   try {
@@ -61,7 +68,8 @@ export async function cachedCheck(
       await mkdir(directory, { recursive: true, mode: 0o700 });
       await writeFile(
         path,
-        JSON.stringify({ version: 1, key, checkedAt: now, check }) + '\n',
+        JSON.stringify({ version: 1, key, checkedAt: now, check: computed }) +
+          '\n',
         { mode: 0o600 }
       );
     }

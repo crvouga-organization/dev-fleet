@@ -1,3 +1,4 @@
+import { SLOW_NODE_MS, slowest } from './fleet-sync-timing';
 import { Chalk, type ChalkInstance } from 'chalk';
 import type { ManagerNode, ManagerReport } from '../manager-sync';
 import { selectionText } from '../revision-selection';
@@ -107,6 +108,7 @@ export function managerText(
   const lines: string[] = [header(c, report, failing, options)];
   lines.push('', ...grid(c, report.nodes, mark, options.color === true));
   lines.push('', totals(c, counts, options.color === true));
+  lines.push(...slowLines(c, report.nodes));
   for (const status of ['fail', 'warn', 'skip', 'not-applicable'] as const) {
     const problems = groupProblems(
       all.filter((entry) => entry.check.status === status)
@@ -132,6 +134,25 @@ export function managerText(
     );
   if (!report.applied) lines.push(c.dim('No node deployment was performed.'));
   return stableUrls(lines.join('\n'));
+}
+
+/** `slowest    manager-mac (3m7s): agent:opencode:account-1:session 2m30s,
+ * ubuntu:baseline 12s (+3 of its step)`, for each node that took a minute
+ * or more: where its time went, from what its checks measured.
+ */
+function slowLines(c: ChalkInstance, nodes: ManagerNode[]): string[] {
+  return nodes.flatMap((node) => {
+    const steps =
+      (node.durationMs ?? 0) >= SLOW_NODE_MS ? slowest(node.checks) : [];
+    if (!steps.length) return [];
+    const named = steps.map(
+      (step) =>
+        `${step.id} ${duration(step.durationMs)}${step.others ? ` (+${step.others} of its step)` : ''}`
+    );
+    return [
+      `${c.dim('slowest  ')}  ${node.node} (${duration(node.durationMs!)}): ${named.join(', ')}`,
+    ];
+  });
 }
 
 /** `selected   by --revision; replaces 0123456789ab`, when the report says. */

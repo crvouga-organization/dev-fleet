@@ -15,6 +15,8 @@ export function validCheck(value: unknown): value is Check {
   )
     return false;
   if (!validDuration(value['phaseDurationMs'])) return false;
+  if (!validDuration(value['durationMs'])) return false;
+  if (!validReused(value['reused'])) return false;
   if (!validRequired(value['required'])) return false;
   const remedy = value['remedy'];
   return remedy === undefined || validRemedy(remedy);
@@ -81,6 +83,8 @@ export function cleanCheck(check: Check): Check {
     ...(check.phaseDurationMs !== undefined
       ? { phaseDurationMs: check.phaseDurationMs }
       : {}),
+    ...(check.durationMs !== undefined ? { durationMs: check.durationMs } : {}),
+    ...(check.reused !== undefined ? { reused: check.reused } : {}),
     ...(check.remedy
       ? {
           remedy: {
@@ -112,6 +116,10 @@ function validDuration(value: unknown): boolean {
       value >= 0 &&
       value <= 86_400_000)
   );
+}
+
+function validReused(value: unknown): boolean {
+  return value === undefined || value === 'verify-cache' || value === 'receipt';
 }
 
 function validRequired(value: unknown): boolean {

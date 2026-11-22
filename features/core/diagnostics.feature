@@ -60,6 +60,36 @@ Feature: A check becomes a diagnostic an operator can act on
         | durationMs | 1234 |
       And nothing reported contains "PRIVATE_SENTINEL"
 
+    Scenario: A check's own duration is preferred to its phase's, and what was reused is said
+      Given the check:
+        | id              | agent:claude:session |
+        | status          | pass                 |
+        | summary         | Observed             |
+        | phaseDurationMs | 150000               |
+        | durationMs      | 12                   |
+        | reused          | "verify-cache"       |
+      When that check arrives from "fixture" over the protocol
+      Then the protocol accepts the check
+      And the diagnostic says:
+        | durationMs | 12             |
+        | reused     | "verify-cache" |
+
+    Scenario Outline: A check that says <field> is <value> is not accepted
+      Given the check:
+        | id      | ubuntu:baseline |
+        | status  | pass            |
+        | summary | Observed        |
+        | <field> | <value>         |
+      When that check arrives from "fixture" over the protocol
+      Then the protocol does not accept the check
+
+      Examples:
+        | field      | value        |
+        | durationMs | -1           |
+        | durationMs | "12"         |
+        | reused     | "somewhere"  |
+        | reused     | true         |
+
     Scenario Outline: A phase duration of <duration> is not accepted
       Given the check:
         | id              | ubuntu:baseline  |

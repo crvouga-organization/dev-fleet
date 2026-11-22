@@ -140,7 +140,10 @@ export async function accountSessionChecks(
     live.map(async (account): Promise<Check> => {
       const instance = { tool: account.tool, account: account.email };
       const id = `agent:${account.tool}:account-${index(instance)}:session`;
+      const started = Date.now();
       const answer = await session(instance);
+      // Its own time: one session can be most of what a node's sync took.
+      const durationMs = Date.now() - started;
       const { result, clears }: SessionOutcome =
         typeof answer === 'string' ? { result: answer } : answer;
       if (result === 'ok')
@@ -148,6 +151,7 @@ export async function accountSessionChecks(
           id,
           status: 'pass',
           summary: `${account.tool} account ${index(instance)} runs a session through its T3 launcher.`,
+          durationMs,
         };
       const { status, summary, action } = UNANSWERED[result];
       return {
@@ -160,6 +164,7 @@ export async function accountSessionChecks(
         ...(action
           ? { remedy: { action, command: 'devfleet fleet-accounts' } }
           : {}),
+        durationMs,
       };
     })
   );

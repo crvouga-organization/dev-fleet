@@ -51,6 +51,40 @@ Feature: fleet-sync prints a short report that is the same every time
       When the report is printed in plain text
       Then the printed report contains "selected   by the HEAD of the checkout fleet-sync was started in, handed off from w1 (--allow-unmerged); replaces 0123456789ab"
 
+  Rule: A machine that took a minute or more says where its time went
+
+    Each check carries the time of the step that produced it, and its own
+    where that was measured apart. A step is named by the check that explains
+    its time: one measured on its own that took at least half of it, else the
+    step's first check with how many more it produced.
+
+    Scenario: The slowest steps of a slow machine are listed, slowest first
+      Given the worker "w1", online and applied at "abc" after 187000 ms, reports:
+        | check                            | status | summary | step ms | own ms |
+        | ubuntu:baseline                  | pass   | ok      | 12000   |        |
+        | ubuntu:policy                    | pass   | ok      | 12000   |        |
+        | provider:codex:inference         | pass   | ok      | 4000    | 3000   |
+        | agent:claude:version             | pass   | ok      | 151000  |        |
+        | agent:claude:session             | pass   | ok      | 151000  | 20     |
+        | agent:opencode:account-1:session | fail   | X_CODE  | 151000  | 150000 |
+        | t3:service                       | pass   | ok      | 500     |        |
+      When the report is printed in plain text
+      Then the printed report contains "slowest    w1 (3m07s): agent:opencode:account-1:session 2m30s, ubuntu:baseline 12s (+1 of its step), provider:codex:inference 3s"
+
+    Scenario: A machine that took under a minute lists none
+      Given the worker "w1", online and applied at "abc" after 59000 ms, reports:
+        | check           | status | summary | step ms |
+        | ubuntu:baseline | pass   | ok      | 40000   |
+      When the report is printed in plain text
+      Then the printed report does not name "slowest"
+
+    Scenario: A slow machine whose checks measured nothing lists none
+      Given the worker "w1", online and applied at "abc" after 187000 ms, reports:
+        | check           | status | summary |
+        | ubuntu:baseline | pass   | ok      |
+      When the report is printed in plain text
+      Then the printed report does not name "slowest"
+
   Rule: Warnings alone are a converged run
 
     Background:

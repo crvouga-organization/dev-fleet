@@ -75,6 +75,47 @@ Feature: Every fleet-sync run is kept in a history, and fleet-report says how re
     And the time each machine was not ready is, in minutes:
       | worker-one | 120 |
 
+  Scenario Outline: The report says so when the last run took much longer than the ones before it: <case>
+    At least twice the median of the runs before it, and at least a minute
+    more; with fewer than five earlier runs there is nothing to compare.
+    Given fleet-sync recorded these runs:
+      | finished             | seconds  | ok  |
+      | 2026-11-01T10:00:00Z | 180      | yes |
+      | 2026-11-01T11:00:00Z | 190      | yes |
+      | 2026-11-01T12:00:00Z | 185      | yes |
+      | 2026-11-01T13:00:00Z | <fourth> | yes |
+      | 2026-11-01T14:00:00Z | 200      | yes |
+      | 2026-11-01T15:00:00Z | <last>   | yes |
+    When the operator asks for the fleet report since "30d", at "2026-11-01T16:00:00Z"
+    Then the fleet report <says> the last run was slower
+
+    Examples:
+      | case                         | fourth | last | says         |
+      | three times the median       | 185    | 572  | says         |
+      | a little slower              | 185    | 240  | does not say |
+      | exactly twice the median     | 185    | 370  | says         |
+
+  Scenario: Too few earlier runs are nothing to hold the last run against
+    Given fleet-sync recorded these runs:
+      | finished             | seconds | ok  |
+      | 2026-11-01T10:00:00Z | 60      | yes |
+      | 2026-11-01T11:00:00Z | 60      | yes |
+      | 2026-11-01T12:00:00Z | 900     | yes |
+    When the operator asks for the fleet report since "30d", at "2026-11-01T16:00:00Z"
+    Then the fleet report does not say the last run was slower
+
+  Scenario: The slower run is named with both times
+    Given fleet-sync recorded these runs:
+      | finished             | seconds | ok  |
+      | 2026-11-01T10:00:00Z | 180     | yes |
+      | 2026-11-01T11:00:00Z | 190     | yes |
+      | 2026-11-01T12:00:00Z | 185     | yes |
+      | 2026-11-01T13:00:00Z | 185     | yes |
+      | 2026-11-01T14:00:00Z | 200     | yes |
+      | 2026-11-01T15:00:00Z | 572     | yes |
+    When the operator asks for the fleet report since "30d", at "2026-11-01T16:00:00Z"
+    Then the fleet report prints "Slower: the last run took 572 s; the median of the 5 before it is 185 s."
+
   Scenario: A machine is not ready from the run that found it so until the run that found it ready
     Given fleet-sync recorded these runs:
       | finished             | ok  | not ready  |
