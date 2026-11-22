@@ -1,21 +1,41 @@
-import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs';
+import { expect } from 'bun:test';
+import {
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+  existsSync,
+  statSync,
+} from 'node:fs';
 import { join } from 'node:path';
 import type { DataTable } from '../../support/gherkin';
-import type { Account } from '../../../src/agents/accounts';
+import { preferredModels, type Account } from '../../../src/agents/accounts';
 import { accountInstanceId, accountDriver } from '../../../src/t3/accounts';
 import { modelsCheck } from '../../../src/t3/models';
 import { ide, type IdeWorld } from './world';
 
-const { Given, When } = ide;
+const { Given, When, Then } = ide;
 
 interface Models {
   accounts: Account[] | null;
   required: Record<string, string[]>;
+  /** How often T3 still rewrites its settings during a sync. */
+  interruptions: number;
+  /** The settings file as the last sync found it. */
+  writtenAt: number | undefined;
 }
 const models = new WeakMap<IdeWorld, Models>();
 const of = (world: IdeWorld): Models => {
   let value = models.get(world);
-  if (!value) models.set(world, (value = { accounts: [], required: {} }));
+  if (!value)
+    models.set(
+      world,
+      (value = {
+        accounts: [],
+        required: {},
+        interruptions: 0,
+        writtenAt: undefined,
+      })
+    );
   return value;
 };
 
@@ -112,17 +132,93 @@ Given(
   }
 );
 
-When('the models T3 offers are checked', async (world) => {
-  const accounts = of(world).accounts;
+Given(
+  'the preferred defaults of {string} are {string}',
+  (_world, tool: string, preferred: string) => {
+    expect(preferredModels(tool)).toEqual(list(preferred));
+  }
+);
+
+Given("T3's settings hold these model preferences:", (world, text: string) => {
+  const path = file(world, 'settings.json');
+  writeFileSync(
+    path,
+    JSON.stringify({
+      ...readJson(path),
+      providerModelPreferences: JSON.parse(text) as unknown,
+    })
+  );
+});
+
+Given(
+  "T3's setting {string} names the model {string} on the instance of {string}",
+  (world, setting: string, model: string, email: string) => {
+    const path = file(world, 'settings.json');
+    const account = of(world).accounts!.find(
+      (candidate) => candidate.email === email
+    )!;
+    writeFileSync(
+      path,
+      JSON.stringify({
+        ...readJson(path),
+        [setting]: { instanceId: accountInstanceId(account), model },
+      })
+    );
+  }
+);
+
+Given(
+  'T3 rewrites its settings while the models are synced, {int} time(s)',
+  (world, times: number) => {
+    of(world).interruptions = times;
+  }
+);
+
+const check = async (world: IdeWorld, apply: boolean): Promise<void> => {
+  const state = of(world);
+  const path = file(world, 'settings.json');
+  state.writtenAt = existsSync(path) ? statSync(path).ino : undefined;
   world.checks = [
     await modelsCheck({
       t3Home: world.t3Home,
       roster: async () => {
-        if (!accounts)
+        if (!state.accounts)
           throw new Error('The CLI proxy did not list its models.');
-        return accounts;
+        return state.accounts;
       },
-      required: of(world).required,
+      required: state.required,
+      apply,
+      pause: async () => {},
+      // T3 writing its own settings between dev-fleet's read and write.
+      beforeWrite: async () => {
+        if (state.interruptions <= 0) return;
+        state.interruptions--;
+        const current = readJson(path);
+        writeFileSync(
+          path,
+          JSON.stringify({
+            ...current,
+            lastOpened: Number(current['lastOpened'] ?? 0) + 1,
+          })
+        );
+      },
     }),
   ];
+};
+
+Given('the models T3 offers have been synced', async (world) => {
+  await check(world, true);
+});
+
+When('the models T3 offers are checked', async (world) => {
+  await check(world, false);
+});
+
+When('the models T3 offers are synced', async (world) => {
+  await check(world, true);
+});
+
+Then("T3's settings were not written again", (world) => {
+  // A write replaces the file through a rename: a new inode.
+  expect(statSync(file(world, 'settings.json')).ino).toBe(of(world).writtenAt!);
 });

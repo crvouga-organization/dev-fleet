@@ -904,6 +904,54 @@ Then(
 );
 
 Then(
+  'a custom manager of Renovate reads the version of {string} in {string} as a release of {string}',
+  (_world, key: string, path: string, repository: string) => {
+    const { customManagers = [] } = JSON.parse(read('renovate.json')) as {
+      customManagers?: {
+        managerFilePatterns: string[];
+        matchStrings: string[];
+        depNameTemplate?: string;
+        datasourceTemplate?: string;
+      }[];
+    };
+    const pattern = (written: string) =>
+      new RegExp(written.replace(/^\/(.*)\/$/, '$1'));
+    const manager = customManagers.find(
+      (candidate) =>
+        candidate.depNameTemplate === repository &&
+        candidate.managerFilePatterns.some((files) => pattern(files).test(path))
+    );
+    expect(manager?.datasourceTemplate).toBe('github-releases');
+    const pinned = (
+      JSON.parse(read(path)) as Record<string, { version?: string }>
+    )[key]?.version;
+    expect(pinned).toBeString();
+    expect(
+      manager?.matchStrings.map(
+        (match) => new RegExp(match).exec(read(path))?.groups?.['currentValue']
+      )
+    ).toEqual([pinned]);
+  }
+);
+
+Then(
+  'Renovate moves {string} only to a release at least {string} old',
+  (_world, dependency: string, age: string) => {
+    const { packageRules = [] } = JSON.parse(read('renovate.json')) as {
+      packageRules?: {
+        matchPackageNames?: string[];
+        minimumReleaseAge?: string;
+      }[];
+    };
+    expect(
+      packageRules
+        .filter((rule) => rule.matchPackageNames?.includes(dependency))
+        .map((rule) => rule.minimumReleaseAge)
+    ).toEqual([age]);
+  }
+);
+
+Then(
   /^docs\/declared\.md says "([^"]+)" is moved by a person, and why$/,
   (_world, pin: string) => {
     const section = read('docs/declared.md').split(

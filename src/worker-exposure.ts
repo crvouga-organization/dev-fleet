@@ -19,6 +19,9 @@ const FLEET_UNITS = [
 const T3_APP_SCOPE = /^app-com\.t3tools\.T3Code-\d+\.scope$/;
 const fleetUnit = (unit: string) =>
   FLEET_UNITS.includes(unit) || T3_APP_SCOPE.test(unit);
+/** The scope T3 starts each agent in (`t3code-<agent>-<id>.scope`): what
+ * listens there was started by an agent, not by the fleet. */
+const AGENT_SCOPE = /^t3code-[\w-]+\.scope$/;
 /** The table tasks/firewall.yml loads. */
 export const FIREWALL_TABLE = ['inet', 'personal_fleet'];
 
@@ -207,6 +210,7 @@ export function allowList(rules: WorkerExposure): PublicPort[] {
 }
 
 const UNRESTRICTED = 'WORKER_LISTENER_UNRESTRICTED';
+const AGENT_UNRESTRICTED = 'WORKER_AGENT_LISTENER_UNRESTRICTED';
 
 const REMEDY: Record<string, string> = {
   WORKER_FIREWALL_INACTIVE:
@@ -214,6 +218,8 @@ const REMEDY: Record<string, string> = {
   WORKER_PUBLIC_SSH_UNDECLARED:
     'SSH is still open beyond the tailnet because fleet-sync could not prove the manager reaches the worker over the tailnet. Point the SSH alias of this worker at its tailnet name, then run devfleet fleet-sync; declare exposure.publicSsh only for break-glass access.',
   WORKER_LISTENER_UNRESTRICTED: `Bind the named service to 127.0.0.1 or the tailnet address, or declare its port in exposure.publicPorts of fleet.json. A fleet service on a public address is a fault of its unit: run devfleet fleet-sync. The T3 desktop app returns to loopback when it next starts; fleet-sync restarts it once it runs no agent turn, and ${policy.t3RestartMaxDeferralHours} hours after it first deferred the restart at the latest (t3:running-version reports the wait).`,
+  WORKER_AGENT_LISTENER_UNRESTRICTED:
+    'A process an agent started (a development server, say) listens on every address. It is no fleet service and fleet-sync does not change it; the fleet firewall, once loaded, admits it only over the tailnet. Have the agent bind it to 127.0.0.1 (most development servers take --host 127.0.0.1 or HOST=127.0.0.1) or stop it, or declare its port in exposure.publicPorts of fleet.json. It ends with the agent session that started it.',
   WORKER_EXPOSURE_UNOBSERVED:
     'The listening sockets or the firewall could not be read with sudo -n; check worker:sudo, then rerun devfleet fleet-status --workers.',
 };
@@ -341,12 +347,13 @@ function exposedListeners(observed: Observed): Listener[] {
 }
 
 /** The exposed listeners outside the allow-list, by who owns them: a fleet
- * service, or anything else. Each names its port and unit. */
+ * service, a process an agent started, or anything else. Each names its port
+ * and unit. */
 async function unrestricted(
   rules: WorkerExposure,
   exposed: Listener[],
   run: Runner
-): Promise<{ fleet: string[]; other: string[] }> {
+): Promise<{ fleet: string[]; agent: string[]; other: string[] }> {
   const units = new Map<number, string | null>();
   for (const pid of new Set(exposed.flatMap((listener) => listener.pids))) {
     const cgroup = await run(['cat', `/proc/${pid}/cgroup`]);
@@ -354,16 +361,28 @@ async function unrestricted(
   }
   const permitted = allowList(rules);
   const fleetPorts = [rules.t3Port, MONITORING_AGENT_PORT];
-  const found = { fleet: new Set<string>(), other: new Set<string>() };
+  const found = {
+    fleet: new Set<string>(),
+    agent: new Set<string>(),
+    other: new Set<string>(),
+  };
   for (const listener of exposed) {
     if (allowed(permitted, listener)) continue;
     const unit =
       listener.pids.map((pid) => units.get(pid)).find(Boolean) ?? null;
-    const owned =
-      fleetPorts.includes(listener.port) || (unit !== null && fleetUnit(unit));
-    (owned ? found.fleet : found.other).add(describe(listener, unit));
+    const owner =
+      fleetPorts.includes(listener.port) || (unit !== null && fleetUnit(unit))
+        ? 'fleet'
+        : unit !== null && AGENT_SCOPE.test(unit)
+          ? 'agent'
+          : 'other';
+    found[owner].add(describe(listener, unit));
   }
-  return { fleet: [...found.fleet], other: [...found.other] };
+  return {
+    fleet: [...found.fleet],
+    agent: [...found.agent],
+    other: [...found.other],
+  };
 }
 
 /** The firewall's own fault, when it has one. */
@@ -374,13 +393,15 @@ function firewallFault(rules: WorkerExposure, firewall: Firewall): string[] {
   return [];
 }
 
-const listed = (listeners: string[]): string[] =>
-  listeners.length ? [`${UNRESTRICTED} ${listeners.join(', ')}`] : [];
+const listed = (listeners: string[], code = UNRESTRICTED): string[] =>
+  listeners.length ? [`${code} ${listeners.join(', ')}`] : [];
 
 /** worker:exposure: nothing listens beyond loopback and the tailnet but what
  * the declared policy allows, and the firewall that closes the rest is
  * loaded. Not applicable without an address outside the tailnet. Reports a
- * port and the unit that owns it, never a process's arguments.
+ * port and the unit that owns it, never a process's arguments. What an agent
+ * started is reported under its own code, by `otherListeners` like any
+ * listener that is not the fleet's, and never as a fleet service.
  */
 export async function exposureCheck(
   rules: WorkerExposure,
@@ -388,17 +409,21 @@ export async function exposureCheck(
 ): Promise<Check> {
   const observed = await observe(run);
   if ('id' in observed) return observed;
-  const { fleet, other } = await unrestricted(
+  const { fleet, agent, other } = await unrestricted(
     rules,
     exposedListeners(observed),
     run
   );
   const strict = rules.policy.otherListeners === 'fail';
+  const agents = listed(agent, AGENT_UNRESTRICTED);
   const failures = [
     ...firewallFault(rules, observed.firewall),
     ...listed(strict ? [...fleet, ...other] : fleet),
+    ...(strict ? agents : []),
   ];
-  const problems = [...failures, ...listed(strict ? [] : other)];
+  const problems = strict
+    ? failures
+    : [...failures, ...listed(other), ...agents];
   if (problems.length)
     return result(
       failures.length ? 'fail' : 'warn',

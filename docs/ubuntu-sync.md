@@ -283,8 +283,13 @@ worker's tailnet name.
 `worker:exposure` (on the worker) lists listening sockets and fails on one
 bound beyond loopback and the tailnet outside the allow-list (sshd, tailscaled,
 the system's DHCP and name-resolution listeners, `publicPorts`), naming the
-port and its unit. A fleet service there always fails; anything else, such as
-an agent's development server, warns or fails by `otherListeners`. The T3
+port and its unit. A fleet service there always fails; anything else warns or
+fails by `otherListeners`. What an agent started, such as a development
+server, is named apart (`WORKER_AGENT_LISTENER_UNRESTRICTED`, by the
+`t3code-<agent>-<id>.scope` T3 starts each agent in), with its own remedy: it
+is no fault of a fleet unit and fleet-sync does not change it. Nothing the
+fleet declares keeps an agent from binding every address; the firewall admits
+such a listener only over the tailnet. The T3
 desktop app counts as a fleet service in `t3code-desktop.service` and in the
 `app-com.t3tools.T3Code-<pid>.scope` its main process moves into. It serves on
 127.0.0.1 only: its exposure (`serverExposureMode` in its desktop settings,
