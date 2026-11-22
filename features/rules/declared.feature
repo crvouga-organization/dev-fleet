@@ -187,6 +187,14 @@ Feature: What a machine becomes is declared, once
     Scenario: Renovate moves the tunnel image of the monitoring hub by tag and digest
       Then a custom manager of Renovate reads the tag and digest of "tunnelImage" in "ansible/monitoring/lock.json"
 
+    Scenario: Renovate moves Tailscale on workers, once a release has had time to reach them
+      A worker takes a newer Tailscale by itself and keeps it, so the pin lags
+      what workers run and warns until it is raised. A worker older than the
+      pin stops with TAILSCALE_UPGRADE_PENDING, so the pin follows a release
+      only after workers have had two weeks to take it.
+      Then a custom manager of Renovate reads the version of "tailscale" in "ansible/ubuntu/policy.json" as a release of "tailscale/tailscale"
+      And Renovate moves "tailscale/tailscale" only to a release at least "14 days" old
+
     Scenario Outline: <pin> says why a person moves it
       Then docs/declared.md says "<pin>" is moved by a person, and why
 
