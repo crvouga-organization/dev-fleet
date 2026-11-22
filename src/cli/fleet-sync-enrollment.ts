@@ -1,6 +1,7 @@
 import { mkdir, rm } from 'node:fs/promises';
 import { loadRoster } from './roster';
-import { enrolledRoster, sshTarget, type FleetDefinition } from '../definition';
+import { sshTarget, type FleetDefinition } from '../definition';
+import { enrolledRoster } from '../enrolled-roster';
 import { FleetUsageError } from '../errors';
 import { dirname } from 'node:path';
 import { fleet, fleetJson } from '../fleet-config';

@@ -124,7 +124,16 @@ export function setEnv(
   else process.env[name] = value;
 }
 
-const VALUE_FLAGS = new Set(['revision', 'schedule', 'require', 'timeout']);
+const VALUE_FLAGS = new Set([
+  'revision',
+  'schedule',
+  'require',
+  'timeout',
+  'only',
+  'canary',
+  'workspace',
+  'config',
+]);
 const camel = (flag: string): string =>
   flag.replace(/-([a-z])/g, (_match, letter: string) => letter.toUpperCase());
 

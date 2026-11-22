@@ -57,8 +57,18 @@ export type SessionResult =
   | 'timed-out'
   | 'failed';
 
+/** What a session found, and when a cooldown clears: the instant the proxy
+ * named (`2027-01-15T09:30:00Z`), absent when it named none.
+ */
+export interface SessionOutcome {
+  result: SessionResult;
+  clears?: string;
+}
+
 /** Runs one real, cheap session through the instance's launcher. */
-export type Session = (instance: Instance) => Promise<SessionResult>;
+export type Session = (
+  instance: Instance
+) => Promise<SessionResult | SessionOutcome>;
 
 /** What is reported for a session that did not answer, for `who` (the tool
  * and the account's index): a summary that starts with a stable code, and
@@ -66,12 +76,16 @@ export type Session = (instance: Instance) => Promise<SessionResult>;
  */
 const UNANSWERED: Record<
   Exclude<SessionResult, 'ok'>,
-  { status: Check['status']; summary: (who: string) => string; action?: string }
+  {
+    status: Check['status'];
+    summary: (who: string, clears?: string) => string;
+    action?: string;
+  }
 > = {
   'cooling-down': {
     status: 'warn',
-    summary: (who) =>
-      `AGENT_ACCOUNT_COOLING_DOWN: ${who} is rate limited; checked again on the next status.`,
+    summary: (who, clears) =>
+      `AGENT_ACCOUNT_COOLING_DOWN: ${who} is rate limited${clears ? ` until ${clears}` : ''}; checked again on the next status.`,
   },
   'verification-required': {
     status: 'fail',
@@ -126,7 +140,9 @@ export async function accountSessionChecks(
     live.map(async (account): Promise<Check> => {
       const instance = { tool: account.tool, account: account.email };
       const id = `agent:${account.tool}:account-${index(instance)}:session`;
-      const result = await session(instance);
+      const answer = await session(instance);
+      const { result, clears }: SessionOutcome =
+        typeof answer === 'string' ? { result: answer } : answer;
       if (result === 'ok')
         return {
           id,
@@ -137,7 +153,10 @@ export async function accountSessionChecks(
       return {
         id,
         status,
-        summary: summary(`${account.tool} account ${index(instance)}`),
+        summary: summary(
+          `${account.tool} account ${index(instance)}`,
+          result === 'cooling-down' ? clears : undefined
+        ),
         ...(action
           ? { remedy: { action, command: 'devfleet fleet-accounts' } }
           : {}),
@@ -165,7 +184,7 @@ export async function accountSessionChecks(
  * itself is never reported: only which of these it matched.
  */
 const SAID: [RegExp, SessionResult][] = [
-  [/verify your account/i, 'verification-required'],
+  [/verify\s+your\s+account/i, 'verification-required'],
   [
     /cooling down until|model_cooldown|rate[ _-]?limit|\b429\b|quota|resource_exhausted/i,
     'cooling-down',
@@ -192,6 +211,59 @@ export function sessionResult(
   return said(output) ?? (timedOut ? 'timed-out' : 'failed');
 }
 
+/** An instant as a report names it: `2027-01-15T09:30:00Z`. */
+const instant = (at: number): string =>
+  new Date(at).toISOString().replace(/\.\d{3}Z$/, 'Z');
+
+/** The longest cooldown a report repeats. A provider's quota resets within
+ * weeks; anything further off is not a time to tell an operator to wait for.
+ */
+const LONGEST_COOLDOWN_MS = 31 * 24 * 3600 * 1000;
+
+/** `at` when it is an instant still ahead of `now` and within the longest
+ * cooldown; nothing otherwise, so no report names a time nobody gave.
+ */
+const ahead = (at: number, now: number): string | undefined =>
+  Number.isFinite(at) && at > now && at - now <= LONGEST_COOLDOWN_MS
+    ? instant(at)
+    : undefined;
+
+/** When the cooldown a session printed clears. The fleet's own relay refuses
+ * a request for an account it holds back with "cooling down until" and an
+ * ISO instant; nothing else a session prints is read as a time.
+ */
+export function printedClears(output: string, now: number): string | undefined {
+  const at =
+    /cooling down until (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?Z)/i.exec(
+      output
+    )?.[1];
+  return at ? ahead(Date.parse(at), now) : undefined;
+}
+
+/** When the cooldown of a 429 clears: its `Retry-After` (seconds, or an HTTP
+ * date), else the `reset_seconds` of the proxy's `model_cooldown` error.
+ * Nothing when the answer names neither.
+ */
+export function answeredClears(
+  retryAfter: string | null,
+  body: string,
+  now: number
+): string | undefined {
+  const header = retryAfter?.trim() ?? '';
+  if (/^\d+$/.test(header)) return ahead(now + Number(header) * 1000, now);
+  if (header) return ahead(Date.parse(header), now);
+  try {
+    const seconds = (
+      JSON.parse(body) as { error?: { reset_seconds?: unknown } } | null
+    )?.error?.reset_seconds;
+    return typeof seconds === 'number'
+      ? ahead(now + seconds * 1000, now)
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** What the proxy answers when it is asked for one account's model directly,
  * read after a session of that account timed out. OpenCode retries a refused
  * request quietly until the deadline, so only the proxy still knows why. A
@@ -199,13 +271,15 @@ export function sessionResult(
  * provider; one it does not hold back is asked of the provider once, with
  * the bounded request the provider checks send. Anything else leaves the
  * session `timed-out`: the account answered, or nothing said why it does
- * not. The answer is read for its condition only and never kept.
+ * not. The answer is read for its condition and for when a cooldown clears,
+ * and never kept.
  */
 export async function proxyVerdict(
   account: Account,
   key: string,
-  send: typeof fetch = fetch
-): Promise<SessionResult> {
+  send: typeof fetch = fetch,
+  now: () => number = Date.now
+): Promise<SessionOutcome> {
   const { path, body } = inferenceRequest({
     tool: account.tool as Selection['tool'],
     model: `${account.prefix}/${account.models[0]}`,
@@ -223,19 +297,26 @@ export async function proxyVerdict(
       signal: AbortSignal.timeout(30_000),
     });
     if (response.status === 429) {
-      await response.body?.cancel().catch(() => undefined);
-      return 'cooling-down';
+      const clears = answeredClears(
+        response.headers.get('retry-after'),
+        (await response.text().catch(() => '')).slice(0, 4096),
+        now()
+      );
+      return { result: 'cooling-down', ...(clears ? { clears } : {}) };
     }
     if (response.ok) {
       await response.body?.cancel().catch(() => undefined);
-      return 'timed-out';
+      return { result: 'timed-out' };
     }
     const reason = said((await response.text()).slice(0, 4096));
-    if (reason) return reason;
-    return response.status === 401 || response.status === 403
-      ? 'rejected'
-      : 'timed-out';
+    if (reason) return { result: reason };
+    return {
+      result:
+        response.status === 401 || response.status === 403
+          ? 'rejected'
+          : 'timed-out',
+    };
   } catch {
-    return 'timed-out';
+    return { result: 'timed-out' };
   }
 }

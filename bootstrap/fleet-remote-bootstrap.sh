@@ -99,7 +99,11 @@ phase=lock
 [ ! -L "$root/remote-operation.lock" ] || exit 1
 exec 9>"$root/remote-operation.lock"
 # The lock follows this shell's open descriptor and is released when it exits.
-flock -n 9 || die FLEET_REMOTE_LOCKED
+# A manager that looks whether the lock is held takes it for an instant
+# (OPERATION_PROBE in src/remote-operation.ts), so the lock is waited for
+# briefly: only an operation that keeps it refuses this one. By then that
+# operation has written its record, and the refused run can follow it.
+flock -w 5 9 || die FLEET_REMOTE_LOCKED
 # The operation record: a manager that lost its session reads it to follow
 # this operation to its end instead of starting another (see
 # src/remote-operation.ts). The result of the last operation is beside it.
@@ -111,6 +115,17 @@ operation() {
   printf '{"version":1,"pid":%s,"revision":"%s","node":"%s","started":%s,"phase":"%s"%s}\n' "$$" "$revision" "$node" "$started" "$1" "${2:-}" >"$root/remote-operation.json.new" &&
     mv -f -- "$root/remote-operation.json.new" "$root/remote-operation.json"
 }
+# prior-operation: begin
+# The revision of the operation before this one, read before this one's
+# record replaces it. Every operation records itself and then installs the
+# configuration copy, so this names the revision that last wrote the copy.
+# A copy changed after that operation's last record was not left by it, and
+# then nothing is said about who wrote it. Workers run dash, whose test
+# compares modification times.
+prior=$(sed -n 's/^{.*"revision":"\([a-f0-9]\{40\}\)".*$/\1/p' "$root/remote-operation.json" 2>/dev/null | head -n 1) || prior=''
+# shellcheck disable=SC3013
+[ ! "$HOME/.config/dev-fleet/fleet.json" -nt "$root/remote-operation.json" ] || prior=''
+# prior-operation: end
 operation lock
 # The fleet configuration is installed under the lock, so two overlapping
 # runs never write it at once. It holds no secret.
@@ -127,13 +142,29 @@ if [ -n "$configuration" ]; then
   # machine, and is refused instead of replaced unless it already is what is
   # being installed. A copy from before the record existed is replaced, as it
   # always was: nothing says whether it was edited.
+  #
+  # So is a copy last written by a revision that keeps no record (a rollback
+  # across the release that added it): that revision rewrote the copy and left
+  # the record of an earlier one behind, so the record says nothing about the
+  # copy. The evidence is not the record but the revision of the operation
+  # before this one, read from Git: the fleet-owned checkout of that commit
+  # holds its bootstrap script, and a script that keeps the record names it.
+  # Only a script that is there and does not name it counts; a missing
+  # checkout or an unreadable one leaves the refusal standing.
+  record_unkept() {
+    [ -n "$prior" ] && [ ! -L "$root/revisions" ] && [ ! -L "$root/revisions/$prior" ] || return 1
+    git --git-dir="$root/revisions/$prior/.git" cat-file -e "$prior:bootstrap/fleet-remote-bootstrap.sh" 2>/dev/null || return 1
+    named=0
+    git --git-dir="$root/revisions/$prior/.git" grep -q -F 'fleet.json.sha256' "$prior" -- bootstrap/fleet-remote-bootstrap.sh >/dev/null 2>&1 || named=$?
+    [ "$named" = 1 ]
+  }
   mkdir -p "$config_dir" || die CONFIGURATION_INSTALL_FAILED
   printf '%s' "$configuration" | base64 -d >"$config_dir/fleet.json.new" || die CONFIGURATION_INSTALL_FAILED
   sent=$(sha256sum <"$config_dir/fleet.json.new" | cut -d' ' -f1)
   [ "${#sent}" = 64 ] || die CONFIGURATION_INSTALL_FAILED
   if [ -f "$config_dir/fleet.json" ] && [ -f "$config_dir/fleet.json.sha256" ]; then
     held=$(sha256sum <"$config_dir/fleet.json" | cut -d' ' -f1)
-    if [ "$held" != "$sent" ] && [ "$held" != "$(cat "$config_dir/fleet.json.sha256")" ]; then
+    if [ "$held" != "$sent" ] && [ "$held" != "$(cat "$config_dir/fleet.json.sha256")" ] && ! record_unkept; then
       rm -f -- "$config_dir/fleet.json.new"
       die FLEET_CONFIGURATION_COPY_CHANGED
     fi

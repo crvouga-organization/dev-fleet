@@ -69,6 +69,13 @@ asked of the provider once, with one bounded request: an answer that names a
 verification or refuses the credentials is reported as that. A report never
 repeats what the provider said.
 
+A cooling-down session names when the cooldown clears, when the proxy says
+so: "… is rate limited until 2027-01-15T09:30:00Z". The instant is read from
+the `Retry-After` of the proxy's 429 (else the `reset_seconds` of its
+`model_cooldown` error), or from the instant the fleet's relay prints when it
+refuses a request for an account it holds back. An answer that names no time
+adds none to the summary; `fleet-accounts` still lists `until` per model.
+
 Session results are cached for six hours under a key that holds the roster
 version and the version of the client key, so any account change or key
 rotation re-verifies at once.
