@@ -1,0 +1,10 @@
+# The T3 server as ansible/ubuntu/t3-headless.yml runs it on a headless
+# worker, without the reserves the session box has no use for.
+[Unit]
+Description=T3 Code server (headless)
+[Service]
+Type=simple
+WorkingDirectory=%h
+Environment=T3CODE_HOME=%h/.t3
+ExecStart=/opt/t3/t3 serve --mode web --host 127.0.0.1 --port 3773 --base-dir %h/.t3 --no-browser
+KillMode=mixed

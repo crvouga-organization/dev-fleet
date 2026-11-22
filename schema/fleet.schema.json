@@ -220,6 +220,12 @@
               }
             }
           },
+          "agentSessionLimit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 512,
+            "description": "This worker's limit on agent sessions, over worker.agentSessionLimit."
+          },
           "labels": {
             "type": "object",
             "additionalProperties": {
@@ -625,6 +631,12 @@
               "description": "How worker:exposure reports a listener beyond loopback and the tailnet that no fleet service owns, such as an agent's development server on 0.0.0.0. The firewall closes it either way. Default warn; a fleet service there always fails."
             }
           }
+        },
+        "agentSessionLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 512,
+          "description": "Opt-in: how many agent sessions a worker runs at once before it refuses the next. What is counted is the scopes T3 Code starts agents in: one for each Claude session, one shared by all the threads of Codex or of OpenCode. A session started through a fleet launcher above the limit ends with AGENT_SESSION_REFUSED in T3's server log; the kernel refuses any other a little higher, which T3 shows as a provider that exited before it started. Absent, the default: nothing is refused and worker:agent-sessions only warns."
         }
       },
       "description": "Policy every worker must meet. All but the two logins, the capabilities and the tools are fixed."
