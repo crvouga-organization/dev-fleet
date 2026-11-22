@@ -1,0 +1,88 @@
+---
+# The opt-in limit on agent sessions (`agentSessionLimit` in fleet.json).
+# Nothing in T3 Code or systemd counts the scopes T3 starts agents in, so the
+# kernel does: a unit of the worker's own user manager holds
+# cgroup.max.descendants on the slice T3 owns (agent-session-limit.py). It is
+# set `reserve` above the declared limit, so that a session started through a
+# fleet launcher is refused by the launcher, with a message, before the kernel
+# refuses without one. Without a declared limit the unit is removed, and
+# stopping it puts the kernel's limit back to "max".
+- name: Read the declared agent session limit
+  ansible.builtin.set_fact:
+    agent_session_limit: '{{ worker_agent_session_limit | default(0) | int }}'
+- name: Install the agent session limit
+  ansible.builtin.copy:
+    src: '{{ playbook_dir }}/agent-session-limit.py'
+    dest: /usr/local/lib/personal-fleet-agent-session-limit.py
+    owner: root
+    group: root
+    mode: '0644'
+  register: agent_session_limit_script
+  when: agent_session_limit | int > 0
+- name: Declare the agent session limit in the worker's user manager
+  ansible.builtin.copy:
+    dest: /etc/systemd/user/personal-fleet-agent-session-limit.service
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      # Managed by personal fleet-sync.
+      [Unit]
+      Description=Refuse T3 agent scopes above the declared limit
+      [Service]
+      ExecStart=/usr/bin/python3 -I -B /usr/local/lib/personal-fleet-agent-session-limit.py --limit {{ agent_session_limit | int + resourceSafety.agentSessionLimit.reserve | int }} --interval {{ resourceSafety.agentSessionLimit.intervalSeconds }}
+      Restart=always
+      RestartSec=5
+      MemoryMax=64M
+      [Install]
+      WantedBy=default.target
+  register: agent_session_limit_unit
+  when: agent_session_limit | int > 0
+- name: Hold the agent session limit
+  become: true
+  become_user: '{{ development_user }}'
+  environment:
+    XDG_RUNTIME_DIR: '/run/user/{{ development_uid }}'
+  ansible.builtin.systemd_service:
+    scope: user
+    name: personal-fleet-agent-session-limit.service
+    enabled: true
+    daemon_reload: '{{ agent_session_limit_unit.changed }}'
+    state: '{{ "restarted" if agent_session_limit_unit.changed or agent_session_limit_script.changed else "started" }}'
+  when: agent_session_limit | int > 0
+- name: Look for a limit that is no longer declared
+  ansible.builtin.stat:
+    path: /etc/systemd/user/personal-fleet-agent-session-limit.service
+  register: agent_session_limit_installed
+  when: agent_session_limit | int == 0
+# Stopping the unit is what lifts the limit: it writes "max" back as it ends.
+- name: Lift a limit that is no longer declared
+  become: true
+  become_user: '{{ development_user }}'
+  environment:
+    XDG_RUNTIME_DIR: '/run/user/{{ development_uid }}'
+  ansible.builtin.systemd_service:
+    scope: user
+    name: personal-fleet-agent-session-limit.service
+    enabled: false
+    state: stopped
+  when: agent_session_limit | int == 0 and agent_session_limit_installed.stat.exists
+- name: Remove a limit that is no longer declared
+  ansible.builtin.file:
+    path: '{{ item }}'
+    state: absent
+  loop:
+    - /etc/systemd/user/personal-fleet-agent-session-limit.service
+    - /usr/local/lib/personal-fleet-agent-session-limit.py
+  register: agent_session_limit_removed
+  when: agent_session_limit | int == 0
+- name: Forget the removed unit in the worker's user manager
+  become: true
+  become_user: '{{ development_user }}'
+  environment:
+    XDG_RUNTIME_DIR: '/run/user/{{ development_uid }}'
+  ansible.builtin.systemd_service:
+    scope: user
+    daemon_reload: true
+  when: agent_session_limit | int == 0 and agent_session_limit_removed.changed
+  failed_when: false

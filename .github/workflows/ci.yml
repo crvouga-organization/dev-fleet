@@ -246,6 +246,8 @@ jobs:
     # The Beszel agent playbook applied for real on a disposable Ubuntu
     # machine running systemd: repeat runs, repaired drift, a cut-short
     # upgrade, its privileges and a restart. It downloads the pinned agent.
+    # The same machine runs the pinned T3 server (downloaded too) in a user
+    # manager, to prove the declared limit on agent sessions against it.
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:

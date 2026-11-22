@@ -15,6 +15,18 @@ export type HealthSample = {
   readonly memTotalMb?: number;
   /** Agent sessions running now: T3's agent scopes. */
   readonly agentSessions?: number;
+  /** The agent scopes a declared limit counts: those in the slices T3 owns. */
+  readonly agentScopes?: number;
+  /** The lowest limit the kernel holds on one of those slices; absent when
+   * none exists or none is limited. */
+  readonly agentLimitHeld?: number;
+  /** The limit the worker's own unit holds while it runs; 0 when it does not. */
+  readonly agentLimitUnit?: number;
+  /** How many running agents reported a memory peak, and the median and the
+   * largest of those peaks in MiB. */
+  readonly agentPeaks?: number;
+  readonly agentPeakMedianMb?: number;
+  readonly agentPeakMaxMb?: number;
   /** Free inodes on the home filesystem, as a percentage of all of them. */
   readonly inodesFreePct?: number;
   /** 1 when the clock is synchronised to a time source, 0 when not. */
@@ -34,6 +46,12 @@ const PROBE_KEYS = {
   disktotalmb: 'diskTotalMb',
   memtotalmb: 'memTotalMb',
   agentsessions: 'agentSessions',
+  agentscopes: 'agentScopes',
+  agentlimitheld: 'agentLimitHeld',
+  agentlimitunit: 'agentLimitUnit',
+  agentpeaks: 'agentPeaks',
+  agentpeakmedianmb: 'agentPeakMedianMb',
+  agentpeakmaxmb: 'agentPeakMaxMb',
   inodefree: 'inodesFreePct',
   ntpsync: 'clockSynced',
   ntp: 'timeService',
