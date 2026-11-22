@@ -43,14 +43,25 @@ export function asksMise(options: FleetSyncOptions): boolean {
 }
 
 /** What the guards below exit with; nothing else on the manager uses them. */
-const GUARD_EXIT = { unmerged: 65, unverified: 66, miseDowngrade: 67 } as const;
+const GUARD_EXIT = {
+  unmerged: 65,
+  unverified: 66,
+  miseDowngrade: 67,
+  miseUnmeasured: 68,
+} as const;
 
 /** Run on the manager after the ancestry guard and before a handed-off
  * revision's own run script: a revision whose bootstrap is from before the
- * rule that keeps a newer mise may not replace the manager's with the older
- * one it pins.
+ * rule that keeps a newer mise may not replace the mise of the manager, or
+ * of a worker the request converges, with the older one it pins. The
+ * manager's own mise is compared here; the workers are measured by the
+ * manager's installed devfleet, and a hand-off it cannot answer for is
+ * refused.
  */
-export const MISE_GUARD = miseGuard(GUARD_EXIT.miseDowngrade);
+export const MISE_GUARD = miseGuard({
+  downgrade: GUARD_EXIT.miseDowngrade,
+  unmeasured: GUARD_EXIT.miseUnmeasured,
+});
 
 /** Run on the manager before a handed-off revision's own run script, which
  * installs that revision's toolchain there: the manager's own copy of the
@@ -142,6 +153,12 @@ function handOffFailure(
       `The manager changed nothing: the revision pins an older mise than the manager runs, and its toolchain bootstrap is from before the rule that keeps a newer mise, so it would replace it. Every checkout on the manager whose mise.toml asks for a newer mise would then stop working. Converge to a revision whose bootstrap keeps a newer mise (any release since that rule), or pass --allow-mise-downgrade to install the older mise on purpose.`,
       { revision: revision ?? null }
     );
+  if (exitCode === GUARD_EXIT.miseUnmeasured)
+    return failed(
+      'FLEET_MISE_UNMEASURED',
+      `The manager changed nothing: the revision's toolchain bootstrap is from before the rule that keeps a newer mise, so it would replace a newer one, and the devfleet installed on the manager could not say which mise the workers run (it is from before that question, or the manager has none on its PATH). Run devfleet fleet-sync on the manager itself once, with a current release, so that it can answer; or converge to a revision whose bootstrap keeps a newer mise (any release since that rule); or pass --allow-mise-downgrade to install the older mise on purpose.`,
+      { revision: revision ?? null }
+    );
   if (exitCode === 255)
     return failed(
       'FLEET_MANAGER_UNREACHABLE',
@@ -154,8 +171,9 @@ function handOffFailure(
  * fleet-sync from a clean checkout of that exact revision; otherwise (no
  * revision, or an older one without the script) its installed launcher.
  * Either way the manager is first asked whether the default branch holds the
- * revision and whether it would replace the manager's mise with an older
- * one, and is told what selected it. An accounts-only request names no
+ * revision and whether it would replace the mise of the manager or of a
+ * worker the request converges with an older one, and is told what selected
+ * it. An accounts-only request names no
  * revision, so it is the installed launcher's and nothing is asked.
  */
 export function managerCommand(
@@ -216,8 +234,14 @@ function aboutRevision(
   revision: string,
   selection: RevisionSelection | undefined
 ): { told: string; guard: string } {
-  const guard = (script: string, name: string) =>
-    `${['sh', '-c', script, name, revision].map(shellQuote).join(' ')} || exit $?; `;
+  const guard = (script: string, name: string, more: string[] = []) =>
+    `${['sh', '-c', script, name, revision, ...more].map(shellQuote).join(' ')} || exit $?; `;
+  // What the manager's installed devfleet needs to answer for the same
+  // machines, in the form the request asked for.
+  const selected = [
+    ...(options.node ?? []).flatMap((node) => ['--node', node]),
+    ...(options.json ? ['--json'] : []),
+  ];
   return {
     told:
       (selection
@@ -230,7 +254,9 @@ function aboutRevision(
       (asksAncestry(options)
         ? guard(ANCESTRY_GUARD, 'fleet-revision-guard')
         : '') +
-      (asksMise(options) ? guard(MISE_GUARD, 'fleet-mise-guard') : ''),
+      (asksMise(options)
+        ? guard(MISE_GUARD, 'fleet-mise-guard', selected)
+        : ''),
   };
 }
 
@@ -277,6 +303,9 @@ export const HAND_OFF: {
   ),
   allowMiseDowngrade: elsewhere(
     'The run on the manager may be older than the flag: it is told in the environment that mise may be downgraded for the revision.'
+  ),
+  measureMise: elsewhere(
+    "Refused on a worker: the hand-off asks the manager's installed devfleet that question by itself, before the revision's run script."
   ),
   rolledOut: INTERNAL,
   interactiveAuthorization: INTERNAL,

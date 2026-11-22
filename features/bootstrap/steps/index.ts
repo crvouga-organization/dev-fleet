@@ -6,6 +6,7 @@ import { pins } from './pins';
 import { notes } from './release-notes';
 import { publishing } from './publishing';
 import { toolchain } from './toolchain';
+import { windows } from './windows';
 import { worker } from './worker';
 import { BootstrapWorld, common } from './world';
 
@@ -17,6 +18,7 @@ export const bootstrap = [
   installer,
   toolchain,
   mise,
+  windows,
   worker,
   diskGc,
   pins,

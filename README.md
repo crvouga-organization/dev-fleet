@@ -177,8 +177,14 @@ pin from the revision's own files and measures the mise of the manager and of
 each worker it is about to converge before that bootstrap runs anywhere: a
 revision that would replace a newer mise is refused with
 `FLEET_MISE_DOWNGRADE`, after a `--rollback` to an earlier release too, unless
-`--allow-mise-downgrade` asks for it. A hand-off from a worker measures the
-manager only.
+`--allow-mise-downgrade` asks for it. A worker that does not say which mise it
+runs is not let through unmeasured: the run is refused with
+`FLEET_MISE_UNMEASURED` until it answers, is parked or is left out with
+`--node`. Started on a worker, the same question is asked of the devfleet
+installed on the manager (`fleet-sync --measure-mise`, which only answers)
+before the revision's own run script starts there; a manager whose installed
+devfleet is from before that question refuses such a revision rather than
+passing it.
 
 ## Your project's own tools
 

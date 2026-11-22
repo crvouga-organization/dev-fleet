@@ -102,3 +102,4 @@ skipped where it cannot.
 | `@linux`       | On Linux only                                                                            |
 | `@bash`        | Where `/bin/bash` exists                                                                 |
 | `@zsh`         | Where `/bin/zsh` exists                                                                  |
+| `@pwsh`        | Where `pwsh` is on PATH, or `DEVFLEET_TEST_PWSH=required`; the machine's own PowerShell  |

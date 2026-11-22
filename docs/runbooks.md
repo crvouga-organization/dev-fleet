@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 429 codes; 90 need a person.
+There are 430 codes; 90 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -543,7 +543,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - **Meaning:** fleet-sync could not plan, lock, reach a machine, promote a revision or keep the fleet state.
 - **Confirm:** `devfleet fleet-state` for the state, `devfleet fleet-status` for machines, and the report `devfleet fleet-sync` writes.
 - **Fix:** Follow the remedy; most clear by running `devfleet fleet-sync` again once the holder of a lock finishes.
-- **Escalate:** FLEET_STATE_DIVERGED needs a person to choose which copy of the state to keep (docs/state.md). FLEET_CONFIGURATION_COPY_CHANGED needs a person to keep the edit (in `fleet.json`, or with the import the remedy prints) or to delete the copy. FLEET_REVISION_UNMERGED means the revision is not on the default branch of the source repository, so nothing was changed: merge it, or pass `--allow-unmerged` to converge the fleet to it on purpose. FLEET_REVISION_UNVERIFIED means the manager's own copy of the source repository could not be fetched to answer that: restore its network and Git access. FLEET_MISE_DOWNGRADE means the revision's own toolchain bootstrap is from before the rule that keeps a newer mise, and would replace the mise of the machines the remedy names with the older one the revision pins; nothing was changed. Every checkout on those machines whose `mise.toml` asks for a newer mise would stop working, so converge to a later revision instead, or pass `--allow-mise-downgrade` to `devfleet fleet-sync` to install the older one on purpose.
+- **Escalate:** FLEET_STATE_DIVERGED needs a person to choose which copy of the state to keep (docs/state.md). FLEET_CONFIGURATION_COPY_CHANGED needs a person to keep the edit (in `fleet.json`, or with the import the remedy prints) or to delete the copy. FLEET_REVISION_UNMERGED means the revision is not on the default branch of the source repository, so nothing was changed: merge it, or pass `--allow-unmerged` to converge the fleet to it on purpose. FLEET_REVISION_UNVERIFIED means the manager's own copy of the source repository could not be fetched to answer that: restore its network and Git access. FLEET_MISE_DOWNGRADE means the revision's own toolchain bootstrap is from before the rule that keeps a newer mise, and would replace the mise of the machines the remedy names with the older one the revision pins; nothing was changed. Every checkout on those machines whose `mise.toml` asks for a newer mise would stop working, so converge to a later revision instead, or pass `--allow-mise-downgrade` to `devfleet fleet-sync` to install the older one on purpose. The flag skips the refusal for any revision, but it reaches the bootstrap only of a revision that reads it: one from before the rule installs the older mise by itself, and one released after the rule and before the flag reached the bootstrap keeps the newer mise whatever it is told, so there the older mise is installed by hand, with `bash bootstrap/bootstrap.sh --allow-mise-downgrade` in the revision's checkout on each machine (`--tools-only` on the manager, `--worker --node ID` on a worker). FLEET_MISE_UNMEASURED means the same kind of revision was refused because a machine's mise could not be measured, and nothing was changed. When the remedy names workers, they did not answer over SSH: bring them back and run it again, park them (`devfleet fleet-node-park --id ID`), or name the others with `--node`. When it names the devfleet installed on the manager, the run was started on a worker and the manager's installed devfleet is from before `fleet-sync --measure-mise` (or the manager has none on its PATH): run `devfleet fleet-sync` on the manager itself once with a current release. `--allow-mise-downgrade` goes on without the measurement.
 
 - `ANSIBLE_VARIABLE_LIMIT`: ansible variable limit.
 - `CONTAINER_WATCHDOG_UNOBSERVED`: container watchdog unobserved.
@@ -553,6 +553,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `FLEET_MANAGER_LOCKED`: fleet manager locked.
 - `FLEET_MANAGER_UNREACHABLE`: fleet manager unreachable.
 - `FLEET_MISE_DOWNGRADE`: the revision's own bootstrap would replace a newer mise with the older one it pins.
+- `FLEET_MISE_UNMEASURED`: the revision's own bootstrap would replace a newer mise, and a worker did not say which mise it runs, or the devfleet installed on the manager could not ask the workers.
 - `FLEET_NOT_MANAGER`: fleet not manager.
 - `FLEET_PLAN_STALE`: fleet plan stale.
 - `FLEET_PROMOTION_BLOCKED`: fleet promotion blocked.

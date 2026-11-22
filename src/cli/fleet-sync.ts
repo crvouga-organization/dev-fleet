@@ -65,6 +65,7 @@ import {
   allowsMiseDowngrade,
   miseDowngrade,
   miseDowngradeRemedy,
+  miseRefusalCode,
   workersToConverge,
 } from './fleet-sync-mise';
 import {
@@ -91,6 +92,12 @@ export interface FleetSyncOptions {
    * keeps a newer mise keeps it.
    */
   allowMiseDowngrade?: boolean;
+  /** Only answer whether --revision's own bootstrap would replace a newer
+   * mise on the manager or on a worker the request selects, and change
+   * nothing. The guard of a hand-off asks the manager's installed devfleet
+   * this before the revision's run script starts there.
+   */
+  measureMise?: boolean;
   dryRun?: boolean;
   apply?: boolean;
   yes?: boolean;
@@ -158,6 +165,13 @@ export async function fleetSync(
   validate(options);
   if (!(await onManager(run)))
     return offManager(options, settings, run, forward);
+  // The one question: no run is recorded and nothing is approved.
+  if (options.measureMise)
+    return miseAnswer(options, settings, {
+      run,
+      root: machineRoot(),
+      home: undefined,
+    });
   if (options.schedule === 'status') return scheduleStatus(settings, run);
   if (options.only === 'accounts') return onlyAccounts(options, settings, run);
   const sync = () =>
@@ -521,11 +535,52 @@ async function miseRefusal(
   );
   return found
     ? actionRequired(
-        'FLEET_MISE_DOWNGRADE',
+        miseRefusalCode(found),
         miseDowngradeRemedy(revision, found),
         revision
       )
     : null;
+}
+
+/** `--measure-mise`: the answer to the question above and nothing else, for
+ * the guard of a hand-off. That guard runs on the manager before the
+ * revision's run script, in the manager's installed devfleet: the newest
+ * code there is before the revision's own takes over. No revision is
+ * approved, no checkout is made and no machine is changed.
+ */
+export async function miseAnswer(
+  options: FleetSyncOptions,
+  settings: Settings,
+  { run, root, home }: { run: Runner; root: string; home: string | undefined }
+): Promise<CommandOutcome> {
+  const revision = options.revision!;
+  const source = await prepareSource(root, revision, run, settings.workspace);
+  if (!source)
+    return actionRequired(
+      'FLEET_SOURCE_UNAVAILABLE',
+      `Revision ${revision} could not be taken from ${canonicalDefinition.source.repository}, so its toolchain bootstrap was not read and no machine was asked for its mise. Check the network and Git access to it, and that the revision is pushed there.`,
+      revision
+    );
+  const found = await miseDowngrade(
+    { revision, source },
+    {
+      manager: canonicalDefinition.manager.id,
+      home,
+      workers: await workersToConverge(options, settings.config),
+    },
+    run
+  );
+  if (found)
+    return actionRequired(
+      miseRefusalCode(found),
+      miseDowngradeRemedy(revision, found),
+      revision
+    );
+  return {
+    exitCode: 0,
+    data: { version: 1, ok: true, revision, miseDowngrade: null },
+    text: `Revision ${revision} would replace no newer mise on the manager or on a worker this request selects.`,
+  };
 }
 
 /** The preview: the read-only report of every machine, and the plan of what
@@ -678,6 +733,12 @@ async function offManager(
   forward: ForwardSpawn | undefined
 ): Promise<CommandOutcome> {
   const definition = canonicalDefinition;
+  // Only the manager can reach the workers; a hand-off asks it by itself.
+  if (options.measureMise)
+    return actionRequired(
+      'FLEET_NOT_MANAGER',
+      `fleet-sync --measure-mise is answered only on the manager (${definition.manager.id}), which a fleet-sync started here asks by itself before it hands a revision over; no machine was asked.`
+    );
   // Only the manager's fleet state knows the revision applied before.
   if (options.rollback)
     return actionRequired(
@@ -757,6 +818,7 @@ function validate(options: FleetSyncOptions): void {
   validateOnly(options);
   validateRollback(options);
   validateUnmerged(options);
+  validateMeasure(options);
   if (options.restartBusy && (options.only || options.schedule))
     throw new FleetUsageError(
       '--restart-busy applies to one full sync: it takes neither --only nor --schedule.'
@@ -775,6 +837,26 @@ function validateUnmerged(options: FleetSyncOptions): void {
   if (options.allowMiseDowngrade && (options.only || options.schedule))
     throw new FleetUsageError(
       '--allow-mise-downgrade applies to one sync a person starts: it takes neither --only nor --schedule.'
+    );
+}
+function validateMeasure(options: FleetSyncOptions): void {
+  if (!options.measureMise) return;
+  const others = [
+    options.rollback,
+    options.schedule,
+    options.only,
+    options.dryRun,
+    options.apply,
+    options.yes,
+    options.allowUnmerged,
+    options.allowMiseDowngrade,
+    options.restartBusy,
+    options.maintenanceReboot,
+    options.takeOver,
+  ].some(Boolean);
+  if (options.revision === undefined || others)
+    throw new FleetUsageError(
+      '--measure-mise answers one question about one revision and changes nothing: it takes --revision, and beside it only --node and --json.'
     );
 }
 function validateMaintenance(options: FleetSyncOptions): void {

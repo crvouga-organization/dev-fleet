@@ -72,8 +72,10 @@ stays in the playbook: the playbook is its declaration.
 - **Logins.** Tailscale, Vault, GitHub, each provider account and T3 pairing
   (except a replaced worker's, which the manager pairs itself) belong to a
   machine and a person. They are checked, never copied.
-- **Windows.** `bootstrap/bootstrap.ps1` exists; Windows is not a fleet role
-  and nothing tests it.
+- **Windows.** `bootstrap/bootstrap.ps1` exists; Windows is not a fleet role.
+  Its mise part runs under PowerShell on Linux and macOS on every pull
+  request (`features/bootstrap/windows-bootstrap.feature`); nothing runs it
+  on Windows itself.
 
 ## Why not Nix
 

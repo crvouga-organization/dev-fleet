@@ -7,7 +7,9 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
   worker started is the current code: it reads the pin from the revision's
   own files, measures the mise of each machine it is about to converge, and
   refuses with FLEET_MISE_DOWNGRADE before the revision's bootstrap runs
-  anywhere. --allow-mise-downgrade lets it run.
+  anywhere. A worker that does not say which mise it runs is not let through
+  unmeasured: FLEET_MISE_UNMEASURED. --allow-mise-downgrade lets the
+  revision's bootstrap run.
 
   A bootstrap that knows the flag --allow-mise-downgrade keeps a newer mise
   by itself; that is how the two kinds are told apart.
@@ -17,9 +19,8 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
     Background:
       Given the fleet's manager is "manager" and the run is about to converge the workers "worker-one, worker-two, worker-three"
 
-    Scenario: The machines that run a newer mise than the revision pins are named
-      A worker that does not answer is not measured: it cannot be converged
-      either. A machine with no mise has none to replace.
+    Scenario: The machines that run a newer mise than the revision pins are named, and so is a worker that did not answer
+      A machine with no mise has none to replace.
       Given the revision's mise.toml pins mise "2026.10.24"
       And the revision's toolchain bootstrap is from before the rule that keeps a newer mise
       And the machines run these mise releases:
@@ -32,6 +33,60 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
       Then it would replace a newer mise than "2026.10.24" on:
         | machine    | mise       |
         | worker-one | 2026.11.11 |
+      And these workers did not say which mise they run:
+        | worker-three |
+      And the run is refused with "FLEET_MISE_DOWNGRADE"
+
+    Scenario: A worker that does not answer stops the run, although no machine is known to run a newer mise
+      A worker that does not answer now may answer a moment later, when the
+      revision's own code reaches it, and from there on nothing stands
+      between that bootstrap and its mise. So the run is refused rather than
+      let through unmeasured, and says which worker: bring it back, park it,
+      name the others with --node, or allow the downgrade.
+      Given the revision's mise.toml pins mise "2026.10.24"
+      And the revision's toolchain bootstrap is from before the rule that keeps a newer mise
+      And the machines run these mise releases:
+        | machine      | mise       |
+        | manager      | 2026.10.24 |
+        | worker-one   | 2026.10.24 |
+        | worker-two   | none       |
+        | worker-three | no answer  |
+      When the run asks what the revision's bootstrap would do to mise
+      Then no machine is known to run a newer mise than "2026.10.24"
+      And these workers did not say which mise they run:
+        | worker-three |
+      And the run is refused with "FLEET_MISE_UNMEASURED"
+      And the refusal says each of:
+        | Nothing was changed                          |
+        | worker-three did not say which mise it runs  |
+        | devfleet fleet-node-park                     |
+        | --node                                       |
+        | --allow-mise-downgrade                       |
+
+    Scenario: A worker whose mise answers with something that is no release is not measured either
+      Given the revision's mise.toml pins mise "2026.10.24"
+      And the revision's toolchain bootstrap is from before the rule that keeps a newer mise
+      And the machines run these mise releases:
+        | machine      | mise       |
+        | manager      | 2026.10.24 |
+        | worker-one   | garbled    |
+        | worker-two   | 2026.10.24 |
+        | worker-three | none       |
+      When the run asks what the revision's bootstrap would do to mise
+      Then these workers did not say which mise they run:
+        | worker-one |
+
+    Scenario: When every machine answers and none runs a newer mise, the revision's bootstrap may run
+      Given the revision's mise.toml pins mise "2026.10.24"
+      And the revision's toolchain bootstrap is from before the rule that keeps a newer mise
+      And the machines run these mise releases:
+        | machine      | mise       |
+        | manager      | 2026.10.24 |
+        | worker-one   | 2026.10.9  |
+        | worker-two   | none       |
+        | worker-three | 2026.10.24 |
+      When the run asks what the revision's bootstrap would do to mise
+      Then no mise would be replaced
 
     Scenario Outline: A manager that runs mise <installed> <verdict> by a revision that pins <pinned>
       Releases are compared number by number, as the bootstrap compares them.
@@ -109,11 +164,19 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
         | Nothing was changed                          |
 
   Rule: A hand-off asks the manager before the revision's own run script runs there
-    The run script installs the revision's toolchain on the manager. The
-    guard is a few lines of shell that ask the manager's own copy of the
-    source repository and the manager's mise; it exits with 67 for a revision
-    that would replace it with an older one. A hand-off cannot measure the
-    workers.
+    The run script installs the revision's toolchain on the manager, and from
+    there on everything is the revision's own code. The guard is a few lines
+    of shell that run before it. A revision whose bootstrap keeps a newer
+    mise passes at once, as the manager's own copy of the source repository
+    shows it. For any other the guard compares the manager's mise with the
+    pin and exits with 67 when it would be replaced; then it asks the
+    devfleet installed on the manager, which is the code the manager runs
+    now and not the revision's, the same question about the manager and
+    every worker the request selects (fleet-sync --measure-mise). What that
+    refuses is printed and ends the hand-off. An installed devfleet that
+    cannot answer, because it is from before the question or there is none,
+    is never a pass: the guard exits with 68, reported as
+    FLEET_MISE_UNMEASURED.
 
     Background:
       Given a manager's home with nothing on it but Git, where "mise" and "bash" only record how they are called
@@ -124,6 +187,7 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
       Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "<pinned>" and whose toolchain bootstrap is from before the rule that keeps a newer mise
       And the manager has its own copy of the source repository
       And the manager runs mise "<installed>"
+      And the devfleet installed on the manager answers that no mise would be replaced
       When the mise guard of a hand-off runs on the manager for the commit "earlier"
       Then the guard exits with <code>
 
@@ -135,12 +199,90 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
         | 2026.10.9  | 2026.10.24 | 0    |
 
     @bash
-    Scenario: A revision whose bootstrap keeps a newer mise passes the guard
+    Scenario: A manager whose own mise is at risk is refused without asking the installed devfleet
+      Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
+      And the manager has its own copy of the source repository
+      And the manager runs mise "2026.11.11"
+      And the devfleet installed on the manager answers that no mise would be replaced
+      When the mise guard of a hand-off runs on the manager for the commit "earlier"
+      Then the guard exits with 67
+      And the devfleet installed on the manager was not asked
+
+    @bash
+    Scenario: The installed devfleet is asked about the revision and the workers the request selects, in the form the request asked for
+      Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
+      And the manager has its own copy of the source repository
+      And the manager runs mise "2026.10.24"
+      And the devfleet installed on the manager answers that no mise would be replaced
+      When the mise guard of a hand-off runs on the manager for the commit "earlier", for a request with "--node worker-one --node worker-two --json"
+      Then the guard exits with 0
+      And the devfleet installed on the manager was asked "fleet-sync --measure-mise --revision <earlier> --node worker-one --node worker-two --json"
+
+    @bash
+    Scenario: A worker's newer mise ends the hand-off, with the report of the installed devfleet
+      The manager runs the pinned mise itself, so only a measurement of the
+      workers can tell.
+      Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
+      And the manager has its own copy of the source repository
+      And the manager runs mise "2026.10.24"
+      And the devfleet installed on the manager refuses the question with:
+        """
+        {"version":1,"ok":false,"code":"FLEET_MISE_DOWNGRADE","error":"it would replace the newer one on worker-one (2026.11.11)"}
+        """
+      When the mise guard of a hand-off runs on the manager for the commit "earlier", for a request with "--json"
+      Then the guard exits with 1
+      And the guard prints:
+        """
+        {"version":1,"ok":false,"code":"FLEET_MISE_DOWNGRADE","error":"it would replace the newer one on worker-one (2026.11.11)"}
+        """
+
+    @bash
+    Scenario: A worker that did not answer the installed devfleet ends the hand-off the same way
+      Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
+      And the manager has its own copy of the source repository
+      And the manager runs mise "2026.10.24"
+      And the devfleet installed on the manager refuses the question with:
+        """
+        {"version":1,"ok":false,"code":"FLEET_MISE_UNMEASURED","error":"worker-two did not say which mise it runs"}
+        """
+      When the mise guard of a hand-off runs on the manager for the commit "earlier", for a request with "--json"
+      Then the guard exits with 1
+      And the guard prints:
+        """
+        {"version":1,"ok":false,"code":"FLEET_MISE_UNMEASURED","error":"worker-two did not say which mise it runs"}
+        """
+
+    @bash
+    Scenario: An installed devfleet from before the question is not a pass
+      It refuses the flag it does not know, as any devfleet released before
+      the question does, and says nothing about mise.
+      Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
+      And the manager has its own copy of the source repository
+      And the manager runs mise "2026.10.24"
+      And the devfleet installed on the manager is from before the question
+      When the mise guard of a hand-off runs on the manager for the commit "earlier", for a request with "--json"
+      Then the guard exits with 68
+      And the guard prints nothing
+
+    @bash
+    Scenario: A manager with no devfleet installed is not a pass
+      Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
+      And the manager has its own copy of the source repository
+      And the manager runs mise "2026.10.24"
+      When the mise guard of a hand-off runs on the manager for the commit "earlier"
+      Then the guard exits with 68
+
+    @bash
+    Scenario: A revision whose bootstrap keeps a newer mise passes the guard, and nobody is asked
+      Every release since the rule: an ordinary hand-off never depends on
+      what the manager has installed.
       Given a branch of the fleet's source repository holds the commit "older", whose mise.toml pins mise "2026.10.24"
       And the manager has its own copy of the source repository
       And the manager runs mise "2026.11.11"
+      And the devfleet installed on the manager is from before the question
       When the mise guard of a hand-off runs on the manager for the commit "older"
       Then the guard exits with 0
+      And the devfleet installed on the manager was not asked
 
     @bash
     Scenario: A revision the manager's copy does not hold yet is fetched before it is judged
@@ -151,12 +293,14 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
       Then the guard exits with 67
 
     @bash
-    Scenario: A manager with no mise has none to replace
+    Scenario: A manager with no mise has none to replace, and the workers are still measured
       Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
       And the manager has its own copy of the source repository
       And the manager has no mise
+      And the devfleet installed on the manager answers that no mise would be replaced
       When the mise guard of a hand-off runs on the manager for the commit "earlier"
       Then the guard exits with 0
+      And the devfleet installed on the manager was asked "fleet-sync --measure-mise --revision <earlier>"
 
   Rule: --allow-mise-downgrade reaches the bootstrap of a revision that keeps a newer mise
     The run that was given the flag tells the run script in its environment,
