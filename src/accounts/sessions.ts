@@ -63,6 +63,8 @@ export type SessionResult =
 export interface SessionOutcome {
   result: SessionResult;
   clears?: string;
+  /** Set when no session was run: how many minutes ago this was found. */
+  foundMinutesAgo?: number;
 }
 
 /** Runs one real, cheap session through the instance's launcher. */
@@ -116,6 +118,12 @@ const UNANSWERED: Record<
   },
 };
 
+/** Said of a result no session was run for, so it never reads as fresh. */
+const remembered = (minutes: number | undefined): string =>
+  minutes === undefined
+    ? ''
+    : ` (found ${minutes}m ago; a session that does not pass is run again after 10m or on any change)`;
+
 /** `agent:<tool>:account-<index>:session`, one per account instance: the
  * accounts the proxy holds and any instance the node still offers. An
  * instance whose account the proxy no longer holds fails without being run;
@@ -141,7 +149,7 @@ export async function accountSessionChecks(
       const instance = { tool: account.tool, account: account.email };
       const id = `agent:${account.tool}:account-${index(instance)}:session`;
       const answer = await session(instance);
-      const { result, clears }: SessionOutcome =
+      const { result, clears, foundMinutesAgo }: SessionOutcome =
         typeof answer === 'string' ? { result: answer } : answer;
       if (result === 'ok')
         return {
@@ -153,10 +161,11 @@ export async function accountSessionChecks(
       return {
         id,
         status,
-        summary: summary(
-          `${account.tool} account ${index(instance)}`,
-          result === 'cooling-down' ? clears : undefined
-        ),
+        summary:
+          summary(
+            `${account.tool} account ${index(instance)}`,
+            result === 'cooling-down' ? clears : undefined
+          ) + remembered(foundMinutesAgo),
         ...(action
           ? { remedy: { action, command: 'devfleet fleet-accounts' } }
           : {}),
