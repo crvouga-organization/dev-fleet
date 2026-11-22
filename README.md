@@ -444,16 +444,10 @@ A pull request needs nobody attending
   **Required checks** passes ([`auto-merge.yml`](.github/workflows/auto-merge.yml)).
   A draft is left alone until it is marked ready; a fork's is left to a person.
 - The merge is checked again on `main` and then released. A merge made with
-  the workflow's own token starts no workflow, so `auto-merge.yml` starts CI
-  on `main` itself when the newest commit there has no run.
-- A workflow that fails on `main` (CI, the release, the weekly VM and tailnet
-  tests, the pins) has one open issue labelled
-  [`ci-failure`](https://github.com/crvouga-organization/dev-fleet/issues?q=is%3Aissue+is%3Aopen+label%3Aci-failure)
-  for as long as it fails ([`failures.yml`](.github/workflows/failures.yml)):
-  the run, the commit, the jobs and steps that failed. Each failing run
-  rewrites it and the first passing run closes it, so those issues are what is
-  broken on `main` now. Start there; fix with a pull request that says
-  `Fixes #<issue>`.
+  the workflow's own token starts no workflow, so
+  [`catch-up.yml`](.github/workflows/catch-up.yml) starts CI on `main` when
+  the newest commit there has no run (each time a pull request opens, and
+  once a day), and that run starts the release when it passes.
 
 Some scenarios need something a laptop may not have, and are skipped there:
 
