@@ -106,6 +106,7 @@
     - /etc/systemd/oomd.conf.d
     - /etc/systemd/system/-.slice.d
     - /etc/systemd/system/user.slice.d
+    - '/etc/systemd/system/user@{{ development_uid }}.service.d'
     - /etc/systemd/user/app-t3code-agents.slice.d
     - /etc/systemd/user/app-t3code-agents-.slice.d
     - /etc/systemd/user/t3code-.scope.d
@@ -143,6 +144,12 @@
         # Managed by personal fleet-sync: user workloads can never take the memory SSH, Tailscale and system services need.
         [Slice]
         MemoryMax={{ resourceSafety.userMemoryMax }}
+    - dest: '/etc/systemd/system/user@{{ development_uid }}.service.d/60-personal-fleet.conf'
+      content: |
+        # Managed by personal fleet-sync: Ubuntu hands the user manager cpu, memory and pids only, which leaves
+        # the I/O weights of T3 and the agents without effect. The user manager takes it on its next start.
+        [Service]
+        Delegate=cpu io memory pids
   loop_control:
     label: '{{ item.dest }}'
   register: slice_policy

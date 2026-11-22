@@ -80,6 +80,12 @@ Feature: The manager runs on a host behind one interface, and comes back by itse
         | Linux | linger           | loginctl linger is off       |
         | Linux | docker-autostart | Docker Engine does not start at boot |
 
+    Scenario: A Mac laptop, which has no autorestart setting, passes on its battery
+      Given the macOS manager has everything that brings it back after a power cut
+      And the macOS manager is a laptop with no autorestart setting
+      When the boot recovery of the macOS manager is measured
+      Then the check's status is "pass"
+
     Scenario: A Mac with FileVault on warns that a power cut needs a person
       Given the macOS manager has everything that brings it back after a power cut, except "login"
       And FileVault is on on the macOS manager

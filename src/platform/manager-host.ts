@@ -56,13 +56,22 @@ const item = (
   detail: ok ? pass : failure,
 });
 
-/** `pmset -g custom`'s AC Power section, as key and value. */
-async function acPower(
-  run: Runner
-): Promise<(key: string) => string | undefined> {
+/** `pmset -g custom`'s AC Power section, as key and value; `absent` when the
+ * section was read and this Mac has no such setting (a laptop has no
+ * autorestart: its battery carries it through a power cut). */
+async function acPower(run: Runner): Promise<{
+  (key: string): string | undefined;
+  absent: (key: string) => boolean;
+}> {
   const result = await run(['pmset', '-g', 'custom']);
-  const ac = result.ok ? (result.stdout.split('AC Power:')[1] ?? '') : '';
-  return (key) => new RegExp(`^\\s*${key}\\s+(\\S+)`, 'm').exec(ac)?.[1];
+  const section = result.ok ? result.stdout.split('AC Power:')[1] : undefined;
+  const ac = section ?? '';
+  const observed = (key: string) =>
+    new RegExp(`^\\s*${key}\\s+(\\S+)`, 'm').exec(ac)?.[1];
+  return Object.assign(observed, {
+    absent: (key: string) =>
+      section !== undefined && observed(key) === undefined,
+  });
 }
 
 function dockerSettings(home: string): Record<string, unknown> | null {
@@ -117,10 +126,19 @@ export const MACOS_MANAGER: ManagerHost = {
       `gui/${userInfo().uid}/${macos.beszelDaemon}`,
     ]);
     return [
-      item('autorestart', observed('autorestart') === macos.pmset.autorestart, [
-        'The Mac starts again by itself when power returns.',
-        'The Mac stays off after a power cut (pmset autorestart is not 1).',
-      ]),
+      observed.absent('autorestart')
+        ? item('autorestart', true, [
+            'The Mac has no autorestart setting (a laptop): its battery carries it through a power cut.',
+            '',
+          ])
+        : item(
+            'autorestart',
+            observed('autorestart') === macos.pmset.autorestart,
+            [
+              'The Mac starts again by itself when power returns.',
+              'The Mac stays off after a power cut (pmset autorestart is not 1).',
+            ]
+          ),
       item('docker-autostart', docker?.[macos.dockerDesktop.key] === true, [
         'Docker Desktop starts at login, and with it the proxy and the hub.',
         'Docker Desktop does not start at login: the CLI proxy and the monitoring hub stay down after a restart.',

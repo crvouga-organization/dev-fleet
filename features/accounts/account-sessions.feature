@@ -46,7 +46,13 @@ Feature: Every per-account instance runs a real session, and account changes re-
       | it answered              | succeeded | OK                                             | ok           |
       | the relay said it cools  | failed    | This account is cooling down until 2027-01-15  | cooling-down |
       | the provider limited it  | failed    | 429 Too Many Requests                          | cooling-down |
+      | OpenCode retried a quota | failed    | level=ERROR message=\"stream error\" AI_APICallError: 429 RESOURCE_EXHAUSTED | cooling-down |
       | anything else            | failed    | model_not_found                                | failed       |
+
+  Scenario: An OpenCode account session prints its errors, so a rate limit it retries shows
+    OpenCode retries a request the proxy refuses with 429 until the session's
+    deadline and prints nothing about it unless asked to.
+    Then the OpenCode account session is launched with "--print-logs --log-level ERROR"
 
   Scenario: A passing session is not reused once the roster changed
     Given a session check passed under the roster version "aaaa"

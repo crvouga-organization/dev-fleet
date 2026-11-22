@@ -295,7 +295,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_PROVIDER_NAMES_UNVERIFIED`: t3 provider names unverified.
 - `T3_RENDERER_LIMIT_UNVERIFIED`: check the delegated renderer cgroup after an idle desktop restart and recovery timer tick.
 - `T3_RENDERERS_HIGH`: the desktop renderers exceed their memory budget. Reload the app when idle.
-- `T3_PROTECTION_ESCAPED`: the T3 listener lacks its CPU, I/O or memory reserve. Apply fleet-sync and inspect its cgroup after the next idle restart.
+- `T3_PROTECTION_ESCAPED`: the T3 listener lacks its CPU, I/O or memory reserve; the summary names which (`cpu`, `io`, `memory`). Apply fleet-sync and inspect its cgroup after the next idle restart. `io` alone means the user manager has no io controller yet: fleet-sync declares it, and the user manager takes it on its next start, so reboot the worker while it runs no agent turn (`devfleet fleet-sync --maintenance-reboot`).
 - `T3_RESTART_PENDING`: t3 restart pending.
 - `T3_SERVER_INSTALL_FAILED`: t3 server install failed: the pinned server of a headless worker is missing from the toolchain, or `t3-headless.yml` did not apply.
 - `T3_SERVER_STOPPED`: t3 server stopped: the lingering `t3code-headless.service` of a headless worker is not running.

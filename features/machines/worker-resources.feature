@@ -85,6 +85,22 @@ Feature: A worker's memory and disk guards are measured where they run
       | 1000 | passes  |
       | 100  | fails   |
 
+  Scenario: A user manager without the io controller names the reserve it lacks
+    Ubuntu hands the user manager cpu, memory and pids only; until it starts
+    again with the io controller fleet-sync declares, the listener's cgroup has
+    no io.weight.
+    Given these commands answer:
+      | command                                    | answer                       |
+      | ss -Hltnp sport = 3773                     | prints users:(("t3",pid=42)) |
+      | cat /proc/42/cgroup                        | prints 0::/app.scope         |
+      | cat /sys/fs/cgroup/app.scope/cpu.weight    | prints 1000                  |
+      | cat /sys/fs/cgroup/app.scope/io.weight     | fails                        |
+      | cat /sys/fs/cgroup/app.scope/memory.low    | prints 1610612736            |
+    When the protection of the T3 listener on port 3773 is measured
+    Then the check fails
+    And the summary of the check is "T3_PROTECTION_ESCAPED io"
+    And the remedy of the check contains "--maintenance-reboot"
+
   Scenario Outline: The desktop renderer subgroup warns above its memory budget
     Given these commands answer:
       | command                                                 | answer |

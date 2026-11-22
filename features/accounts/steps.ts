@@ -7,6 +7,7 @@ import { Commands, failed, succeeded } from '../support/commands';
 import { accountsFrom } from '../../src/agents/accounts';
 import { forward, RETRY_DELAYS } from '../../src/agents/account-relay';
 import { routeThroughRelay } from '../../src/agents/launch';
+import { ACCOUNT_LAUNCH } from '../../src/agents/native-verify';
 import { select } from '../../src/agents/registry';
 import { cacheKey, cachedCheck } from '../../src/agents/verify-cache';
 import {
@@ -632,6 +633,13 @@ When(
   /^a session that (succeeded|failed) printed "(.*)" is read$/,
   (world, exit: string, output: string) => {
     world.result = sessionResult(exit === 'succeeded', output);
+  }
+);
+
+Then(
+  'the OpenCode account session is launched with {string}',
+  (_world, flags: string) => {
+    expect(ACCOUNT_LAUNCH['opencode']!.args.join(' ')).toContain(flags);
   }
 );
 

@@ -274,7 +274,10 @@ export async function verifyResourceSafety(
   ];
 }
 
-async function groupProtected(group: string, run: Runner): Promise<boolean> {
+const PROTECTION_ESCAPED = 'T3_PROTECTION_ESCAPED';
+
+/** The reserves the listener's cgroup lacks: `cpu`, `io`, `memory`. */
+async function missingReserves(group: string, run: Runner): Promise<string[]> {
   const read = (file: string) =>
     run(['cat', '/sys/fs/cgroup' + group + '/' + file]);
   const [cpu, io, memory] = await Promise.all([
@@ -282,42 +285,46 @@ async function groupProtected(group: string, run: Runner): Promise<boolean> {
     read('io.weight'),
     read('memory.low'),
   ]);
-  return (
-    cpu.ok &&
-    io.ok &&
-    memory.ok &&
-    Number(cpu.stdout.trim()) >= 1000 &&
-    Number(/^default (\d+)$/m.exec(io.stdout)?.[1]) >= 1000 &&
+  return [
+    ...(cpu.ok && Number(cpu.stdout.trim()) >= 1000 ? [] : ['cpu']),
+    ...(io.ok && Number(/^default (\d+)$/m.exec(io.stdout)?.[1]) >= 1000
+      ? []
+      : ['io']),
+    ...(memory.ok &&
     Number(memory.stdout.trim()) >= policy.sizing.t3ReservedMiB * MIB
-  );
+      ? []
+      : ['memory']),
+  ];
 }
 
 /** Measure the listener itself: Electron can leave the service's cgroup. */
 export async function t3Protection(port: number, run: Runner): Promise<Check> {
   const listener = await run(['ss', '-Hltnp', 'sport', '=', String(port)]);
   const pid = listener.ok && /\bpid=(\d+)\b/.exec(listener.stdout)?.[1];
-  let protectedServer = false;
+  let missing = ['cpu', 'io', 'memory'];
   if (pid) {
     const membership = await run(['cat', `/proc/${pid}/cgroup`]);
     const group = /^0::(\/[^\n]*)$/m.exec(membership.stdout)?.[1];
     if (membership.ok && group && !group.split('/').includes('..'))
-      protectedServer = await groupProtected(group, run);
+      missing = await missingReserves(group, run);
   }
-  return protectedServer
-    ? {
-        id: 'worker:t3-protection',
-        status: 'pass',
-        summary: 'The T3 listener has its CPU, I/O and memory reserve.',
-      }
-    : {
-        id: 'worker:t3-protection',
-        status: 'fail',
-        summary: 'T3_PROTECTION_ESCAPED',
-        remedy: {
-          action:
-            'Run fleet-sync on this worker and check the cgroup of the T3 listener after its next idle restart.',
-        },
-      };
+  if (!missing.length)
+    return {
+      id: 'worker:t3-protection',
+      status: 'pass',
+      summary: 'The T3 listener has its CPU, I/O and memory reserve.',
+    };
+  const ioOnly = missing.length === 1 && missing[0] === 'io';
+  return {
+    id: 'worker:t3-protection',
+    status: 'fail',
+    summary: `${PROTECTION_ESCAPED} ${missing.join(' ')}`,
+    remedy: {
+      action: ioOnly
+        ? 'The user manager has no io controller: fleet-sync declares it for the user manager, which takes it on its next start. Reboot the worker while it runs no agent turn (devfleet fleet-sync --maintenance-reboot).'
+        : 'Run fleet-sync on this worker and check the cgroup of the T3 listener after its next idle restart.',
+    },
+  };
 }
 
 export async function pressureEvents(run: Runner): Promise<Check> {

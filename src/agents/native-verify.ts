@@ -195,9 +195,10 @@ export interface AccountContext {
 }
 
 /** How a per-account instance is launched: its tool's launcher, pinned to
- * the account as T3 pins it.
+ * the account as T3 pins it. OpenCode retries a rate-limited request quietly
+ * until the deadline; its error log is what shows the 429.
  */
-const ACCOUNT_LAUNCH: Record<
+export const ACCOUNT_LAUNCH: Record<
   string,
   { wrapper: string; launcher: string; args: string[] }
 > = {
@@ -214,7 +215,7 @@ const ACCOUNT_LAUNCH: Record<
   opencode: {
     wrapper: 'opencode-proxy.ts',
     launcher: 'opencode-proxy.ts',
-    args: ['run', PROMPT],
+    args: ['run', '--print-logs', '--log-level', 'ERROR', PROMPT],
   },
 };
 
