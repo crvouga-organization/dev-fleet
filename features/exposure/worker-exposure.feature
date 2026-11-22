@@ -3,9 +3,11 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
   UDP sockets and reads the fleet firewall. A socket bound to an address other
   than loopback or the tailnet fails, apart from what the declared policy
   allows: sshd and tailscaled (the firewall decides who reaches them), the
-  system's own listeners and the ports the policy opens. The report names the
-  port and the unit that owns it, never a process's arguments. A worker with
-  no address outside the tailnet has nothing to expose.
+  system's own listeners and the ports the policy opens. A service that cannot
+  bind one address may listen on a port the policy holds to the tailnet, once
+  the loaded firewall is measured to hold it. The report names the port and
+  the unit that owns it, never a process's arguments. A worker with no address
+  outside the tailnet has nothing to expose.
 
   Background:
     Given a worker with these addresses:
@@ -206,6 +208,123 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
         | tcp      | 0.0.0.0 | 5173 | t3code-claude-7fd17cb0.scope |
       When the exposure of the worker is checked
       Then the check passes
+
+  Rule: A service that cannot bind one address listens on a tailnet-only port the firewall holds
+    GNOME Remote Desktop binds every address and has no setting for one. Its
+    port is declared in "tailnetOnlyPorts" and the firewall drops it for
+    everything but loopback and the tailnet. The declaration alone proves
+    nothing: the rule is read from the rules the kernel holds.
+
+    Background:
+      Given the exposure policy is:
+        """
+        {"otherListeners": "fail", "tailnetOnlyPorts": [{"protocol": "tcp", "port": 3389}]}
+        """
+      And these sockets listen:
+        | protocol | address | port | unit                         |
+        | tcp      | 0.0.0.0 | 22   | ssh.service                  |
+        | tcp      | ::      | 3389 | gnome-remote-desktop.service |
+
+    Scenario: The listener passes while the loaded rules hold its port to the tailnet
+      Given the loaded rules, marked "tailnet-only", are:
+        | protocol | port | verdict |
+        | tcp      | 3389 | drop    |
+      When the exposure of the worker is checked
+      Then the check passes
+      And the summary of the check mentions "Its tailnet-only rules hold to loopback and the tailnet: tcp [::]:3389 (gnome-remote-desktop.service)."
+
+    Scenario: The listener fails while the loaded rules do not hold its port
+      The port was declared but fleet-sync has not written its rule yet.
+      When the exposure of the worker is checked
+      Then the check fails
+      And the summary of the check is "WORKER_TAILNET_ONLY_RULE_MISSING tcp [::]:3389 (gnome-remote-desktop.service)"
+      And the remedy of the check contains "run devfleet fleet-sync"
+
+    Scenario: The listener fails where other listeners only warn
+      Given the exposure policy is:
+        """
+        {"otherListeners": "warn", "tailnetOnlyPorts": [{"protocol": "tcp", "port": 3389}]}
+        """
+      When the exposure of the worker is checked
+      Then the check fails
+      And the summary of the check is "WORKER_TAILNET_ONLY_RULE_MISSING tcp [::]:3389 (gnome-remote-desktop.service)"
+
+    Scenario Outline: A rule that <differs> does not hold the port
+      Given the loaded rules, marked "<comment>", are:
+        | protocol   | port   | verdict   |
+        | <protocol> | <port> | <verdict> |
+      When the exposure of the worker is checked
+      Then the check fails
+      And the summary of the check is "WORKER_TAILNET_ONLY_RULE_MISSING tcp [::]:3389 (gnome-remote-desktop.service)"
+
+      Examples:
+        | differs                    | comment      | protocol | port | verdict |
+        | holds another port         | tailnet-only | tcp      | 3390 | drop    |
+        | holds the other protocol   | tailnet-only | udp      | 3389 | drop    |
+        | accepts the port           | tailnet-only | tcp      | 3389 | accept  |
+        | is not the fleet's marked rule | public-port | tcp   | 3389 | drop    |
+
+    Scenario: Without the fleet firewall the listener fails, and both faults are named
+      Given the fleet firewall is not loaded
+      When the exposure of the worker is checked
+      Then the check fails
+      And the summary of the check is "WORKER_FIREWALL_INACTIVE; WORKER_TAILNET_ONLY_RULE_MISSING tcp [::]:3389 (gnome-remote-desktop.service)"
+
+    Scenario: A held port admits no other listener
+      Given the loaded rules, marked "tailnet-only", are:
+        | protocol | port | verdict |
+        | tcp      | 3389 | drop    |
+      And these sockets listen:
+        | protocol | address | port | unit                         |
+        | tcp      | ::      | 3389 | gnome-remote-desktop.service |
+        | tcp      | 0.0.0.0 | 3390 | gnome-remote-desktop.service |
+      When the exposure of the worker is checked
+      Then the check fails
+      And the summary of the check is "WORKER_LISTENER_UNRESTRICTED tcp 0.0.0.0:3390 (gnome-remote-desktop.service)"
+
+    Scenario: The general remedy names the declaration for a service that cannot bind one address
+      Given the exposure policy is:
+        """
+        {"otherListeners": "fail"}
+        """
+      When the exposure of the worker is checked
+      Then the check fails
+      And the summary of the check is "WORKER_LISTENER_UNRESTRICTED tcp [::]:3389 (gnome-remote-desktop.service)"
+      And the remedy of the check contains "is declared in exposure.tailnetOnlyPorts instead, which opens nothing"
+
+    Scenario: What an agent started on a tailnet-only port is held like any other listener
+      The declaration names a port, not who listens on it.
+      Given the exposure policy is:
+        """
+        {"otherListeners": "fail", "tailnetOnlyPorts": [{"protocol": "tcp", "port": 5173}]}
+        """
+      And the loaded rules, marked "tailnet-only", are:
+        | protocol | port | verdict |
+        | tcp      | 5173 | drop    |
+      And these sockets listen:
+        | protocol | address | port | unit                         |
+        | tcp      | 0.0.0.0 | 5173 | t3code-claude-7fd17cb0.scope |
+      When the exposure of the worker is checked
+      Then the check passes
+
+    Scenario: A fleet service on a tailnet-only port still fails
+      A fleet service binds loopback or the tailnet itself: no declaration
+      excuses it, whatever the firewall holds.
+      Given the exposure policy is:
+        """
+        {"tailnetOnlyPorts": [{"protocol": "tcp", "port": 3773}, {"protocol": "tcp", "port": 4100}]}
+        """
+      And the loaded rules, marked "tailnet-only", are:
+        | protocol | port | verdict |
+        | tcp      | 3773 | drop    |
+        | tcp      | 4100 | drop    |
+      And these sockets listen:
+        | protocol | address | port | unit                    |
+        | tcp      | 0.0.0.0 | 3773 |                         |
+        | tcp      | 0.0.0.0 | 4100 | t3code-headless.service |
+      When the exposure of the worker is checked
+      Then the check fails
+      And the summary of the check is "WORKER_LISTENER_UNRESTRICTED tcp 0.0.0.0:3773 (unknown unit), tcp 0.0.0.0:4100 (t3code-headless.service)"
 
   Rule: The firewall that closes the rest is loaded, as declared
 

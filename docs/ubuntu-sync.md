@@ -266,6 +266,7 @@ worker beside `network`; a field a worker names replaces the fleet-wide one:
 "exposure": {
   "publicSsh": false,
   "publicPorts": [{ "protocol": "udp", "port": 51820 }],
+  "tailnetOnlyPorts": [{ "protocol": "tcp", "port": 3389 }],
   "otherListeners": "warn"
 }
 ```
@@ -280,6 +281,17 @@ port open keeps it open, and `worker:exposure` reports
 `WORKER_PUBLIC_SSH_UNDECLARED` until the manager's SSH alias names the
 worker's tailnet name.
 
+`tailnetOnlyPorts` is for a service that cannot bind one address, such as
+GNOME Remote Desktop, which listens on every address or not at all. It opens
+nothing: the rules already drop the port from outside the tailnet. Each port
+gets a rule of its own, marked `tailnet-only`, that drops it for everything
+loopback and the tailnet did not accept, the container bridges included, and
+that `worker:exposure` reads back from the loaded table. The rule stands
+after what the fleet itself needs (tailscaled, DHCP, the SSH port while it
+stays open), so naming one of those closes nothing the manager relies on. A
+port in both `publicPorts` and `tailnetOnlyPorts` is refused when `fleet.json`
+is read, also when one list is the worker's and the other fleet-wide.
+
 `worker:exposure` (on the worker) lists listening sockets and fails on one
 bound beyond loopback and the tailnet outside the allow-list (sshd, tailscaled,
 the system's DHCP and name-resolution listeners, `publicPorts`), naming the
@@ -289,7 +301,11 @@ server, is named apart (`WORKER_AGENT_LISTENER_UNRESTRICTED`, by the
 `t3code-<agent>-<id>.scope` T3 starts each agent in), with its own remedy: it
 is no fault of a fleet unit and fleet-sync does not change it. Nothing the
 fleet declares keeps an agent from binding every address; the firewall admits
-such a listener only over the tailnet. The T3
+such a listener only over the tailnet. A listener on a port of
+`tailnetOnlyPorts`, whoever started it, passes only while the loaded table
+holds the `tailnet-only` rule for that port, and is named in the summary;
+without the rule it fails as `WORKER_TAILNET_ONLY_RULE_MISSING`, whatever
+`otherListeners` says, until fleet-sync has loaded it. The T3
 desktop app counts as a fleet service in `t3code-desktop.service` and in the
 `app-com.t3tools.T3Code-<pid>.scope` its main process moves into. It serves on
 127.0.0.1 only: its exposure (`serverExposureMode` in its desktop settings,

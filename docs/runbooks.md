@@ -8,7 +8,7 @@ person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
 entry here, or a `devfleet` command quoted in the documents does not exist.
 
-There are 318 codes; 46 need a person.
+There are 319 codes; 46 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -149,7 +149,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 
 - **Meaning:** Something on the worker is reachable from outside the tailnet, or could be: the fleet firewall (`ansible/ubuntu/tasks/firewall.yml`) is not loaded or kept SSH open, a service listens beyond loopback and the tailnet (`worker:exposure`), or the manager reached a fleet port on the worker's public address (`worker:public-reachability`). The exposure policy is `exposure` in `fleet.json` (fleet-wide under `worker`, per worker beside `network`).
 - **Confirm:** On the worker: `sudo nft list table inet personal_fleet`, `sudo ss -H -l -n -t -u -p` and `sudo sshd -T | grep -E 'passwordauthentication|permitrootlogin'`. From the manager: `devfleet fleet-status --workers`.
-- **Fix:** Run `devfleet fleet-sync`. It closes SSH beyond the tailnet only when the manager's session arrives over the tailnet: point the worker's SSH alias at its tailnet name first. Bind a service to `127.0.0.1` or the tailnet address, or declare its port in `publicPorts`.
+- **Fix:** Run `devfleet fleet-sync`. It closes SSH beyond the tailnet only when the manager's session arrives over the tailnet: point the worker's SSH alias at its tailnet name first. Bind a service to `127.0.0.1` or the tailnet address, or declare its port in `publicPorts`. A service that cannot bind one address, such as a remote desktop, is declared in `tailnetOnlyPorts` instead: that opens nothing, and the next `devfleet fleet-sync` loads the rule that holds the port to loopback and the tailnet.
 - **Escalate:** A firewall the tailnet path could not verify (the previous rules are back) needs `tailscale status` on the worker; a public SSH port is opened on purpose only with `publicSsh`, by a person.
 
 - `FIREWALL_RULES_REJECTED`: firewall rules rejected by `nft --check`; the previous rules stay loaded.
@@ -162,6 +162,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `WORKER_LISTENER_UNRESTRICTED`: a socket listens beyond loopback and the tailnet outside the allow-list; the summary names the port and the owning unit. A fleet service fails; another warns or fails by `otherListeners`. What an agent started is reported as `WORKER_AGENT_LISTENER_UNRESTRICTED` instead.
 - `WORKER_PUBLIC_PORT_UNRESTRICTED`: the manager connected to SSH, T3 or the monitoring port on the worker's public address.
 - `WORKER_PUBLIC_SSH_UNDECLARED`: SSH is still open beyond the tailnet without `publicSsh`, because no session over the tailnet proved the manager's path. **Needs a person.**
+- `WORKER_TAILNET_ONLY_RULE_MISSING`: a service listens on a port of `tailnetOnlyPorts`, but the loaded table has no `tailnet-only` rule that drops that port; the summary names the port and the owning unit. Run `devfleet fleet-sync`.
 
 ## Headless browser on a worker
 

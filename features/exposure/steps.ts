@@ -90,12 +90,12 @@ When('the exposure of {string} is read', (world, id: string) => {
 
 Then('the exposure is:', (world, table: DataTable) => {
   const policy = world.exposure!;
+  const ports = (list: ExposurePolicy['publicPorts']) =>
+    list.map((entry) => `${entry.protocol}/${entry.port}`).join(', ') || 'none';
   const shown: Record<string, string> = {
     publicSsh: String(policy.publicSsh),
-    publicPorts:
-      policy.publicPorts
-        .map((entry) => `${entry.protocol}/${entry.port}`)
-        .join(', ') || 'none',
+    publicPorts: ports(policy.publicPorts),
+    tailnetOnlyPorts: ports(policy.tailnetOnlyPorts),
     otherListeners: policy.otherListeners,
   };
   expect(shown).toEqual(Object.fromEntries(table.raw()));
@@ -143,7 +143,33 @@ Given(/^the worker (is|is not) a container$/, (world, is: string) => {
   );
 });
 
-const firewall = (publicSsh: boolean) =>
+/** A rule of the input chain as `nft -j` lists it: one port, one verdict. */
+const portRule = (
+  comment: string,
+  protocol: string,
+  port: number,
+  verdict: string
+) => ({
+  rule: {
+    family: 'inet',
+    table: 'personal_fleet',
+    chain: 'input',
+    handle: 10 + port,
+    comment,
+    expr: [
+      {
+        match: {
+          op: '==',
+          left: { payload: { protocol, field: 'dport' } },
+          right: port,
+        },
+      },
+      { [verdict]: null },
+    ],
+  },
+});
+
+const firewall = (publicSsh: boolean, rules: unknown[] = []) =>
   JSON.stringify({
     nftables: [
       { metainfo: { json_schema_version: 1 } },
@@ -174,6 +200,7 @@ const firewall = (publicSsh: boolean) =>
             },
           ]
         : []),
+      ...rules,
     ],
   });
 
@@ -185,6 +212,30 @@ Given(
       state === 'not loaded'
         ? failed('Error: No such file or directory')
         : succeeded(firewall(state !== 'loaded'))
+    );
+  }
+);
+
+Given(
+  'the loaded rules, marked {string}, are:',
+  (world, comment: string, table: DataTable) => {
+    world.commands.answer(
+      (command) => command.join(' ').startsWith('sudo -n nft -j list table'),
+      succeeded(
+        firewall(
+          false,
+          table
+            .hashes()
+            .map((row) =>
+              portRule(
+                comment,
+                row['protocol']!,
+                Number(row['port']),
+                row['verdict']!
+              )
+            )
+        )
+      )
     );
   }
 );
@@ -414,6 +465,67 @@ Then(
       `tcp dport {{ port }} accept comment "${comment}"`,
     ]);
     expect(ssh[0]!.when).toEqual([`${condition} | bool`]);
+  }
+);
+
+Then(
+  'each port of {string} is dropped by a rule marked {string}',
+  (world, list: string, comment: string) => {
+    const lines = chain(world.text, 'input');
+    const rule = lines.indexOf(
+      `{{ entry.protocol }} dport {{ entry.port }} drop comment "${comment}"`
+    );
+    expect(rule).toBeGreaterThan(0);
+    expect(lines[rule - 1]).toBe(
+      `{% for entry in firewall_policy.${list} | default([]) %}`
+    );
+    expect(
+      conditionsAt(world.text).find(({ line }) => line === lines[rule])!.when
+    ).toEqual([]);
+  }
+);
+
+/** Where the first rule of the input chain that matches stands. */
+const ruleAt = (world: ExposureWorld, pattern: RegExp): number => {
+  const index = chain(world.text, 'input').findIndex((line) =>
+    pattern.test(line)
+  );
+  expect(index, `no rule like ${pattern}`).toBeGreaterThanOrEqual(0);
+  return index;
+};
+const RULES_OF: Record<string, RegExp> = {
+  loopback: /^iif "lo" accept$/,
+  'the tailnet': /^iifname "\{\{ exposure\.tailnetInterface \}\}" accept$/,
+  tailscaled: /comment "tailscaled"$/,
+  DHCP: /comment "dhcp"$/,
+  DHCPv6: /comment "dhcpv6"$/,
+  'the public SSH port': /comment "public-ssh"$/,
+  'container bridges': /comment "containers reach the host"$/,
+  'public ports': /comment "public-port"$/,
+};
+
+Then(
+  /^the rules marked "([^"]+)" stand (after|before) what accepts:$/,
+  (world, comment: string, side: string, table: DataTable) => {
+    const rule = ruleAt(world, new RegExp(`comment "${comment}"$`));
+    for (const name of table.list()) {
+      const other = ruleAt(world, RULES_OF[name]!);
+      if (side === 'after') expect(rule).toBeGreaterThan(other);
+      else expect(rule).toBeLessThan(other);
+    }
+  }
+);
+
+Then(
+  'the play hands the rules these lists, empty unless declared:',
+  (_world, table: DataTable) => {
+    const [read] = tasksOf(FIREWALL);
+    const facts = read!['ansible.builtin.set_fact'] as Record<string, string>;
+    for (const list of table.list())
+      expect(facts['firewall_policy']).toContain(`'${list}': []`);
+    expect(facts['firewall_policy']).toContain(
+      'combine(worker_exposure | default({}))'
+    );
   }
 );
 

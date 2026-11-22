@@ -4,6 +4,12 @@
 # (worker_exposure, src/exposure.ts). The same rules apply with or without a
 # public address. Measured as worker:exposure.
 #
+# A tailnet-only port (exposure.tailnetOnlyPorts) is for a service that cannot
+# bind one address. Its rule drops the port for whatever loopback and the
+# tailnet did not already accept, containers included. It stands after what
+# the fleet itself needs (tailscaled, DHCP, the public SSH port while that
+# stays open), so declaring a port can close nothing the manager relies on.
+#
 # The manager is never locked out. The public SSH port closes only when the
 # session running this play arrived over the tailnet; a session from a public
 # address, a tailnet that is not up, or a run with no session that finds the
@@ -12,7 +18,7 @@
 # over the tailnet, and a failed verification restores the previous rules.
 - name: Read the exposure policy of this worker
   ansible.builtin.set_fact:
-    firewall_policy: "{{ {'publicSsh': false, 'publicPorts': []} | combine(worker_exposure | default({})) }}"
+    firewall_policy: "{{ {'publicSsh': false, 'publicPorts': [], 'tailnetOnlyPorts': []} | combine(worker_exposure | default({})) }}"
     firewall_session_client: "{{ (lookup('ansible.builtin.env', 'SSH_CONNECTION') | default('', true)).split(' ') | first }}"
 - name: Inspect the managed firewall rules
   ansible.builtin.stat:

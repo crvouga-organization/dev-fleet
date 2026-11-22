@@ -11,11 +11,6 @@ table inet personal_fleet {
 		ct state invalid drop
 		ct state established,related accept
 		iifname "{{ exposure.tailnetInterface }}" accept
-{% if firewall_docker | bool %}
-{% for interface in exposure.containerInterfaces %}
-		iifname "{{ interface }}" accept comment "containers reach the host"
-{% endfor %}
-{% endif %}
 		udp dport {{ exposure.tailscalePort }} accept comment "tailscaled"
 		meta l4proto ipv6-icmp accept
 		meta l4proto icmp accept
@@ -24,6 +19,14 @@ table inet personal_fleet {
 {% if firewall_public_ssh | bool %}
 {% for port in firewall_ssh_ports %}
 		tcp dport {{ port }} accept comment "public-ssh"
+{% endfor %}
+{% endif %}
+{% for entry in firewall_policy.tailnetOnlyPorts | default([]) %}
+		{{ entry.protocol }} dport {{ entry.port }} drop comment "tailnet-only"
+{% endfor %}
+{% if firewall_docker | bool %}
+{% for interface in exposure.containerInterfaces %}
+		iifname "{{ interface }}" accept comment "containers reach the host"
 {% endfor %}
 {% endif %}
 {% for entry in firewall_policy.publicPorts | default([]) %}

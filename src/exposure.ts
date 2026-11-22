@@ -12,6 +12,11 @@ export interface ExposurePolicy {
   publicSsh: boolean;
   /** Opened on every interface; a listener on one is allowed. */
   publicPorts: PublicPort[];
+  /** Ports of services that cannot bind one address, such as a remote
+   * desktop: closed by a rule of their own to everything but loopback and
+   * the tailnet, containers included. A listener on one is allowed once that
+   * rule is measured in the loaded firewall. Never opens anything. */
+  tailnetOnlyPorts: PublicPort[];
   /** A listener outside the allow-list that no fleet service owns, such as
    * an agent's development server (named apart, as
    * WORKER_AGENT_LISTENER_UNRESTRICTED): reported as a warning or a failure.
@@ -29,11 +34,12 @@ export type ExposureDeclaration = Partial<ExposurePolicy>;
 export const DEFAULT_EXPOSURE: ExposurePolicy = {
   publicSsh: false,
   publicPorts: [],
+  tailnetOnlyPorts: [],
   otherListeners: 'warn',
 };
 
 export const EXPOSURE_EXPECTED =
-  'publicSsh (true or false), publicPorts (a list of {protocol: tcp or udp, port}, each once) and otherListeners ("warn" or "fail")';
+  'publicSsh (true or false), publicPorts and tailnetOnlyPorts (lists of {protocol: tcp or udp, port}, each port once and in one list only) and otherListeners ("warn" or "fail")';
 
 function publicPort(value: unknown): PublicPort | null {
   if (!record(value)) return null;
@@ -59,6 +65,7 @@ function publicPorts(value: unknown): PublicPort[] | null {
 const FIELDS: Record<string, (value: unknown) => boolean> = {
   publicSsh: (value) => typeof value === 'boolean',
   publicPorts: (value) => publicPorts(value) !== null,
+  tailnetOnlyPorts: (value) => publicPorts(value) !== null,
   otherListeners: (value) => value === 'warn' || value === 'fail',
 };
 
@@ -68,7 +75,21 @@ export function parseExposure(value: unknown): ExposureDeclaration | null {
   const valid = Object.entries(value).every(
     ([key, field]) => Object.hasOwn(FIELDS, key) && FIELDS[key]!(field)
   );
-  return valid ? ({ ...value } as ExposureDeclaration) : null;
+  const declared = { ...value } as ExposureDeclaration;
+  return valid && !portInBothLists(declared) ? declared : null;
+}
+
+/** Whether a port is both opened to everyone and held to the tailnet: one
+ * list contradicts the other, so neither is applied. */
+export function portInBothLists(
+  policy: Pick<ExposureDeclaration, 'publicPorts' | 'tailnetOnlyPorts'>
+): boolean {
+  const open = new Set(
+    (policy.publicPorts ?? []).map((entry) => `${entry.protocol}/${entry.port}`)
+  );
+  return (policy.tailnetOnlyPorts ?? []).some((entry) =>
+    open.has(`${entry.protocol}/${entry.port}`)
+  );
 }
 
 /** The policy one worker runs under: the default, then the fleet-wide
