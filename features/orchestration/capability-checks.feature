@@ -45,6 +45,26 @@ Feature: A capability is checked only when it is required, and a check keeps not
       | the extension, listed | ms-vscode-remote.remote-ssh\n | pass   |
       | another extension     | unrelated.extension           | fail   |
 
+  Scenario: A Vault that does not answer the node is not reported as a login that lapsed
+    A login or a new token does not help when Vault itself is silent, so the
+    check says which of the two it found. Vault's status needs no login.
+    Given any "vault" command fails with the error output "dial tcp: connect: connection refused"
+    When the capability "vault" is checked for the checkout "/repo"
+    Then the first check is "auth:vault"
+    And the first check has the status "fail"
+    And the first check says "VAULT_UNREACHABLE"
+
+  Scenario: A Vault that answers a node whose session does not is a login that lapsed
+    Given any "vault" command fails with the error output "permission denied"
+    But a command with the argument "status" succeeds, printing:
+      """
+      { "sealed": false }
+      """
+    When the capability "vault" is checked for the checkout "/repo"
+    Then the first check is "auth:vault"
+    And the first check has the status "fail"
+    And the first check says "vault check failed (exit); no credential output retained."
+
   Scenario: T3 reports its settings, its local API and the untested end-to-end path separately
     Given a command with the argument "status" succeeds, printing:
       """

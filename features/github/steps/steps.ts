@@ -208,18 +208,21 @@ When('the access of {string} is checked', async (world, node: string) => {
 When(
   'the GitHub sign-in of {string} is converged',
   async (world, node: string) => {
-    world.checks = [await convergeGithub(root, world.runner(node), node)];
+    world.checks = [
+      await convergeGithub(root, world.runner(node), node, {
+        secrets: await world.secret(node),
+        role: 'worker',
+      }),
+    ];
   }
 );
 
 When('the GitHub sign-in of the manager is converged', async (world) => {
   world.checks = [
-    await convergeGithub(
-      root,
-      world.runner(MANAGER),
-      undefined,
-      await world.secret(MANAGER)
-    ),
+    await convergeGithub(root, world.runner(MANAGER), undefined, {
+      secrets: await world.secret(MANAGER),
+      role: 'manager',
+    }),
   ];
 });
 

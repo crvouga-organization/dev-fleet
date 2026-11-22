@@ -382,8 +382,8 @@ Read `summary` and `remedy.action` of the failing check. The common ones:
 | `FLEET_PROMOTION_BLOCKED`                 | The canary (the report names it under `canary`) failed, so the new revision went no further. Fix the canary first.             |
 | `VAULT_LOGIN_REQUIRED`                    | The manager is not logged in to Vault. The human logs in; the next sync issues worker tokens.                                  |
 | `VAULT_LOGIN_EXPIRY_PENDING` (warning)    | The manager's Vault login ends within a day and renewal cannot extend it. The human logs in again before then.                 |
-| `VAULT_UNREACHABLE`                       | Vault does not answer the manager, or is sealed. A login does not help: restore the way to it, or unseal it.                   |
-| `SECRET_READ_BLOCKED`                     | The check needed a secret the manager could not read (logged out, or Vault unreachable). Fix the check it names, not this one. |
+| `VAULT_UNREACHABLE`                       | Vault does not answer the manager or a worker, or is sealed. No login or new token helps: restore the way to it, or unseal it. |
+| `SECRET_READ_BLOCKED`                     | The check needed a secret its machine could not read (logged out, or Vault unreachable). Fix the check it names, not this one. |
 | `PROVIDER_UNATTENDED_CREDENTIAL_REQUIRED` | A coding agent has no credential a background service can use. The human signs in on the proxy.                                |
 | `BESZEL_ACCOUNT_REQUIRED`                 | The monitoring hub has no account yet. Follow the remedy; other workers are not blocked.                                       |
 

@@ -4,7 +4,11 @@ import { proxyKey } from './secrets';
 import type { Check } from '../types';
 import { fleet, secret } from '../fleet-config';
 import type { SecretsProvider } from '../secrets';
-import { blockedBySecretsLogin, secretsFault } from '../secrets-blocked';
+import {
+  blockedBySecretsLogin,
+  secretsFault,
+  secretsLoginOwner,
+} from '../secrets-blocked';
 import { registry, type Selection } from './registry';
 import { verifyProvider } from './verify';
 import { fileURLToPath } from 'node:url';
@@ -50,11 +54,15 @@ export async function verifyFleetProviders(
           'Restore this node’s existing Vault authorization and renewal. No model requests or native OAuth login were attempted.',
       },
     }));
-    // The manager's login has an owner to name; a worker's is its own.
-    if (node !== fleet.manager.id) return absent;
+    // One fault of the login of the machine this ran on, not one a provider.
     const fault = await secretsFault(secrets);
+    const owner = secretsLoginOwner(
+      node === fleet.manager.id ? 'manager' : 'worker'
+    );
     return fault
-      ? absent.map(({ id, status }) => blockedBySecretsLogin(id, status, fault))
+      ? absent.map(({ id, status }) =>
+          blockedBySecretsLogin(id, status, fault, owner)
+        )
       : absent;
   }
 

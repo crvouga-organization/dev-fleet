@@ -12,6 +12,15 @@ export const SECRET_READ_BLOCKED = 'SECRET_READ_BLOCKED';
 /** The check that owns the manager's login to the secrets provider. */
 export const MANAGER_SECRETS_LOGIN = 'manager:vault-renewal';
 
+/** The check that owns a worker's own login: every worker keeps a session
+ * of its own, measured where it runs (src/worker-access-checks.ts).
+ */
+export const WORKER_SECRETS_LOGIN = 'worker:vault-renewal';
+
+/** The check that owns the login of the machine a check ran on. */
+export const secretsLoginOwner = (role: 'manager' | 'worker'): string =>
+  role === 'manager' ? MANAGER_SECRETS_LOGIN : WORKER_SECRETS_LOGIN;
+
 /** Why a read is blocked: every answer of `secretsLogin` but `held`. */
 export type SecretsFault = Exclude<SecretsLogin, 'held'>;
 
@@ -60,21 +69,22 @@ type Unread = Check & {
   status: Exclude<Check['status'], 'pass' | 'not-applicable'>;
 };
 
-/** The one answer of a check on the manager that got no secret. It hands
- * over the provider it read from and what it says when the secret is
- * absent: it keeps that when the provider can be read, and is otherwise
- * blocked by the check that owns the manager's login, with the status it
- * had. Every reader answers through here
+/** The one answer of a check that got no secret. It hands over the provider
+ * it read from and what it says when the secret is absent: it keeps that
+ * when the provider can be read, and is otherwise blocked by the check that
+ * owns the login of the machine it ran on (the manager's, unless it says a
+ * worker's), with the status it had. Every reader answers through here
  * (`features/rules/secret-readers.feature`), so a lapsed login or a provider
  * out of reach is one root cause and not one fault per secret.
  */
 export async function unreadSecret(
   secrets: Pick<SecretsProvider, 'login'>,
-  absent: Unread
+  absent: Unread,
+  owner: string = MANAGER_SECRETS_LOGIN
 ): Promise<Check> {
   const fault = await secretsFault(secrets);
   return fault
-    ? blockedBySecretsLogin(absent.id, absent.status, fault)
+    ? blockedBySecretsLogin(absent.id, absent.status, fault, owner)
     : absent;
 }
 

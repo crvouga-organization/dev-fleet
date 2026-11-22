@@ -5,7 +5,7 @@ import { githubCredential } from './credential';
 import { githubNode, githubPolicy, type GithubNode } from './policy';
 import { activeToken, GITHUB_STEP_TIMEOUT_MS } from './sync';
 import { fleetJson } from '../fleet-config';
-import { unreadSecret } from '../secrets-blocked';
+import { secretsLoginOwner, unreadSecret } from '../secrets-blocked';
 
 export interface GithubCheckInput {
   definition: FleetDefinition;
@@ -148,10 +148,7 @@ async function tokenCurrent(
       summary:
         'The secrets provider holds no github-token for this node; there is no stored token to compare with.',
     };
-    // The manager's login has an owner to name; a worker's is its own.
-    return target.role === 'manager'
-      ? unreadSecret(input.secret, absent)
-      : absent;
+    return unreadSecret(input.secret, absent, secretsLoginOwner(target.role));
   }
   const ok = (await activeToken(run)) === stored;
   return {

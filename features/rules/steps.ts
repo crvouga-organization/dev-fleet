@@ -36,7 +36,7 @@ import {
 } from '../../src/repair-plan';
 import { World, scenariosOf, steps, type DataTable } from '../support/gherkin';
 import { secretsFault, standInSecrets } from '../support/secrets';
-import { unreadSecret } from '../../src/secrets-blocked';
+import { secretsLoginOwner, unreadSecret } from '../../src/secrets-blocked';
 import type { Check } from '../../src/types';
 
 const root = resolve(import.meta.dir, '../..');
@@ -1565,10 +1565,13 @@ const GENERATED: Record<string, () => Promise<string>> = {
   },
   checks: async () => {
     const found = new Map<string, Set<string>>();
-    // The owners of the checks name them; they measure nothing.
+    // The owners of the checks name them, and so does the answer of a check
+    // blocked by a login; they measure nothing.
     for (const path of (await files('src/**/*.ts')).filter(
       (path) =>
-        path !== 'src/check-owners.ts' && path !== 'src/check-registry.ts'
+        path !== 'src/check-owners.ts' &&
+        path !== 'src/check-registry.ts' &&
+        path !== 'src/secrets-blocked.ts'
     ))
       for (const match of read(path).matchAll(
         /['`]((?:auth|worker):[a-z0-9-]*(?:auth|github|vault|git-|credential)[a-z0-9-]*)['`]/g
@@ -2040,7 +2043,6 @@ Then(
         'is blocked through the shared answer',
         'is answered by the reader it hands it to',
         'reports no check',
-        "is a worker's, whose login is its own",
       ]).toContain(answer);
       const shared = /from '[./]+secrets-blocked'/.test(read(row.source));
       expect(`${row.source}: ${shared}`).toBe(
@@ -2066,8 +2068,8 @@ Then('they are exactly these:', (world, table: DataTable) => {
 const blocked = new WeakMap<RulesWorld, Check>();
 
 When(
-  /^a check that fails for want of a secret is answered while the manager (is not logged in to|cannot reach|can read) its secrets provider$/,
-  async (world, state: string) => {
+  /^a check that fails for want of a secret is answered while (the manager|a worker) (is not logged in to|cannot reach|can read) its secrets provider$/,
+  async (world, machine: string, state: string) => {
     blocked.set(
       world,
       await unreadSecret(
@@ -2080,7 +2082,8 @@ When(
           status: 'fail',
           summary: 'EXAMPLE_SECRET_REQUIRED',
           remedy: { action: 'Store the example secret.' },
-        }
+        },
+        secretsLoginOwner(machine === 'a worker' ? 'worker' : 'manager')
       )
     );
   }
