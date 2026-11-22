@@ -33,6 +33,7 @@ Feature: A fresh Ubuntu machine becomes a worker over SSH
     Then the bootstrap reaches node convergence
     And the machine holds the commit under test, checked out without its history
     And the machine holds the fleet configuration, without the bucket it names
+    And the machine holds the record of that copy beside it
     And the machine runs the mise release mise.toml pins
     And the devfleet launcher is installed on the machine
     And these tools run on the machine at the version mise.toml pins:

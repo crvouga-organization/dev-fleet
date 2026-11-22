@@ -8,7 +8,7 @@ person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
 entry here, or a `devfleet` command quoted in the documents does not exist.
 
-There are 316 codes; 46 need a person.
+There are 317 codes; 47 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -464,10 +464,11 @@ write `1` to that agent scope’s `cgroup.kill`.
 - **Meaning:** fleet-sync could not plan, lock, reach a machine, promote a revision or keep the fleet state.
 - **Confirm:** `devfleet fleet-state` for the state, `devfleet fleet-status` for machines, and the report `devfleet fleet-sync` writes.
 - **Fix:** Follow the remedy; most clear by running `devfleet fleet-sync` again once the holder of a lock finishes.
-- **Escalate:** FLEET_STATE_DIVERGED needs a person to choose which copy of the state to keep (docs/state.md).
+- **Escalate:** FLEET_STATE_DIVERGED needs a person to choose which copy of the state to keep (docs/state.md). FLEET_CONFIGURATION_COPY_CHANGED needs a person to keep the edit (in `fleet.json`, or with the import the remedy prints) or to delete the copy.
 
 - `ANSIBLE_VARIABLE_LIMIT`: ansible variable limit.
 - `CONTAINER_WATCHDOG_UNOBSERVED`: container watchdog unobserved.
+- `FLEET_CONFIGURATION_COPY_CHANGED`: fleet configuration copy changed: `~/.config/dev-fleet/fleet.json` on the machine was edited by hand, and is not replaced until the edit is kept or discarded. **Needs a person.**
 - `FLEET_CONNECTION_REQUIRED`: fleet connection required.
 - `FLEET_MANAGER_ENROLLMENT_REQUIRED`: fleet manager enrollment required. **Needs a person.**
 - `FLEET_MANAGER_LOCKED`: fleet manager locked.

@@ -3,6 +3,8 @@ import type { ManagerReport } from '../manager-sync';
 import { localCheckoutRevision } from '../machine/local-source';
 import {
   definitionSource,
+  editedCopyRemedy,
+  editedInstalledCopy,
   fleet as canonicalDefinition,
   reloadFleet,
 } from '../fleet-config';
@@ -169,6 +171,8 @@ export interface ManagerSync {
   root: string;
   /** Starts the request over once the fleet state has been replaced. */
   restart: () => Promise<CommandOutcome>;
+  /** The home directory that holds this machine's installed copy. */
+  home?: string;
 }
 
 /** Why the fleet state stops this run before any machine or the state is
@@ -196,11 +200,29 @@ function stateRefusal(
     : null;
 }
 
+/** Why this machine's copy of the configuration stops the run, if it does:
+ * a sync installs the copy again, and an edit made to it by hand would be
+ * lost. Refused the same way with or without a person, and never asked.
+ */
+function copyRefusal(
+  home: string | undefined,
+  revision: string
+): CommandOutcome | null {
+  const edited = editedInstalledCopy(process.env, home);
+  return edited
+    ? actionRequired(
+        'FLEET_CONFIGURATION_COPY_CHANGED',
+        editedCopyRemedy(edited, process.env, home),
+        revision
+      )
+    : null;
+}
+
 /** fleet-sync on the machine already known to be the manager. */
 export async function managerSync(
   options: FleetSyncOptions,
   settings: Settings,
-  { run, root, restart }: ManagerSync
+  { run, root, restart, home }: ManagerSync
 ): Promise<CommandOutcome> {
   await ensurePrivateRoot(root);
   const state = await loadEnrollment(legacyHome() ? root : null);
@@ -232,6 +254,8 @@ export async function managerSync(
     reloadFleet();
     return restart();
   }
+  const edited = copyRefusal(home, revision);
+  if (edited) return edited;
   if (options.dryRun)
     return preview({ ...options, revision }, settings, {
       run,

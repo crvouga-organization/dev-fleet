@@ -82,6 +82,16 @@ Feature: One fleet-sync over several fresh machines, and the faults it meets
     Then the bootstrap reports "SOURCE_CHECKOUT_CONFLICT" with a remedy
     And "notes.txt" is still in that checkout on "fleet-b"
 
+  Scenario: A copy of the fleet configuration edited on a machine is refused, not replaced
+    A machine takes its configuration from the manager, so the edit would be
+    lost: the bootstrap stops before it installs anything, and says where
+    the change belongs and how to discard the edit.
+    Given every machine has been bootstrapped
+    And the copy of the fleet configuration on "fleet-b" was edited there
+    When the manager bootstraps "fleet-b"
+    Then the bootstrap reports "FLEET_CONFIGURATION_COPY_CHANGED" with a remedy that says "rm ~/.config/dev-fleet/fleet.json"
+    And the edit is still in the copy of the fleet configuration on "fleet-b"
+
   Scenario Outline: A package installation <starter> started and that was interrupted is finished on the next run
     Whoever started it, the bootstrap finishes an interrupted package run
     once, bounded, before it installs what it lacks: the next sync heals

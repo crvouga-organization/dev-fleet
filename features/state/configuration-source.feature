@@ -95,6 +95,41 @@ Feature: Each process reads the fleet configuration from the one place meant for
       When fleet-sync installs the configuration on the manager
       Then the copy was left as it was
 
+    Scenario: Beside the copy fleet-sync records what it wrote
+      The copy is JSON that Node and Python read, so it cannot carry a
+      header: the record is a file of its own. The next run compares the two
+      to tell a copy edited by hand from one nobody touched
+      (installed-copy.feature).
+      When fleet-sync installs the configuration on the manager
+      Then "~/.config/dev-fleet/fleet.json.sha256" on the manager holds the SHA-256 of "~/.config/dev-fleet/fleet.json"
+      And "~/.config/dev-fleet/fleet.json.sha256" on the manager is readable by its owner only
+
+  Rule: A remedy names fleet.json where it is for the way the configuration was found
+    A remedy that tells the operator to declare something says which file
+    to edit, so that nobody edits the installed copy instead.
+
+    Background:
+      Given the fleet state holds the example fleet as its configuration
+
+    Scenario: A file named explicitly, or a project's fleet.json, is named by its path
+      Given commands on the manager are passed:
+        | DEVFLEET_CONFIG | /repo/fleet.json |
+      Then a remedy on the manager names "fleet.json (/repo/fleet.json)"
+
+    Scenario: A configuration kept in the fleet state is named with the commands that change it
+      Given the process is the devfleet CLI
+      Then a remedy on the manager names "fleet.json (kept in the fleet state: devfleet fleet-state --export > fleet.json, edit that file, then devfleet fleet-state --import fleet.json)"
+
+    Scenario: A command the devfleet CLI started is not sent to the state's copy as a file
+      That file is rewritten from the fleet state and never edited.
+      Given commands on the manager are passed:
+        | DEVFLEET_CONFIG | ~/.local/share/dev-fleet/state/definition.json |
+      Then a remedy on the manager names "fleet.json (kept in the fleet state: devfleet fleet-state --export > fleet.json, edit that file, then devfleet fleet-state --import fleet.json)"
+
+    Scenario: A machine that holds only the installed copy is sent to the project, not to the copy
+      A launcher, a scheduled job, the worker probe.
+      Then a remedy on the manager names the project the fleet is synced from, and not the copy at "~/.config/dev-fleet/fleet.json"
+
   Rule: The probe workers run under Node never loads the state database
 
     Scenario: The bundled probe does not import bun:sqlite
