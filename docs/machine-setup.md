@@ -5,7 +5,7 @@
 
 ## Machine setup: macOS, Windows and Linux
 
-This is the shared development setup for **crvouga-organization/dev-fleet**. One versioned
+This is the shared development setup for **crvouga/dev-fleet**. One versioned
 manifest, `mise.toml`, owns the developer tools; `mise.lock` and `.mise/locks/`
 own resolved artifacts and dependency graphs. Both bootstraps apply that same
 manifest to the current user globally. Other projects can override versions with
@@ -25,7 +25,7 @@ script only ever installs the toolchain of the checkout it is in.
 Native Windows, in x64 PowerShell (5.1 or newer):
 
 ```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/crvouga-organization/dev-fleet/main/bootstrap/bootstrap.ps1 -OutFile "$env:TEMP\workspace-bootstrap.ps1"
+Invoke-WebRequest https://raw.githubusercontent.com/crvouga/dev-fleet/main/bootstrap/bootstrap.ps1 -OutFile "$env:TEMP\workspace-bootstrap.ps1"
 & "$env:TEMP\workspace-bootstrap.ps1"
 ```
 
