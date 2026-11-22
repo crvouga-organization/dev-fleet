@@ -126,6 +126,8 @@ included, to the exact version in `ansible/ubuntu/policy.json`. The interactive 
 - Remote source: `~/.local/share/personal/fleet/revisions/FULL_SHA`.
   Remote lock file: `~/.local/share/personal/fleet/remote-operation.lock`, held
   with `flock` on Linux and the same descriptor through Python `fcntl` on macOS.
+  An operation waits five seconds for it before it is refused, so a manager's
+  look at the lock (which takes it for an instant) never refuses one.
   Never repurpose a development checkout or reset dirty worktrees.
 - Fleet owns `ubuntu/`, `macos/` and `monitoring/`; mise manifests, locks and
   `scripts/dev` own developer tools. CLIProxy deployment/auth/recovery stays with
