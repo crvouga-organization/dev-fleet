@@ -14,6 +14,7 @@ Feature: The hub runs on the manager, and only there
         | command                                                                                         | answer                           |
         | /usr/sbin/scutil --get LocalHostName                                                            | prints Manager-Mac\n             |
         | docker info --format {{.ServerVersion}}                                                         | prints 29.0.0                    |
+        | vault token lookup -address=https://vault.example.com -format=json                              | succeeds                         |
         | vault kv get -address=https://vault.example.com -mount=secret -field=TUNNEL_TOKEN beszel/tunnel | prints never-output-tunnel-token |
         | curl … http://127.0.0.1:8090/api/health                                                         | succeeds                         |
         | curl … https://manager-mac-1.tail0a1b2c.ts.net:8443/api/health                                  | succeeds                         |
@@ -79,11 +80,29 @@ Feature: The hub runs on the manager, and only there
       And no "vault" command was run
 
     Scenario: A missing tunnel credential warns without blocking the private hub
+      The manager is logged in to Vault, so the credential itself is absent.
       Given the command "vault kv get …" fails
       When the hub is converged on the manager
       Then the check passes
       And the summary of the second check is "BESZEL_TUNNEL_CREDENTIAL_UNAVAILABLE"
       And the first playbook run, "hub-darwin.yml", was not given the variable "beszel_tunnel_token"
+
+    Scenario: A manager logged out of Vault has one fault, and the checks that needed a secret are blocked by it
+      No tunnel, hub account or viewer is missing: the manager could read
+      none of them. The check that owns the manager's login fails the run;
+      these name it, and none of them passes.
+      Given the command "vault kv get …" fails
+      And the command "vault token lookup …" fails
+      When the hub is converged on the manager
+      Then these checks are reported:
+        | check                  | status |
+        | beszel:hub             | pass   |
+        | beszel:public-endpoint | warn   |
+        | beszel:public-viewer   | warn   |
+        | beszel:backup          | skip   |
+      And every check but the first has the summary "SECRET_READ_BLOCKED by manager:vault-renewal"
+      And the checks do not contain "BESZEL_TUNNEL_CREDENTIAL_UNAVAILABLE"
+      And the checks do not contain "BESZEL_VIEWER_UNPROVISIONED"
 
     Scenario Outline: <what fails> cannot pass readiness
       Given the command "<command>" <answer>

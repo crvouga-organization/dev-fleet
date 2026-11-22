@@ -7,6 +7,7 @@ import { enrollBeszel } from '../monitoring/enroll';
 import { verifyBeszel } from '../monitoring/beszel';
 import { installRemoteAgent } from '../monitoring/remote';
 import { installManagerAgent } from '../monitoring/manager-agent';
+import { SECRET_READ_BLOCKED, blockedBySecretsLogin } from '../secrets-blocked';
 
 export interface MonitoringDependencies {
   access?: typeof hubAccess;
@@ -115,6 +116,7 @@ async function enrollWorker(
 }
 
 const PASSTHROUGH = [
+  SECRET_READ_BLOCKED,
   'BESZEL_ACCOUNT_REQUIRED',
   'BESZEL_ACCOUNT_INVALID',
   'BESZEL_AUTH_REQUIRED',
@@ -152,6 +154,9 @@ const remedies = (): Record<string, string> => ({
     'Only workers declared in fleet.json run the agent over SSH; fleet-sync installs the manager’s own agent locally after its hub.',
 });
 function unavailable(code: string): Check[] {
+  // The hub login could not be read: the manager's own login owns that.
+  if (code === SECRET_READ_BLOCKED)
+    return [blockedBySecretsLogin('beszel:enrollment', 'fail')];
   return [
     {
       id: 'beszel:enrollment',

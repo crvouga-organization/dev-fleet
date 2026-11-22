@@ -6,6 +6,7 @@ import { fleet } from '../../../src/fleet-config';
 import {
   envName,
   parseSecretsConfig,
+  secretsLogin,
   secretsProvider,
   type SecretName,
   type SecretsConfig,
@@ -57,6 +58,25 @@ When('the secret {string} is read', async (world, name: SecretName) => {
     },
   });
   world.secret = await read(name);
+});
+
+When(
+  "this machine's login to the secrets provider is measured",
+  async (world) => {
+    world.secretsLogin = await secretsLogin(
+      need(world, world.secrets, 'a secrets block'),
+      {
+        run: async (argv) => {
+          const result = await world.commands.run(argv);
+          return result.ok ? result.stdout : null;
+        },
+      }
+    )();
+  }
+);
+
+Then(/^the login is (held|required)$/, (world, login: string) => {
+  expect<string | undefined>(world.secretsLogin).toBe(login);
 });
 
 Then('the secret read is {string}', (world, value: string) => {

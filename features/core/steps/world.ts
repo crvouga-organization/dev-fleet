@@ -4,7 +4,7 @@ import { World, steps } from '../../support/gherkin';
 import { Commands } from '../../support/commands';
 import type { FleetDefinition } from '../../../src/definition';
 import type { Diagnostic } from '../../../src/diagnostics';
-import type { SecretsConfig } from '../../../src/secrets';
+import type { SecretsConfig, SecretsLogin } from '../../../src/secrets';
 import type { Tailnet } from '../../../src/tailscale';
 import type {
   Check,
@@ -55,6 +55,7 @@ export class CoreWorld extends World {
   secretsDirectory: string | undefined;
   environment: Record<string, string> = {};
   secret: string | null | undefined;
+  secretsLogin: SecretsLogin | undefined;
   secretsBlock: { written: unknown; read: SecretsConfig | null } | undefined;
 
   // The tailnet.
