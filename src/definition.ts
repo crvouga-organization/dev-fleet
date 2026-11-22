@@ -12,8 +12,7 @@ import {
 } from '../bootstrap/worker-features';
 import { readFileSync } from 'node:fs';
 import { FleetUsageError } from './errors';
-import { parseConfig, record } from './config';
-import type { FleetConfig } from './types';
+import { record } from './config';
 import { parseSecretsConfig, type SecretsConfig } from './secrets';
 import { parseLocation, type BucketLocation } from './state/bucket';
 import {
@@ -1068,34 +1067,4 @@ export function loadDefinition(path: string): FleetDefinition {
     );
   }
   return parseDefinition(value);
-}
-/** Local v1 roster supplies paths/requirements only for explicitly enrolled workers. */
-export function enrolledRoster(
-  definition: FleetDefinition,
-  overrides: unknown
-): FleetConfig {
-  const roster = parseConfig(overrides);
-  for (const node of roster.nodes) {
-    const declared = definition.workers.find((entry) => entry.id === node.id);
-    if (!declared)
-      throw new FleetUsageError(
-        'Roster contains a node that is not a declared worker. Add the worker to fleet.json in Git before rollout; the manager is never a roster node.'
-      );
-    if (sshTarget(declared) !== node.ssh)
-      throw new FleetUsageError(
-        'Fleet SSH assignment conflicts with the local roster. Review the migration; discovery cannot overwrite explicit assignments.'
-      );
-  }
-  return {
-    ...roster,
-    nodes: roster.nodes.map((node) => ({
-      ...node,
-      required: [
-        ...new Set([
-          ...node.required,
-          ...(definition.worker?.requiredCapabilities ?? []),
-        ]),
-      ],
-    })),
-  };
 }

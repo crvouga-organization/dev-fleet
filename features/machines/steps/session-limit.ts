@@ -22,7 +22,8 @@ const { Given, When, Then } = machines;
 
 const ROOT = resolve(import.meta.dir, '../../..');
 const GUARD = join(ROOT, 'ansible/ubuntu/agent-session-limit.py');
-const MANAGER = 'user.slice/user-1000.slice/user@1000.service';
+const UID = 1000;
+const MANAGER = `user.slice/user-${UID}.slice/user@${UID}.service`;
 
 /** What one scenario holds: a fleet configuration being written, a stand-in
  * cgroup tree, and what a launcher or the unit made of it. */
@@ -227,9 +228,12 @@ Given(
   }
 );
 
-Given('a launcher started in the cgroup {string}', (world, cgroup: string) => {
-  limitOf(world).cgroup = cgroup;
-});
+Given(
+  'a launcher started in the cgroup {string} of the user manager',
+  (world, cgroup: string) => {
+    limitOf(world).cgroup = `/${MANAGER}/${cgroup}`;
+  }
+);
 
 Given(
   'that slice runs {int} agent scopes and its kernel limit reads {string}',

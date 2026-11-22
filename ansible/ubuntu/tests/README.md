@@ -49,6 +49,20 @@ The tracked test covers:
 - Injected owned SSH/power drift repaired by the unchanged source baseline,
   followed by a no-change run. A capacity-policy fault refuses changes without
   filling the disk or killing user work.
+- A tailnet-only port (`exposure.tailnetOnlyPorts`) declared to the baseline
+  beside a public one: the table the play loaded, and the one
+  `personal-fleet-firewall.service` loaded after the reboot, drops that port
+  under the `tailnet-only` mark. With a fixture service listening on every
+  address, the production `worker:exposure` check passes and names the
+  listener; it warns of the same listener when the port is not declared, and
+  fails with `WORKER_TAILNET_ONLY_RULE_MISSING` for a declared port no loaded
+  rule holds. The guest has no tailnet and keeps SSH open, so the check is
+  told `publicSsh` to pass and fails with only `WORKER_PUBLIC_SSH_UNDECLARED`
+  otherwise. Loopback reaches the service, and a connection that arrives on
+  the guest's network interface does not, while the public port beside it
+  answers. The table's default policy would close the port there alone: that
+  the rule also closes it to containers, and that the tailnet reaches it, are
+  **not** shown here.
 - The headless session on a stock server image with no display manager:
   `t3-headless.yml` runs the pinned T3 server as a lingering user service, a
   second run changes nothing and keeps its PID, a killed server process is

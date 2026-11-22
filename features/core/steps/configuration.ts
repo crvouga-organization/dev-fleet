@@ -4,11 +4,8 @@ import { resolve } from 'node:path';
 import example from '../../../examples/fleet.json';
 import type { DataTable } from '../../support/gherkin';
 import { parseConfig, selectNodes } from '../../../src/config';
-import {
-  DefinitionError,
-  enrolledRoster,
-  parseDefinition,
-} from '../../../src/definition';
+import { DefinitionError, parseDefinition } from '../../../src/definition';
+import { enrolledRoster } from '../../../src/enrolled-roster';
 import schema from '../../../schema/fleet.schema.json';
 import { conforms } from '../support/json-schema';
 import { expandRecords } from '../../../src/worker-records';

@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import socket
 import subprocess
 import time
 import tomllib
@@ -24,6 +25,16 @@ IMAGE_SHA = '5645d0318ad21f643ebb1ac4567514620e9893380b07b0201fda163baa5b7eb5'
 # Package installs from snapshot.ubuntu.com can take over ten minutes when the
 # snapshot service is slow; the job's own timeout still bounds the whole run.
 COMMAND_TIMEOUT = 1500
+# The exposure policy this guest declares (worker_exposure, as fleet-sync
+# passes it from exposure in fleet.json): one port held to the tailnet, as for
+# a remote desktop that cannot bind one address, and one opened to everyone,
+# which is the control that shows a connection from outside arrives at all.
+TAILNET_ONLY_PORT = 3389
+PUBLIC_PORT = 3390
+# Declared to the check only, never to the play: no loaded rule holds it.
+UNSYNCED_PORT = 3391
+EXPOSURE = {'tailnetOnlyPorts': [{'protocol': 'tcp', 'port': TAILNET_ONLY_PORT}], 'publicPorts': [{'protocol': 'tcp', 'port': PUBLIC_PORT}]}
+BANNER = 'fleet-exposure-fixture'
 
 
 def run(args, **kwargs):
@@ -109,7 +120,7 @@ ssh_keys:
         run(['qemu-img', 'create', '-f', 'qcow2', '-F', 'qcow2', '-b', str(image), str(ROOT / 'guest.qcow2'), '64G' if BOOTSTRAP else '24G'])
     ssh = ['ssh', '-i', str(ROOT / 'client'), '-o', 'IdentitiesOnly=yes', '-o', 'StrictHostKeyChecking=yes', '-o', f'UserKnownHostsFile={ROOT}/known_hosts', '-o', 'BatchMode=yes', '-o', 'ConnectTimeout=3', '-p', '2222', 'fleettest@127.0.0.1']
     log = (ROOT / 'serial.log').open('w')
-    vm = subprocess.Popen(['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-smp', '2', '-m', '4096', '-display', 'none', '-serial', 'stdio', '-drive', f'file={ROOT}/guest.qcow2,if=virtio', '-drive', f'file={ROOT}/seed.img,format=raw,if=virtio', '-netdev', 'user,id=net0,hostfwd=tcp:127.0.0.1:2222-:22', '-device', 'virtio-net-pci,netdev=net0'], stdout=log, stderr=log)
+    vm = subprocess.Popen(['qemu-system-x86_64', '-enable-kvm', '-cpu', 'host', '-smp', '2', '-m', '4096', '-display', 'none', '-serial', 'stdio', '-drive', f'file={ROOT}/guest.qcow2,if=virtio', '-drive', f'file={ROOT}/seed.img,format=raw,if=virtio', '-netdev', 'user,id=net0,hostfwd=tcp:127.0.0.1:2222-:22' + ''.join(f',hostfwd=tcp:127.0.0.1:{port}-:{port}' for port in (TAILNET_ONLY_PORT, PUBLIC_PORT)), '-device', 'virtio-net-pci,netdev=net0'], stdout=log, stderr=log)
     try:
         for _ in range(120):
             attempt = subprocess.run(ssh + ['true'], capture_output=True, timeout=5)
@@ -148,7 +159,7 @@ ssh_keys:
         run(ssh + ['mkdir -p baseline && mkdir -p work && printf preserved > work/uncommitted'])
         archive = subprocess.run(['tar', '-C', '/workspace/ansible/ubuntu', '-cf', '-', '.'], capture_output=True, check=True).stdout
         subprocess.run(ssh + ['tar -C baseline -xf -'], input=archive, capture_output=True, check=True)
-        command = 'cd baseline && ansible-playbook baseline.yml --extra-vars \'{"development_user":"fleettest","development_uid":1000,"development_home":"/home/fleettest","tailscale_address":"100.64.0.2","ssh_port":22}\''
+        command = "cd baseline && ansible-playbook baseline.yml --extra-vars '" + json.dumps({'development_user': 'fleettest', 'development_uid': 1000, 'development_home': HOME, 'tailscale_address': '100.64.0.2', 'ssh_port': 22, 'worker_exposure': EXPOSURE}) + "'"
         first = run(ssh + [command])
         (ROOT / 'first-apply.log').write_text(first.stdout + first.stderr)
         second = run(ssh + [command])
@@ -159,15 +170,20 @@ ssh_keys:
         # No tailnet here and the session arrives from outside it: the firewall
         # loads, but keeps SSH open rather than lock the test out.
         run(ssh + ['sudo sshd -T | grep -qx "passwordauthentication no" && sudo sshd -T | grep -qx "permitrootlogin no" && sudo nft list table inet personal_fleet | grep -q "policy drop" && sudo nft list table inet personal_fleet | grep -q public-ssh'])
+        assert holds_tailnet_only(ssh), 'the firewall the play loaded holds no tailnet-only rule for the declared port'
         t3 = test_headless(ssh)
         test_agent_pressure(ssh)
         test_agent(ssh)
         reboot(ssh)
         run(ssh + ['test "$(systemctl is-enabled sleep.target)" = masked && test "$(cat work/uncommitted)" = preserved && sudo nft list table inet personal_fleet | grep -q "policy drop"'])
+        # No play ran since the reboot: personal-fleet-firewall.service loaded it.
+        run(ssh + ['systemctl is-active --quiet personal-fleet-firewall.service'])
+        assert holds_tailnet_only(ssh), 'the firewall loaded at boot holds no tailnet-only rule for the declared port'
         if t3:
             after_headless_reboot(ssh, t3)
-            if DESKTOP:
-                test_desktop(ssh, t3)
+        test_exposure(ssh)
+        if t3 and DESKTOP:
+            test_desktop(ssh, t3)
         verification = Path('/verification/verify')
         if verification.exists():
             subprocess.run(ssh + ['cat > verify && chmod 700 verify'], input=verification.read_bytes(), capture_output=True, check=True, timeout=60)
@@ -175,7 +191,7 @@ ssh_keys:
             (ROOT / 'boot-policy-evidence.json').write_text(evidence.stdout)
             print('production boot-policy observer passed after VM reboot', flush=True)
         run(ssh + ['systemctl is-active beszel-agent.service && test \"$(sudo cat /var/lib/beszel-agent/fixture-preserved)\" = preserved'])
-        print(json.dumps({'passed': ['Ubuntu baseline apply', 'repeat no-op', 'sudoers validation', 'sleep target masked', 'reboot and fresh SSH', 'uncommitted file preserved', 'sleep/SSH drift repair and injected capacity gate', 'native Beszel agent no-op/crash/reboot with intentionally unreachable fixture hub', 'keys-only sshd without root login, and the fleet firewall loaded at apply and boot with SSH kept open while no tailnet session proves the manager path'] + (['headless T3 server: install, no-op, killed process restarted, stopped server started by the recovery timer, started at boot with nobody logged in, managed update policy'] if t3 else []) + (['desktop T3 app: switch from headless keeping ~/.t3, auto-login after reboot, serving on loopback only, stopped app started by the recovery timer'] if t3 and DESKTOP else []), 'unverified': ['Tailscale', 'closing public SSH over a tailnet session', 'paired T3', 'Beszel agent/private metrics', 'full remote bootstrap'] + ([] if DESKTOP else ['desktop session (FLEET_TEST_DESKTOP=1)'])}), flush=True)
+        print(json.dumps({'passed': ['Ubuntu baseline apply', 'repeat no-op', 'sudoers validation', 'sleep target masked', 'reboot and fresh SSH', 'uncommitted file preserved', 'sleep/SSH drift repair and injected capacity gate', 'native Beszel agent no-op/crash/reboot with intentionally unreachable fixture hub', 'keys-only sshd without root login, and the fleet firewall loaded at apply and boot with SSH kept open while no tailnet session proves the manager path', 'tailnet-only port: its rule loaded at apply and at boot, worker:exposure passing for a listener on every address and failing for a declared port without a loaded rule, and the port closed on the guest network interface while a public port answers'] + (['headless T3 server: install, no-op, killed process restarted, stopped server started by the recovery timer, started at boot with nobody logged in, managed update policy'] if t3 else []) + (['desktop T3 app: switch from headless keeping ~/.t3, auto-login after reboot, serving on loopback only, stopped app started by the recovery timer'] if t3 and DESKTOP else []), 'unverified': ['Tailscale', 'closing public SSH over a tailnet session', 'paired T3', 'Beszel agent/private metrics', 'full remote bootstrap'] + ([] if DESKTOP else ['desktop session (FLEET_TEST_DESKTOP=1)'])}), flush=True)
     finally:
         # Preserve failure evidence on disk before terminating the disposable VM.
         # This is fixture cleanup, not a claimed power-loss acceptance test.
@@ -337,6 +353,98 @@ def test_desktop(ssh, t3):
     took = wait_for(ssh, answers(APP), 150, 'the recovery timer did not start the stopped desktop app')
     run(ssh + ['test "$(cat ~/.t3/fleet-test-preserved)" = preserved'])
     print(f'desktop T3 app: switched from headless keeping ~/.t3, auto-login after reboot, stopped app started by the timer in {took:.0f} s', flush=True)
+
+
+def holds_tailnet_only(ssh):
+    """Whether the loaded table drops the declared port in its input chain
+    under the tailnet-only mark, read from the kernel and not from the file."""
+    table = json.loads(run(ssh + ['sudo nft -j list table inet personal_fleet']).stdout)['nftables']
+    for rule in (item['rule'] for item in table if 'rule' in item):
+        if rule.get('comment') != 'tailnet-only' or rule.get('chain') != 'input':
+            continue
+        matches = [part['match'] for part in rule['expr'] if 'match' in part]
+        if len(matches) == 1 and matches[0]['left'] == {'payload': {'protocol': 'tcp', 'field': 'dport'}} and matches[0]['right'] == TAILNET_ONLY_PORT and any('drop' in part for part in rule['expr']):
+            return True
+    return False
+
+
+def listen(ssh, unit, ports):
+    """A fixture service that listens on every IPv4 address, as a service
+    that cannot bind one address does, and greets whoever reaches it."""
+    script = f"""import selectors, socket, sys
+waiting = selectors.DefaultSelector()
+for port in sys.argv[1:]:
+    listener = socket.socket()
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind(('0.0.0.0', int(port)))
+    listener.listen()
+    waiting.register(listener, selectors.EVENT_READ)
+while True:
+    for key, _ in waiting.select():
+        connection, _ = key.fileobj.accept()
+        connection.sendall(b'{BANNER}\\n')
+        connection.close()
+"""
+    subprocess.run(ssh + ['cat > exposure-fixture.py'], input=script.encode(), capture_output=True, check=True, timeout=60)
+    user(ssh, f'systemd-run --user --unit={unit} /usr/bin/python3 -I -B {HOME}/exposure-fixture.py ' + ' '.join(str(port) for port in ports))
+    for port in ports:
+        wait_for(ssh, f'ss -H -l -n -t "sport = :{port}" | grep -q "0.0.0.0:{port}"', 30, f'the fixture did not listen on port {port}')
+
+
+def exposure(ssh, **declared):
+    """worker:exposure, the production check, run in the guest under a policy."""
+    return json.loads(run(ssh + ['./verify exposure'], input=json.dumps({**EXPOSURE, **declared})).stdout)['check']
+
+
+def greeted(port):
+    """Whether the fixture answers on the guest's network interface: QEMU
+    forwards the port from this container, so the connection arrives from
+    outside the guest and outside any tailnet. QEMU accepts the connection
+    itself, so only the fixture's greeting shows the guest let it in."""
+    try:
+        with socket.create_connection(('127.0.0.1', port), timeout=10) as connection:
+            connection.settimeout(10)
+            return connection.recv(64).decode(errors='replace').strip() == BANNER
+    except OSError:
+        return False
+
+
+def test_exposure(ssh):
+    """A port declared in exposure.tailnetOnlyPorts on a booted machine: the
+    production check passes for a listener on every address only because the
+    loaded rule holds the port, and the port is closed on the guest's network
+    interface. The default policy of the table would close it there alone;
+    that the rule also closes it to containers is not shown here."""
+    fixture = 'devfleet-exposure-fixture.service'
+    unsynced = 'devfleet-exposure-unsynced.service'
+    held = f'tcp 0.0.0.0:{TAILNET_ONLY_PORT} ({fixture})'
+    listen(ssh, fixture, [TAILNET_ONLY_PORT, PUBLIC_PORT])
+    try:
+        # This guest has no tailnet, so the play kept SSH open and the check
+        # says so. It is the only fault: the listeners are no part of it.
+        check = exposure(ssh)
+        assert check['status'] == 'fail' and check['summary'] == 'WORKER_PUBLIC_SSH_UNDECLARED', f'worker:exposure under the declared policy: {check["status"]}: {check["summary"]}'
+        # With that one fact declared, as break-glass access would be:
+        check = exposure(ssh, publicSsh=True)
+        assert check['status'] == 'pass' and check['summary'].endswith(f'Its tailnet-only rules hold to loopback and the tailnet: {held}.'), f'worker:exposure did not pass for the listener on the tailnet-only port: {check["status"]}: {check["summary"]}'
+        # Without the declaration the same listener is reported ...
+        check = exposure(ssh, publicSsh=True, tailnetOnlyPorts=[])
+        assert check['status'] == 'warn' and check['summary'] == f'WORKER_LISTENER_UNRESTRICTED {held}', f'worker:exposure for an undeclared listener: {check["status"]}: {check["summary"]}'
+        # ... and a declared port passes by its loaded rule, not by being declared.
+        listen(ssh, unsynced, [UNSYNCED_PORT])
+        try:
+            check = exposure(ssh, publicSsh=True, tailnetOnlyPorts=[*EXPOSURE['tailnetOnlyPorts'], {'protocol': 'tcp', 'port': UNSYNCED_PORT}])
+            assert check['status'] == 'fail' and check['summary'] == f'WORKER_TAILNET_ONLY_RULE_MISSING tcp 0.0.0.0:{UNSYNCED_PORT} ({unsynced})', f'worker:exposure for a declared port with no loaded rule: {check["status"]}: {check["summary"]}'
+        finally:
+            subprocess.run(ssh + [f'XDG_RUNTIME_DIR=/run/user/1000 systemctl --user stop {unsynced}'], capture_output=True, timeout=20)
+        # Loopback reaches the service; the network interface does not, while
+        # the public port beside it, served by the same process, answers.
+        run(ssh + [f'test "$(timeout 10 head -n 1 < /dev/tcp/127.0.0.1/{TAILNET_ONLY_PORT})" = {BANNER}'])
+        assert greeted(PUBLIC_PORT), 'the public port did not answer on the guest network interface: the control connection failed'
+        assert not greeted(TAILNET_ONLY_PORT), 'the tailnet-only port answered on the guest network interface'
+    finally:
+        subprocess.run(ssh + [f'XDG_RUNTIME_DIR=/run/user/1000 systemctl --user stop {fixture}'], capture_output=True, timeout=20)
+    print('tailnet-only port: rule loaded at boot, worker:exposure passes for a listener on every address, closed on the network interface', flush=True)
 
 
 def test_drift(ssh, command):

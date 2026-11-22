@@ -4,7 +4,8 @@ Feature: The disk GC removes only what a worker can rebuild
   alone a checkout that was used recently, holds a recent uncommitted edit or
   has a process running in it. These scenarios run the collector on a
   temporary home directory only, never on the machine's own Docker or apt
-  cache.
+  cache, and it measures the disk each scenario describes, never the disk of
+  the machine the scenario runs on.
 
   Background:
     Given a home directory with one checkout that ignores:
@@ -15,6 +16,7 @@ Feature: The disk GC removes only what a worker can rebuild
       | .cache/scratch/blob       |
       | dist/keep.js              |
       | src/main.ts               |
+    And a disk with 102400 MiB and 50% of its inodes free
 
   Scenario: An idle checkout loses only ignored build output
     "dist" is tracked in this checkout, so it is source, not build output.
@@ -54,21 +56,27 @@ Feature: The disk GC removes only what a worker can rebuild
       | node_modules |
     And it reports a removal marked as a dry run
 
-  Scenario Outline: Pressure shortens the idle window to hours, when <short>
+  Scenario Outline: A disk that is <disk> makes a checkout idle after <idle>
     A filesystem with free bytes and no free inodes fails every write as
-    surely as a full one.
+    surely as a full one. Under pressure 12 hours without use is idle;
+    otherwise it takes 7 days.
     Given the checkout was last used 1 day ago
-    And the disk is <short>, where 12 hours without use is idle
-    When the disk GC runs
-    Then these are gone from the checkout:
-      | node_modules |
-    But these are still in the checkout:
+    And a disk with <free> MiB and <inodes>% of its inodes free
+    When the disk GC runs with these limits:
+      | --pressure-mib           | 15360 |
+      | --pressure-inode-percent | 5     |
+      | --pressure-idle-hours    | 12    |
+      | --idle-days              | 7     |
+    Then the checkout's "node_modules" is <verdict>
+    And these are still in the checkout:
       | src/main.ts |
 
     Examples:
-      | short            |
-      | under pressure   |
-      | short of inodes  |
+      | disk                | free   | inodes | idle     | verdict |
+      | short of free space | 15359  | 50     | 12 hours | gone    |
+      | short of inodes     | 102400 | 4      | 12 hours | gone    |
+      | at both its floors  | 15360  | 5      | 7 days   | kept    |
+      | nearly empty        | 102400 | 50     | 7 days   | kept    |
 
   Rule: Stores that only grow are kept under the limits of the Ubuntu policy
 
@@ -113,18 +121,28 @@ Feature: The disk GC removes only what a worker can rebuild
         | t3-3.deb |
         | t3-4.deb |
 
-    Scenario: A worker with containers prunes Docker's old images and build cache
-      This is a dry run, so nothing is pruned.
-      When the disk GC dry-runs on the whole machine, with a docker command on its path
-      Then the run would prune these Docker steps:
-        | docker_images      |
-        | docker_build_cache |
+    Scenario Outline: A worker with containers and <free> MiB free prunes Docker's <leftovers>
+      This is a dry run, so nothing is pruned. Unused anonymous volumes go
+      only under pressure.
+      Given a disk with <free> MiB and 50% of its inodes free
+      When the disk GC dry-runs on the whole machine, with a docker command on its path and a floor of 15360 MiB free
+      Then the run would prune these Docker steps: <steps>
 
-    Scenario: A worker without containers has no Docker to prune
+      Examples:
+        | free   | leftovers                                   | steps                                                       |
+        | 102400 | old images and build cache                  | docker_images, docker_build_cache                           |
+        | 1024   | images, build cache and anonymous volumes   | docker_images, docker_build_cache, docker_anonymous_volumes |
+
+    Scenario Outline: A worker without containers has no Docker to prune, with <free> MiB free
       A worker whose containers feature is off is given --no-docker.
-      When the disk GC dry-runs on the whole machine without containers, with a docker command on its path
-      Then the run would prune these Docker steps:
-        | (none) |
+      Given a disk with <free> MiB and 50% of its inodes free
+      When the disk GC dry-runs on the whole machine without containers, with a docker command on its path and a floor of 15360 MiB free
+      Then the run would prune these Docker steps: (none)
+
+      Examples:
+        | free   |
+        | 102400 |
+        | 1024   |
 
     Scenario: Tool versions no configuration uses are pruned by mise
       Given a stand-in for mise that records how it is run
