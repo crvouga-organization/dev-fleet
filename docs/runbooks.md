@@ -1,16 +1,20 @@
 # Runbooks
 
 One entry for every failure code dev-fleet reports: as a check's summary or
-the code that opens it, at the start of a refusal, in a bootstrap phase or an
-Ansible assertion. A few are warnings or notes rather than failures; their
-entries say so. Each family says what its codes
+the code that opens it, at the start of a refusal, in a bootstrap phase, in
+what a script on a machine says, in an Ansible message or in the error of a
+workflow a fleet's repository calls. A few are warnings or notes rather than
+failures; their entries say so. Each family says what its codes
 mean, how to confirm one, the fix (a command or a `fleet-sync` that applies
 the playbook that owns it) and when to escalate. A code whose fix needs a
 person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
 entry here, or a `devfleet` command quoted in the documents does not exist.
+It reads a code by where it stands, never by the word it ends with. The CLI
+proxy documents the codes of its own commands in
+[its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 376 codes; 65 need a person.
+There are 429 codes; 90 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -30,6 +34,7 @@ There are 376 codes; 65 need a person.
 - `ROOT_DEVELOPMENT_USER_REJECTED`: root development user rejected.
 - `UBUNTU_ARCHITECTURE_UNSUPPORTED`: ubuntu architecture unsupported. **Needs a person.**
 - `WORKER_ENVIRONMENT_UNSUPPORTED`: worker environment unsupported: a container or WSL2. **Needs a person.**
+- `REMOTE_BOOTSTRAP_INCOMPLETE`: the remote bootstrap ended in the phase the check names without a failure of its own: a command of that phase failed, or the run was cut off. No success receipt advanced. Check that no other operation still holds the worker (`FLEET_REMOTE_LOCKED`), then run `devfleet fleet-sync`.
 
 ## Ubuntu packages
 
@@ -44,6 +49,8 @@ There are 376 codes; 65 need a person.
 - `APT_REPOSITORY_UNAVAILABLE`: apt repository unavailable.
 - `APT_STATE_BROKEN`: apt state broken. **Needs a person.**
 - `DPKG_INTERRUPTED`: dpkg interrupted. **Needs a person.**
+- `APT_UPDATE_FAILED`: `apt-get update` for the bootstrap packages failed, and not for a reason that has a code of its own (a held lock, a full disk, DNS, the archive, an interrupted dpkg). On the worker run `sudo apt-get update` to see the error, correct it, then run `devfleet fleet-sync`. **Needs a person.**
+- `APT_INSTALL_FAILED`: the same for installing the bootstrap packages: install them by hand on the worker to see the error, then run `devfleet fleet-sync`. **Needs a person.**
 
 ## The fleet-owned checkout
 
@@ -123,6 +130,7 @@ There are 376 codes; 65 need a person.
 - `REBOOT_PENDING`: installed updates apply only after a reboot; it fails once the reboot has waited longer than `rebootPendingFailDays`. Reboot the worker when no agent turn is running, then confirm it with `devfleet fleet-status --workers`.
 - `WORKER_MANIFEST_DRIFT`: something was installed, removed or changed on the worker outside fleet-sync; the check lists the differences. Rebuild the worker with `devfleet fleet-node-replace`, or ask for the change to be declared in dev-fleet. **Needs a person.**
 - `WORKER_RECOVERY_LAST_RUN_FAILED`: the last run of `personal-worker-recovery.service` did not succeed; the check names its result. On the worker, `systemctl --user status personal-worker-recovery.service` and `journalctl --user -u personal-worker-recovery.service`, then run `devfleet fleet-sync`.
+- `SSH_CONFIG_REJECTED`: `sshd -t` refused the complete SSH configuration with the fragments fleet-sync wrote. The previous fragments were restored and sshd was not reloaded, so the worker serves SSH as before. On the worker `sudo sshd -t` names the line; it is usually another fragment under `/etc/ssh/sshd_config.d` that a person corrects before `devfleet fleet-sync` is run again. **Needs a person.**
 
 Under sustained I/O or memory pressure the pressure guard can stop a build.
 Inspect `journalctl -u personal-fleet-pressure-guard --since yesterday` for
@@ -138,7 +146,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - **Fix:** Resize a machine below the minimum, then run `devfleet fleet-sync`; nothing was installed on it. For a feature removal, run `devfleet fleet-sync` again. For too many sessions, finish some or move work to a larger worker; to have the worker refuse sessions above a number you choose, declare `agentSessionLimit` in `fleet.json`.
 - **Escalate:** A package another package depends on stays installed until a person removes that one.
 
-- `AGENTS_OVER_CAPACITY`: agent session capacity exhausted: more agent sessions run than the memory policy supports (a warning; the size of a session is an estimate, and the summary holds it against what the running agents took at their peak). The number is a recommendation, not an admission limit: T3 Code has no limit on the sessions it starts, so nothing refuses the next one unless `fleet.json` declares `agentSessionLimit`. Memory is what is always enforced: each agent is capped and the largest is stopped under pressure.
+- `AGENTS_OVER_CAPACITY`: agent session capacity exhausted: more agent sessions run than the memory policy supports (a warning; the size of a session is an estimate, and the summary holds it against what the running agents took at their peak). What is counted is the processes T3 Code runs agents in: an open terminal or a preview browser is not one, and a process Codex or OpenCode serves all its sessions from is one, which the summary names instead of guessing its sessions. A summary that says "as counted by an older capacity probe" still holds terminals and preview browsers: run `devfleet fleet-sync` on that worker. The number is a recommendation, not an admission limit: T3 Code has no limit on the sessions it starts, so nothing refuses the next one unless `fleet.json` declares `agentSessionLimit`. Memory is what is always enforced: each agent is capped and the largest is stopped under pressure.
 - `AGENT_SESSION_LIMIT_INACTIVE`: agent session limit inactive: `fleet.json` declares `agentSessionLimit` for the worker and the worker does not hold it, so it refuses no session. The summary says which: the user unit `personal-fleet-agent-session-limit.service` is not running, runs with another number, or the kernel holds another limit (`cgroup.max.descendants`) on the slice T3 starts agents in. Run `devfleet fleet-sync`; on the worker, `systemctl --user status personal-fleet-agent-session-limit.service` shows why the unit stopped.
 - `AGENT_SESSION_REFUSED`: agent session refused: a fleet launcher was started above the worker's `agentSessionLimit` and ended with code 75 without starting its agent. T3 shows the thread as failed with "exited with code 75 before it started"; the line is in T3's server log (`journalctl --user -u t3code-desktop.service`, or `t3code-headless.service`). End a session that is no longer needed and send the message again, or raise `agentSessionLimit` and run `devfleet fleet-sync`. An agent T3 starts with no fleet launcher is refused by the kernel two scopes higher, with no message: T3 shows "exited with code 1 before it started" and the user journal says `Failed to create cgroup … Resource temporarily unavailable`. To lift the limit at once on the worker: `systemctl --user stop personal-fleet-agent-session-limit.service`; to remove it, delete `agentSessionLimit` and sync.
 - `WORKER_FEATURES_INVALID`: worker features invalid: the session is neither desktop nor headless.
@@ -235,6 +243,8 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `GITHUB_TOKEN_STALE`: the node still signs requests with a token the store no longer holds. Run `devfleet fleet-sync`; a worker also adopts the stored token within ten minutes.
 - `GITHUB_WORKFLOW_CLEANUP_FAILED`: the workflow probe passed but left a branch or pull request on the sandbox repository; the check names them. Close the pull request and delete the branch.
 - `GITHUB_WORKFLOW_FAILED`: the workflow probe (clone the sandbox, push a branch, open a draft pull request, read its checks, comment) stopped at the step the check names. Follow the remedy of that step.
+- `GITHUB_NOT_SIGNED_IN`: `gh` on the node is signed in to no account (`github:principal`). A worker is signed in by `devfleet fleet-sync` with the stored `github-token`. A manager with a personal login (`github.manager`) is signed in by a person with `gh auth login`: dev-fleet never replaces a personal login.
+- `GITHUB_SYNC_UNREPORTED`: the sign-in job of the node (`bootstrap/worker-github.ts`) ended without a result `github:sync` can read. Run `devfleet fleet-sync` again; when it repeats, run the job on the node as the remedy says to see its result line.
 
 ## Tailscale
 
@@ -255,6 +265,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `TAILSCALE_SOURCE_OWNER_CONFLICT`: tailscale source owner conflict. **Needs a person.**
 - `TAILSCALE_UPGRADE_PENDING`: tailscale upgrade pending. **Needs a person.**
 - `TAILSCALE_KEY_EXPIRES_SOON`: the node key of the machine expires in the days the check names, and the machine leaves the tailnet when it does. Disable key expiry for a worker in the Tailscale admin console or tag it; renew the manager's with `tailscale up --force-reauth`. **Needs a person.**
+- `TAILSCALE_KEY_EXPIRED`: the node key of the machine has expired and the machine has left the tailnet. Renew the manager's with `tailscale up --force-reauth`; re-join a worker as [Tailscale key expiry](operations.md#tailscale-key-expiry) describes, then disable key expiry for it or tag it. **Needs a person.**
 
 ## A new worker with no hands on it
 
@@ -332,6 +343,15 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_SERVER_INSTALL_FAILED`: t3 server install failed: the pinned server of a headless worker is missing from the toolchain, or `t3-headless.yml` did not apply.
 - `T3_SERVER_STOPPED`: t3 server stopped: the lingering `t3code-headless.service` of a headless worker is not running.
 - `T3_SETTINGS_BUSY`: t3 settings busy.
+- `T3_VERSION_UNKNOWN`: a warning of `t3:version`: T3 on the machine the check names has not recorded the version it runs, so it cannot be compared with the pin. Start T3 there once, then run `devfleet fleet-sync`.
+- `T3_VERSION_SKEW`: a warning of `t3:version`: T3 on the machine the check names runs another release than the fleet pins; the remedy names both. `devfleet fleet-sync` installs the pinned release on a worker and restarts T3. On the manager a person installs that release of T3 Code.
+- `T3_UPDATES_UNMANAGED`: a warning of `t3:updates`: the administrator policy of T3 on the manager does not turn its own updater off, so T3 may update itself away from the pinned release. Stage the fleet's policy once, as an administrator, with the command the remedy prints. **Needs a person.**
+- `T3_RUNNING_VERSION_UNKNOWN`: `t3:running-version` could not read the version of the running server from its local API, or the release installed on the worker. Read `worker:t3-health`, then run `devfleet fleet-sync`, which reinstalls the pinned T3.
+- `T3_RUNNING_VERSION_MISMATCH`: logged by `personal-worker-recovery` on the worker: T3 was restarted once for the installed release and still reports another version. It is not restarted again for that release and the run fails (`WORKER_RECOVERY_LAST_RUN_FAILED`). Run `devfleet fleet-sync`, which reinstalls the pinned T3.
+- `T3_LEGACY_SERVER_RUNNING`: logged by `personal-worker-recovery`: the former server unit `t3code.service` is active or enabled and could not be stopped and disabled, so the run fails before it looks at T3. On the worker read `systemctl --user status t3code.service` and disable the unit by hand: one T3 runs per worker. **Needs a person.**
+- `T3_NO_GRAPHICAL_SESSION`: logged by `personal-worker-recovery` on a desktop worker with a count: no graphical session is running, so the desktop app cannot run and the run fails. After three checks in a row the display manager is restarted so that auto-login starts a session, three times at most; after that the log says a person must log in at the worker.
+- `T3_RESTART_DEADLINE`: not a failure. `personal-worker-recovery` logs it when a restart of T3 has waited `t3RestartMaxDeferralHours` (`ansible/ubuntu/policy.json`) and is applied although agent turns run: they end. `worker:t3-deadline-restarts` counts these of the last 24 hours as a warning. Nothing is left to repair: send the threads whose turn ended their next message.
+- `T3_IDLE_UNKNOWN`: not a failure of its own. The idle check of `personal-worker-recovery` could not read the runs T3 records in its state database, and what it cannot read counts as busy: a pending restart keeps waiting (`T3_RESTART_PENDING`) until its deadline. Read `worker:t3-health` when it repeats.
 
 ## Monitoring (Beszel)
 
@@ -396,6 +416,14 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `BESZEL_VIEWER_ROLE`: beszel viewer role.
 - `BESZEL_VIEWER_UNPROVISIONED`: beszel viewer unprovisioned.
 - `BESZEL_VIEWER_UNVERIFIED`: beszel viewer unverified.
+- `BESZEL_DUPLICATE_NODE`: the hub holds more than one system with the worker's name, so registration fails and enrollment and `devfleet fleet-node-replace` refuse to pick one. Delete the extra systems in the dashboard and keep the one that has the worker's history, then run the command again. **Needs a person.**
+- `BESZEL_DUPLICATE_FINGERPRINT`: the hub holds more than one fingerprint record for the worker's system, and enrollment refuses to pick one. Remove the extra record in the hub at `/_/`, then run `devfleet fleet-sync`. **Needs a person.**
+- `BESZEL_HUB_UNAVAILABLE_TO_AGENT`: a warning read from the agent's own log: the private route answered the agent with 502, 503 or 504, so the hub behind it did not. Keep the manager awake with Docker Desktop running and run `devfleet fleet-sync` there; the agent reconnects by itself.
+- `BESZEL_VERSION_OR_KEY`: enrollment asked the hub for its version and key, and the hub reports another version than `ansible/monitoring/lock.json` pins or no ed25519 key. Run `devfleet fleet-sync` on the manager, which converges the hub to the pinned release, before enrolling a worker.
+- `BESZEL_PRIVATE_URL`: the address dev-fleet was given for the hub is not its private one: https, a name of the tailnet, port 8443 and nothing after it. No request was sent. Run `devfleet fleet-sync` on the manager so the private route is declared; when it repeats, it is an issue.
+- `BESZEL_NODE_ID`: the hub was to be asked about a name that is not a machine id (a lowercase letter, then lowercase letters, digits and hyphens). No request was sent. Correct the id in `fleet.json` (`devfleet fleet-validate` names it).
+- `BESZEL_API_PATH`: dev-fleet refused to send the hub a request outside its API. No request was sent and nothing on a machine fixes it: report it as an issue.
+- `BESZEL_REVISION`: an agent was to be installed on a worker from something that is not a full commit of dev-fleet. Nothing was installed. Run `devfleet fleet-sync`, which selects the revision itself; when it repeats, it is an issue.
 
 ## Coding agents and providers
 
@@ -437,6 +465,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `PROXY_RECONCILE_UNVERIFIED`: proxy reconcile unverified.
 - `UNATTENDED_PROXY_AUTHENTICATION_REQUIRED`: unattended proxy authentication required.
 - `AUTH_NOT_SUPPORTED_ON_ROUTE`: not a failure. The service is reached through the CLI proxy on this fleet, so a login of its own on the machine is not applicable and is not checked; the summary says why.
+- `PROVIDER_PROTOCOL_INCOMPATIBLE`: the gateway answered a verification request with 404, 405, 415 or 501: it does not serve the protocol the route uses. Retrying or signing in again changes nothing, and nothing on the machine fixes it: the route in `agents/registry.json` has to become one listed under Supported alternatives in `agents/setup.md`. From a fleet's own project that is an issue. **Needs a person.**
 
 ## Provider accounts
 
@@ -471,6 +500,10 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `VAULT_RENEWAL_NOT_MANAGER`: vault renewal not manager.
 - `VAULT_UNREACHABLE`: vault unreachable: the manager's Vault session does not answer and neither does Vault's own status, which needs no login. Logging in again does not help. `vault status -address=ADDRESS` on the manager says which it is: no answer is the network between them (the tailnet, DNS, the address under `secrets` in the fleet configuration) or a Vault that is not running; `Sealed true` is a Vault to unseal. A login that was held is still held if Vault returns before it lapses. **Needs a person.**
 - `VAULT_WORKER_POLICY_FAILED`: vault worker policy failed.
+- `VAULT_WORKER_TOKEN_NOT_ISSUED`: Vault did not create the worker's own token (`auth:worker-token`), or its answer held none. Log the manager in to Vault with a token that may write policies, issue tokens and write the fleet mount, then run the command again. **Needs a person.**
+- `VAULT_WORKER_TOKEN_NOT_STORED`: the worker's token was issued and could not be written to the worker's own document. The same login is missing: log the manager in with a token that may write the fleet mount, then run the command again, which issues and stores a new one. **Needs a person.**
+- `VAULT_WORKER_TOKEN_NOT_REVOKED`: a retirement or replacement could not revoke the worker's token: the accessor kept beside it is not one, or Vault refused the revocation. The token still works. Log the manager in with a token that may revoke it, then run the command again. **Needs a person.**
+- `VAULT_WORKER_TOKEN_SHARED`: a warning of `auth:vault-isolation`: the worker's token was read from the fleet's shared document, which every worker can read. `devfleet fleet-node-replace` issues it one of its own (the remedy prints the command and where it is kept); then remove the worker's field from the shared document. **Needs a person.**
 
 ## The fleet definition and a worker's lifecycle
 
@@ -485,6 +518,8 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `DEFINITION_UNREADABLE`: definition unreadable.
 - `SSH_HOST_KEY_NOT_CHANGED`: ssh host key not changed.
 - `DEFINITION_PLAYBOOK_SYNTAX`: the pinned Ansible cannot parse a playbook the installed dev-fleet package carries; `devfleet fleet-validate --ansible` names it. Nothing in `fleet.json` fixes it: report it as an issue.
+- `DEFINITION_UNKNOWN`: `fleet.json`, or a worker record `workerRecords` returns, has a field the definition does not have; the check names it and the fields allowed there. Remove or rename it.
+- `DEFINITION_DUPLICATE`: two machines of `fleet.json`, or two worker records, have the same id; the check names the second. Give every machine an id no other has.
 
 ## Parked, idle, replaced and retired workers
 
@@ -567,6 +602,8 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `MANAGER_WATCH_INTERVAL_INVALID`: manager watch interval invalid: `manager.schedule.watchMinutes` is outside 5 to 1440.
 - `MANAGER_JOB_LOG_OVERSIZED`: logs of the scheduled jobs grew past twice the size newsyslog rotates them at, so it is not rotating them. Check that it runs with the command the remedy prints and read `/var/log/system.log` for its errors.
 - `MANAGER_WATCH_FAILING`: the last run of the fleet-watch job failed; the check names its exit code. Read the job's error log the remedy names and run `devfleet fleet-watch` on the manager to see the same failure.
+- `MANAGER_CLOCK_NOT_SYNCHRONISED`: network time is off on the manager, and every worker's clock is measured against it. `manager:clock` fails and `ansible/macos/manager.yml` asserts the same. Turn on Set time and date automatically in System Settings > General > Date & Time. **Needs a person.**
+- `MANAGER_WATCH_NOT_LOADED`: the launchd job that runs fleet-watch on a schedule is not loaded, so no heartbeat reaches the bucket and no notification is sent. Run `devfleet fleet-sync` on the manager, which installs and loads it.
 
 ## Notifications (fleet-watch)
 
@@ -577,6 +614,42 @@ write `1` to that agent scope’s `cgroup.kill`.
 
 - `NOTIFY_DELIVERY_FAILED`: notify delivery failed.
 - `NOTIFY_TARGET_UNAVAILABLE`: notify target unavailable.
+- `NOTIFY_NOT_CONFIGURED`: `fleet.json` has no `notify` block, so fleet-watch notifies nobody: a warning of a scheduled run, a failure of `devfleet fleet-watch --test`. Add the block with its targets and store each target's address as its secret (`notify-webhook-url`, `notify-ntfy-url`). **Needs a person.**
+- `WATCH_HEARTBEAT_NO_BUCKET`: a warning of `watch:heartbeat`: `fleet.json` names no bucket under `state`, so the heartbeat and what the watcher remembers are not kept, and the heartbeat workflow has nothing to read. Name the bucket. **Needs a person.**
+- `WATCH_HEARTBEAT_UNWRITTEN`: the heartbeat could not be written to the bucket. Check the bucket credentials the run was given; `devfleet fleet-state` shows the connection.
+
+## The CLI proxy in a fleet-sync
+
+- **Meaning:** fleet-sync asks the CLI proxy to reconcile itself on every machine (`cliproxy/scripts/fleet_sync.py`) and reports each phase of the answer as a `proxy:*` check whose summary is the code of the phase. The proxy runs on the manager only; a worker is its client. A `PROXY_UNIT_` code followed by the name of a unit is one of the proxy's scheduled jobs that is stopped or disabled: fleet-sync loads it.
+- **Confirm:** The `proxy:*` checks of `devfleet fleet-sync --dry-run`; on the manager, `devfleet cliproxy`.
+- **Fix:** Run `devfleet fleet-sync` on the manager: it installs a pending revision, loads stopped units, enables the connector and applies the declared settings. What it never does by itself is in the entries below and in [the proxy's README](../cliproxy/README.md).
+- **Escalate:** Moving the proxy, recovering its state and removing an installation from a worker are steps a person takes, as [the migration document](../cliproxy/docs/migration.md) describes.
+
+- `PROXY_CLIENT_ROLE`: not a failure. The machine is a worker and hosts no proxy: the proxy runs on the manager.
+- `PROXY_ENDPOINT_AUTH`: the phase that checks the proxy's endpoint with the client credential, once every other phase is unchanged. It passes when the endpoint answered; when it fails, the endpoint or its authentication is unavailable. Run `devfleet fleet-sync` again, then read `devfleet cliproxy` on the manager. Provider inference is checked separately (`provider:*`).
+- `PROXY_DUPLICATE_OWNER`: a proxy unit is active or enabled on a worker. It is reported and never stopped by fleet-sync. Fence and decommission it as the migration document describes. **Needs a person.**
+- `PROXY_DECOMMISSION_PENDING`: a stopped proxy installation, with its private state, remains on a worker. Once the proxy on the manager is verified, remove it as the migration document describes. **Needs a person.**
+- `PROXY_PLATFORM_MISMATCH`: the machine declared as the manager does not host the proxy with launchd on macOS. Run `devfleet fleet-sync` for the manager on the manager. **Needs a person.**
+- `PROXY_IDENTITY_MISMATCH`: the machine is not the declared manager (its local host name is not `manager.id`). Changing the manager is a reviewed move with the previous one fenced. **Needs a person.**
+- `PROXY_RECOVERY_REQUIRED`: the manager holds no runtime state of the proxy. Recover it from the encrypted backup after fencing the previous owner, as the migration document describes; never initialise a second provider identity. **Needs a person.**
+- `PROXY_SOURCE_DRIFT`: the installation or its units differ from what was installed: a file is missing or was changed. Read the proxy's audit on the manager, keep the runtime state and reinstall a reviewed revision. **Needs a person.**
+- `PROXY_UPDATE_PENDING`: installing the revision fleet-sync runs failed, and the proxy still runs the earlier one; its runtime state is kept. Run the proxy's installer on the manager as the remedy says to see why.
+- `PROXY_ENDPOINT_DISABLED`: the proxy's public connector is not enabled. `devfleet fleet-sync` on the manager enables it with the credential it already has.
+- `PROXY_CONFIG_PENDING`: the live proxy lacks settings the fleet declares (model aliases, a model prefix for each signed-in account) and applying them failed. The previous configuration is kept beside the live one. Run `devfleet fleet-sync` again; when it repeats, apply the declared settings on the manager as the remedy says to see why.
+
+## Workflows a fleet's repository calls
+
+- **Meaning:** A reusable workflow of dev-fleet (`fleet-heartbeat.yml`, `cliproxy-health.yml`), called from the repository that holds `fleet.json`, failed with the code its error starts with. See [Operations](operations.md).
+- **Confirm:** Read the annotations of the failed run on GitHub; on the manager, `devfleet fleet-watch` and the `manager:watch` check of `devfleet fleet-sync --dry-run`.
+- **Fix:** A heartbeat code is fixed on the manager; a CLI proxy health code is fixed in the calling workflow or the repository it runs in.
+- **Escalate:** A manager that is off or asleep needs a person at it.
+
+- `FLEET_HEARTBEAT_MISSING`: the workflow could not download the heartbeat: the bucket holds none under the prefix, or the inputs or the key the workflow was given do not reach the bucket. Run `devfleet fleet-watch` on the manager, and compare the workflow's `bucket`, `endpoint` and `prefix` with `state` in `fleet.json`.
+- `FLEET_HEARTBEAT_UNREADABLE`: what the bucket holds is not a heartbeat fleet-watch wrote. Run `devfleet fleet-watch` on the manager, which writes a new one.
+- `FLEET_HEARTBEAT_STALE`: the manager last watched the fleet longer ago than `max-age-minutes`: it is off, asleep, offline or no longer watching. Wake it and read `manager:watch` (`MANAGER_WATCH_NOT_LOADED`, `MANAGER_WATCH_FAILING`).
+- `CLIPROXY_HEALTH_PROFILE_UNKNOWN`: the `profile` the caller passed is not liveness, readiness, light, nightly or manual. Correct the calling workflow. **Needs a person.**
+- `CLIPROXY_HEALTH_CONFIG_MISSING`: the repository does not hold the fleet configuration at the path the `config` input names. Correct the input or commit the file. **Needs a person.**
+- `CLIPROXY_HEALTH_RELEASE_UNPINNED`: `package.json` of the repository does not pin the dev-fleet package to an exact version, so the workflow cannot install the release whose checks it runs. Pin it. **Needs a person.**
 
 ## Local command lock
 

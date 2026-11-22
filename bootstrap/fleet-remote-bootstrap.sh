@@ -36,6 +36,10 @@ failure_code=REMOTE_BOOTSTRAP_INCOMPLETE
 # How long a machine's own first boot (cloud-init) may still run, in seconds.
 first_boot_wait=900
 die() { failure_code=$1; exit 1; }
+# failure-report: begin
+# How a failure is reported. The manager also runs these lines by themselves,
+# before it changes anything, to report what a later step of this script
+# would refuse (src/worker-configuration-copy.ts): they only print.
 # One remedy per failure: what the operator does next. Never raw output.
 remedy() {
   case "$1" in
@@ -63,6 +67,10 @@ remedy() {
     *) echo 'Inspect the remote operation lock and rerun the approved revision. No success receipt advanced.';;
   esac
 }
+fail() {
+  printf '{"version":1,"checks":[{"id":"bootstrap:%s","status":"fail","summary":"%s","remedy":{"action":"%s"}}]}\n' "$phase" "$failure_code" "$(remedy "$failure_code")"
+}
+# failure-report: end
 # apt-failure: begin
 # Names an APT failure by the fixed messages of the pinned Ubuntu release.
 apt_failure() {
@@ -77,9 +85,6 @@ apt_failure() {
   fi
 }
 # apt-failure: end
-fail() {
-  printf '{"version":1,"checks":[{"id":"bootstrap:%s","status":"fail","summary":"%s","remedy":{"action":"%s"}}]}\n' "$phase" "$failure_code" "$(remedy "$failure_code")"
-}
 trap 'code=$?; [ -z "$bundle" ] || rm -f -- "$bundle"; [ -z "$apt_log" ] || rm -f -- "$apt_log"; if [ "$code" != 0 ]; then fail; fi' EXIT
 # Preserve the lock holder if its SSH channel disappears mid-install.
 trap '' HUP
@@ -142,6 +147,11 @@ IFS= read -r tailnet_key || tailnet_key=''
 if [ -n "$configuration" ]; then
   config_dir="$HOME/.config/dev-fleet"
   # configuration-install: begin
+  mkdir -p "$config_dir" || die CONFIGURATION_INSTALL_FAILED
+  printf '%s' "$configuration" | base64 -d >"$config_dir/fleet.json.new" || die CONFIGURATION_INSTALL_FAILED
+  sent=$(sha256sum <"$config_dir/fleet.json.new" | cut -d' ' -f1)
+  [ "${#sent}" = 64 ] || die CONFIGURATION_INSTALL_FAILED
+  # configuration-copy-decision: begin
   # Beside the copy is its record: the SHA-256 of the copy as fleet-sync last
   # wrote it. A copy that no longer matches its record was edited on this
   # machine, and is refused instead of replaced unless it already is what is
@@ -156,6 +166,12 @@ if [ -n "$configuration" ]; then
   # holds its bootstrap script, and a script that keeps the record names it.
   # Only a script that is there and does not name it counts; a missing
   # checkout or an unreadable one leaves the refusal standing.
+  #
+  # This is the one rule. The manager asks every worker the same question
+  # before it changes anything, by running these lines and the ones that read
+  # the operation before this one (src/worker-configuration-copy.ts), so they
+  # only read: $root, $prior, $config_dir, and $sent, the SHA-256 of the copy
+  # that is being installed.
   record_unkept() {
     [ -n "$prior" ] && [ ! -L "$root/revisions" ] && [ ! -L "$root/revisions/$prior" ] || return 1
     git --git-dir="$root/revisions/$prior/.git" cat-file -e "$prior:bootstrap/fleet-remote-bootstrap.sh" 2>/dev/null || return 1
@@ -163,16 +179,15 @@ if [ -n "$configuration" ]; then
     git --git-dir="$root/revisions/$prior/.git" grep -q -F 'fleet.json.sha256' "$prior" -- bootstrap/fleet-remote-bootstrap.sh >/dev/null 2>&1 || named=$?
     [ "$named" = 1 ]
   }
-  mkdir -p "$config_dir" || die CONFIGURATION_INSTALL_FAILED
-  printf '%s' "$configuration" | base64 -d >"$config_dir/fleet.json.new" || die CONFIGURATION_INSTALL_FAILED
-  sent=$(sha256sum <"$config_dir/fleet.json.new" | cut -d' ' -f1)
-  [ "${#sent}" = 64 ] || die CONFIGURATION_INSTALL_FAILED
-  if [ -f "$config_dir/fleet.json" ] && [ -f "$config_dir/fleet.json.sha256" ]; then
-    held=$(sha256sum <"$config_dir/fleet.json" | cut -d' ' -f1)
-    if [ "$held" != "$sent" ] && [ "$held" != "$(cat "$config_dir/fleet.json.sha256")" ] && ! record_unkept; then
-      rm -f -- "$config_dir/fleet.json.new"
-      die FLEET_CONFIGURATION_COPY_CHANGED
-    fi
+  copy_edited() {
+    [ -f "$config_dir/fleet.json" ] && [ -f "$config_dir/fleet.json.sha256" ] || return 1
+    held=$(sha256sum <"$config_dir/fleet.json" | cut -d' ' -f1) || held=''
+    [ "$held" != "$sent" ] && [ "$held" != "$(cat "$config_dir/fleet.json.sha256")" ] && ! record_unkept
+  }
+  # configuration-copy-decision: end
+  if copy_edited; then
+    rm -f -- "$config_dir/fleet.json.new"
+    die FLEET_CONFIGURATION_COPY_CHANGED
   fi
   mv "$config_dir/fleet.json.new" "$config_dir/fleet.json" || die CONFIGURATION_INSTALL_FAILED
   printf '%s\n' "$sent" >"$config_dir/fleet.json.sha256.new" || die CONFIGURATION_INSTALL_FAILED

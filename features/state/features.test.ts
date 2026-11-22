@@ -10,6 +10,7 @@ import { skipped } from './support/requirements';
 //   @required    runs only where DEVFLEET_TEST_LITESTREAM=required, and
 //                fails when a piece the two tags above need is missing.
 //   @slow        ten times the timeout below.
+//   @linux       runs a worker's own script. Skipped on any other system.
 // With DEVFLEET_TEST_LITESTREAM=required (the Fleet state job in CI) nothing
 // is skipped: a scenario that lacks Litestream or the S3 service fails.
 runFeatures({

@@ -193,7 +193,9 @@ Then(
 When(
   'a worker with {int} MiB of memory runs {int} agent sessions',
   (world, memory: number, running: number) => {
-    reported(world, [sessionsCheck(memory, { agentSessions: running })]);
+    reported(world, [
+      sessionsCheck(memory, { agentSessions: running, agentShared: 0 }),
+    ]);
   }
 );
 

@@ -12,22 +12,32 @@ else
   df -Pi "$HOME" | awk 'NR==2 && $2>0{print "inodefree=" int($4*100/$2)}'
   # Clock synchronisation, as systemd sees it: 1 or 0.
   timedatectl show -p NTPSynchronized -p NTP 2>/dev/null | awk -F= '{v=($2=="yes")?1:0} $1=="NTP"{print "ntp=" v} $1=="NTPSynchronized"{print "ntpsync=" v}'
-  # Agent sessions running now: the scopes T3 starts its agents in.
+  # The agents running now: the scopes T3 Code starts its agents in. T3 gives
+  # the same name to a terminal a person opened and to a preview browser,
+  # which are no agent and are left out. `agentshared` is how many of the
+  # counted scopes are a process Codex or OpenCode serves all its sessions
+  # from: those sessions cannot be told apart here. A reader that finds no
+  # `agentshared` is reading a probe that counted every scope.
   uid=$(id -u)
-  agents="/sys/fs/cgroup/user.slice/user-$uid.slice/user@$uid.service/app.slice/app-t3code.slice/app-t3code-agents.slice"
+  manager="${DEVFLEET_PROBE_CGROUP:-/sys/fs/cgroup}/user.slice/user-$uid.slice/user@$uid.service"
+  agents="$manager/app.slice/app-t3code.slice/app-t3code-agents.slice"
   if [ -d "$agents" ]; then
-    scopes=$(find "$agents" -type d -name 't3code-*.scope' -printf '1\n' 2>/dev/null) &&
-      echo "agentsessions=$(echo "$scopes" | awk '/1/{n++} END{print n+0}')"
-  elif [ -d "/sys/fs/cgroup/user.slice/user-$uid.slice/user@$uid.service" ]; then
+    scopes=$(find "$agents" -type d -name 't3code-*.scope' ! -name 't3code-terminal-*' ! -name 't3code-preview-browser-*' -printf '%f\n' 2>/dev/null) && {
+      echo "agentsessions=$(echo "$scopes" | awk '/./{n++} END{print n+0}')"
+      echo "agentshared=$(echo "$scopes" | awk '/^t3code-(codex|opencode)-/{n++} END{print n+0}')"
+    }
+  elif [ -d "$manager" ]; then
     echo 'agentsessions=0'
+    echo 'agentshared=0'
   fi
   if [ -d "$agents" ]; then
-    # The scopes a declared limit counts (those in the slices T3 owns), and
-    # the lowest limit the kernel holds on one of those slices.
+    # The scopes a declared limit counts (those in the slices T3 owns, a
+    # preview browser among them), and the lowest limit the kernel holds on
+    # one of those slices.
     echo "agentscopes=$(find "$agents" -mindepth 2 -maxdepth 2 -type d -path '*/app-t3code-agents-*.slice/t3code-*.scope' -printf '1\n' 2>/dev/null | awk '/1/{n++} END{print n+0}')"
     cat "$agents"/app-t3code-agents-*.slice/cgroup.max.descendants 2>/dev/null | awk '/^[0-9]+$/{if (!n++ || $1<m) m=$1} END{if (n) print "agentlimitheld=" m}'
     # What the running agents took at their peak, to hold against the estimate.
-    find "$agents" -type d -name 't3code-*.scope' ! -name 't3code-terminal-*' -exec cat {}/memory.peak \; 2>/dev/null | sort -n |
+    find "$agents" -type d -name 't3code-*.scope' ! -name 't3code-terminal-*' ! -name 't3code-preview-browser-*' -exec cat {}/memory.peak \; 2>/dev/null | sort -n |
       awk '/^[0-9]+$/{v[++n]=$1} END{if (n) {print "agentpeaks=" n; print "agentpeakmedianmb=" int(v[int((n+1)/2)]/1048576); print "agentpeakmaxmb=" int(v[n]/1048576)}}'
   fi
   # The limit the worker's own unit holds: the number in the unit while it runs, 0 otherwise.

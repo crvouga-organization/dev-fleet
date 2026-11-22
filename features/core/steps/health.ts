@@ -1,5 +1,8 @@
 import { expect } from 'bun:test';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir, userInfo } from 'node:os';
 import { join } from 'node:path';
+import type { DataTable } from '../../support/gherkin';
 import { succeeded } from '../../support/commands';
 import { managerHealth } from '../../../src/manager-health';
 import { inspectBootstrap } from '../../../src/manager-sync';
@@ -13,7 +16,7 @@ import { core, need, root, type CoreWorld } from './world';
 /** The health of a machine itself: its disk, its clock, its pending reboot,
  * its Tailscale key and, on the manager, its operating system.
  */
-const { When } = core;
+const { Given, When, Then } = core;
 
 function reported(world: CoreWorld, checks: Check[]): void {
   world.checks = checks;
@@ -158,3 +161,68 @@ core.Given(
     );
   }
 );
+
+// ── The capacity probe itself, against a cgroup tree of the scenario ─────
+
+/** The cgroup tree each scenario's worker has, in place of the kernel's. */
+const cgroups = new WeakMap<CoreWorld, string>();
+
+/** A cgroup tree that holds this user's manager and nothing in it. */
+function userManager(world: CoreWorld): string {
+  const tree = mkdtempSync(join(tmpdir(), 'devfleet-cgroup-'));
+  world.defer(() => rmSync(tree, { recursive: true, force: true }));
+  cgroups.set(world, tree);
+  const { uid } = userInfo();
+  const manager = join(
+    tree,
+    `user.slice/user-${uid}.slice/user@${uid}.service`
+  );
+  mkdirSync(manager, { recursive: true });
+  return manager;
+}
+
+Given('T3 Code runs no scope on a worker', (world) => {
+  userManager(world);
+});
+
+Given('T3 Code runs these scopes on a worker:', (world, table: DataTable) => {
+  // Where T3 Code starts things: terminals and what outlives a restart
+  // beside the slice it owns for its state directory, the rest inside it.
+  const agents = join(
+    userManager(world),
+    'app.slice/app-t3code.slice/app-t3code-agents.slice'
+  );
+  const slices: Record<string, string> = {
+    beside: agents,
+    owned: join(agents, 'app-t3code-agents-18b8ec851b3f.slice'),
+  };
+  for (const row of table.hashes()) {
+    const scope = join(
+      need(world, slices[row['slice']!], 'a slice'),
+      row['scope']!
+    );
+    mkdirSync(scope, { recursive: true });
+    writeFileSync(
+      join(scope, 'memory.peak'),
+      `${Number(row['peak MiB']) * 1024 * 1024}\n`
+    );
+  }
+});
+
+When('the capacity probe reads that worker', async (world) => {
+  const probe = Bun.spawn(['sh', join(root, 'ansible/net/remote-probe.sh')], {
+    env: {
+      ...process.env,
+      DEVFLEET_PROBE_CGROUP: need(world, cgroups.get(world), 'a cgroup tree'),
+    },
+    stdout: 'pipe',
+    stderr: 'ignore',
+  });
+  world.text = await new Response(probe.stdout).text();
+  await probe.exited;
+});
+
+Then('the capacity probe prints these lines:', (world, table: DataTable) => {
+  const printed = need(world, world.text, 'what the probe printed').split('\n');
+  for (const line of table.list()) expect(printed).toContain(line);
+});
