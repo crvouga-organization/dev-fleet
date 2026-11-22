@@ -13,6 +13,7 @@ import {
   accountSessionChecks,
   sessionResult,
   type Instance,
+  type SessionResult,
 } from '../accounts/sessions';
 import {
   cacheKey,
@@ -192,11 +193,16 @@ export interface AccountContext {
   exposed: Instance[];
   rosterVersion: string;
   keyVersion: string;
+  /** Asks the proxy what holds one account back, after its session timed
+   * out (`proxyVerdict`). Without it a timed-out session stays `timed-out`.
+   */
+  consult?: (account: Account) => Promise<SessionResult>;
 }
 
 /** How a per-account instance is launched: its tool's launcher, pinned to
  * the account as T3 pins it. OpenCode retries a rate-limited request quietly
- * until the deadline; its error log is what shows the 429.
+ * until the deadline; its error log shows the 429 when it prints one, and
+ * the proxy is asked when the session ran into the deadline without a word.
  */
 export const ACCOUNT_LAUNCH: Record<
   string,
@@ -231,7 +237,7 @@ async function accountSession(
     run: Runner;
     profiles: string;
   }
-): Promise<'ok' | 'cooling-down' | 'failed'> {
+): Promise<SessionResult> {
   const spec = ACCOUNT_LAUNCH[instance.tool];
   if (!spec) return 'failed';
   const check = await cachedCheck(
@@ -265,25 +271,31 @@ async function accountSession(
           timeoutMs: 150_000,
         }
       );
-      const outcome = sessionResult(result.ok, result.stdout + result.stderr);
+      const said = sessionResult(
+        result.ok,
+        result.stdout + result.stderr,
+        result.reason === 'timeout'
+      );
+      // A session that ran into its deadline printed nothing telling: the
+      // proxy still knows whether it holds the account's model back.
+      const live = accounts.live.find(
+        (account) =>
+          account.tool === instance.tool && account.email === instance.account
+      );
+      const outcome =
+        said === 'timed-out' && live && accounts.consult
+          ? await accounts.consult(live)
+          : said;
+      // Only a pass is remembered, so the outcome is read back as it is.
       return {
         id: 'account-session',
-        status:
-          outcome === 'ok'
-            ? 'pass'
-            : outcome === 'cooling-down'
-              ? 'warn'
-              : 'fail',
+        status: outcome === 'ok' ? 'pass' : 'fail',
         summary: outcome,
       };
     },
     context.cache
   );
-  return check.status === 'pass'
-    ? 'ok'
-    : check.status === 'warn'
-      ? 'cooling-down'
-      : 'failed';
+  return check.status === 'pass' ? 'ok' : (check.summary as SessionResult);
 }
 
 /** Reads `tool = "x"` and `"tool" = { version = "x", ... }` pins. */
