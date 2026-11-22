@@ -99,7 +99,11 @@ phase=lock
 [ ! -L "$root/remote-operation.lock" ] || exit 1
 exec 9>"$root/remote-operation.lock"
 # The lock follows this shell's open descriptor and is released when it exits.
-flock -n 9 || die FLEET_REMOTE_LOCKED
+# A manager that looks whether the lock is held takes it for an instant
+# (OPERATION_PROBE in src/remote-operation.ts), so the lock is waited for
+# briefly: only an operation that keeps it refuses this one. By then that
+# operation has written its record, and the refused run can follow it.
+flock -w 5 9 || die FLEET_REMOTE_LOCKED
 # The operation record: a manager that lost its session reads it to follow
 # this operation to its end instead of starting another (see
 # src/remote-operation.ts). The result of the last operation is beside it.

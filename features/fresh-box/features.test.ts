@@ -1,8 +1,8 @@
-import { afterAll } from 'bun:test';
+import { afterAll, beforeAll } from 'bun:test';
 import { runFeatures } from '../support/gherkin';
 import { FreshBoxWorld, freshBox } from './steps';
 import './fleet-steps';
-import { discardBoxes } from './support/boxes';
+import { discardBoxes, freshImage } from './support/boxes';
 
 // The whole worker toolchain is downloaded: run on request, and on every pull
 // request (`DEVFLEET_TEST_FRESH_BOX=required` there).
@@ -17,6 +17,11 @@ runFeatures({
   skip: () => !process.env['DEVFLEET_TEST_FRESH_BOX'],
   timeoutMs: 180_000,
 });
+
+// The image is built before the scenarios: a build that fails after its
+// retries is reported once, as the runner's, and no scenario runs.
+if (process.env['DEVFLEET_TEST_FRESH_BOX'])
+  beforeAll(() => freshImage(), 1_200_000);
 
 // Removing the machine can take longer than a hook's default five seconds.
 afterAll(discardBoxes, 300_000);

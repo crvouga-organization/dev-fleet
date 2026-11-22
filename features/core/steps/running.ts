@@ -2,7 +2,7 @@ import { expect } from 'bun:test';
 import { spawn, spawnSync } from 'node:child_process';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { remoteLockPrelude } from '../../../src/remote-lock';
 import { runCommand } from '../../../src/runner';
 import type { CommandResult } from '../../../src/types';
@@ -122,6 +122,63 @@ When('the shell is killed while the installer runs', async (world) => {
 Then('the installer had been started', (world) => {
   expect(lock(world).installer).toBeGreaterThan(0);
 });
+
+/** A lock of its own, held by `flock <lock> sleep <seconds>` from now on. */
+async function heldFor(world: CoreWorld, seconds: number): Promise<void> {
+  const directory = await mkdtemp(join(tmpdir(), 'fleet-operation-lock-'));
+  world.defer(() => rm(directory, { recursive: true, force: true }));
+  const path = join(directory, 'remote-operation.lock');
+  const shell = spawn('flock', [path, 'sleep', String(seconds)], {
+    stdio: 'ignore',
+  });
+  world.defer(() => void shell.kill('SIGKILL'));
+  world.lock = { path, shell, installer: 0 };
+  for (let attempt = 0; attempt < 50 && (await taken(world)); attempt++)
+    await pause(20);
+  expect(await taken(world)).toBe(false);
+}
+
+Given(
+  'a look at the operation lock that takes {int} second',
+  (world, seconds: number) => heldFor(world, seconds)
+);
+
+Given('another operation that holds the operation lock', (world) =>
+  heldFor(world, 60)
+);
+
+When('a remote operation starts', async (world) => {
+  const started = Date.now();
+  // What every remote operation runs first; it then keeps the lock a moment.
+  world.result = await runCommand([
+    'sh',
+    '-c',
+    `${remoteLockPrelude('"$1"')} && printf held && sleep 1`,
+    'fixture',
+    dirname(lock(world).path),
+  ]);
+  world.waitedMs = Date.now() - started;
+});
+
+Then('it holds the operation lock', (world) => {
+  expect(result(world).stdout).toBe('held');
+});
+
+Then(
+  'it is refused the operation lock after at least {int} seconds',
+  (world, seconds: number) => {
+    expect(result(world).ok).toBe(false);
+    expect(result(world).stdout).toBe('');
+    expect(world.waitedMs).toBeGreaterThanOrEqual(seconds * 1000);
+  }
+);
+
+Then(
+  'the script {string} contains {string}',
+  async (_world, script: string, text: string) => {
+    expect(await readFile(resolve(root, script), 'utf8')).toContain(text);
+  }
+);
 
 const taken = async (world: CoreWorld): Promise<boolean> =>
   (await runCommand(['flock', '-n', lock(world).path, 'true'])).ok;
