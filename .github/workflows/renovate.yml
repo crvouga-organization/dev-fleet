@@ -35,6 +35,9 @@ jobs:
       contents: write
       pull-requests: write
     steps:
+      # A pull request opened with the workflow's own token either starts no
+      # CI or starts a run that waits for a maintainer's approval
+      # (action_required) and never runs; neither counts as a run.
       - name: Start CI for dependency updates whose push did not trigger it
         env:
           GH_TOKEN: ${{ github.token }}
@@ -44,7 +47,8 @@ jobs:
           gh pr list --limit 200 --json headRefName,headRefOid,isCrossRepository \
             --jq '.[] | select(.isCrossRepository == false and (.headRefName | startswith("renovate/"))) | [.headRefName,.headRefOid] | @tsv' |
           while read -r branch commit; do
-            count=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$commit" --jq .total_count)
+            count=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$commit" \
+              --jq '[.workflow_runs[] | select(.conclusion != "action_required")] | length')
             if [ "$count" = 0 ]; then gh workflow run ci.yml --ref "$branch"; fi
           done
       # A pull request opened with the workflow's own token starts no
