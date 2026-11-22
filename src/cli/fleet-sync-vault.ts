@@ -64,6 +64,8 @@ export async function authorizeManager(
  * so a node without one has no working proxy providers. The node's
  * issued token is delivered once over SSH stdin, never as an argument;
  * interactive runs fall back to a password login on the node's own terminal.
+ * A node Vault does not answer is given neither: no token and no password
+ * logs it in, so it is reported as that and not as a login to issue.
  */
 export async function authorizeVault(
   node: FleetNode,
@@ -83,6 +85,7 @@ export async function authorizeVault(
   if (before === 'authenticated') return [pass(node)];
   // Fresh node: the locked toolchain (including vault) is not installed yet.
   if (before === 'unavailable') return [];
+  if (!(await vaultAnswers(node, run))) return [unreachable(node)];
   const delivered = await deliverWorkerToken(node, run);
   if (delivered === 'own') return [pass(node)];
   if (delivered === 'shared') return [pass(node), shared(node)];
@@ -164,6 +167,18 @@ async function vaultState(node: FleetNode, run: Runner): Promise<VaultState> {
     : 'unauthenticated';
 }
 
+/** Whether Vault answers the node and is unsealed, asked on the node: its
+ * status needs no login. Only a status that ran and failed says it does not;
+ * a node that could not be asked is left to the login that follows.
+ */
+async function vaultAnswers(node: FleetNode, run: Runner): Promise<boolean> {
+  const result = await run(
+    [...sshArgs(node), `${TOOL_PATH}; ${quote(status())} >/dev/null 2>&1`],
+    { timeoutMs: 20_000 }
+  );
+  return result.ok || result.reason !== 'exit';
+}
+
 const lookup = (): string[] => vaultTokenLookup(resolveVaultConfig().addr);
 const status = (): string[] => vaultStatus(resolveVaultConfig().addr);
 
@@ -221,6 +236,22 @@ function required(node: FleetNode): Check {
     summary: 'VAULT_LOGIN_REQUIRED',
     remedy: {
       action: `Issue ${node.id} a token of its own with devfleet fleet-node-replace --id ${node.id} --apply --yes. Opt-in fallback: devfleet fleet-sync --vault-password-login in a terminal, or on ${node.id}: vault login -address=${addr} -method=userpass username=${definition.worker!.vaultUser}. Proxy providers in T3 stay unavailable until then.`,
+    },
+  };
+}
+
+/** A worker Vault does not answer. Its session did not answer either, and
+ * that says nothing about the token: one it holds is still held if Vault
+ * returns before it lapses.
+ */
+function unreachable(node: FleetNode): Check {
+  const { addr } = resolveVaultConfig();
+  return {
+    id: 'auth:vault',
+    status: 'fail',
+    summary: 'VAULT_UNREACHABLE',
+    remedy: {
+      action: `Vault at ${addr} does not answer ${node.id}, or is sealed; a new token or a login does not help, so none was delivered. On ${node.id}, vault status -address=${addr} says which: no answer is the network between them (the tailnet, DNS, the address under secrets in the fleet configuration) or a Vault that is not running; "Sealed true" is a Vault to unseal. Then run devfleet fleet-sync. Proxy providers in T3 stay unavailable until then.`,
     },
   };
 }

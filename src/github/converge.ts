@@ -1,7 +1,7 @@
 import type { Check, Runner } from '../types';
 import type { GithubCode } from './sync';
 import type { SecretsProvider } from '../secrets';
-import { unreadSecret } from '../secrets-blocked';
+import { MANAGER_SECRETS_LOGIN, unreadSecret } from '../secrets-blocked';
 
 const CODES: GithubCode[] = [
   'GITHUB_OK',
@@ -33,10 +33,12 @@ export async function convergeGithub(
   root: string,
   run: Runner,
   node?: string,
-  /** The manager's own secrets: a token the job found missing there may be
-   * one the manager could not read (src/secrets-blocked.ts).
+  /** This node's own secrets: a token the job found missing may be one the
+   * node could not read (src/secrets-blocked.ts).
    */
-  secrets?: Pick<SecretsProvider, 'login'>
+  secrets?: Pick<SecretsProvider, 'login'>,
+  /** The check that owns this node's login to them. */
+  owner: string = MANAGER_SECRETS_LOGIN
 ): Promise<Check> {
   const result = await run(
     ['bun', 'bootstrap/worker-github.ts', ...(node ? ['--node', node] : [])],
@@ -66,6 +68,6 @@ export async function convergeGithub(
     },
   };
   return code === 'GITHUB_TOKEN_MISSING' && secrets
-    ? unreadSecret(secrets, failure)
+    ? unreadSecret(secrets, failure, owner)
     : failure;
 }

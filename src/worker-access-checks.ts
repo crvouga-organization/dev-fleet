@@ -1,6 +1,7 @@
 import type { Check, Runner } from './types';
 import { fleet } from './fleet-config';
-import { secretsProvider } from './secrets';
+import { secretsProvider, vaultStatus, vaultTokenLookup } from './secrets';
+import { WORKER_SECRETS_LOGIN, unreadSecret } from './secrets-blocked';
 import { registry } from './agents/registry';
 import { resolveVaultConfig, usesVault } from './vault-config';
 import { record } from './config';
@@ -36,7 +37,8 @@ const GITHUB_REMEDIES: Record<string, string> = {
 
 /** GitHub sign-in is measured on its own, so a GitHub fault is never reported
  * as a fault of the secret store's renewal, and the code names the system to
- * fix.
+ * fix. A token this worker could not read at all is not a missing token: it
+ * is the worker's login, which worker:vault-renewal owns.
  */
 async function githubSync(run: Runner, nodeId?: string): Promise<Check> {
   const login = fleet.worker?.githubLogin;
@@ -49,24 +51,28 @@ async function githubSync(run: Runner, nodeId?: string): Promise<Check> {
         action: 'Declare the fleet GitHub login as worker.githubLogin.',
       },
     };
+  const store = secrets(run);
   const code = await githubSignInState({
     run,
     login,
-    token: githubCredential(fleet, nodeId ?? hostId(hostname()), secrets(run)),
+    token: githubCredential(fleet, nodeId ?? hostId(hostname()), store),
   });
-  return code === 'GITHUB_OK'
-    ? {
-        id: 'worker:github-sync',
-        status: 'pass',
-        summary:
-          'Worker GitHub authentication matches the declared common account.',
-      }
-    : {
-        id: 'worker:github-sync',
-        status: 'fail',
-        summary: code,
-        remedy: { action: GITHUB_REMEDIES[code]! },
-      };
+  if (code === 'GITHUB_OK')
+    return {
+      id: 'worker:github-sync',
+      status: 'pass',
+      summary:
+        'Worker GitHub authentication matches the declared common account.',
+    };
+  const failure = {
+    id: 'worker:github-sync',
+    status: 'fail' as const,
+    summary: code,
+    remedy: { action: GITHUB_REMEDIES[code]! },
+  };
+  return code === 'GITHUB_TOKEN_MISSING'
+    ? unreadSecret(store, failure, WORKER_SECRETS_LOGIN)
+    : failure;
 }
 
 const secrets = (run: Runner) =>
@@ -91,18 +97,18 @@ async function proxyAuthentication(run: Runner): Promise<Check> {
       return result.ok ? result.stdout : null;
     },
   });
-  const forbidden: Check = {
+  const forbidden = {
     id: 'worker:proxy-authentication',
-    status: 'fail',
+    status: 'fail' as const,
     summary: 'VAULT_POLICY_PERMISSION_REQUIRED',
     remedy: {
       action:
         'This worker’s Vault identity was refused the proxy client key by its policy. Grant that identity read access to the declared location in the Vault policy you manage. fleet-sync seeds no secret, writes no policy and adds no secret store.',
     },
   };
-  const unavailable: Check = {
+  const unavailable = {
     id: 'worker:proxy-authentication',
-    status: 'fail',
+    status: 'fail' as const,
     summary: 'UNATTENDED_PROXY_AUTHENTICATION_REQUIRED',
     remedy: {
       action:
@@ -111,8 +117,12 @@ async function proxyAuthentication(run: Runner): Promise<Check> {
   };
   try {
     const key = (await secret('proxy-client-key')) ?? '';
-    if (denied) return forbidden;
-    if (!/^[\x21-\x7e]{16,4096}$/.test(key)) return unavailable;
+    // A policy refuses a session that answers. Vault says the same 403 to a
+    // session that lapsed, and nothing at all when it is out of reach: both
+    // are this worker's login, not its policy and not a missing key.
+    if (denied) return unreadSecret(secret, forbidden, WORKER_SECRETS_LOGIN);
+    if (!/^[\x21-\x7e]{16,4096}$/.test(key))
+      return unreadSecret(secret, unavailable, WORKER_SECRETS_LOGIN);
     const result = await run(
       [
         'curl',
@@ -146,6 +156,12 @@ async function proxyAuthentication(run: Runner): Promise<Check> {
   }
 }
 
+/** The check that owns this worker's login (`WORKER_SECRETS_LOGIN`): every
+ * check here that needed a secret the worker could not read names it. A
+ * session that does not answer is a lapsed one only when Vault itself
+ * answers; otherwise Vault is out of this worker's reach, which no new token
+ * repairs (`secretsLogin` in src/secrets.ts tells them the same way).
+ */
 async function vaultRenewalCheck(run: Runner): Promise<Check> {
   const unavailable: Check = {
     id: 'worker:vault-renewal',
@@ -158,13 +174,15 @@ async function vaultRenewalCheck(run: Runner): Promise<Check> {
   };
   try {
     const { addr } = resolveVaultConfig();
-    const result = await run([
-      'vault',
-      'token',
-      'lookup',
-      `-address=${addr}`,
-      '-format=json',
-    ]);
+    const result = await run(vaultTokenLookup(addr));
+    if (!result.ok && !(await run(vaultStatus(addr), { timeoutMs: 20_000 })).ok)
+      return {
+        ...unavailable,
+        summary: 'VAULT_UNREACHABLE',
+        remedy: {
+          action: `Vault at ${addr} does not answer this worker, or is sealed; a new token does not help, so issue none. On the worker, vault status -address=${addr} says which: no answer is the network between them (the tailnet, DNS, the address under secrets in the fleet configuration) or a Vault that is not running; "Sealed true" is a Vault to unseal. Then run devfleet fleet-sync. A session the worker held is still held if Vault returns before it lapses; no credentials are copied between machines.`,
+        },
+      };
     const data: unknown = JSON.parse(result.stdout);
     if (!result.ok || !record(data) || !record(data['data']))
       return unavailable;
