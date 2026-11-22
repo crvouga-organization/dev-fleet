@@ -209,6 +209,22 @@ Given('T3 Code runs these scopes on a worker:', (world, table: DataTable) => {
   }
 });
 
+Given(
+  'everything T3 Code started there took at most {int} MiB at one moment',
+  (world, peak: number) => {
+    const { uid } = userInfo();
+    // The slice's own peak, which the kernel keeps after a scope ends.
+    writeFileSync(
+      join(
+        need(world, cgroups.get(world), 'a cgroup tree'),
+        `user.slice/user-${uid}.slice/user@${uid}.service`,
+        'app.slice/app-t3code.slice/app-t3code-agents.slice/memory.peak'
+      ),
+      `${peak * 1024 * 1024}\n`
+    );
+  }
+);
+
 When('the capacity probe reads that worker', async (world) => {
   const probe = Bun.spawn(['sh', join(root, 'ansible/net/remote-probe.sh')], {
     env: {

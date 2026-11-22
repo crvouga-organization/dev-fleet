@@ -33,6 +33,12 @@ export type HealthSample = {
   readonly agentPeaks?: number;
   readonly agentPeakMedianMb?: number;
   readonly agentPeakMaxMb?: number;
+  /** Those peaks added up, in MiB: what the running agents would take if
+   * each returned to its own peak at once. */
+  readonly agentPeakSumMb?: number;
+  /** The most everything T3 started took at one moment since its slice was
+   * made, in MiB, as the kernel kept it: sessions that ended are in it. */
+  readonly agentsReachedMb?: number;
   /** Free inodes on the home filesystem, as a percentage of all of them. */
   readonly inodesFreePct?: number;
   /** 1 when the clock is synchronised to a time source, 0 when not. */
@@ -59,6 +65,8 @@ const PROBE_KEYS = {
   agentpeaks: 'agentPeaks',
   agentpeakmedianmb: 'agentPeakMedianMb',
   agentpeakmaxmb: 'agentPeakMaxMb',
+  agentpeaksummb: 'agentPeakSumMb',
+  agentsreachedmb: 'agentsReachedMb',
   inodefree: 'inodesFreePct',
   ntpsync: 'clockSynced',
   ntp: 'timeService',
