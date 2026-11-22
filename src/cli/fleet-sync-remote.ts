@@ -15,7 +15,7 @@ import { convergeManager } from './fleet-sync-manager';
 import { FleetUsageError } from '../errors';
 import { selectNodes } from '../config';
 import { loadRoster } from './roster';
-import { enrolledRoster } from '../definition';
+import { enrolledRoster } from '../enrolled-roster';
 import { readParked, readWorkerStates } from '../state/workers';
 import { withoutParked } from '../worker-parking';
 import { reconcileRecords } from './fleet-sync-records';

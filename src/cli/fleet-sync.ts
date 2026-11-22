@@ -655,9 +655,11 @@ async function offManager(
       `fleet-sync runs only on the manager (${definition.manager.id}), which is always a macOS machine; nothing was changed. Run it there, or from a worker that can SSH to the manager.`,
       revision ?? null
     );
-  const runScript = revision
-    ? await managerRunScript(settings.workspace, revision, run)
-    : null;
+  // An accounts-only request is the manager's installed launcher's.
+  const runScript =
+    revision && !options.only
+      ? await managerRunScript(settings.workspace, revision, run)
+      : null;
   const local = hostId(hostname());
   return forwardToManager(definition, options, revision, {
     spawn: forward,

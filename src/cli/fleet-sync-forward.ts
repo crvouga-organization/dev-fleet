@@ -155,12 +155,13 @@ function handOffFailure(
  * revision, or an older one without the script) its installed launcher.
  * Either way the manager is first asked whether the default branch holds the
  * revision and whether it would replace the manager's mise with an older
- * one, and is told what selected it.
+ * one, and is told what selected it. An accounts-only request names no
+ * revision, so it is the installed launcher's and nothing is asked.
  */
 export function managerCommand(
   definition: FleetDefinition,
   options: FleetSyncOptions,
-  revision: string | undefined,
+  selected: string | undefined,
   remote: {
     /** The revision's own run script, when it has one. */
     script?: string | null;
@@ -169,6 +170,7 @@ export function managerCommand(
   } = {}
 ): string[] {
   const { script: runScript = null, selection } = remote;
+  const revision = pinned(options, selected);
   const { manager } = definition;
   const target: FleetNode = {
     id: manager.id,
@@ -232,6 +234,70 @@ function aboutRevision(
   };
 }
 
+/** How one option of a request reaches the manager: the flag that carries
+ * it, or why no flag does.
+ */
+export type HandOff = string | { elsewhere: string };
+
+const elsewhere = (why: string): HandOff => ({ elsewhere: why });
+const INTERNAL = elsewhere(
+  'No command line sets it: the run on the manager works it out itself.'
+);
+
+/** Every option of a request and how the hand-off carries it, in the order
+ * the flags are written. An option added to fleet-sync does not compile
+ * until it is listed here: none is dropped without a reason.
+ */
+export const HAND_OFF: {
+  readonly [Option in keyof Required<FleetSyncOptions>]: HandOff;
+} = {
+  revision: elsewhere(
+    'The hand-off names the revision the worker selected, which is not always the one typed.'
+  ),
+  node: '--node',
+  canary: '--canary',
+  schedule: '--schedule',
+  only: '--only',
+  all: '--all',
+  vaultPasswordLogin: '--vault-password-login',
+  restartBusy: '--restart-busy',
+  dryRun: '--dry-run',
+  apply: '--apply',
+  yes: '--yes',
+  json: '--json',
+  nonInteractive: '--non-interactive',
+  maintenanceReboot: '--maintenance-reboot',
+  force: '--force',
+  takeOver: '--take-over',
+  rollback: elsewhere(
+    'Refused on a worker: only the fleet state on the manager knows the revision applied before.'
+  ),
+  allowUnmerged: elsewhere(
+    'The run on the manager may be older than the flag: it is told what selected the revision instead.'
+  ),
+  allowMiseDowngrade: elsewhere(
+    'The run on the manager may be older than the flag: it is told in the environment that mise may be downgraded for the revision.'
+  ),
+  rolledOut: INTERNAL,
+  interactiveAuthorization: INTERNAL,
+  expectedPlanFingerprint: INTERNAL,
+  enrollment: INTERNAL,
+  readyBefore: INTERNAL,
+  selection: INTERNAL,
+  replaces: INTERNAL,
+};
+
+/** The revision a hand-off pins the manager's run to. An accounts-only
+ * request pins none: it moves no machine to a revision, so the manager's
+ * installed launcher runs it, as when it is started on the manager.
+ */
+function pinned(
+  options: FleetSyncOptions,
+  revision: string | undefined
+): string | undefined {
+  return options.only ? undefined : revision;
+}
+
 /** The flags of a request, for the run of the revision's own code. That code
  * may be older than a flag, so --allow-unmerged and --allow-mise-downgrade
  * are not among them: the run that hands the request on answers for them,
@@ -242,24 +308,16 @@ export function forwardedFlags(
   options: FleetSyncOptions,
   revision: string | undefined
 ): string[] {
-  const flags = revision ? ['--revision', revision] : [];
-  for (const node of options.node ?? []) flags.push('--node', node);
-  if (options.canary) flags.push('--canary', options.canary);
-  if (options.schedule) flags.push('--schedule', options.schedule);
-  const switches: [boolean | undefined, string][] = [
-    [options.all, '--all'],
-    [options.vaultPasswordLogin, '--vault-password-login'],
-    [options.restartBusy, '--restart-busy'],
-    [options.dryRun, '--dry-run'],
-    [options.apply, '--apply'],
-    [options.yes, '--yes'],
-    [options.json, '--json'],
-    [options.nonInteractive, '--non-interactive'],
-    [options.maintenanceReboot, '--maintenance-reboot'],
-    [options.force, '--force'],
-    [options.takeOver, '--take-over'],
-  ];
-  for (const [on, flag] of switches) if (on) flags.push(flag);
+  const named = pinned(options, revision);
+  const flags = named ? ['--revision', named] : [];
+  for (const [option, flag] of Object.entries(HAND_OFF)) {
+    if (typeof flag !== 'string') continue;
+    const value: unknown = options[option as keyof FleetSyncOptions];
+    if (value === true) flags.push(flag);
+    else if (typeof value === 'string' && value) flags.push(flag, value);
+    else if (Array.isArray(value))
+      for (const entry of value) flags.push(flag, String(entry));
+  }
   return flags;
 }
 

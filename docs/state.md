@@ -178,7 +178,20 @@ An edit that says what the run would install anyway, or what the fleet state
 records as last applied, is not refused: nothing would be lost. On a worker
 the same edit stops that worker's bootstrap with the same code. A worker
 takes its configuration from the manager, so the change belongs in
-`fleet.json` and the copy on the worker is deleted. A check that tells you to
+`fleet.json` and the copy on the worker is deleted.
+
+A revision from before the record existed rewrites a worker's copy and leaves
+an older record behind, so after a rollback to one the record says nothing
+about the copy. The roll forward does not take that for an edit. A worker
+records every fleet operation before it installs the copy
+(`~/.local/share/personal/fleet/remote-operation.json`), so that record names
+the revision that last wrote the copy, and the fleet-owned checkout of that
+commit holds its bootstrap script. When that script keeps no record, and the
+copy was not changed after that operation's last record, the copy is replaced.
+A copy changed since then, or one whose last writer's checkout is gone, is
+refused as before: delete it to go on.
+
+A check that tells you to
 declare something in `fleet.json` names the file for the way the command
 found its configuration: its path, the export, edit and import of a
 configuration kept in the fleet state, or, on a machine that holds only the

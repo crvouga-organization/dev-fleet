@@ -10,6 +10,15 @@ Feature: A worker's copy of the configuration that was edited there is refused, 
   remedy says where the change belongs. A copy from before the record existed
   is replaced as it always was: nothing says whether it was edited.
 
+  A revision from before the record existed rewrites the copy and leaves the
+  record of an earlier one behind. After a rollback to such a revision the
+  record says nothing about the copy, so the roll forward replaces it. What
+  says so is the worker's own account of the operation before this one: the
+  revision its operation record names, and the bootstrap script in the
+  fleet-owned checkout of that commit, which does not name the record. A copy
+  changed after that operation's last record was not left by it and is
+  refused, and so is one whose writer cannot be read.
+
   These scenarios run the configuration-install step of
   bootstrap/fleet-remote-bootstrap.sh in a real POSIX shell, in a home
   directory of their own. Workers are Ubuntu machines, so they run on Linux.
@@ -48,6 +57,48 @@ Feature: A worker's copy of the configuration that was edited there is refused, 
     Then the configuration is installed
     And the copy on the worker holds '{"version":3,"workers":[]}'
     And the record on the worker is the SHA-256 of the copy
+
+  Scenario: A roll forward after a rollback to a revision that keeps no record replaces a copy nobody edited
+    Given the worker was sent the configuration '{"version":3,"workers":[]}'
+    And a revision that keeps no record then installed '{"version":3,"workers":["old"]}' on the worker
+    When the worker is sent the configuration '{"version":3,"workers":["new"]}'
+    Then the configuration is installed
+    And the copy on the worker holds '{"version":3,"workers":["new"]}'
+    And the record on the worker is the SHA-256 of the copy
+
+  Scenario: A copy edited after the rollback is still refused
+    The revision that keeps no record did not leave this copy: it was
+    changed after that revision's operation ended.
+
+    Given the worker was sent the configuration '{"version":3,"workers":[]}'
+    And a revision that keeps no record then installed '{"version":3,"workers":["old"]}' on the worker
+    And the copy on the worker was edited to '{"version":3,"workers":["old"],"git":{}}'
+    When the worker is sent the configuration '{"version":3,"workers":["new"]}'
+    Then the configuration install stops with "FLEET_CONFIGURATION_COPY_CHANGED"
+    And the copy on the worker holds '{"version":3,"workers":["old"],"git":{}}'
+
+  Scenario: A refused copy stays refused on the next run
+    The refused run was an operation too, of a revision that keeps the
+    record, so the rollback before it no longer excuses the copy.
+
+    Given the worker was sent the configuration '{"version":3,"workers":[]}'
+    And a revision that keeps no record then installed '{"version":3,"workers":["old"]}' on the worker
+    And the copy on the worker was edited to '{"version":3,"workers":["old"],"git":{}}'
+    And the worker was refused the configuration '{"version":3,"workers":["new"]}'
+    When the worker is sent the configuration '{"version":3,"workers":["new"]}'
+    Then the configuration install stops with "FLEET_CONFIGURATION_COPY_CHANGED"
+    And the copy on the worker holds '{"version":3,"workers":["old"],"git":{}}'
+
+  Scenario: A copy whose last writer cannot be read is refused
+    Only a bootstrap script that is there and does not name the record
+    excuses a copy. Without the checkout nothing says what wrote it.
+
+    Given the worker was sent the configuration '{"version":3,"workers":[]}'
+    And a revision that keeps no record then installed '{"version":3,"workers":["old"]}' on the worker
+    And the checkout of that revision is no longer on the worker
+    When the worker is sent the configuration '{"version":3,"workers":["new"]}'
+    Then the configuration install stops with "FLEET_CONFIGURATION_COPY_CHANGED"
+    And the copy on the worker holds '{"version":3,"workers":["old"]}'
 
   Scenario: The refusal needs a person and names where the change belongs
     Then the diagnostic of "FLEET_CONFIGURATION_COPY_CHANGED" is not retryable
