@@ -51,6 +51,7 @@ import { selected } from './fleet-sync-remote';
 import { managerIdentity } from './fleet-sync-manager';
 import { inRunCheckout, managerRunScript, rehome } from './fleet-sync-checkout';
 import { syncAccounts } from './fleet-sync-accounts';
+import { workerCopyRefusal } from './fleet-sync-worker-copy';
 import { packageInfo } from '../package-info';
 import {
   asksAncestry,
@@ -276,15 +277,41 @@ export async function managerSync(
     reloadFleet();
     return restart();
   }
-  return (
+  const edited =
     copyRefusal(home, revision) ??
-    previewOrApply(options, settings, state, {
-      run,
-      root,
-      chosen,
-      standing: fresh.standing,
-    })
+    (await workerCopies(options, revision, settings, { run, root }));
+  if (edited) return edited;
+  return previewOrApply(options, settings, state, {
+    run,
+    root,
+    chosen,
+    standing: fresh.standing,
+  });
+}
+
+/** Why a worker's copy of the configuration stops the run, if one does: the
+ * same refusal as for this machine's copy, asked of every worker the run is
+ * about to converge before the manager, the fleet state or any of them is
+ * changed. A worker's own bootstrap still refuses when it gets there.
+ */
+async function workerCopies(
+  options: FleetSyncOptions,
+  revision: string,
+  settings: Settings,
+  { run, root }: { run: Runner; root: string }
+): Promise<CommandOutcome | null> {
+  const report = await workerCopyRefusal(
+    { revision, ...(options.node ? { node: options.node } : {}) },
+    { root, roster: settings.config, checkout: settings.workspace },
+    run
   );
+  return report
+    ? {
+        exitCode: 1,
+        data: report,
+        text: managerText(report, { color: stdoutColor() }),
+      }
+    : null;
 }
 
 /** The preview of a run for the chosen revision, or the run itself. */

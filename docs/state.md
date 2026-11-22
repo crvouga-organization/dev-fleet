@@ -175,10 +175,19 @@ changed, with or without a person at the terminal, and names the way forward:
   again.
 
 An edit that says what the run would install anyway, or what the fleet state
-records as last applied, is not refused: nothing would be lost. On a worker
-the same edit stops that worker's bootstrap with the same code. A worker
-takes its configuration from the manager, so the change belongs in
-`fleet.json` and the copy on the worker is deleted.
+records as last applied, is not refused: nothing would be lost.
+
+A copy edited on a worker stops the run in the same way, with the same code,
+before the manager, the fleet state or any worker is changed. The manager
+first asks every worker it is about to converge, over the usual SSH and
+without changing anything there, what that worker's bootstrap would decide
+for the copy the run sends. The question is the text of the bootstrap's own
+rule, so the two cannot disagree, and the refused worker carries the
+bootstrap's own check (`bootstrap:configuration-install`) and remedy;
+`--dry-run` reports it too. A worker that does not answer does not hold the
+run back: its bootstrap applies the same rule when it is reached, and stops
+that worker then. A worker takes its configuration from the manager, so the
+change belongs in `fleet.json` and the copy on the worker is deleted.
 
 A revision from before the record existed rewrites a worker's copy and leaves
 an older record behind, so after a rollback to one the record says nothing
