@@ -33,6 +33,33 @@ Feature: Shared provider accounts
       When the roster is read from the model list
       Then the roster is empty
 
+  Rule: An account defaults to the first preferred model it serves
+
+    Accounts of one tool are not entitled to the same models, so a tool's
+    preferred defaults are an order and not one model: Codex prefers
+    gpt-6.1-sol, then gpt-6-luna. An account that serves none of them
+    defaults to its first model by name, and the check "t3:models" says so.
+
+    Background:
+      Given the proxy lists these models:
+        | codex-pro@example.com/gpt-6-luna      |
+        | codex-pro@example.com/gpt-6.1-sol     |
+        | codex-team@example.com/gpt-5.6-terra  |
+        | codex-team@example.com/gpt-6-luna     |
+        | codex-other@example.com/gpt-6.1-terra |
+        | codex-other@example.com/gpt-5.6-terra |
+      And a relay that listens at "http://127.0.0.1:9"
+
+    Scenario Outline: Codex for an account that serves <serves> starts on <model>
+      When "codex" is launched on the machine "node" for the account "<account>"
+      Then it starts on the model "<model>"
+
+      Examples:
+        | serves                        | account           | model         |
+        | the first preferred default | pro@example.com   | gpt-6.1-sol   |
+        | only the second             | team@example.com  | gpt-6-luna    |
+        | neither                     | other@example.com | gpt-5.6-terra |
+
   Rule: An unanswered roster is an error; it never reads as no accounts
 
     Scenario: The roster is asked of the proxy with the machine's own key
