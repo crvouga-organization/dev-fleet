@@ -85,21 +85,78 @@ Feature: A worker's memory and disk guards are measured where they run
       | 1000 | passes  |
       | 100  | fails   |
 
-  Scenario: A user manager without the io controller names the reserve it lacks
-    Ubuntu hands the user manager cpu, memory and pids only; until it starts
-    again with the io controller fleet-sync declares, the listener's cgroup has
-    no io.weight.
+  Scenario: An unprotected listener is repaired by fleet-sync without restarting T3
+    A drop-in fleet-sync writes for the unit T3 serves from reaches the
+    running unit when the user manager is reloaded, so the remedy does not
+    wait for T3 to restart.
     Given these commands answer:
       | command                                    | answer                       |
       | ss -Hltnp sport = 3773                     | prints users:(("t3",pid=42)) |
       | cat /proc/42/cgroup                        | prints 0::/app.scope         |
-      | cat /sys/fs/cgroup/app.scope/cpu.weight    | prints 1000                  |
-      | cat /sys/fs/cgroup/app.scope/io.weight     | fails                        |
-      | cat /sys/fs/cgroup/app.scope/memory.low    | prints 1610612736            |
+      | cat /sys/fs/cgroup/app.scope/cpu.weight    | prints 100                   |
+      | cat /sys/fs/cgroup/app.scope/io.weight     | prints default 100           |
+      | cat /sys/fs/cgroup/app.scope/memory.low    | prints 0                     |
     When the protection of the T3 listener on port 3773 is measured
     Then the check fails
-    And the summary of the check is "T3_PROTECTION_ESCAPED io"
-    And the remedy of the check contains "--maintenance-reboot"
+    And the summary of the check is "T3_PROTECTION_ESCAPED cpu io memory"
+    And the remedy of the check contains "applies it to the running T3 without a restart"
+    And the remedy of the check does not contain "--maintenance-reboot"
+
+  Rule: An io reserve that waits for the user manager says so
+    Ubuntu hands the user manager cpu, memory and pids only. It takes the io
+    controller fleet-sync declares when it next starts, which in practice is
+    the worker's next reboot: until then the listener's cgroup has no
+    io.weight, although T3 never left its unit and has its CPU and memory
+    reserve. Restarting T3 does not change that.
+
+    Background:
+      Given the T3 listener on port 3773 runs in "app.slice/app-com.t3tools.T3Code-41.scope" under the user manager of user 1000, where:
+        | file       | answer            |
+        | cpu.weight | prints 1000       |
+        | io.weight  | fails             |
+        | memory.low | prints 1610612736 |
+
+    Scenario: A user manager without the io controller names the reserve it lacks and asks for a reboot
+      Given reading the controllers of the user manager of user 1000 prints cpu memory pids
+      When the protection of the T3 listener on port 3773 is measured
+      Then the check fails
+      And the summary of the check is "T3_PROTECTION_ESCAPED io"
+      And the remedy of the check contains "--maintenance-reboot"
+      And the remedy of the check contains "Restarting T3 does not change it"
+
+    Scenario: A user manager whose controllers cannot be read is taken to lack it
+      Given reading the controllers of the user manager of user 1000 fails
+      When the protection of the T3 listener on port 3773 is measured
+      Then the summary of the check is "T3_PROTECTION_ESCAPED io"
+      And the remedy of the check contains "--maintenance-reboot"
+
+    Scenario: With the io controller in the user manager, a missing io reserve is for fleet-sync to declare
+      A reboot would change nothing: the user manager has the controller and
+      the unit T3 serves from was not given its weight.
+      Given reading the controllers of the user manager of user 1000 prints cpu io memory pids
+      When the protection of the T3 listener on port 3773 is measured
+      Then the check fails
+      And the summary of the check is "T3_PROTECTION_ESCAPED io"
+      And the remedy of the check contains "Run devfleet fleet-sync on this worker"
+      And the remedy of the check does not contain "--maintenance-reboot"
+
+  Rule: A listener that is not there has no reserve to measure
+    While T3 is stopped or restarting nothing listens on its port. That is
+    not a listener that left its unit, and it is not reported as one.
+
+    Scenario Outline: <what happens> leaves the protection unobserved
+      Given the command "ss -Hltnp sport = 3773" <answer>
+      And the command "cat /proc/42/cgroup" fails
+      When the protection of the T3 listener on port 3773 is measured
+      Then the check fails
+      And the summary of the check is "T3_PROTECTION_UNOBSERVED"
+      And the remedy of the check contains "T3 is stopped or restarting"
+
+      Examples:
+        | what happens                              | answer                       |
+        | Nothing listening on the T3 port          | succeeds                     |
+        | Sockets that cannot be listed             | fails                        |
+        | A listener that ends while it is measured | prints users:(("t3",pid=42)) |
 
   Scenario Outline: The desktop renderer subgroup warns above its memory budget
     Given these commands answer:
