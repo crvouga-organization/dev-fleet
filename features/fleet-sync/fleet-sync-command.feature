@@ -104,3 +104,6 @@ Feature: devfleet fleet-sync refuses before it changes anything
         | fleet-sync --allow-unmerged --only accounts |
         | fleet-sync --allow-mise-downgrade --schedule enable |
         | fleet-sync --allow-mise-downgrade --only accounts |
+        | fleet-sync --measure-mise |
+        | fleet-sync --measure-mise --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run |
+        | fleet-sync --measure-mise --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --allow-mise-downgrade |

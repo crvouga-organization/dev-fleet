@@ -232,6 +232,10 @@ function registerSync({ program, defaults, complete }: Registration) {
       'Install the mise the revision pins on machines that run a newer one; without it a newer mise is kept, and a revision whose bootstrap would replace it unasked is refused before anything changes'
     )
     .option(
+      '--measure-mise',
+      'Read-only, on the manager: only answer whether the bootstrap of --revision would replace a newer mise on the manager or on a worker the request selects (--node); a worker that does not answer is a refusal too'
+    )
+    .option(
       '--canary <id>',
       'The worker that proves a new revision first when it is reachable; defaults to canary in fleet.json, then the first worker'
     )

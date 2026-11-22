@@ -30,7 +30,7 @@ Feature: fleet-sync started on a worker is handed to the manager
         | fleet-manager-run                        |
         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
         | --json                                   |
-      But what the manager is asked to run does not contain "devfleet"
+      And what the manager is asked to run names "exec" directly followed by "sh"
 
     Scenario: Without a revision there is nothing to pin, so the manager's installed launcher runs
       Given the run script tracked at the revision is:
@@ -77,6 +77,7 @@ Feature: fleet-sync started on a worker is handed to the manager
         | --force                | --maintenance-reboot --force                | --maintenance-reboot --force                                            |
         | --json                 | --json                                      | --json                                                                  |
         | --maintenance-reboot   | --maintenance-reboot                        | --maintenance-reboot                                                    |
+        | --measure-mise         | --measure-mise                              | nothing: it is refused on a worker, whose hand-off asks the manager by itself |
         | --node                 | --node w1 --node w2                         | --node w1 --node w2                                                     |
         | --non-interactive      | --non-interactive                           | --non-interactive                                                       |
         | --only                 | --only accounts                             | --only accounts                                                         |
@@ -171,13 +172,20 @@ Feature: fleet-sync started on a worker is handed to the manager
 
     Scenario: The mise guard runs after the question about the default branch and before the run script
       A revision whose bootstrap is from before the rule that keeps a newer
-      mise would replace the manager's with the older one it pins.
+      mise would replace a newer one with the older one it pins: the
+      manager's, which the guard compares itself, or a worker's, which it
+      asks the devfleet installed on the manager to measure.
       When a worker prepares to hand "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then what the manager is asked to run contains:
         | $HOME/.local/bin/mise                    |
+        | devfleet fleet-sync --measure-mise       |
         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
       And what the manager is asked to run names "fleet-revision-guard" before "fleet-mise-guard"
       And what the manager is asked to run names "fleet-mise-guard" before "fleet-manager-run"
+
+    Scenario: The mise guard is given the workers the request selects, so the same machines are measured
+      When a worker prepares to hand "fleet-sync --node worker-one --node worker-two --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      Then the mise guard on the manager is given exactly "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --node worker-one --node worker-two --json"
 
     Scenario: --allow-mise-downgrade skips the mise guard, and the manager is told rather than given a flag
       The run on the manager is the revision's own code, which may be older
@@ -206,6 +214,41 @@ Feature: fleet-sync started on a worker is handed to the manager
         | code     | FLEET_MISE_DOWNGRADE                     |
         | revision | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
       And the report mentions "--allow-mise-downgrade"
+
+    Scenario: A mise guard that exits with 68 is reported as FLEET_MISE_UNMEASURED, and nothing ran
+      The devfleet installed on the manager could not say which mise the
+      workers run: that is never a pass.
+      Given the manager answers the hand-off with exit code 68 and nothing
+      When "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
+      Then the command exits with 1
+      And the report has:
+        | code     | FLEET_MISE_UNMEASURED                    |
+        | revision | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
+      And the report mentions "the devfleet installed on the manager could not say which mise the workers run"
+      And the report mentions "--allow-mise-downgrade"
+
+    Scenario: What the manager's installed devfleet refused is reported as it is
+      The guard printed the refusal of the question and ended the hand-off:
+      the report names the machines.
+      Given the manager answers the hand-off with exit code 1 and:
+        """
+        {"version":1,"ok":false,"code":"FLEET_MISE_DOWNGRADE","error":"it would replace the newer one on worker-one (2026.11.11)"}
+        """
+      When "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
+      Then the command exits with 1
+      And the report has:
+        | code | FLEET_MISE_DOWNGRADE |
+      And the report mentions "worker-one (2026.11.11)"
+
+    Scenario: Asked on a worker, --measure-mise is refused and nothing is handed off
+      Only the manager reaches the workers; a fleet-sync started on a worker
+      has the manager asked by itself.
+      Given this machine is a worker, where no command is found
+      And a hand-off would fail the scenario
+      When fleet-sync is started with "--measure-mise --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --json"
+      Then the command exits with 1
+      And the report mentions "FLEET_NOT_MANAGER"
+      And the report mentions "--measure-mise is answered only on the manager"
 
     Scenario Outline: A guard that exits with <exit> is reported as <code>, and nothing ran
       Given the manager answers the hand-off with exit code <exit> and nothing

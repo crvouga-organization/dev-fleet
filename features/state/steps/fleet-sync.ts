@@ -2,7 +2,11 @@ import { expect } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { CommandOutcome } from '../../../src/cli/contracts';
-import { managerSync, type ManagerSync } from '../../../src/cli/fleet-sync';
+import {
+  managerSync,
+  miseAnswer,
+  type ManagerSync,
+} from '../../../src/cli/fleet-sync';
 import { parseDefinition } from '../../../src/definition';
 import { fleet, reloadFleet } from '../../../src/fleet-config';
 import { loadEnrollment } from '../../../src/state/enrollment';
@@ -213,6 +217,26 @@ Given(
   ),
   (world, verb: string, revision: string, flag: string | undefined) =>
     act(world, verb, () => run(world, { revision, ...allowing(flag) }))
+);
+When(
+  /^fleet-sync is asked only what revision "([a-f0-9]{40})" would do to mise$/,
+  (world, revision: string) =>
+    world.attempt(() => {
+      const manager = world.manager();
+      sync(world).enrollmentBefore = readDocument(
+        manager.database,
+        'enrollment'
+      );
+      return miseAnswer(
+        { revision, measureMise: true, json: true },
+        { workspace: '/no-checkout', config: STATE_ROSTER },
+        {
+          run: manager.run,
+          root: join(manager.home, 'manager'),
+          home: manager.home,
+        }
+      );
+    })
 );
 When(
   /^fleet-sync previews revision "([a-f0-9]{40})"$/,
