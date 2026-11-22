@@ -65,6 +65,12 @@ Feature: A worker's disk and memory lines scale with the machine
     recommendation: T3 Code has no limit on the sessions it starts, so nothing
     refuses the next one, and the check says so instead of implying a limit.
 
+    What runs is read from the scopes T3 Code starts its agents in. A terminal
+    a person opened and a preview browser get such a scope too and are no
+    agent, so the capacity probe leaves them out. Codex and OpenCode serve all
+    their sessions from one process, so the check counts that process and
+    says so, and names no number of sessions for it.
+
     Scenario Outline: A worker with <memory> MiB running <running> sessions <verdict>
       When a worker with <memory> MiB of memory runs <running> agent sessions
       Then the check "worker:agent-sessions" <verdict>
@@ -88,6 +94,7 @@ Feature: A worker's disk and memory lines scale with the machine
       their median and how many sessions the worker would support at it.
       When a worker with 60416 MiB of memory and no declared limit measures:
         | agentsessions     | 12   |
+        | agentshared       | 0    |
         | agentpeaks        | 11   |
         | agentpeakmedianmb | 795  |
         | agentpeakmaxmb    | 9422 |
@@ -97,6 +104,7 @@ Feature: A worker's disk and memory lines scale with the machine
     Scenario: A measured median above the estimate is reported the same way
       When a worker with 16384 MiB of memory and no declared limit measures:
         | agentsessions     | 2    |
+        | agentshared       | 0    |
         | agentpeaks        | 2    |
         | agentpeakmedianmb | 6000 |
         | agentpeakmaxmb    | 7000 |
@@ -106,6 +114,7 @@ Feature: A worker's disk and memory lines scale with the machine
     Scenario: A worker that runs no agent has nothing to hold the estimate against
       When a worker with 16384 MiB of memory and no declared limit measures:
         | agentsessions | 0 |
+        | agentshared   | 0 |
       Then the check "worker:agent-sessions" passes
       And the summary of the check "worker:agent-sessions" does not mention "Measured"
 
@@ -117,6 +126,7 @@ Feature: A worker's disk and memory lines scale with the machine
         memfree=60
         memtotalmb=8192
         agentsessions=1
+        agentshared=0
         swap=0
         diskmb=30000
         disktotalmb=40960
@@ -125,6 +135,72 @@ Feature: A worker's disk and memory lines scale with the machine
       Then the check "worker:agent-sessions" passes
       And the summary of the check "worker:agent-sessions" mentions "1 agent sessions running; the memory policy supports 1 at once"
       And the check "worker:capacity:disk" passes
+
+    Scenario: A process Codex or OpenCode shares is counted as that, not as one session
+      Nothing on the worker says how many sessions such a process serves.
+      When a worker with 60416 MiB of memory and no declared limit measures:
+        | agentsessions | 6 |
+        | agentshared   | 2 |
+      Then the check "worker:agent-sessions" passes
+      And the summary of the check "worker:agent-sessions" mentions "6 agent processes running: 4 agent sessions, and 2 that Codex or OpenCode serves all its sessions from, however many those are; the memory policy supports 11 at once on 60416 MiB"
+
+    Scenario: More processes than supported warns, and still names the shared ones
+      When a worker with 8192 MiB of memory and no declared limit measures:
+        | agentsessions | 3 |
+        | agentshared   | 1 |
+      Then the check "worker:agent-sessions" warns
+      And the summary of the check "worker:agent-sessions" mentions "AGENTS_OVER_CAPACITY: 3 agent processes running: 2 agent sessions, and 1 that Codex or OpenCode serves all its sessions from"
+
+    Scenario: A count from an older capacity probe says what it holds
+      While a revision rolls out, a reader can meet a probe from before
+      terminals and preview browsers were left out. It prints no
+      "agentshared", and its count is reported as what it is.
+      Given every command prints:
+        """
+        ncpu=2
+        load=0.2
+        memfree=60
+        memtotalmb=60416
+        agentsessions=7
+        agentscopes=6
+        swap=0
+        diskmb=30000
+        disktotalmb=40960
+        """
+      When the capacity of the worker is checked
+      Then the check "worker:agent-sessions" passes
+      And the summary of the check "worker:agent-sessions" mentions "7 agent sessions running, as counted by an older capacity probe: each open terminal and preview browser is among them, and all the sessions of Codex or of OpenCode are one; the memory policy supports 11 at once"
+
+    @linux
+    Scenario: The capacity probe counts agents, and leaves terminals and preview browsers out
+      T3 Code starts a terminal, and the service OpenCode's sessions share,
+      beside the slice it owns, and everything else inside it. An older
+      reader takes "agentsessions" as it always did and ignores the rest.
+      Given T3 Code runs these scopes on a worker:
+        | slice  | scope                                  | peak MiB |
+        | beside | t3code-terminal-9784d547.scope         | 40       |
+        | beside | t3code-opencode-service-0c1d2e3f.scope | 300      |
+        | owned  | t3code-claude-643bed65.scope           | 700      |
+        | owned  | t3code-claude-bc65c965.scope           | 900      |
+        | owned  | t3code-pi-9a6350f2.scope               | 500      |
+        | owned  | t3code-codex-1b2c3d4e.scope            | 1200     |
+        | owned  | t3code-preview-browser-5f6a7b8c.scope  | 9000     |
+      When the capacity probe reads that worker
+      Then the capacity probe prints these lines:
+        | agentsessions=5       |
+        | agentshared=2         |
+        | agentscopes=5         |
+        | agentpeaks=5          |
+        | agentpeakmedianmb=700 |
+        | agentpeakmaxmb=1200   |
+
+    @linux
+    Scenario: A worker where T3 Code has started nothing runs no agent
+      Given T3 Code runs no scope on a worker
+      When the capacity probe reads that worker
+      Then the capacity probe prints these lines:
+        | agentsessions=0 |
+        | agentshared=0   |
 
   Rule: A declared limit on agent sessions is measured, and one the worker does not hold fails
 
@@ -137,6 +213,7 @@ Feature: A worker's disk and memory lines scale with the machine
     Scenario: A worker under its declared limit says what refuses the next session
       When a worker with 60416 MiB of memory and a declared limit of 16 agent sessions measures:
         | agentsessions  | 12 |
+        | agentshared    | 0  |
         | agentscopes    | 11 |
         | agentlimitunit | 18 |
         | agentlimitheld | 18 |
@@ -148,6 +225,7 @@ Feature: A worker's disk and memory lines scale with the machine
     Scenario: A worker at its declared limit says how a refusal looks in T3
       When a worker with 60416 MiB of memory and a declared limit of 4 agent sessions measures:
         | agentsessions  | 4 |
+        | agentshared    | 0 |
         | agentscopes    | 4 |
         | agentlimitunit | 6 |
         | agentlimitheld | 6 |
@@ -159,6 +237,7 @@ Feature: A worker's disk and memory lines scale with the machine
       for the kernel to hold yet.
       When a worker with 16384 MiB of memory and a declared limit of 4 agent sessions measures:
         | agentsessions  | 0 |
+        | agentshared    | 0 |
         | agentlimitunit | 6 |
       Then the check "worker:agent-sessions" passes
       And the summary of the check "worker:agent-sessions" mentions "The worker refuses a session above its declared limit of 4; 0 count toward it."
@@ -166,6 +245,7 @@ Feature: A worker's disk and memory lines scale with the machine
     Scenario Outline: A declared limit the worker does not hold fails: <reason>
       When a worker with 16384 MiB of memory and a declared limit of 4 agent sessions measures:
         | agentsessions  | 2        |
+        | agentshared    | 0        |
         | agentscopes    | <scopes> |
         | agentlimitunit | <unit>   |
         | agentlimitheld | <held>   |

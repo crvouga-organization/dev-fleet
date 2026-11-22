@@ -66,6 +66,7 @@ const LIMIT_INACTIVE = 'AGENT_SESSION_LIMIT_INACTIVE';
 export type SessionSample = Pick<
   HealthSample,
   | 'agentSessions'
+  | 'agentShared'
   | 'agentScopes'
   | 'agentLimitHeld'
   | 'agentLimitUnit'
@@ -106,8 +107,30 @@ function unenforced(limit: number, sample: SessionSample): string | undefined {
   return undefined;
 }
 
+/** What was counted, in the words of what it is.
+ *
+ * T3 Code starts one process for each session of most agents, and one for
+ * all the sessions of Codex and of OpenCode. The cgroup tree shows processes,
+ * so the shared ones are named as that and no number of sessions is made up
+ * for them. A probe that prints no `agentshared` is an older one, which also
+ * counted each terminal and preview browser.
+ */
+function counted(sample: SessionSample): string {
+  const { agentSessions: running, agentShared: shared } = sample;
+  if (running === undefined)
+    return 'an unknown number of agent sessions running';
+  if (shared === undefined)
+    return `${running} agent sessions running, as counted by an older capacity probe: each open terminal and preview browser is among them, and all the sessions of Codex or of OpenCode are one`;
+  if (shared === 0) return `${running} agent sessions running`;
+  return `${running} agent processes running: ${running - shared} agent sessions, and ${shared} that Codex or OpenCode serves all its sessions from, however many those are`;
+}
+
 /** How many agent sessions this worker's memory policy supports, how many
  * run, and whether anything refuses the next one.
+ *
+ * What runs is counted in processes (see `counted`): a terminal or a preview
+ * browser is not one, and a process Codex or OpenCode shares among its
+ * sessions is one.
  *
  * The size of a session is an estimate (`sizing.agentSessionMiB`), so more
  * sessions than it supports only warns, and the check holds the estimate
@@ -129,7 +152,7 @@ export function sessionsCheck(
   const each = policy.sizing.agentSessionMiB + policy.sizing.agentBuildMiB;
   const over = running !== undefined && running > supported;
   const fault = limit === undefined ? undefined : unenforced(limit, sample);
-  const facts = `${running ?? 'an unknown number'} agent sessions running; the memory policy supports ${supported} at once on ${memoryMiB} MiB (an estimated ${each} MiB each).${fault === undefined ? admitted(limit, over, sample.agentScopes ?? 0) : ''}${measured(memoryMiB, sample)}`;
+  const facts = `${counted(sample)}; the memory policy supports ${supported} at once on ${memoryMiB} MiB (an estimated ${each} MiB each).${fault === undefined ? admitted(limit, over, sample.agentScopes ?? 0) : ''}${measured(memoryMiB, sample)}`;
   if (fault !== undefined)
     return {
       id: 'worker:agent-sessions',
