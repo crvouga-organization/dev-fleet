@@ -21,27 +21,51 @@ export async function planT3(paths: T3Paths, desired: Record<string, unknown>) {
     changes.push({ id, action });
     if (action !== 'conflict') next[id] = instance;
   }
-  for (const id of owned.filter((id) => !Object.hasOwn(desired, id))) {
+  const retired = owned.filter((id) => !Object.hasOwn(desired, id));
+  for (const id of retired) {
     changes.push({
       id,
       action: Object.hasOwn(current, id) ? 'delete' : 'unchanged',
     });
     delete next[id];
   }
-  const settingsChanged = canonical(next) !== canonical(current);
+  const kept = withoutPreferences(settings, retired);
+  const settingsChanged =
+    canonical(next) !== canonical(current) || kept !== settings;
   const state = ownership(paths.settings, Object.keys(desired));
   return {
     raw,
     stateRaw,
-    settings: settingsChanged
-      ? { ...settings, providerInstances: next }
-      : settings,
+    settings: settingsChanged ? { ...kept, providerInstances: next } : settings,
     state,
     settingsChanged,
     stateChanged: canonical(object(stateRaw)) !== canonical(state),
     changes,
     planHash: hash(
       canonical({ target: paths.settings, raw, stateRaw, desired })
+    ),
+  };
+}
+
+/** An instance the fleet removes takes what T3 was told to show for it
+ * along (src/t3/models.ts writes that for an account's instance).
+ */
+function withoutPreferences(
+  settings: Record<string, unknown>,
+  ids: string[]
+): Record<string, unknown> {
+  const preferences = settings['providerModelPreferences'];
+  if (
+    !preferences ||
+    typeof preferences !== 'object' ||
+    Array.isArray(preferences) ||
+    !ids.some((id) => Object.hasOwn(preferences, id))
+  )
+    return settings;
+  return {
+    ...settings,
+    providerModelPreferences: Object.fromEntries(
+      Object.entries(preferences).filter(([id]) => !ids.includes(id))
     ),
   };
 }

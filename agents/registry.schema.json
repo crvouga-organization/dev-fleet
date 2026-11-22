@@ -22,7 +22,7 @@
           "type": "object"
         },
         "accounts": {
-          "description": "Tools T3 offers once per signed-in proxy account. Accounts are never listed here: they are discovered from the proxy's model list. provider is the proxy credential type that serves the tool; models are preferred defaults (Claude: opus, sonnet, haiku).",
+          "description": "Tools T3 offers once per signed-in proxy account. Accounts are never listed here: they are discovered from the proxy's model list. provider is the proxy credential type that serves the tool; models are the preferred defaults in order: an account defaults to the first one it serves, and to the first model it serves by name when it serves none of them, which t3:models reports (Claude: opus, sonnet, haiku).",
           "type": "object",
           "additionalProperties": {
             "type": "object",

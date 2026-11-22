@@ -67,6 +67,12 @@ Feature: T3 provider instances are reconciled, never taken over
         | personal | update |
         | retired  | delete |
 
+    Scenario: A removed instance takes the models T3 was told to show for it along
+      What an instance shows is kept under its ID, apart from the instance.
+      Given T3's settings were edited to set "providerModelPreferences" to { "retired": { "hiddenModels": ["gpt-a"], "modelOrder": [] }, "unrelated": { "hiddenModels": ["gpt-b"], "modelOrder": [] } }
+      When the providers "personal" are applied
+      Then in T3's settings, "providerModelPreferences" is { "unrelated": { "hiddenModels": ["gpt-b"], "modelOrder": [] } }
+
     Scenario: With nothing declared any more, only what the fleet created is removed
       Given the providers "personal" have been applied
       When no providers are applied
