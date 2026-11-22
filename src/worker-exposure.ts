@@ -213,8 +213,7 @@ const REMEDY: Record<string, string> = {
     'The fleet firewall is not loaded: run devfleet fleet-sync, which applies ansible/ubuntu/tasks/firewall.yml. Until then every listener below is reachable from every network the worker is on.',
   WORKER_PUBLIC_SSH_UNDECLARED:
     'SSH is still open beyond the tailnet because fleet-sync could not prove the manager reaches the worker over the tailnet. Point the SSH alias of this worker at its tailnet name, then run devfleet fleet-sync; declare exposure.publicSsh only for break-glass access.',
-  WORKER_LISTENER_UNRESTRICTED:
-    'Bind the named service to 127.0.0.1 or the tailnet address, or declare its port in exposure.publicPorts of fleet.json. A fleet service on a public address is a fault of its unit: run devfleet fleet-sync. The T3 desktop app returns to loopback when it next starts; fleet-sync restarts it once it runs no agent turn.',
+  WORKER_LISTENER_UNRESTRICTED: `Bind the named service to 127.0.0.1 or the tailnet address, or declare its port in exposure.publicPorts of fleet.json. A fleet service on a public address is a fault of its unit: run devfleet fleet-sync. The T3 desktop app returns to loopback when it next starts; fleet-sync restarts it once it runs no agent turn, and ${policy.t3RestartMaxDeferralHours} hours after it first deferred the restart at the latest (t3:running-version reports the wait).`,
   WORKER_EXPOSURE_UNOBSERVED:
     'The listening sockets or the firewall could not be read with sudo -n; check worker:sudo, then rerun devfleet fleet-status --workers.',
 };

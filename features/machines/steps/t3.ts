@@ -298,16 +298,16 @@ interface Task {
 const ubuntu = resolve(import.meta.dir, '../../../ansible/ubuntu');
 const recoveryTasks = (): Task[] =>
   parse(readFileSync(join(ubuntu, 'tasks/recovery.yml'), 'utf8')) as Task[];
-/** The ExecStart of the recovery unit, as the role writes it. */
-const execStart = (): string => {
-  const unit = recoveryTasks().find((task) =>
+/** The recovery unit, as the role writes it. */
+const recoveryUnit = (): string =>
+  recoveryTasks().find((task) =>
     task['ansible.builtin.copy']?.dest.endsWith(
       'personal-worker-recovery.service'
     )
-  );
-  const line = /^ExecStart=(.*)$/m.exec(
-    unit?.['ansible.builtin.copy']?.content ?? ''
-  );
+  )?.['ansible.builtin.copy']?.content ?? '';
+/** The ExecStart of the recovery unit. */
+const execStart = (): string => {
+  const line = /^ExecStart=(.*)$/m.exec(recoveryUnit());
   if (!line?.[1]) throw new Error('The recovery unit has no ExecStart.');
   return line[1];
 };
@@ -374,3 +374,22 @@ When('the recovery unit the role declares is read', (world) => {
 Then('the recovery unit starts {string}', (world, command: string) => {
   expect(world.ran).toBe(command);
 });
+
+Then(
+  "the recovery unit sets {string} to the policy's {string}",
+  (_world, variable: string, key: string) => {
+    expect(recoveryUnit().split('\n')).toContain(
+      `Environment=${variable}={{ ${key} }}`
+    );
+  }
+);
+
+Then(
+  'the Ubuntu policy sets {string} to {int}',
+  (_world, key: string, value) => {
+    const policy = JSON.parse(
+      readFileSync(join(ubuntu, 'policy.json'), 'utf8')
+    ) as Record<string, unknown>;
+    expect(policy[key]).toBe(value);
+  }
+);
