@@ -114,6 +114,15 @@ Then(
   }
 );
 
+Then(
+  'the mise guard on the manager is given exactly {string}',
+  (world, text: string) => {
+    // Its words stand between its name and what follows a guard.
+    const given = /fleet-mise-guard(.*?)\|\| exit/s.exec(world.command.at(-1)!);
+    expect([...(given?.[1]?.match(/[\w.-]+/g) ?? [])]).toEqual(text.split(' '));
+  }
+);
+
 Then('the manager is asked for exactly {string}', (world, text: string) => {
   expect(world.forwarded).toEqual(text.split(' '));
 });

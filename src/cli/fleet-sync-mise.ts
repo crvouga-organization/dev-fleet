@@ -25,6 +25,9 @@ const MISE = '.local/bin/mise';
 
 const BOOTSTRAP = 'bootstrap/bootstrap.sh';
 
+/** What a worker without a mise answers when asked for its release. */
+const NO_MISE = 'none';
+
 /** Whether this run may replace mise with the older one its revision pins:
  * it was given --allow-mise-downgrade, or the run that started it was.
  */
@@ -71,25 +74,46 @@ function release(stdout: string): string | null {
   return /^(\d+(?:\.\d+){1,3})(?:\s|$)/.exec(stdout.trim())?.[1] ?? null;
 }
 
-/** Run on the manager before a handed-off revision's own run script, after
- * the ancestry guard: the same question `miseDowngrade` asks, about the
- * manager's mise, answered from the manager's own copy of the source
- * repository. A hand-off cannot measure the workers. `$1` is the revision.
+/** The flag that makes fleet-sync answer the question and change nothing.
+ * A devfleet from before the flag refuses it, which is how the guard of a
+ * hand-off tells that the manager's installed one cannot answer.
  */
-export const miseGuard = (exit: number): string =>
+export const MEASURE_MISE_FLAG = '--measure-mise';
+
+/** Run on the manager before a handed-off revision's own run script, after
+ * the ancestry guard. A revision whose bootstrap keeps a newer mise passes
+ * at once: read from the manager's own copy of the source repository, which
+ * fetches the revision when it is not there. For any other, the shell
+ * compares the manager's own mise with the pin (`downgrade`), then asks the
+ * manager's installed devfleet (the code the manager runs now, not the
+ * revision's) the question `miseDowngrade` answers, about the manager and
+ * every worker the request selects. Its refusal is printed and ends the
+ * hand-off; an installed devfleet that cannot answer (none, or one from
+ * before the question) ends it with `unmeasured`, never with a pass. `$1` is
+ * the revision; what follows it is given to the installed devfleet (--node,
+ * --json).
+ */
+export const miseGuard = (exit: {
+  downgrade: number;
+  unmeasured: number;
+}): string =>
   [
+    'revision=$1; shift',
     'source="$HOME/.local/share/personal/fleet/manager/source"',
-    `installed=$("$HOME/${MISE}" --version 2>/dev/null | awk '{print $1}')`,
-    '[ -n "$installed" ] || exit 0',
-    'git -C "$source" cat-file -e "$1^{commit}" 2>/dev/null || git -C "$source" fetch --quiet --no-tags origin "$1" >/dev/null 2>&1 || exit 0',
-    `bootstrap=$(git -C "$source" show "$1:${BOOTSTRAP}" 2>/dev/null) || exit 0`,
+    'git -C "$source" cat-file -e "$revision^{commit}" 2>/dev/null || git -C "$source" fetch --quiet --no-tags origin "$revision" >/dev/null 2>&1 || exit 0',
+    `bootstrap=$(git -C "$source" show "$revision:${BOOTSTRAP}" 2>/dev/null) || exit 0`,
     `case "$bootstrap" in *${KEEPS_NEWER_MISE}*) exit 0;; esac`,
-    'pin=$(git -C "$source" show "$1:mise.toml" 2>/dev/null | sed -n \'s/^min_version = "\\([0-9.]*\\)"$/\\1/p\' | head -n 1)',
-    '[ -n "$pin" ] || pin=$(printf \'%s\\n\' "$bootstrap" | sed -n \'s/^MISE_VERSION=\\([0-9.]*\\)$/\\1/p\' | head -n 1)',
-    `[ -n "$pin" ] || exit ${exit}`,
-    '[ "$installed" != "$pin" ] || exit 0',
-    'newest=$(printf \'%s\\n%s\\n\' "$pin" "$installed" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)',
-    `[ "$newest" != "$installed" ] || exit ${exit}`,
+    `installed=$("$HOME/${MISE}" --version 2>/dev/null | awk '{print $1}')`,
+    'if [ -n "$installed" ]; then',
+    '  pin=$(git -C "$source" show "$revision:mise.toml" 2>/dev/null | sed -n \'s/^min_version = "\\([0-9.]*\\)"$/\\1/p\' | head -n 1)',
+    '  [ -n "$pin" ] || pin=$(printf \'%s\\n\' "$bootstrap" | sed -n \'s/^MISE_VERSION=\\([0-9.]*\\)$/\\1/p\' | head -n 1)',
+    `  [ -n "$pin" ] || exit ${exit.downgrade}`,
+    '  newest=$(printf \'%s\\n%s\\n\' "$pin" "$installed" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)',
+    `  [ "$installed" = "$pin" ] || [ "$newest" != "$installed" ] || exit ${exit.downgrade}`,
+    'fi',
+    `answer=$(devfleet fleet-sync ${MEASURE_MISE_FLAG} --revision "$revision" "$@" 2>/dev/null) && exit 0`,
+    `case "$answer" in *FLEET_MISE_*) printf '%s\\n' "$answer"; exit 1;; esac`,
+    `exit ${exit.unmeasured}`,
   ].join('\n');
 
 /** The machines whose mise a revision's bootstrap would replace with an
@@ -100,6 +124,8 @@ export interface MiseDowngrade {
   pinned: string | null;
   /** Fleet ids and the release each machine runs now. */
   machines: { node: string; installed: string }[];
+  /** The workers that did not say which mise they run. */
+  unmeasured: string[];
 }
 
 export interface MeasuredMachines {
@@ -111,13 +137,20 @@ export interface MeasuredMachines {
   workers: Pick<FleetNode, 'id' | 'ssh'>[];
 }
 
+/** What a worker is asked over SSH: the release of its mise, or `none`
+ * where it has no mise to replace. Anything else is no answer.
+ */
+const WORKER_MISE = `if [ -x "$HOME/${MISE}" ]; then "$HOME/${MISE}" --version 2>/dev/null; else echo ${NO_MISE}; fi`;
+
 /** What a revision's own bootstrap would do to mise on the machines a run is
  * about to converge, asked before that bootstrap runs anywhere. Null when it
- * would replace no newer mise: its bootstrap keeps a newer one, or no
- * machine runs one. Read from the revision's own files in `source`, a
- * repository that holds it; a revision that cannot be read there is not
- * judged (the run stops for that reason by itself). A worker that does not
- * answer is not measured: it cannot be converged either.
+ * would replace no newer mise: its bootstrap keeps a newer one, or every
+ * machine answered and none runs one. Read from the revision's own files in
+ * `source`, a repository that holds it; a revision that cannot be read there
+ * is not judged (the run stops for that reason by itself). A worker that
+ * does not answer is `unmeasured`: it may wake before the revision's own
+ * code reaches it, and nothing else would stand between that bootstrap and
+ * its mise.
  */
 export async function miseDowngrade(
   target: { revision: string; source: string },
@@ -133,23 +166,40 @@ export async function miseDowngrade(
   const bootstrap = await show(BOOTSTRAP);
   if (bootstrap === null || bootstrap.includes(KEEPS_NEWER_MISE)) return null;
   const pinned = pinnedMise({ bootstrap, mise: await show('mise.toml') });
-  const measured = await Promise.all([
+  const [manager, ...workers] = await Promise.all([
     run([join(machines.home ?? homedir(), MISE), '--version'], {
       timeoutMs: 20_000,
-    }).then((result) => ({ node: machines.manager, result })),
+    }).then((result) => ({
+      node: machines.manager,
+      installed: result.ok ? release(result.stdout) : null,
+      answered: true,
+    })),
     ...machines.workers.map((worker) =>
-      run([...sshArgs(worker), `"$HOME/${MISE}" --version 2>/dev/null`], {
-        timeoutMs: 20_000,
-      }).then((result) => ({ node: worker.id, result }))
+      run([...sshArgs(worker), WORKER_MISE], { timeoutMs: 20_000 }).then(
+        (result) => {
+          const installed = result.ok ? release(result.stdout) : null;
+          return {
+            node: worker.id,
+            installed,
+            answered:
+              installed !== null ||
+              (result.ok && result.stdout.trim() === NO_MISE),
+          };
+        }
+      )
     ),
   ]);
-  const replaced = measured.flatMap(({ node, result }) => {
-    const installed = result.ok ? release(result.stdout) : null;
-    return installed && (pinned === null || newerMise(installed, pinned))
+  const replaced = [manager!, ...workers].flatMap(({ node, installed }) =>
+    installed && (pinned === null || newerMise(installed, pinned))
       ? [{ node, installed }]
-      : [];
-  });
-  return replaced.length ? { pinned, machines: replaced } : null;
+      : []
+  );
+  const unmeasured = workers
+    .filter((worker) => !worker.answered)
+    .map((worker) => worker.node);
+  return replaced.length || unmeasured.length
+    ? { pinned, machines: replaced, unmeasured }
+    : null;
 }
 
 /** The workers a run is about to converge: the enrolled ones the request
@@ -175,12 +225,23 @@ export async function workersToConverge(
   }
 }
 
-/** What the refusal says: which machines, which releases, and the two ways
- * on.
+/** The code of the refusal: a machine's newer mise would be replaced, or no
+ * machine is known to run one and a worker did not say.
+ */
+export function miseRefusalCode(
+  found: MiseDowngrade
+): 'FLEET_MISE_DOWNGRADE' | 'FLEET_MISE_UNMEASURED' {
+  return found.machines.length
+    ? 'FLEET_MISE_DOWNGRADE'
+    : 'FLEET_MISE_UNMEASURED';
+}
+
+/** What the refusal says: which machines, which releases, which workers did
+ * not answer, and the ways on.
  */
 export function miseDowngradeRemedy(
   revision: string,
-  { pinned, machines }: MiseDowngrade
+  { pinned, machines, unmeasured }: MiseDowngrade
 ): string {
   const running = machines
     .map(({ node, installed }) => `${node} (${installed})`)
@@ -188,5 +249,14 @@ export function miseDowngradeRemedy(
   const pins = pinned
     ? `pins mise ${pinned}`
     : 'pins a mise its files do not name';
-  return `Nothing was changed: revision ${revision} ${pins}, and its toolchain bootstrap is from before the rule that keeps a newer mise, so it would replace the newer one on ${running}. Every checkout on those machines whose mise.toml asks for a newer mise would then stop working. Converge to a revision whose bootstrap keeps a newer mise (any release since that rule), or pass --allow-mise-downgrade to install the older mise on purpose.`;
+  const silent = unmeasured.join(', ');
+  const start = `Nothing was changed: revision ${revision} ${pins}, and its toolchain bootstrap is from before the rule that keeps a newer mise`;
+  const later =
+    'Converge to a revision whose bootstrap keeps a newer mise (any release since that rule)';
+  if (!machines.length)
+    return `${start}, so it would replace a newer one, and ${silent} did not say which mise it runs: a worker that does not answer now may answer when that bootstrap reaches it. Every checkout there whose mise.toml asks for a newer mise would then stop working. ${later}; or bring ${silent} back and run this again, park it (devfleet fleet-node-park), or name the other workers with --node; or pass --allow-mise-downgrade to install the older mise on purpose.`;
+  const also = unmeasured.length
+    ? ` ${silent} did not say which mise it runs, and is not known to be safe either.`
+    : '';
+  return `${start}, so it would replace the newer one on ${running}. Every checkout on those machines whose mise.toml asks for a newer mise would then stop working.${also} ${later}, or pass --allow-mise-downgrade to install the older mise on purpose.`;
 }

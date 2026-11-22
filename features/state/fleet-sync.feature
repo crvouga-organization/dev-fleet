@@ -330,6 +330,26 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
       Then the command exits 1
       And the report contains "FLEET_MISE_DOWNGRADE"
 
+    Scenario: Asked only the question, fleet-sync gives the same refusal and records nothing
+      --measure-mise is how the guard of a hand-off asks the manager's
+      installed devfleet, before the revision's own run script starts there.
+      Given revision "cccccccccccccccccccccccccccccccccccccccc" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
+      When fleet-sync is asked only what revision "cccccccccccccccccccccccccccccccccccccccc" would do to mise
+      Then the command exits 1
+      And the report contains "FLEET_MISE_DOWNGRADE"
+      And the report contains "(2026.11.11)"
+      And the enrollment in the fleet state of the manager is what it was before the run
+
+    Scenario: Asked only the question about a revision that keeps a newer mise, fleet-sync says so and approves nothing
+      Given revision "cccccccccccccccccccccccccccccccccccccccc" pins mise "2026.10.24", and its toolchain bootstrap keeps a newer mise
+      When fleet-sync is asked only what revision "cccccccccccccccccccccccccccccccccccccccc" would do to mise
+      Then the command exits 0
+      And the report includes:
+        """
+        { "ok": true, "revision": "cccccccccccccccccccccccccccccccccccccccc", "miseDowngrade": null }
+        """
+      And the enrollment in the fleet state of the manager is what it was before the run
+
     Scenario: With --allow-mise-downgrade the rollback goes on
       Given revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
       When fleet-sync rolls back with --allow-mise-downgrade

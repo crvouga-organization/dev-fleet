@@ -25,21 +25,26 @@ if (Test-Path (Join-Path $LocalRoot 'mise.toml')) {
 }
 # mise is pinned where every other tool is: `min_version` in mise.toml, read
 # from the checkout because mise cannot read it before it exists.
-$MiseVersion = (Select-String -Path (Join-Path $WorkspaceDir 'mise.toml') -Pattern '^min_version = "(.*)"$' | Select-Object -First 1).Matches.Groups[1].Value
+$MiseVersion = (Select-String -Path (Join-Path $WorkspaceDir 'mise.toml') -Pattern '^min_version = "(.*)"$' | Select-Object -First 1 | ForEach-Object { $_.Matches[0].Groups[1].Value })
 if (-not $MiseVersion) { throw 'mise.toml does not pin mise.' }
 # min_version is a minimum: a newer mise satisfies this checkout's pin, and a
 # checkout whose pin is newer needs it. A newer mise is kept, and replaced with
 # the older pinned one only when -AllowMiseDowngrade asks for that.
 $Bin = "$HOME\.local\bin"
+$Mise = "$Bin\mise.exe"
+# Whether the mise of this machine stays: it is the pinned release already,
+# or a newer one nobody asked to replace.
 $KeepMise = $false
-if (Test-Path "$Bin\mise.exe") {
+if (Test-Path $Mise) {
   $InstalledMise = ''
   $Newer = $false
   try {
-    $InstalledMise = ((& "$Bin\mise.exe" --version) -split '\s+')[0]
+    $InstalledMise = ((& $Mise --version) -split '\s+')[0]
     $Newer = [version]$InstalledMise -gt [version]$MiseVersion
   } catch { $Newer = $false }
-  if ($Newer -and $AllowMiseDowngrade) {
+  if ($InstalledMise -eq $MiseVersion) {
+    $KeepMise = $true
+  } elseif ($Newer -and $AllowMiseDowngrade) {
     Write-Warning "TOOLCHAIN_DOWNGRADE: replacing mise $InstalledMise with the older $MiseVersion this checkout pins, as -AllowMiseDowngrade asks."
   } elseif ($Newer) {
     $KeepMise = $true
@@ -67,7 +72,8 @@ try {
   }
   $env:Path = "$Bin;$env:Path"
   Set-Location $WorkspaceDir
-  Invoke-Checked mise @('trust', $WorkspaceDir)
-  Invoke-Checked mise @('install', '--locked', 'bun')
-  Invoke-Checked mise @('exec', '--locked', 'bun', '--', 'bun', 'bootstrap/setup.ts')
+  # The mise of this machine by its path: never another one PATH finds first.
+  Invoke-Checked $Mise @('trust', $WorkspaceDir)
+  Invoke-Checked $Mise @('install', '--locked', 'bun')
+  Invoke-Checked $Mise @('exec', '--locked', 'bun', '--', 'bun', 'bootstrap/setup.ts')
 } finally { Remove-Item $Temp -Recurse -Force }

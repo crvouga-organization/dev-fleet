@@ -6,6 +6,7 @@ import {
   ALLOW_MISE_DOWNGRADE_ENV,
   miseDowngrade,
   miseDowngradeRemedy,
+  miseRefusalCode,
   type MiseDowngrade,
 } from '../../../src/cli/fleet-sync-mise';
 import type { Runner } from '../../../src/types';
@@ -108,16 +109,24 @@ Given('the machines run these mise releases:', (world, table: DataTable) => {
     asked(world).machines.set(row['machine']!, row['mise']!);
 });
 
-/** `mise --version` on a machine: its release, nothing where there is no
- * mise, a failed session where the machine does not answer.
+/** What a machine answers when asked for its mise: its release; where there
+ * is no mise, nothing on the manager (the command is not there) and `none`
+ * on a worker, which is asked in a shell; a failed session where the
+ * machine does not answer; and whatever else the scenario names, as it is.
  */
 function version(state: Asked, machine: string) {
   state.measured.push(machine);
   const mise = state.machines.get(machine) ?? 'no answer';
-  const ok = /^\d/.test(mise);
+  const worker = machine !== state.manager;
+  const ok = mise !== 'no answer' && (worker || mise !== 'none');
+  const released = /^\d/.test(mise);
   return {
     ok,
-    stdout: ok ? `${mise} linux-arm64 (2026-11-01)\n` : '',
+    stdout: !ok
+      ? ''
+      : released
+        ? `${mise} linux-arm64 (2026-11-01)\n`
+        : `${mise}\n`,
     stderr: '',
     reason: mise === 'no answer' ? ('timeout' as const) : ('exit' as const),
   };
@@ -164,19 +173,40 @@ const replaced = (table: DataTable) =>
 Then(
   'it would replace a newer mise than {string} on:',
   (world, pinned: string, table: DataTable) => {
-    expect(asked(world).found).toEqual({ pinned, machines: replaced(table) });
+    expect(asked(world).found).toMatchObject({
+      pinned,
+      machines: replaced(table),
+    });
   }
 );
 
 Then(
   'it would replace a mise the revision does not name on:',
   (world, table: DataTable) => {
-    expect(asked(world).found).toEqual({
+    expect(asked(world).found).toMatchObject({
       pinned: null,
       machines: replaced(table),
     });
   }
 );
+
+Then(
+  'no machine is known to run a newer mise than {string}',
+  (world, pinned: string) => {
+    expect(asked(world).found).toMatchObject({ pinned, machines: [] });
+  }
+);
+
+Then(
+  'these workers did not say which mise they run:',
+  (world, table: DataTable) => {
+    expect(asked(world).found?.unmeasured).toEqual(table.list());
+  }
+);
+
+Then('the run is refused with {string}', (world, code: string) => {
+  expect<string>(miseRefusalCode(asked(world).found!)).toBe(code);
+});
 
 Then(
   /^the manager's mise (would be replaced|is not at risk)$/,
@@ -232,16 +262,104 @@ Given('the manager has no mise', (world) => {
   rmSync(join(manager(world).home, '.local/bin/mise'));
 });
 
-When(
-  'the mise guard of a hand-off runs on the manager for the commit {string}',
-  (world, message: string) => {
-    const node = manager(world);
-    world.answer = Bun.spawnSync(
-      ['/bin/sh', '-c', MISE_GUARD, 'fleet-mise-guard', sha(node, message)],
-      { env: node.env }
-    ).exitCode;
+/** The devfleet installed on a manager: a stand-in on its PATH that records
+ * what it is asked, then does what the scenario says.
+ */
+function installDevfleet(world: FleetSyncWorld, answer: string): void {
+  const node = manager(world);
+  const installed = join(node.home, 'installed');
+  mkdirSync(installed, { recursive: true });
+  writeFileSync(
+    join(installed, 'devfleet'),
+    `#!/bin/sh\necho "devfleet $*" >> ${join(node.home, 'calls')}\n${answer}\n`
+  );
+  chmodSync(join(installed, 'devfleet'), 0o755);
+  node.env['PATH'] = `${installed}:/usr/bin:/bin`;
+}
+
+Given(
+  'the devfleet installed on the manager answers that no mise would be replaced',
+  (world) => {
+    installDevfleet(world, 'echo \'{"version":1,"ok":true}\'\nexit 0');
   }
 );
+
+Given(
+  'the devfleet installed on the manager refuses the question with:',
+  (world, report: string) => {
+    const node = manager(world);
+    writeFileSync(join(node.home, 'refusal'), `${report}\n`);
+    installDevfleet(world, `cat ${join(node.home, 'refusal')}\nexit 1`);
+  }
+);
+
+Given(
+  'the devfleet installed on the manager is from before the question',
+  (world) => {
+    // What a command line that does not know an option does with it.
+    installDevfleet(
+      world,
+      'echo "error: unknown option \'--measure-mise\'" >&2\nexit 1'
+    );
+  }
+);
+
+const printed = new WeakMap<FleetSyncWorld, string>();
+
+When(
+  /^the mise guard of a hand-off runs on the manager for the commit "([^"]*)"(?:, for a request with "([^"]*)")?$/,
+  (world, message: string, flags: string | undefined) => {
+    const node = manager(world);
+    node.before = node.calls().length;
+    const result = Bun.spawnSync(
+      [
+        '/bin/sh',
+        '-c',
+        MISE_GUARD,
+        'fleet-mise-guard',
+        sha(node, message),
+        ...(flags ? flags.split(' ') : []),
+      ],
+      { env: node.env }
+    );
+    world.answer = result.exitCode;
+    printed.set(world, result.stdout.toString());
+  }
+);
+
+const asks = (world: FleetSyncWorld): string[] => {
+  const node = manager(world);
+  return node
+    .calls()
+    .slice(node.before)
+    .split('\n')
+    .filter((line) => line.startsWith('devfleet '))
+    .map((line) => line.slice('devfleet '.length));
+};
+
+Then(
+  'the devfleet installed on the manager was asked {string}',
+  (world, command: string) => {
+    const node = manager(world);
+    expect(asks(world)).toEqual([
+      command.replace(/<([^>]+)>/g, (_all, message: string) =>
+        sha(node, message)
+      ),
+    ]);
+  }
+);
+
+Then('the devfleet installed on the manager was not asked', (world) => {
+  expect(asks(world)).toEqual([]);
+});
+
+Then('the guard prints:', (world, text: string) => {
+  expect(printed.get(world)).toBe(`${text}\n`);
+});
+
+Then('the guard prints nothing', (world) => {
+  expect(printed.get(world)).toBe('');
+});
 
 When(
   'the run script is started for the commit {string} with {string}, told that mise may be downgraded for the commit {string}',

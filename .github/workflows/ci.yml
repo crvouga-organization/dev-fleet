@@ -42,10 +42,14 @@ jobs:
       - run: bun run format
       - run: bun run tc
       - run: bun run lint
+      # The runner's own PowerShell runs bootstrap/bootstrap.ps1 (@pwsh in
+      # features/bootstrap): Windows PowerShell is the machine's there too,
+      # never a pinned tool. A runner without it fails instead of skipping.
       - run: mise exec python restic vault uv -- bun test
         env:
           DEVFLEET_TEST_VAULT: required
           DEVFLEET_TEST_ANSIBLE: required
+          DEVFLEET_TEST_PWSH: required
       - run: mise exec python restic -- bun run lint:cliproxy
       - run: mise exec python restic -- bun run test:cliproxy
   state:
@@ -140,6 +144,9 @@ jobs:
           install_args: uv
       - run: bun install --frozen-lockfile
       - run: bun test
+        env:
+          # The runner's PowerShell runs the Windows bootstrap here too.
+          DEVFLEET_TEST_PWSH: required
       - name: Converge the manager playbook, then prove a second run and a dry run change nothing
         run: |
           converge() {
