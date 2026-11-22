@@ -811,51 +811,6 @@ Then(
   }
 );
 
-When(
-  'the workflows that run in this repository by themselves are listed',
-  async (world) => {
-    // A workflow only another repository calls reports there.
-    world.found = (await files('.github/workflows/*.yml'))
-      .map((path) => parse(read(path)) as Workflow)
-      .filter((entry) =>
-        Object.keys(entry.on).some((event) => event !== 'workflow_call')
-      )
-      .map((entry) => entry.name);
-  }
-);
-
-Then(
-  'each is followed by the {string} workflow',
-  async (world, name: string) => {
-    const followed = (await workflow(name)).on['workflow_run']?.workflows ?? [];
-    expect(world.found.filter((entry) => entry !== name).sort()).toEqual(
-      [...followed].sort()
-    );
-  }
-);
-
-Then(
-  'on the hour its {string} job reads every workflow it follows',
-  (world, name: string) => {
-    // The matrix is the workflow that ended, or else this literal list.
-    const matrix = String(job(world, name).strategy?.matrix?.['workflow']);
-    const hourly = /fromJSON\('(\[[^']*\])'\)\s*\}\}$/.exec(matrix)?.[1];
-    expect(JSON.parse(hourly ?? '[]')).toEqual(
-      world.workflow?.on['workflow_run']?.workflows
-    );
-  }
-);
-
-Then(
-  'the {string} workflow follows no run of a pull request',
-  async (_world, name: string) => {
-    for (const entry of Object.values((await workflow(name)).jobs))
-      expect(entry.if).toContain(
-        "github.event.workflow_run.event != 'pull_request'"
-      );
-  }
-);
-
 Then(
   'its {string} job keeps {string} when it fails',
   (world, name: string, path: string) => {

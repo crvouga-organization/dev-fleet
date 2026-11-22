@@ -5,7 +5,7 @@ name: Pins
 # workers and the VM test then decide like for any other change. A push made
 # with the workflow's own token starts no CI, so this workflow starts CI on
 # the branch itself; its checks count for the pull request, and auto-merge.yml
-# merges it when they pass. With the PINS_TOKEN secret (a fine-grained token
+# has it merged when they pass. With the PINS_TOKEN secret (a fine-grained token
 # or an app's, with contents and pull requests write) the push starts CI as
 # any other does.
 on:
@@ -85,4 +85,8 @@ jobs:
             gh pr create --head "$branch" --label deps --title "chore(deps): $SUMMARY" \
               --body "Moves the $PIN pin, with every digest, to its newest release: $SUMMARY."
           fi
+          # A pull request opened with the workflow's own token starts no
+          # auto-merge.yml run, so auto-merge is enabled here.
+          gh pr merge --auto --squash "$branch" ||
+            echo "::warning::Auto-merge could not be enabled on $branch."
           if [ "$OWN_TOKEN" = true ]; then gh workflow run ci.yml --ref "$branch"; fi

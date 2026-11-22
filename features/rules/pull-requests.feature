@@ -1,7 +1,6 @@
 Feature: A pull request reaches a release with nobody attending
   Most changes are made by agents, many at once. A pull request is merged the
-  moment its checks pass, the merge is checked on main and released, and
-  whatever breaks on main says so in an issue an agent can pick up.
+  moment its checks pass, and the merge is checked on main and released.
 
   Scenario: One check stands for every job of a pull request
     The ruleset of main requires this one check, so a job that is added,
@@ -17,61 +16,45 @@ Feature: A pull request reaches a release with nobody attending
 
   Scenario: Adding a label to a pull request does not start its checks again
     Then the "CI" workflow runs on "pull_request" only when one is:
-      | opened      |
-      | synchronize |
-      | reopened    |
+      | opened           |
+      | synchronize      |
+      | reopened         |
+      | ready_for_review |
 
   Scenario: Every pull request from a branch of the repository merges itself
+    GitHub's native auto-merge is enabled when a pull request opens; nothing
+    polls for pull requests to merge.
     Then the "Auto-merge" workflow runs on "pull_request"
+    And the "Auto-merge" workflow runs on "pull_request" only when one is:
+      | opened           |
+      | reopened         |
+      | ready_for_review |
     And its "enable" job runs "gh pr merge --auto --squash"
-    And the "Auto-merge" workflow runs on "schedule"
-    And its "reconcile" job runs "gh pr merge --repo \"$REPO\" --auto --squash"
 
   Scenario: A merge that started no checks on main gets them, and its release
-    A merge made with a workflow's own token starts no workflow. The end of a
-    CI run (which is what merges a pull request) and every hour start CI on
-    main when its newest commit has no run. That run, started with the same
-    token, starts no release when it ends: every hour the release is started
-    when CI passed on the newest commit of main and no release ran for it.
-    Then the "Auto-merge" workflow runs on "workflow_run"
-    And the "Auto-merge" workflow runs on "schedule"
+    A merge made with a workflow's own token starts no workflow. Each pull
+    request that opens, and once a day, starts CI on main when its newest
+    commit has no run. That run, started with the same token, starts no
+    release when it ends, so its last job starts the release.
+    Then the "Catch up main" workflow runs on "schedule"
     And its "reconcile" job runs "gh workflow run ci.yml"
-    And its "reconcile" job runs "gh workflow run release.yml"
     And the "CI" workflow runs on "workflow_dispatch"
+    And the "CI" workflow runs on "pull_request"
+    And its "required" job runs "gh workflow run release.yml"
     And the "Release" workflow runs on "workflow_dispatch"
     And the "Release" workflow follows the "CI" workflow
 
-  Scenario: The issues a merged pull request fixes are closed, apart from a failing workflow's
+  Scenario: The issues a merged pull request fixes are closed
     A merge made with a workflow's own token does not close the issues its
-    pull request names with "Fixes". The issue of a failing workflow is closed
-    by the first passing run on main, not by the merge.
-    Then the "Auto-merge" workflow runs on "workflow_run"
-    And the "Auto-merge" workflow runs on "schedule"
+    pull request names with "Fixes".
+    Then the "Catch up main" workflow runs on "schedule"
     And its "reconcile" job runs "gh issue close"
     And its "reconcile" job runs "closingIssuesReferences"
-    And its "reconcile" job runs "ci-failure"
 
   Scenario: A pull request a workflow opens is checked like any other
     Then the "Pins" workflow runs on "schedule"
     And its "pin" job runs "gh workflow run ci.yml --ref \"$branch\""
-
-  Scenario: Every workflow that runs on main has an issue while it fails there
-    When the workflows that run in this repository by themselves are listed
-    Then there is at least one
-    And each is followed by the "Failure issues" workflow
-
-  Scenario: A run that starts no workflow when it ends still has its issue
-    A run started with a workflow's own token ends without starting the
-    Failure issues workflow, so every hour it reads the newest finished run
-    of each workflow it follows.
-    Then the "Failure issues" workflow runs on "schedule"
-    And on the hour its "track" job reads every workflow it follows
-
-  Scenario: The issue of a failing workflow is opened once, kept current and closed by the first passing run
-    When the "Open, update or close the issue of this workflow" step of the "Failure issues" workflow is read
-    Then it runs "gh issue close" before "gh issue create"
-    And it runs "gh issue create" before "gh issue edit"
-    And the "Failure issues" workflow follows no run of a pull request
+    And its "pin" job runs "gh pr merge --auto --squash"
 
   Scenario: A failed VM test keeps its evidence
     Then the "Ubuntu VM" workflow runs on "workflow_dispatch"

@@ -1,8 +1,8 @@
 name: CI
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
-  # By hand, by auto-merge.yml for a merge to main that started no run of its
+    types: [opened, synchronize, reopened, ready_for_review]
+  # By hand, by catch-up.yml for a merge to main that started no run of its
   # own, and by pins.yml for the pull request it opens.
   workflow_dispatch: {}
   push:
@@ -267,6 +267,9 @@ jobs:
     needs: [check, state, workflows, ansible, manager, fresh-box, agent-box]
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: write
     steps:
       - name: Every job passed
         env:
@@ -275,3 +278,15 @@ jobs:
           jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$RESULTS"
           jq -e 'all(.[]; .result == "success")' <<< "$RESULTS" > /dev/null ||
             { echo '::error::A job of this run did not pass.'; exit 1; }
+      # A run on main that a workflow dispatched with its own token (after a
+      # merge auto-merge.yml made) starts no workflow_run when it ends, so the
+      # release would never follow: start it here once every job passed. A
+      # push to main starts the release through its workflow_run instead.
+      - name: Start the release for a dispatched run on main
+        if: >-
+          github.event_name == 'workflow_dispatch' &&
+          github.ref_name == github.event.repository.default_branch &&
+          github.triggering_actor == 'github-actions[bot]'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF_NAME"
