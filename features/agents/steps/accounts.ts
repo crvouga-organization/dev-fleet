@@ -1,4 +1,7 @@
 import { expect } from 'bun:test';
+import { mkdtempSync, realpathSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   accountPrefix,
   accountsFrom,
@@ -28,6 +31,8 @@ const roster = part(() => ({
   prefix: undefined as string | undefined,
   relay: undefined as string | undefined,
   environment: {} as NodeJS.ProcessEnv,
+  /** The arguments a pinned launch adds to the agent's own. */
+  args: undefined as string[] | undefined,
 }));
 
 Given('the proxy lists these models:', (world, table: DataTable) => {
@@ -126,16 +131,47 @@ When(
       if (!state.relay) throw new Error('This launch was given no relay.');
       return { url: state.relay, stop: () => {} };
     };
-    await world.attempt(() =>
-      pinAccount(
-        state.environment,
-        select(machine, tool, 'proxy'),
-        { account, directory },
-        { relay, discover: async () => accountsFrom(state.models) }
-      )
-    );
+    await world.attempt(async () => {
+      state.args = (
+        await pinAccount(
+          state.environment,
+          select(machine, tool, 'proxy'),
+          { account, directory },
+          { relay, discover: async () => accountsFrom(state.models) }
+        )
+      ).args;
+    });
   }
 );
+
+When(
+  '{string} is launched on the machine {string} for the account {string}',
+  async (world, tool: string, machine: string, account: string) => {
+    const state = roster(world);
+    // Codex keeps a home per account beside its profile.
+    const root = realpathSync(mkdtempSync(join(tmpdir(), 'agents-launch-')));
+    world.defer(() => rmSync(root, { recursive: true, force: true }));
+    await world.attempt(async () => {
+      state.args = (
+        await pinAccount(
+          state.environment,
+          select(machine, tool, 'proxy'),
+          { account, directory: join(root, tool, 'proxy') },
+          {
+            relay: () => ({ url: state.relay!, stop: () => {} }),
+            discover: async () => accountsFrom(state.models),
+          }
+        )
+      ).args;
+    });
+  }
+);
+
+Then('it starts on the model {string}', (world, model: string) => {
+  expect(world.refusal).toBeUndefined();
+  const args = roster(world).args ?? [];
+  expect(args[args.indexOf(`model=${JSON.stringify(model)}`) - 1]).toBe('-c');
+});
 
 Then(
   'its environment sets {string} to {string}',

@@ -101,9 +101,16 @@ The repository runs Renovate daily with its tracked configuration. The Pins work
 | mise itself                              | The [Pins workflow](../.github/workflows/pins.yml): `bun bootstrap/pins.ts mise`, weekly      |
 | T3 Code (nightly)                        | The Pins workflow: `bun bootstrap/pins.ts t3`, weekly, every artifact hashed                  |
 | The tunnel image of the monitoring hub   | Renovate, by tag and digest (a custom manager in `renovate.json`)                             |
+| Tailscale on workers                     | Renovate, a release once it is 14 days old (a custom manager in `renovate.json`)              |
 | Beszel (hub image and agents)            | A person, because the agents' binary digests need the archives unpacked; `pins.ts` cannot yet |
 | Docker Desktop on the manager            | A person, because a person installs it and dev-fleet only measures the version                |
 | The Ubuntu snapshot and package versions | A person, because a new snapshot moves every package at once and each needs its exact version |
+
+Tailscale's pin is a minimum that workers pass by themselves: a worker takes a
+newer Tailscale through its own updates and keeps it, and `worker:package:tailscale`
+warns with `PACKAGE_NEWER_THAN_PIN` until the pin is raised. Renovate raises it
+only to a release that is 14 days old, because a worker still older than the
+pin stops with `TAILSCALE_UPGRADE_PENDING` and needs a person.
 
 The workflows never name the mise release: they install it through
 [`.github/actions/mise`](../.github/actions/mise/action.yml), which reads

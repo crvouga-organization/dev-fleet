@@ -61,7 +61,9 @@ Feature: A worker's disk and memory lines scale with the machine
 
     The memory user workloads may use (90%), less what T3 keeps for itself
     (1536 MiB), in sessions of 512 MiB plus a 4096 MiB build. The size of a
-    session is an estimate, so running more only warns.
+    session is an estimate, so running more only warns. The number is a
+    recommendation: T3 Code has no limit on the sessions it starts, so nothing
+    refuses the next one, and the check says so instead of implying a limit.
 
     Scenario Outline: A worker with <memory> MiB running <running> sessions <verdict>
       When a worker with <memory> MiB of memory runs <running> agent sessions
@@ -73,6 +75,12 @@ Feature: A worker's disk and memory lines scale with the machine
         | 8192   | 1       | passes  | 1 agent sessions running; the memory policy supports 1 at once on 8192 MiB (an estimated 4608 MiB each). |
         | 16384  | 2       | passes  | the memory policy supports 2 at once                                                                  |
         | 8192   | 6       | warns   | AGENTS_OVER_CAPACITY: 6 agent sessions running                                             |
+
+    Scenario: More sessions than supported says that nothing refuses the next one
+      When a worker with 60416 MiB of memory runs 12 agent sessions
+      Then the check "worker:agent-sessions" warns
+      And the summary of the check "worker:agent-sessions" mentions "AGENTS_OVER_CAPACITY: 12 agent sessions running; the memory policy supports 11 at once on 60416 MiB (an estimated 4608 MiB each). Nothing refuses a session above that number."
+      And the remedy of the check "worker:agent-sessions" mentions "a recommendation, not an admission limit: T3 Code has no limit on the sessions it starts"
 
     Scenario: The capacity probe of a worker reports its sessions
       Given every command prints:
