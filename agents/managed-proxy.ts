@@ -7,6 +7,7 @@ import { plan } from '../src/agents/converge';
 import { launchProfile } from '../src/agents/launch';
 import { AgentConfigurationError } from '../src/agents/errors';
 import { pinnedPath } from '../src/agents/toolchain';
+import { REFUSED_EXIT_CODE, admission, refusal } from '../src/agents/admission';
 
 const SYNC_HINT =
   'Run devfleet fleet-sync from a terminal to repair this machine.';
@@ -40,6 +41,22 @@ export async function runManagedProxy(
     }).exited;
     return;
   }
+  // Above the worker's declared limit on agent sessions, say so and stop:
+  // T3 reports only that the provider exited, with this in its server log.
+  const waiting = admission();
+  const refused = waiting && refusal(waiting);
+  if (refused) {
+    process.stderr.write(refused + '\n');
+    process.exitCode = REFUSED_EXIT_CODE;
+    return;
+  }
+  await startManaged(tool, args);
+}
+
+async function startManaged(
+  tool: Parameters<typeof runManagedProxy>[0],
+  args: string[]
+): Promise<void> {
   try {
     const selection = select(process.env['WS_AGENT_NODE'] ?? '', tool, 'proxy');
     const root = agentRoot(homedir(), currentPlatform().name);

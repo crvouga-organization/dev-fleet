@@ -12,7 +12,7 @@ import { workerHostChecks } from '../../../src/worker-host-checks';
 import { verifyUbuntuBoot } from '../../../src/platform/ubuntu-verify';
 import { sessionsCheck } from '../../../src/worker-capacity';
 import { threshold, thresholds } from '../../../src/worker-sizing';
-import { diskCheck } from '../../../src/machine-health';
+import { diskCheck, parseProbe } from '../../../src/machine-health';
 import {
   workerSelection,
   workerToolset,
@@ -193,9 +193,32 @@ Then(
 When(
   'a worker with {int} MiB of memory runs {int} agent sessions',
   (world, memory: number, running: number) => {
-    reported(world, [sessionsCheck(memory, running)]);
+    reported(world, [sessionsCheck(memory, { agentSessions: running })]);
   }
 );
+
+When(
+  'a worker with {int} MiB of memory and a declared limit of {int} agent sessions measures:',
+  (world, memory: number, limit: number, table: DataTable) => {
+    reported(world, [
+      sessionsCheck(memory, parseProbe(probeLines(table)), limit),
+    ]);
+  }
+);
+
+When(
+  'a worker with {int} MiB of memory and no declared limit measures:',
+  (world, memory: number, table: DataTable) => {
+    reported(world, [sessionsCheck(memory, parseProbe(probeLines(table)))]);
+  }
+);
+
+/** A table of what the capacity probe printed, as the lines it prints. */
+function probeLines(table: DataTable): string {
+  return Object.entries(table.rowsHash())
+    .map(([key, value]) => `${key}=${value}`)
+    .join('\n');
+}
 
 When(
   'a disk of {int} GiB has {int} MiB free',
