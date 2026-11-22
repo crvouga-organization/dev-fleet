@@ -86,6 +86,8 @@ export class RulesWorld extends World {
   tasks: Located[] = [];
   /** What the last "When … is read / searched" step found. */
   found: string[] = [];
+  /** Names the feature states are not codes, where one could stand. */
+  notCodes: string[] = [];
   searched = 0;
   conditions: unknown[] = [];
   failure: Error | undefined;
@@ -1309,51 +1311,107 @@ Then(
 
 // ── Runbooks ─────────────────────────────────────────────────────────────
 
-/** The last word of a failure code: what went wrong. */
-const FAILURE =
-  /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:FAILED|FAILING|REQUIRED|MISSING|MISMATCH|CONFLICT|UNVERIFIED|UNAVAILABLE|UNREACHABLE|INVALID|REJECTED|INCOMPLETE|STALE|DRIFT|PENDING|DENIED|TIMEOUT|FULL|UNSUPPORTED|LOCKED|OFFLINE|UNSCHEDULED|UNDECLARED|OVERRIDDEN|REFUSED|UNHEALTHY|BROKEN|CONTENDED|INTERRUPTED|UNSAFE|DIVERGED|BLOCKED|STOPPED|EXHAUSTED|INACTIVE|CHANGED|UNREADABLE|LIMIT|LIMITED|UNSERVED|UNOBSERVED|UNPROVISIONED|REPLACED|INSTALLED|RUNNING|ENABLED|POLICY|BUSY|FLOOR|ENROLLED|DISCONNECTED|PROTOCOL|DAEMON|RESPONSE|UNRESTRICTED|PREVIEW|ERROR|ROLE|HUB|MANAGER|CONVERGED|POWER|MINIMUM|DOWNGRADE|UNMERGED)$/;
+/** An upper-case name of two words or more: what a failure code looks like. */
+const NAME = '[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+';
 
-/** A code that opens a sentence: `CODE: what was found`, `CODE 3 logs`,
- * `CODE${measured}`. A check's summary and a refusal's message carry their
- * code this way, so whatever opens a string like this is a code whatever its
- * last word is, unless it is the name of an environment variable.
+/** Where a code stands in each kind of source. Nowhere is a code told from
+ * another upper-case name by its last word: a list of the words a code may
+ * end with leaves every code that ends otherwise without a runbook entry.
+ * A name that stands where a code stands is a code, unless the source reads
+ * it from the environment or the feature states that it is not one.
  */
-const OPENS_A_SENTENCE = /['"`]([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)(?=[:, (]|\$\{)/g;
-
-/** Environment variables a sentence of the source starts with. */
-const ENVIRONMENT = [
-  'DEVFLEET_CONFIG',
-  'DEVFLEET_STATE',
-  'MISE_GLOBAL_CONFIG_FILE',
+const POSITIONS: [pattern: string, where: RegExp[]][] = [
+  // TypeScript: a name that is a whole string (a check's summary, the
+  // message of a refusal, a member of a list of codes), and a name that
+  // opens a sentence: `CODE: what was found`, `CODE 3 logs`,
+  // `CODE${measured}`.
+  ...['src/**/*.ts', 'bootstrap/*.ts'].map((pattern): [string, RegExp[]] => [
+    pattern,
+    [
+      new RegExp(`['"\`](${NAME})['"\`]`, 'g'),
+      new RegExp(`['"\`](${NAME})(?=[:, (]|\\$\\{)`, 'g'),
+    ],
+  ]),
+  // Shell: what a phase dies with, the code a bootstrap starts out with, and
+  // a name that opens what a script says.
+  ...['bootstrap/*.sh', 'bootstrap/*.ps1', 'ansible/**/*.sh'].map(
+    (pattern): [string, RegExp[]] => [
+      pattern,
+      [
+        new RegExp(`\\b(?:die|apt_failure) (${NAME})\\b`, 'g'),
+        new RegExp(`\\bfailure_code=(${NAME})\\b`, 'g'),
+        new RegExp(`['"](${NAME})(?=['":, (])`, 'g'),
+      ],
+    ]
+  ),
+  // The proxy's part of a fleet-sync: each phase it reports becomes a check
+  // whose summary is the code of the phase (src/proxy-converge.ts).
+  [
+    'cliproxy/scripts/fleet_sync.py',
+    [new RegExp(`\\bphase\\(['"](${NAME})['"]`, 'g')],
+  ],
+  // A script Ansible installs: the name that opens a line it prints.
+  ['ansible/**/*.py', [new RegExp(`\\bprint\\(f?['"](${NAME})\\b`, 'g')]],
+  // Ansible: the code a message starts with, and the code a task names.
+  [
+    'ansible/**/*.yml',
+    [
+      new RegExp(`\\b(?:fail_msg|msg):\\s*['"]?(${NAME})\\b`, 'g'),
+      new RegExp(`\\((${NAME})[;)]`, 'g'),
+    ],
+  ],
+  // A workflow a fleet's repository calls: the code its error starts with.
+  ['.github/workflows/*.yml', [new RegExp(`::error::(${NAME})\\b`, 'g')]],
 ];
 
-async function failureCodes(): Promise<string[]> {
-  const codes = new Set<string>();
+/** How TypeScript reads an environment variable: `env['NAME']`, `env.NAME`,
+ * or a constant whose own name ends in `_ENV`. A name read this way anywhere
+ * in the source is a variable wherever else it stands.
+ */
+const READ_FROM_THE_ENVIRONMENT = [
+  new RegExp(`\\benv\\[['"](${NAME})['"]\\]`, 'g'),
+  new RegExp(`\\benv\\.(${NAME})\\b`, 'g'),
+  new RegExp(`_ENV = ['"](${NAME})['"]`, 'g'),
+];
+
+/** The source without the lines that are only a comment: nothing reports a
+ * name a comment quotes. */
+const uncommented = (path: string): string => {
+  const comment = path.endsWith('.ts') ? /^\s*(?:\/\/|\/\*|\*)/ : /^\s*#/;
+  return read(path)
+    .split('\n')
+    .filter((line) => !comment.test(line))
+    .join('\n');
+};
+
+/** Every name that stands where a code stands, and is not read from the
+ * environment. */
+async function namesWhereACodeStands(): Promise<string[]> {
+  const variables = new Set<string>();
   for (const pattern of ['src/**/*.ts', 'bootstrap/*.ts'])
     for (const path of await files(pattern))
-      for (const match of read(path).matchAll(OPENS_A_SENTENCE))
-        if (!ENVIRONMENT.includes(match[1]!)) codes.add(match[1]!);
-  const sources: [string, RegExp][] = [
-    ['src/**/*.ts', /['"`]([A-Z][A-Z0-9_]+)['"`]/g],
-    ['bootstrap/*.ts', /['"`]([A-Z][A-Z0-9_]+)['"`]/g],
-    ['bootstrap/*.sh', /\bdie ([A-Z][A-Z0-9_]+)/g],
-    ['ansible/**/*.sh', /\bdie ([A-Z][A-Z0-9_]+)/g],
-    ['ansible/**/*.yml', /(?:fail_msg:\s*['"]?|\()([A-Z][A-Z0-9_]+)[;)]/g],
-  ];
-  for (const [pattern, code] of sources)
-    for (const path of await files(pattern))
-      for (const match of read(path).matchAll(code))
-        if (
-          FAILURE.test(match[1]!) ||
-          [
-            'AGENTS_OVER_CAPACITY',
-            'T3_PROTECTION_ESCAPED',
-            'T3_RENDERERS_HIGH',
-          ].includes(match[1]!)
-        )
-          codes.add(match[1]!);
-  return [...codes].sort();
+      for (const reads of READ_FROM_THE_ENVIRONMENT)
+        for (const match of uncommented(path).matchAll(reads))
+          variables.add(match[1]!);
+  const names = new Set<string>();
+  for (const [pattern, where] of POSITIONS)
+    for (const path of await files(pattern)) {
+      // The scenarios of an Ansible play are not installed on a machine.
+      if (path.includes('/tests/')) continue;
+      const text = uncommented(path);
+      for (const position of where)
+        for (const match of text.matchAll(position))
+          if (!variables.has(match[1]!)) names.add(match[1]!);
+    }
+  return [...names].sort();
 }
+
+Given(
+  'these names stand where a code stands and are not codes:',
+  (world, table: DataTable) => {
+    world.notCodes = table.hashes().map((row) => row['name']!);
+  }
+);
 
 const entries = (path: string): string[] =>
   [...read(path).matchAll(/^- `([A-Z][A-Z0-9_]+)`:/gm)].map(
@@ -1361,7 +1419,24 @@ const entries = (path: string): string[] =>
   );
 
 When('the failure codes of the source are collected', async (world) => {
-  world.found = await failureCodes();
+  const stated = new Set(world.notCodes);
+  world.found = (await namesWhereACodeStands()).filter(
+    (name) => !stated.has(name)
+  );
+});
+
+When(
+  'the names that stand where a code stands are collected',
+  async (world) => {
+    world.found = await namesWhereACodeStands();
+  }
+);
+
+Then('each name stated not to be a code is one of them', (world) => {
+  expect(world.notCodes.length).toBeGreaterThan(0);
+  expect(world.notCodes.filter((name) => !world.found.includes(name))).toEqual(
+    []
+  );
 });
 
 Then('there are more than {int} of them', (world, count: number) => {
