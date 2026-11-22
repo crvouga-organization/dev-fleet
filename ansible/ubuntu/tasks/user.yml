@@ -38,6 +38,36 @@
   ansible.builtin.stat:
     path: /usr/share/glib-2.0/schemas/org.gnome.settings-daemon.plugins.power.gschema.xml
   register: gnome_power_schema
+- name: Check whether the update notifier schema is installed
+  ansible.builtin.stat:
+    path: /usr/share/glib-2.0/schemas/com.ubuntu.update-notifier.gschema.xml
+  register: update_notifier_schema
+# Nobody reads a worker's screen. GNOME keeps every notification a command
+# without a desktop entry sends, one list entry per process and with no cap,
+# for as long as the session lives. A hidden entry named after notify-send
+# makes those one application, whose notifications are disabled below.
+- name: Create the local applications directory
+  ansible.builtin.file:
+    path: /usr/local/share/applications
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  when: gnome_schema.stat.exists
+- name: Group command-line notifications under one hidden application
+  ansible.builtin.copy:
+    dest: /usr/local/share/applications/notify-send.desktop
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      # Managed by personal fleet-sync: ansible/ubuntu/tasks/user.yml
+      [Desktop Entry]
+      Type=Application
+      Name=Command-line notifications
+      Exec=notify-send
+      NoDisplay=true
+  when: gnome_schema.stat.exists
 - name: Ensure user configuration directory exists
   ansible.builtin.file:
     path: '{{ development_home }}/.config'
@@ -61,9 +91,27 @@
   environment:
     HOME: '{{ development_home }}'
     XDG_CONFIG_HOME: '{{ development_home }}/.config'
-  loop: '{{ gnome_session_settings + (gnome_power_settings if gnome_power_schema.stat.exists else []) }}'
+  loop: '{{ gnome_session_settings + (gnome_power_settings if gnome_power_schema.stat.exists else []) + (update_notifier_settings if update_notifier_schema.stat.exists else []) }}'
   vars:
     gnome_session_settings:
+      - {
+          schema: org.gnome.desktop.notifications,
+          key: show-banners,
+          value: 'false',
+          observed: 'false',
+        }
+      - {
+          schema: org.gnome.desktop.notifications,
+          key: show-in-lock-screen,
+          value: 'false',
+          observed: 'false',
+        }
+      - {
+          schema: 'org.gnome.desktop.notifications.application:/org/gnome/desktop/notifications/application/notify-send/',
+          key: enable,
+          value: 'false',
+          observed: 'false',
+        }
       - {
           schema: org.gnome.desktop.screensaver,
           key: lock-enabled,
@@ -94,6 +142,27 @@
           key: idle-dim,
           value: 'false',
           observed: 'false',
+        }
+    # fleet-sync owns a worker's packages and reboots; prompts about them
+    # would wait for someone who never comes.
+    update_notifier_settings:
+      - {
+          schema: com.ubuntu.update-notifier,
+          key: no-show-notifications,
+          value: 'true',
+          observed: 'true',
+        }
+      - {
+          schema: com.ubuntu.update-notifier,
+          key: show-apport-crashes,
+          value: 'false',
+          observed: 'false',
+        }
+      - {
+          schema: com.ubuntu.update-notifier,
+          key: hide-reboot-notification,
+          value: 'true',
+          observed: 'true',
         }
   when: gnome_schema.stat.exists
   changed_when: false
