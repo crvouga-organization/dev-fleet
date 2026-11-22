@@ -1,6 +1,7 @@
 import { dirname, join } from 'node:path';
 import type { Check } from '../types';
 import { canonical, object, read, write } from './files';
+import { fleetJson } from '../fleet-config';
 
 /** What happens to one declared setting. `release` stops managing a key the
  * fleet no longer declares and leaves its value to the machine.
@@ -165,7 +166,7 @@ export async function profileCheck(
         status: 'warn',
         summary: 'T3_PROFILE_CONFLICT',
         ...remedy(
-          `These T3 settings were changed on this machine since dev-fleet last wrote them, or existed before they were declared, and were left as they are: ${conflicts.map((change) => change.key).join(', ')}. Put the value every machine should hold under t3.profile in fleet.json, or remove the setting on this machine, then run fleet-sync.`
+          `These T3 settings were changed on this machine since dev-fleet last wrote them, or existed before they were declared, and were left as they are: ${conflicts.map((change) => change.key).join(', ')}. Put the value every machine should hold under t3.profile in ${fleetJson()}, or remove the setting on this machine, then run fleet-sync.`
         ),
       };
     const pending = result.changes.filter(

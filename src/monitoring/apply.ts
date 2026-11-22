@@ -1,7 +1,7 @@
 import { runAnsibleWithReceipt } from '../platform/ansible-receipt';
 import { convergeManagerHub } from './manager-hub';
 import { resolve } from 'node:path';
-import { fleet } from '../fleet-config';
+import { fleet, fleetJson } from '../fleet-config';
 import { hubUrl, roleOf } from '../topology';
 import { record } from '../config';
 import { isRevision } from '../machine/state';
@@ -168,8 +168,9 @@ export function refusal(error: unknown): Check[] {
 const REFUSALS: Record<string, string> = {
   BESZEL_NOT_HUB:
     'The Beszel hub runs only on the manager. Workers run only the agent; converge the hub from the manager with fleet-sync.',
-  BESZEL_NOT_ENROLLED:
-    'Declare this machine in fleet.json (the manager or a worker) before enrolling monitoring.',
+  get BESZEL_NOT_ENROLLED() {
+    return `Declare this machine (the manager or a worker) in ${fleetJson()} before enrolling monitoring.`;
+  },
   BESZEL_SOURCE_MISMATCH:
     'The checkout is not the clean, expected revision. Rerun fleet-sync so the reviewed source is installed first.',
   BESZEL_HUB_MISMATCH:

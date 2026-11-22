@@ -3,6 +3,7 @@ import type { Check } from '../types';
 import { accountDriver, accountInstanceId, type Roster } from './accounts';
 import type { Account } from '../agents/accounts';
 import { object, read } from './files';
+import { fleetJson } from '../fleet-config';
 
 /** The models T3 offers for one instance: the catalogue T3 keeps for its
  * driver (userdata/model-manifest.json) and any custom models the instance
@@ -89,7 +90,7 @@ export async function modelsCheck(options: {
       status: 'warn',
       summary: 'T3_MODELS_MISMATCH',
       ...remedy(
-        `${[...problems].sort().join('; ')}. Serve the model on the CLI proxy, or remove it from t3.requiredModels in fleet.json; a model the proxy no longer serves fails when it is chosen in T3.`
+        `${[...problems].sort().join('; ')}. Serve the model on the CLI proxy, or remove it from t3.requiredModels in ${fleetJson()}; a model the proxy no longer serves fails when it is chosen in T3.`
       ),
     };
   return {
