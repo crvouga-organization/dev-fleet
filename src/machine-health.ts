@@ -13,9 +13,15 @@ export type HealthSample = {
   readonly diskTotalMb?: number;
   /** All memory, in MiB. */
   readonly memTotalMb?: number;
-  /** Agent sessions running now: T3's agent scopes. */
+  /** The agents running now: the scopes T3 starts its agents in. A probe
+   * that prints no `agentshared` also counted terminals and preview
+   * browsers. */
   readonly agentSessions?: number;
-  /** The agent scopes a declared limit counts: those in the slices T3 owns. */
+  /** How many of those are a process Codex or OpenCode serves all its
+   * sessions from. Absent from a probe older than the count above. */
+  readonly agentShared?: number;
+  /** The scopes a declared limit counts: those in the slices T3 owns, a
+   * preview browser among them. */
   readonly agentScopes?: number;
   /** The lowest limit the kernel holds on one of those slices; absent when
    * none exists or none is limited. */
@@ -46,6 +52,7 @@ const PROBE_KEYS = {
   disktotalmb: 'diskTotalMb',
   memtotalmb: 'memTotalMb',
   agentsessions: 'agentSessions',
+  agentshared: 'agentShared',
   agentscopes: 'agentScopes',
   agentlimitheld: 'agentLimitHeld',
   agentlimitunit: 'agentLimitUnit',

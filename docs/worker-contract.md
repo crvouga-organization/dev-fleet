@@ -145,6 +145,22 @@ on them, so nothing refuses the next session and the check says so. What is
 always enforced is memory: each agent and the agents together are capped, and
 the largest is stopped under sustained pressure.
 
+What runs is counted from the scopes T3 Code starts its agents in, which is
+not always one for each session:
+
+| Scope                                           | Counted as                                                                 |
+| ----------------------------------------------- | -------------------------------------------------------------------------- |
+| `t3code-claude-*` and every other agent         | One agent session                                                          |
+| `t3code-codex-*`, `t3code-opencode-*`           | One process that serves every session of that agent, however many they are |
+| `t3code-terminal-*`, `t3code-preview-browser-*` | Not counted: a terminal a person opened and a preview browser are no agent |
+
+Nothing on a worker says how many sessions a shared Codex or OpenCode process
+serves, so the check names those processes as what they are ("6 agent
+processes running: 4 agent sessions, and 2 that Codex or OpenCode serves all
+its sessions from") and compares the number of processes with the
+recommendation. A worker that runs many Codex or OpenCode sessions therefore
+runs more sessions than the check counts.
+
 The estimate cannot be right for every worker, so the check holds it against
 the agents running now: the median and the largest of their memory peaks (the
 kernel's `memory.peak` of each agent scope), how far the estimate is from that
@@ -162,9 +178,12 @@ installed and nothing is refused.
 ```
 
 What it counts is the scopes T3 Code starts agents in, in the slice it owns:
-one for each Claude session, and one shared by all the threads of Codex or of
-OpenCode. Terminals, and the scope T3 probes with when it starts, are in
-another slice and are never refused. A T3 that restarts resumes the sessions
+one for each Claude session, one shared by all the threads of Codex or of
+OpenCode, and one for a preview browser, which the kernel cannot tell from an
+agent. Terminals, the service OpenCode's sessions share, and the scope T3
+probes with when it starts, are in another slice and are never refused. So
+the number that counts toward a limit can differ from the number of agents
+the check reports running. A T3 that restarts resumes the sessions
 it ran, and those count like any other.
 
 Neither T3 Code nor systemd can count those scopes, so the kernel does. The
