@@ -1949,7 +1949,7 @@
     },
     {
       "id": "worker:agent-sessions",
-      "meaning": "How many agent sessions this worker runs, how many its memory policy supports at the estimated size of a session, and how that estimate compares with the agents running now; warns when more run than it supports. Nothing refuses a session unless the fleet configuration declares agentSessionLimit; a declared limit the worker does not hold fails.",
+      "meaning": "How many agent sessions this worker runs (a terminal or a preview browser is not one, and a process Codex or OpenCode serves all its sessions from is counted once and named as that), how many its memory policy supports at the estimated size of a session, and how that estimate compares with the agents running now; warns when more run than it supports. Nothing refuses a session unless the fleet configuration declares agentSessionLimit; a declared limit the worker does not hold fails.",
       "severity": "required",
       "repair": {
         "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
