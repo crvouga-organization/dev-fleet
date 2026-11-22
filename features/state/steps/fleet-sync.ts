@@ -48,7 +48,7 @@ const sync = scratch<{
  * but the ones a scenario names. Anything else Git is asked fails, as it
  * does where there is no checkout.
  */
-export function sourceGit(world: StateWorld, argv: string[]) {
+function git(world: StateWorld, argv: string[]) {
   const answer = (ok: boolean, stdout = '') => ({
     ok,
     stdout,
@@ -71,7 +71,7 @@ Given('fleet-sync runs on a manager with no worker enrolled', (world) => {
   const run: Runner = (argv, options) => {
     if (argv[0] === 'mise' || argv[0] === '/pinned/litestream')
       return world.litestream.run(argv, options);
-    if (argv[0] === 'git') return Promise.resolve(sourceGit(world, argv));
+    if (argv[0] === 'git') return Promise.resolve(git(world, argv));
     return Promise.resolve({
       ok: false,
       stdout: '',
@@ -134,7 +134,6 @@ function run(
     dryRun?: boolean;
     rollback?: boolean;
     allowUnmerged?: boolean;
-    node?: string[];
   }
 ): Promise<CommandOutcome> {
   const manager = world.manager();
@@ -159,11 +158,6 @@ Given(
     act(world, verb, () =>
       run(world, { revision, ...(allowed ? { allowUnmerged: true } : {}) })
     )
-);
-When(
-  /^fleet-sync runs for revision "([a-f0-9]{40})" on worker "([^"]+)" only$/,
-  (world, revision: string, worker: string) =>
-    world.attempt(() => run(world, { revision, node: [worker] }))
 );
 When(
   /^fleet-sync previews revision "([a-f0-9]{40})"$/,
