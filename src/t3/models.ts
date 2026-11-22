@@ -1,7 +1,7 @@
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { Check } from '../types';
-import { fleet } from '../fleet-config';
+import { fleet, fleetJson } from '../fleet-config';
 import {
   accountDriver,
   accountInstanceId,
@@ -205,7 +205,7 @@ export async function modelsCheck(options: ModelsOptions): Promise<Check> {
   if (problems.size)
     return warn(
       'T3_MODELS_MISMATCH',
-      `${[...problems].sort().join('; ')}. Serve the model on the CLI proxy, or stop asking for it: remove it from t3.requiredModels in fleet.json, choose another default in T3, or remove the custom model. A model the proxy does not serve for an account fails when it is chosen in T3.`
+      `${[...problems].sort().join('; ')}. Serve the model on the CLI proxy, or stop asking for it: remove it from t3.requiredModels in ${fleetJson()}, choose another default in T3, or remove the custom model. A model the proxy does not serve for an account fails when it is chosen in T3.`
     );
   if (result.changes.size && !options.apply)
     return warn(

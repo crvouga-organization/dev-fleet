@@ -73,7 +73,7 @@ export function agentGuide(release: Release) {
       roster:
         '--config PATH, PERSONAL_FLEET_CONFIG, closest ancestor .fleet.local.json, then the roster in the fleet state',
       definition:
-        'DEVFLEET_CONFIG, then the closest fleet.json in the working directory or above it (the operator’s project), then the configuration fleet-sync last applied from the fleet state (the devfleet CLI on the manager), then the copy fleet-sync installed at ~/.config/dev-fleet/fleet.json',
+        'DEVFLEET_CONFIG, then the closest fleet.json in the working directory or above it (the operator’s project), then the configuration fleet-sync last applied from the fleet state (the devfleet CLI on the manager), then the copy fleet-sync installed at ~/.config/dev-fleet/fleet.json. Never edit that copy: fleet-sync replaces it, and refuses with FLEET_CONFIGURATION_COPY_CHANGED when it was edited by hand',
       state:
         'DEVFLEET_STATE or ~/.local/share/dev-fleet/state: a local copy of the roster, the approved revision and the configuration last applied. The bucket named under "state" in the fleet configuration is the source of truth; its credentials are passed in DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY, or saved by devfleet fleet-state --init in ~/.config/dev-fleet/bucket.json for unattended runs. devfleet fleet-state --json compares the copies',
       revision:

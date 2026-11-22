@@ -364,6 +364,7 @@ Read `summary` and `remedy.action` of the failing check. The common ones:
 | `FLEET_REVISION_REQUIRED`                 | No revision to converge to. Run the installed package (`npx devfleet`), not a copy of its source.                             |
 | `FLEET_SOURCE_UNAVAILABLE`                | The revision could not be fetched from `source.repository`. Check the network and that the URL is right.                      |
 | `FLEET_STATE_DIVERGED`                    | This machine and the bucket hold different fleet states. `fleet-state --json` explains; never pick one without the human.     |
+| `FLEET_CONFIGURATION_COPY_CHANGED`        | `~/.config/dev-fleet/fleet.json` was edited by hand. The remedy says how to keep the edit or discard it; the human chooses.   |
 | `FLEET_MANAGER_LOCKED`                    | Another run holds the manager's lock. Wait for it; do not delete the lock while a run is alive.                               |
 | `FLEET_PLAN_STALE`                        | The plan changed after it was approved. Preview again.                                                                        |
 | `ssh:host-key`                            | Host key unknown or changed. The human verifies the fingerprint out of band; never disable checking.                          |

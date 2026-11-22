@@ -242,3 +242,4 @@ Feature: A worker proves it can do what agents do on it
       When the worker's Git is checked
       Then the check "worker:git-identity" warns
       And the summary of the check "worker:git-identity" mentions "GIT_IDENTITY_UNDECLARED"
+      And the remedy of the check "worker:git-identity" names the fleet.json this process reads, by its path

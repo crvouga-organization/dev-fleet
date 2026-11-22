@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { runAnsible } from './platform/ansible';
 import type { GitIdentity } from './definition';
 import type { Check, Runner } from './types';
+import { fleetJson } from './fleet-config';
 
 /** `ansible/github/git.yml` writes the declared identity and the GitHub
  * credential helper in the node's own Git configuration; the two checks
@@ -79,8 +80,7 @@ export async function gitIdentityCheck(
       status: 'warn',
       summary: 'GIT_IDENTITY_UNDECLARED',
       remedy: {
-        action:
-          'Declare git.name and git.email in fleet.json and rerun fleet-sync; until then commits on this node carry whatever author it happens to have.',
+        action: `Declare git.name and git.email in ${fleetJson()} and rerun fleet-sync; until then commits on this node carry whatever author it happens to have.`,
       },
     };
   const name = await effective(run, 'user.name');

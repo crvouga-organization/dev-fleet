@@ -293,6 +293,13 @@ names the first field that breaks a rule (`{code, path, expected, actual}`);
 `--ansible` also renders the Ansible inventory and syntax-checks every
 playbook with the pinned Ansible.
 
+Edit the `fleet.json` of your project, never the copy `fleet-sync` installs
+at `~/.config/dev-fleet/fleet.json` for launchers and scheduled jobs:
+`fleet-sync` replaces that copy, and refuses to run
+(`FLEET_CONFIGURATION_COPY_CHANGED`) rather than lose an edit made to it by
+hand. [docs/state.md](docs/state.md#day-to-day) says how to keep or discard
+one.
+
 | Block      | What it declares                                                    |
 | ---------- | ------------------------------------------------------------------- |
 | `source`   | The Git repository nodes accept code from (this one, or your fork)  |

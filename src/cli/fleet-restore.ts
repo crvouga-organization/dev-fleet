@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { parseDefinition, type FleetDefinition } from '../definition';
-import { definitionSource } from '../fleet-config';
+import { definitionSource, fleetJson } from '../fleet-config';
 import { managerHost } from '../platform/manager-host';
 import { makeReport, renderReport, reportExitCode } from '../report';
 import { runCommand } from '../runner';
@@ -88,7 +88,7 @@ async function prerequisites(
     check('restore:bucket', reached.bucket !== null, [
       'The bucket is named, with credentials for it.',
       'No bucket is configured.',
-      'Name it under "state" in fleet.json and pass DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY.',
+      `Name it under "state" in ${fleetJson(services.env, services.home)} and pass DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY.`,
     ]),
   ];
   if (reached.bucket) {

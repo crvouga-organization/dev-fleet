@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import type { FleetDefinition } from '../definition';
 import { tailscalePins, ubuntuRelease } from '../platform/ubuntu-release';
 import { FleetUsageError } from '../errors';
-import { fleet, secret } from '../fleet-config';
+import { fleet, secret, fleetJson } from '../fleet-config';
 import type { SecretsProvider } from '../secrets';
 import {
   controlRemedy,
@@ -161,7 +161,7 @@ async function seedAuthKey(
   const key = await services.secret('tailnet-auth-key');
   if (!key)
     throw new FleetUsageError(
-      'The secrets provider holds no tailnet-auth-key. Declare tailnet in fleet.json with the secret tailnet-admin so a key is minted per worker, or store a short-lived, single-use, tagged Tailscale auth key there first.'
+      `The secrets provider holds no tailnet-auth-key. Declare tailnet in ${fleetJson()} with the secret tailnet-admin so a key is minted per worker, or store a short-lived, single-use, tagged Tailscale auth key there first.`
     );
   return key;
 }

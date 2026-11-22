@@ -1,8 +1,10 @@
 import { expect } from 'bun:test';
+import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
   readFileSync,
+  rmSync,
   statSync,
   writeFileSync,
 } from 'node:fs';
@@ -112,6 +114,37 @@ Given(
     write(
       file(world, path, name),
       readFileSync(EXAMPLE, 'utf8').replaceAll(from, to)
+    );
+  }
+);
+
+Given(
+  phrase('"([^"]+)" on ', WHO, ' was deleted'),
+  (world, path: string, name: string | undefined) => {
+    rmSync(file(world, path, name));
+  }
+);
+
+Then(
+  phrase(
+    '"([^"]+)" on ',
+    WHO,
+    ' still holds the example fleet with "([^"]+)" renamed "([^"]+)"'
+  ),
+  (world, path: string, name: string | undefined, from: string, to: string) => {
+    expect(readFileSync(file(world, path, name), 'utf8')).toBe(
+      readFileSync(EXAMPLE, 'utf8').replaceAll(from, to)
+    );
+  }
+);
+
+Then(
+  phrase('"([^"]+)" on ', WHO, ' holds the SHA-256 of "([^"]+)"'),
+  (world, record: string, name: string | undefined, path: string) => {
+    expect(readFileSync(file(world, record, name), 'utf8')).toBe(
+      createHash('sha256')
+        .update(readFileSync(file(world, path, name)))
+        .digest('hex') + '\n'
     );
   }
 );
@@ -330,6 +363,28 @@ Then(
   phrase(STATE, ' holds the ', DOCUMENT, ':'),
   (world, name: string | undefined, document: string, text: string) => {
     expect(stored(world.manager(name), document)).toBe(text);
+  }
+);
+Then(
+  phrase('the configuration in ', STATE, ' names the bucket:'),
+  (world, name: string | undefined, bucket: string) => {
+    const manager = world.manager(name);
+    const declared = json(world.expand(bucket, manager));
+    expect(
+      (json(stored(manager, 'configuration')!) as { state?: unknown }).state
+    ).toEqual(parseDefinition({ ...exampleFleet(), state: declared }).state);
+  }
+);
+Then(
+  phrase('the configuration in ', STATE, ' names no bucket'),
+  (world, name: string | undefined) => {
+    expect(
+      (
+        json(stored(world.manager(name), 'configuration')!) as {
+          state?: unknown;
+        }
+      ).state
+    ).toBeUndefined();
   }
 );
 Then(

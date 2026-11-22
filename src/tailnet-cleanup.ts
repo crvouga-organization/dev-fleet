@@ -9,6 +9,7 @@ import {
   type TailnetControl,
 } from './tailnet-control';
 import type { Check } from './types';
+import { fleetJson } from './fleet-config';
 
 /** Removes the tailnet device a replaced or retired worker ran as, so the
  * next machine under its id gets the declared name. Asked through the
@@ -35,7 +36,7 @@ export function deviceLeftToPerson(
     status: 'skip',
     summary: `The tailnet device ${device} was not removed: ${why}.`,
     remedy: {
-      action: `Remove the device ${device} in the tailnet's admin console, so that a new machine gets the name ${worker.network?.tailscaleName ?? worker.id}. To have it removed by itself, declare tailnet in fleet.json and store the secret tailnet-admin.`,
+      action: `Remove the device ${device} in the tailnet's admin console, so that a new machine gets the name ${worker.network?.tailscaleName ?? worker.id}. To have it removed by itself, declare tailnet in ${fleetJson()} and store the secret tailnet-admin.`,
     },
   };
 }
@@ -160,7 +161,7 @@ export async function tailnetLeftovers(
         status: 'warn' as const,
         summary: `The tailnet holds the device ${name}, tagged ${tag}, which is no declared worker.`,
         remedy: {
-          action: `If the device ${name} left the fleet, remove it in the tailnet's admin console. If it is a worker, declare it in fleet.json (or its worker record).`,
+          action: `If the device ${name} left the fleet, remove it in the tailnet's admin console. If it is a worker, declare it in ${fleetJson()}, or in its worker record.`,
         },
       };
     });
