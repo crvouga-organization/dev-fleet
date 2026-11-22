@@ -3,7 +3,8 @@ Feature: The watchdog keeps a worker's T3 up, responsive and on its installed re
   that runs but whose local API has not answered for three checks in a row
   is restarted, since a hung server serves no turns. One that runs another
   release than the installed one, or has not loaded a staged policy, is
-  restarted once it runs no agent turn.
+  restarted once it runs no agent turn, and at a deadline when it always
+  runs one.
 
   Scenario: A stopped service has its start limit reset and is started
     A unit that hit its start limit would otherwise refuse every start.
@@ -128,6 +129,86 @@ Feature: The watchdog keeps a worker's T3 up, responsive and on its installed re
       Given T3 answers its health check as release "0.1.9"
       And the installed release is "0.1.9"
       And a restart for the staged policy is pending
+      And T3 runs an agent turn
+      When the watchdog runs
+      Then it says "T3_RESTART_PENDING"
+      And it has restarted nothing
+      And the pending restart is kept
+
+    Scenario: A restart of an unresponsive T3 applies the pending restart too
+      A T3 that starts loads everything staged, so nothing is left pending.
+      Given T3 does not answer its health check
+      And a restart for the staged policy is pending
+      And the watchdog has run 2 times
+      When the watchdog runs
+      Then it runs "systemctl --user restart t3code-desktop.service"
+      And the pending restart is cleared
+
+  Rule: A worker that is never idle still converges: a pending restart is applied at its deadline
+    A worker that runs agent turns without a gap would keep a restart
+    pending for ever. T3 cannot be told to stop accepting turns, so the
+    recovery service declares how long a restart is deferred at most
+    (t3RestartMaxDeferralHours in the policy), counted from the time it was
+    first deferred. At that deadline T3 is restarted although turns run:
+    they end, and the watchdog says so.
+
+    Background:
+      Given the T3 desktop service is running
+      And T3 answers its health check as release "0.1.9"
+      And the installed release is "0.1.9"
+      And the recovery service defers a restart for 24 hours at most
+      And T3 runs an agent turn
+
+    Scenario: A restart pending for less than the deadline keeps the running turns
+      Given a restart for the staged policy has been pending for 23 hours
+      When the watchdog runs
+      Then it exits with 0
+      And it says "T3_RESTART_PENDING: agent turns are running; the staged policy has waited 23h 0m and loads at the first idle check, or 24 hours after it was first deferred."
+      And it has restarted nothing
+      And the pending restart is kept
+
+    Scenario: A restart pending for as long as the deadline is applied although a turn runs
+      Given a restart for the staged policy has been pending for 24 hours
+      When the watchdog runs
+      Then it says "T3_RESTART_DEADLINE: the staged policy has waited 24h 0m, the 24 hours a restart is deferred at most; restarting T3 although agent turns are running. They end."
+      And it runs "systemctl --user reset-failed t3code-desktop.service" before "systemctl --user restart t3code-desktop.service"
+      And the pending restart is cleared
+
+    Scenario: A release that has waited as long as the deadline is restarted into, once
+      Given T3 answers its health check as release "0.1.8"
+      And a restart for the staged policy has been pending for 30 hours
+      When the watchdog runs 2 times
+      Then it says "T3_RUNNING_VERSION_MISMATCH"
+      And it ran "systemctl --user restart t3code-desktop.service" 1 times
+
+    Scenario: The watchdog records the time when it is the first to defer a restart
+      A release can wait with no record of a play: the deadline then counts
+      from the first check that found the worker busy.
+      Given T3 answers its health check as release "0.1.8"
+      When the watchdog runs
+      Then it says "T3_RESTART_PENDING: agent turns are running; release 0.1.9 has waited 0h 0m"
+      And it has restarted nothing
+      And the pending restart is kept
+
+    Scenario: The deadline is applied on a headless worker's server too
+      Given the T3 server of the headless session is running
+      And there is no graphical session
+      And the installed release is "0.1.8"
+      And T3 answers its health check as release "0.1.7"
+      And a restart for the staged policy has been pending for 24 hours
+      When the watchdog runs
+      Then it says "T3_RESTART_DEADLINE"
+      And it runs "systemctl --user restart t3code-headless.service"
+
+  Rule: A recovery service that declares no deadline never ends a turn
+    The deadline is the policy's and reaches the watchdog through its unit:
+    the script holds no number of its own.
+
+    Scenario: A restart pending for days stays pending while a turn runs
+      Given the T3 desktop service is running
+      And T3 answers its health check as release "0.1.9"
+      And the installed release is "0.1.9"
+      And a restart for the staged policy has been pending for 72 hours
       And T3 runs an agent turn
       When the watchdog runs
       Then it says "T3_RESTART_PENDING"

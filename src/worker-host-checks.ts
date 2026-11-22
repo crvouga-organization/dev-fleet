@@ -6,6 +6,7 @@ import policy from '../ansible/ubuntu/policy.json';
 import { userInfo } from 'node:os';
 import {
   T3_HEALTH_SCRIPT,
+  deadlineRestartsCheck,
   runningVersionCheck,
   t3Unit,
 } from './platform/t3-service';
@@ -193,6 +194,7 @@ async function recoveryChecks(
   checks.push(
     await runningVersionCheck(run, userInfo().uid, Date.now(), features.session)
   );
+  checks.push(await deadlineRestartsCheck(run));
   const renewal = await run([
     'systemctl',
     '--user',

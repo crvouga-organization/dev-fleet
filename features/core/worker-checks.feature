@@ -119,42 +119,85 @@ Feature: What is measured on a worker
       Then the check "worker:service-recovery" fails
       And the summary of the check "worker:service-recovery" mentions "WORKER_RECOVERY_TIMER_INACTIVE"
 
-  Rule: The running T3 is the release that is installed
+  Rule: The running T3 is the release that is installed, and a restart that waits says for how long
     The running server is asked for its version, so no "t3" on the search
     path is needed. A release installed beside a running app is pending until
-    the app restarts into it, which waits for its agent turns to end, and
-    fails once it has waited longer than the policy allows (24 hours).
+    the app restarts into it, which waits for its agent turns to end. A
+    worker that always runs a turn would wait for ever, so the recovery timer
+    applies the restart 24 hours after it was first deferred (the policy's
+    t3RestartMaxDeferralHours), and the turns still running then end. Until
+    then the check says how long the restart has waited and when that
+    deadline falls; past it, the recovery timer has not done its work.
 
     Background:
       Given these commands print:
         | command | prints                                          |
         | curl    | {"serverVersion":"0.1.9-nightly.20261111.4501"} |
         | cat     | T3-Code-0.1.9-nightly.20261111.4501-amd64.deb   |
+      And the command "cat /run/user/1000/personal-t3-restart-pending" fails
 
     Scenario: A T3 that runs the installed release passes
       When the release of the running T3 is checked
       Then the check "t3:running-version" passes
       And no "t3" command was run
 
-    Scenario: A release installed without a restart is pending
+    Scenario: A release installed without a restart is pending, and the check names the wait and the deadline
       Given the command "cat" prints "T3-Code-0.1.10-nightly.20261112.4600-amd64.deb"
       And a restart of T3 has been deferred for 2 hours
       When the release of the running T3 is checked
       Then the check "t3:running-version" warns
       And the summary of the check "t3:running-version" mentions "T3_RESTART_PENDING"
+      And the remedy of the check "t3:running-version" mentions "The restart has waited 2h 0m for agent turns to end."
+      And the remedy of the check "t3:running-version" mentions "at the latest in 22h 0m, 24 hours after it was first deferred: the turns still running then end."
 
-    Scenario: A restart deferred longer than the policy allows fails
+    Scenario: A restart deferred for another reason is pending although the release is the installed one
+      A staged policy, or an app that must return to loopback, waits for the
+      same restart: the worker has not converged until it happens.
+      Given a restart of T3 has been deferred for 5 hours
+      When the release of the running T3 is checked
+      Then the check "t3:running-version" warns
+      And the summary of the check "t3:running-version" mentions "T3_RESTART_PENDING"
+      And the remedy of the check "t3:running-version" mentions "The restart has waited 5h 0m for agent turns to end."
+
+    Scenario: A restart still pending after its deadline fails
+      The recovery timer applies it at the deadline; one that waits longer
+      was not applied.
       Given the command "cat" prints "T3-Code-0.1.10-nightly.20261112.4600-amd64.deb"
       And a restart of T3 has been deferred for 25 hours
       When the release of the running T3 is checked
       Then the check "t3:running-version" fails
       And the summary of the check "t3:running-version" mentions "T3_RESTART_PENDING"
+      And the remedy of the check "t3:running-version" mentions "The restart has waited 25h 0m, longer than the 24 hours a restart is deferred at most, and personal-worker-recovery has not applied it."
 
     Scenario: A server that does not say its version is not taken to run the installed one
       Given the command "curl" fails
       When the release of the running T3 is checked
       Then the check "t3:running-version" fails
       And the summary of the check "t3:running-version" mentions "T3_RUNNING_VERSION_UNKNOWN"
+
+  Rule: A restart applied at the deadline is reported, since it ended agent turns
+    T3 cannot be told to stop accepting turns, so a restart at the deadline
+    ends the turns that still run. The recovery service logs each one as
+    T3_RESTART_DEADLINE; the check counts those of the last 24 hours and
+    reports no line of the journal.
+
+    Scenario: A worker whose restarts all found it idle passes
+      Given the command "journalctl" fails
+      When the restarts of T3 at a deadline are checked
+      Then the check "worker:t3-deadline-restarts" passes
+
+    Scenario: A restart at the deadline in the last 24 hours warns, and names nothing the journal said
+      Given the command "journalctl --user --quiet --unit=personal-worker-recovery.service" prints "T3_RESTART_DEADLINE: PRIVATE_SENTINEL"
+      When the restarts of T3 at a deadline are checked
+      Then the check "worker:t3-deadline-restarts" warns
+      And the summary of the check "worker:t3-deadline-restarts" mentions "T3 was restarted once in the last 24 hours at the deadline of a pending restart, although agent turns ran: they ended."
+      And nothing reported contains "PRIVATE_SENTINEL"
+
+    Scenario: A journal that cannot be read is not taken to hold no restart
+      Given the command "journalctl" fails with the error "No journal files were opened due to insufficient permissions."
+      When the restarts of T3 at a deadline are checked
+      Then the check "worker:t3-deadline-restarts" warns
+      And the summary of the check "worker:t3-deadline-restarts" mentions "could not be read"
 
   Rule: The devfleet launcher is looked for, and nothing a command printed is reported
 

@@ -1722,7 +1722,7 @@
     },
     {
       "id": "t3:running-version",
-      "meaning": "The running T3 server is the installed release; a restart the release needs waits for running agent turns.",
+      "meaning": "The running T3 server is the installed release and no restart of it is pending; a pending restart waits for running agent turns, until its deadline.",
       "severity": "required",
       "repair": {
         "manual": "A worker’s first T3 pairing and its private route are approved by a person; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest."
@@ -2405,6 +2405,14 @@
       "severity": "required",
       "repair": {
         "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
+      "id": "worker:t3-deadline-restarts",
+      "meaning": "No pending restart of T3 reached its deadline in the last 24 hours: none ended running agent turns.",
+      "severity": "advisory",
+      "repair": {
+        "manual": "It reports a restart that already happened and ended agent turns: nothing is left to repair, the threads continue with their next message."
       }
     },
     {

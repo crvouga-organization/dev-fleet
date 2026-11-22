@@ -325,7 +325,8 @@ Sync never reboots a box and never ends a running agent turn. A worker's T3
 that must restart for a new provider policy or release is restarted only while
 it runs no agent turn; otherwise the restart is pending
 (`T3_POLICY_RESTART_PENDING`, `T3_RESTART_PENDING`) and the recovery timer
-applies it at the first idle check. Explicit
+applies it at the first idle check, or at its deadline (below), which does
+end the turns still running. Explicit
 maintenance reboot/reconnect orchestration remains an acceptance gate. Kernel,
 driver, firmware, hardware and power failures are outside any “never freezes”
 promise. Inspect disk/inodes, swap/memory pressure, `systemctl --failed`, and prior
@@ -381,11 +382,25 @@ launches from and the two most recent others.
 A worker whose T3 has not loaded the staged provider policy, or runs an older
 release than the one installed, is restarted only while it runs no agent turn;
 otherwise sync reports the pending restart and the recovery timer applies it
-at the first idle check, failing the check after
-`t3RestartMaxDeferralHours` (`ansible/ubuntu/policy.json`).
+at the first idle check. A worker that always runs a turn is never idle, so
+the wait is bounded: `t3RestartMaxDeferralHours`
+(`ansible/ubuntu/policy.json`, 24) after the restart was first deferred, the
+recovery timer restarts T3 although turns run (`T3_RESTART_DEADLINE` in the journal of
+`personal-worker-recovery.service`). **Those turns end**: T3 Code offers no
+way to stop accepting turns and wait for a gap, so the deadline is the only
+bound. The time of the first deferral is the content of
+`/run/user/UID/personal-t3-restart-pending`, written by the play that
+deferred the restart, or by the recovery timer when it is the first to find
+the worker busy; whichever of them restarts T3 clears it. While the restart waits,
+`t3:running-version` (and `t3:policy-loaded` for a policy) warns and its
+remedy says how long it has waited and when the deadline falls; a restart
+still pending after the deadline fails, since the recovery timer did not
+apply it. For 24 hours after a restart at the deadline
+`worker:t3-deadline-restarts` warns that turns ended.
 `fleet-sync --restart-busy` passes `t3_restart_busy` to the plays, which then
 restart a busy T3 at once and end its turns; the `--dry-run` plan says, per
-T3 restart, whether running turns end. A pending proxy
+T3 restart, whether running turns end at once and, for one that waits, its
+deadline (`deadlineHours`). A pending proxy
 update is installed even when it recreates the gateway. The manager finishes before the workers
 start, so they are verified against the updated proxy. `--dry-run` previews.
 

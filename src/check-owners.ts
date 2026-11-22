@@ -82,6 +82,11 @@ export const CHECK_OWNERS: CheckOwner[] = [
       'A reboot ends running agent turns, so it waits for them: rerun fleet-sync --maintenance-reboot once they end, or with --force.',
   },
   {
+    pattern: 'worker:t3-deadline-restarts',
+    manual:
+      'It reports a restart that already happened and ended agent turns: nothing is left to repair, the threads continue with their next message.',
+  },
+  {
     pattern: 'tailscale:enrolment-key',
     manual:
       'The tailnet-admin credential and the tag it may use are the operator’s, kept in the secrets provider and the control plane.',

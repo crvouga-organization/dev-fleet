@@ -95,7 +95,8 @@
             "properties": {
               "service": { "type": "string" },
               "reason": { "type": "string" },
-              "endsRunningTurns": { "type": "boolean" }
+              "endsRunningTurns": { "type": "boolean" },
+              "deadlineHours": { "type": "number" }
             }
           }
         },

@@ -147,6 +147,16 @@ Then('the plan restarts exactly:', (world, table: DataTable) => {
 });
 
 Then(
+  /^the restart of "([^"]+)" in the plan has (?:a deadline of (\d+) hours|no deadline)$/,
+  (world, service: string, hours?: string | null) => {
+    const restart = plan(world).restarts.find(
+      (entry) => entry.service === service
+    );
+    expect(restart?.deadlineHours).toBe(hours ? Number(hours) : undefined);
+  }
+);
+
+Then(
   'the plan removes from {string}:',
   (world, node: string, table: DataTable) => {
     expect(
