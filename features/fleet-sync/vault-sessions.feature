@@ -18,6 +18,7 @@ Feature: Every machine keeps its own Vault session
       Every worker that can read the shared document could read it, so the
       sync says so until the worker has a token of its own.
       Given looking up the Vault session answers, in turn, "no, yes"
+      And Vault answers a request for its status
       And Vault holds the issued token "hvs.issued-worker-token-0123456789" for that machine
       But the worker's own document holds no token
       And that machine accepts a login with a token
@@ -45,6 +46,7 @@ Feature: Every machine keeps its own Vault session
 
     Scenario: The issued token is delivered over standard input, never as an argument
       Given looking up the Vault session answers, in turn, "no, yes"
+      And Vault answers a request for its status
       And Vault holds the issued token "hvs.issued-worker-token-0123456789" for that machine
       And that machine accepts a login with a token
       And a prompt on the terminal would fail the scenario
@@ -57,18 +59,21 @@ Feature: Every machine keeps its own Vault session
 
     Scenario: A noninteractive sync without an issued token reports the gap
       Given looking up the Vault session answers, in turn, "no"
+      And Vault answers a request for its status
       And a prompt on the terminal would fail the scenario
       When the Vault session of that machine is authorized in a noninteractive sync
       Then the first check's summary is "VAULT_LOGIN_REQUIRED"
 
     Scenario: An interactive sync does not fall back to the shared password unless asked
       Given looking up the Vault session answers, in turn, "no, yes"
+      And Vault answers a request for its status
       And a prompt on the terminal would fail the scenario
       When the Vault session of that machine is authorized in an interactive sync
       Then the first check's summary is "VAULT_LOGIN_REQUIRED"
 
     Scenario: An interactive sync that opts in falls back to a password login on the worker's terminal
       Given looking up the Vault session answers, in turn, "no, yes"
+      And Vault answers a request for its status
       And the operator completes every prompt on the terminal
       When the Vault session of that machine is authorized in an interactive sync with the password login
       Then the statuses of the checks are exactly:
@@ -82,6 +87,40 @@ Feature: Every machine keeps its own Vault session
         | -t                        |
         | StrictHostKeyChecking=yes |
       But the SSH command does not have the argument "-T"
+
+  Rule: A worker Vault does not answer is not given a token or a login
+
+    Scenario Outline: A worker that gets no answer from Vault is reported as that in <mode> sync, and nothing is delivered
+      A session that does not answer is a lapsed one only when Vault itself
+      answers the worker. A token or a password would fail the same way, so
+      the remedy is the way to Vault and never a new token.
+      Given looking up the Vault session answers, in turn, "no"
+      And Vault does not answer a request for its status
+      And Vault holds the issued token "hvs.issued-worker-token-0123456789" for that machine
+      And a prompt on the terminal would fail the scenario
+      When the Vault session of that machine is authorized in <mode> sync <login>
+      Then the first check's summary is "VAULT_UNREACHABLE"
+      And the first check's status is "fail"
+      And the first check's remedy contains "a new token or a login does not help"
+      And the first check's remedy contains "vault status -address=https://vault.example.com"
+      And no token was read from Vault
+      And no command line contains "hvs.issued-worker-token-0123456789"
+
+      Examples:
+        | mode             | login                    |
+        | a noninteractive | without a password login |
+        | an interactive   | with the password login  |
+
+    Scenario: A worker that could not be asked for Vault's status is still offered its token
+      Only a status that ran and failed says Vault does not answer.
+      Given looking up the Vault session answers, in turn, "no, yes"
+      And asking that machine for Vault's status times out
+      And Vault holds the issued token "hvs.issued-worker-token-0123456789" for that machine
+      And that machine accepts a login with a token
+      And a prompt on the terminal would fail the scenario
+      When the Vault session of that machine is authorized in a noninteractive sync
+      Then the statuses of the checks are exactly:
+        | pass |
 
   Rule: The manager logs in first, and is prompted only when it has to be
 

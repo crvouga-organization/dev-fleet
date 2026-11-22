@@ -7,7 +7,7 @@ import { workstationChecks } from './workstation-checks';
 import { toolchainChecks } from './toolchain-checks';
 import { workerSelection } from '../bootstrap/worker-tools';
 import { githubChecks } from './github/checks';
-import { secretsProvider } from './secrets';
+import { secretsProvider, vaultStatus } from './secrets';
 import type { Capability, Check, Runner, CommandResult } from './types';
 
 export async function authCheck(
@@ -76,6 +76,22 @@ async function basicAuth(
     result.ok &&
     (capability !== 'vscode' ||
       extensions.includes('ms-vscode-remote.remote-ssh'));
+  if (!ok && capability === 'vault' && usesVault()) {
+    // A session that does not answer is a lapsed one only when Vault itself
+    // answers; its status needs no login (`secretsLogin` in src/secrets.ts).
+    const { addr } = resolveVaultConfig();
+    if (!(await run(vaultStatus(addr), { cwd: root, timeoutMs: 15_000 })).ok)
+      return [
+        {
+          id: 'auth:vault',
+          status: 'fail',
+          summary: 'VAULT_UNREACHABLE',
+          remedy: {
+            action: `Vault at ${addr} does not answer this node, or is sealed; a login or a new token does not help. On this node, vault status -address=${addr} says which: no answer is the network between them (the tailnet, DNS, the address under secrets in the fleet configuration) or a Vault that is not running; "Sealed true" is a Vault to unseal.`,
+          },
+        },
+      ];
+  }
   return [
     {
       id: `auth:${capability}`,

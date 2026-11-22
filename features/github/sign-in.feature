@@ -77,6 +77,60 @@ Feature: Every node signs in to GitHub from the stored credential
       Then the check "worker:vault-renewal" fails
       And the check "worker:github-sync" passes
 
+  Rule: A token a worker could not read is blocked by the worker's own login, not missing
+    A worker reads the token with its own Vault session. A session that
+    lapsed, or a Vault that does not answer the worker, has one owner on that
+    worker, "worker:vault-renewal"; the GitHub checks name it instead of
+    asking for a token to be stored.
+
+    Background:
+      Given the fleet keeps its secrets with the "vault" provider
+      And every other command fails
+      And the command "vault token lookup -address=https://vault.example.com -format=json" fails
+
+    Scenario Outline: The sign-in of a worker that <state> is blocked by its login when it is measured
+      Given the command "vault status -address=https://vault.example.com -format=json" <status>
+      And "worker-one" is not signed in to GitHub
+      When the access of "worker-one" is checked
+      Then the check "worker:github-sync" fails
+      And the check "worker:github-sync" says "SECRET_READ_BLOCKED by worker:vault-renewal"
+      And the remedy of the check "worker:github-sync" mentions "<remedy>"
+
+      Examples:
+        | state                     | status   | remedy                                                |
+        | is logged out of Vault    | succeeds | this machine is not logged in to the secrets provider |
+        | gets no answer from Vault | fails    | logging in again does not help                        |
+
+    Scenario Outline: A sign-in job that found no token on a worker that <state> leaves "github:sync" blocked
+      Given the command "vault status -address=https://vault.example.com -format=json" <status>
+      And the command "bun bootstrap/worker-github.ts --node worker-one" prints {"name":"dev-fleet-github","event":"job_finished","code":"GITHUB_TOKEN_MISSING","adopted":false}
+      When the GitHub sign-in of "worker-one" is converged
+      Then the check "github:sync" fails
+      And the check "github:sync" says "SECRET_READ_BLOCKED by worker:vault-renewal"
+
+      Examples:
+        | state                     | status   |
+        | is logged out of Vault    | succeeds |
+        | gets no answer from Vault | fails    |
+
+    Scenario Outline: The token of a worker that <state> cannot be compared
+      Given the command "vault status -address=https://vault.example.com -format=json" <status>
+      And "worker-one" is signed in with "TOKEN_A_PRIVATE_0001"
+      When the GitHub checks run on "worker-one"
+      Then the check "github:token-current" is skipped
+      And the check "github:token-current" says "SECRET_READ_BLOCKED by worker:vault-renewal"
+
+      Examples:
+        | state                     | status   |
+        | is logged out of Vault    | succeeds |
+        | gets no answer from Vault | fails    |
+
+    Scenario: A token Vault does not hold keeps the sign-in's own code on a worker
+      Given the command "vault token lookup -address=https://vault.example.com -format=json" prints {"data":{"renewable":true,"period":86400,"ttl":80000}}
+      And "worker-one" is not signed in to GitHub
+      When the access of "worker-one" is checked
+      Then the check "worker:github-sync" says "GITHUB_TOKEN_MISSING"
+
   Rule: A sync fails when the node cannot be signed in
 
     Scenario Outline: A sign-in job that reports "<code>" leaves "github:sync" <verdict>

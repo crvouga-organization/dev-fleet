@@ -79,11 +79,25 @@ Given(
   /^Vault (answers|does not answer) a request for its status$/,
   (world, answers: string) => {
     world.commands.answer(
-      /vault status/,
+      // Asked on the manager, or quoted in the command a worker is sent.
+      /vault'? '?status/,
       answers === 'answers' ? succeeded('{"sealed":false}') : failed()
     );
   }
 );
+
+Given("asking that machine for Vault's status times out", (world) => {
+  world.commands.answer(/vault' 'status/, () => ({
+    ...failed(),
+    reason: 'timeout',
+  }));
+});
+
+Then('no token was read from Vault', (world) => {
+  expect(world.commands.calls.map((call) => call.command.join(' '))).toEqual(
+    expect.not.arrayContaining([expect.stringMatching(/kv.*get/)])
+  );
+});
 
 Given(
   'Vault holds the issued token {string} for that machine',
@@ -114,11 +128,11 @@ Given('the operator completes every prompt on the terminal', (world) => {
 const interactive = (mode: string): boolean => mode.includes('an interactive');
 
 When(
-  /^the Vault session of that machine is authorized in (an interactive|a noninteractive) sync( with the password login)?$/,
+  /^the Vault session of that machine is authorized in (an interactive|a noninteractive) sync(?: (with|without) (?:the|a) password login)?$/,
   async (world, mode: string, password: string | undefined) => {
     world.checks = await authorizeVault(
       world.node!,
-      { interactive: interactive(mode), passwordLogin: Boolean(password) },
+      { interactive: interactive(mode), passwordLogin: password === 'with' },
       world.commands.run,
       attach(world)
     );

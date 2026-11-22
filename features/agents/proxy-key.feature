@@ -30,11 +30,12 @@ Feature: Agents keep reaching the proxy while the secrets provider is down
     When an agent launches
     Then it is refused with "Required secret unavailable: proxy-client-key"
 
-  Rule: A manager with no key to present names the login that kept it from reading one
+  Rule: A node with no key to present names the login that kept it from reading one
     A node that never read the key has nothing to fall back on, and every
-    provider fails for want of it. On the manager that is one fault when its
-    secrets provider cannot be read: the check that owns the manager's login
-    says what to do, and the providers name it. A worker's login is its own.
+    provider fails for want of it. That is one fault when the node's secrets
+    provider cannot be read: the check that owns the node's login says what
+    to do, and the providers name it. A worker's login is its own, so its
+    providers name the worker's check and not the manager's.
 
     Scenario Outline: The providers of a manager that <fault> its secrets provider are blocked by its login
       Given the manager <fault> its secrets provider
@@ -50,7 +51,16 @@ Feature: Agents keep reaching the proxy while the secrets provider is down
       When the providers of "manager-mac" are verified
       Then every provider's authentication fails, saying "PROVIDER_UNATTENDED_CREDENTIAL_REQUIRED"
 
-    Scenario: A worker's providers keep their own code
-      Given the manager is not logged in to its secrets provider
+    Scenario Outline: The providers of a worker that <fault> its secrets provider are blocked by the worker's own login
+      Given the worker <fault> its secrets provider
+      When the providers of "worker-one" are verified
+      Then every provider's authentication fails, saying "SECRET_READ_BLOCKED by worker:vault-renewal"
+
+      Examples:
+        | fault               |
+        | is not logged in to |
+        | cannot reach        |
+
+    Scenario: A key the provider does not hold keeps a worker's providers' own code
       When the providers of "worker-one" are verified
       Then every provider's authentication fails, saying "PROVIDER_UNATTENDED_CREDENTIAL_REQUIRED"

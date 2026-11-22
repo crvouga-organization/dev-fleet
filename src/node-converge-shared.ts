@@ -2,6 +2,7 @@ import { fingerprint, writeReceipt } from './fingerprint';
 import { configureWorkspace } from './configure';
 import { stableWorkspace } from './platform/t3-policy';
 import { convergeGithub } from './github/converge';
+import { secretVia } from './fleet-config';
 import type { Check, Runner } from './types';
 
 /** Phase wrapper: one failure code per phase, durations measured, no exception text. */
@@ -65,7 +66,10 @@ export async function configureWorkstation(
       summary:
         'The devfleet launcher is linked to the applied revision; authentication remains a separate gate.',
     },
-    await convergeGithub(root, run, node),
+    await convergeGithub(root, run, node, {
+      secrets: secretVia(run),
+      role: 'worker',
+    }),
   ];
 }
 

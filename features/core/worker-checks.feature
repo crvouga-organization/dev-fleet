@@ -70,6 +70,47 @@ Feature: What is measured on a worker
         | is missing          | fails                                                           |
         | cannot be renewed   | prints '{"data":{"renewable":false,"period":0,"ttl":3000}}'     |
 
+  Rule: A secret the worker could not read is one fault, owned by the check of its own Vault login
+    Every worker reads its secrets with a Vault session of its own. When that
+    session has lapsed, or Vault does not answer the worker, the proxy key is
+    neither missing nor forbidden by a policy: "worker:vault-renewal" owns the
+    fault and says which it is, and the check that needed the key names it.
+    Vault answers a lapsed session with the same 403 as a policy that
+    refuses, so the session is asked for before a policy is blamed.
+
+    Background:
+      Given these commands print:
+        | command                                            | prints                          |
+        | gh                                                 | example-user                    |
+        | systemctl --user show personal-worker-auth.service | Result=success␊ExecMainStatus=0 |
+      And every other command prints '{"data":[{"id":"model"}]}'
+      And the command "vault token lookup" fails
+
+    Scenario Outline: A worker whose Vault <state> says so once, and its proxy check names that check
+      Given the command "vault kv get" fails with the error "<refusal> PRIVATE_SENTINEL"
+      And the command "vault status" <status>
+      When the access of the worker is checked
+      Then the check "worker:vault-renewal" fails
+      And the summary of the check "worker:vault-renewal" mentions "<code>"
+      And the remedy of the check "worker:vault-renewal" mentions "<remedy>"
+      And the check "worker:proxy-authentication" fails
+      And the summary of the check "worker:proxy-authentication" mentions "SECRET_READ_BLOCKED by worker:vault-renewal"
+      And the remedy of the check "worker:proxy-authentication" mentions "<blocked>"
+      And nothing reported contains "PRIVATE_SENTINEL"
+
+      Examples:
+        | state           | refusal                                   | status                  | code                               | remedy                                | blocked                                               |
+        | session lapsed  | Code: 403. Errors: * permission denied    | prints '{"sealed":false}' | UNATTENDED_VAULT_IDENTITY_REQUIRED | Enroll this worker’s own periodic     | this machine is not logged in to the secrets provider |
+        | does not answer | dial tcp: connect: connection refused     | fails                   | VAULT_UNREACHABLE                  | a new token does not help             | logging in again does not help                        |
+
+    Scenario: A Vault that does not answer the worker is not answered with a new token
+      Given the command "vault kv get" fails
+      And the command "vault status" fails
+      When the access of the worker is checked
+      Then the summary of the check "worker:vault-renewal" mentions "VAULT_UNREACHABLE"
+      And the remedy of the check "worker:vault-renewal" mentions "issue none"
+      And the remedy of the check "worker:vault-renewal" mentions "vault status -address=https://vault.example.com"
+
   Rule: Recovery after a power loss never passes without a firmware setting that was read
 
     Scenario: A worker whose firmware cannot be read is skipped

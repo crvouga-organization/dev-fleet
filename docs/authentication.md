@@ -70,9 +70,26 @@ tailnet control plane's credential, the GitHub token, the proxy client key)
 reports `SECRET_READ_BLOCKED by manager:vault-renewal` instead of a code of
 its own, and `fleet-node-seed` refuses with the same words. A secret that is
 absent while the manager can read its provider keeps the code of the check
-that needs it. A reader gets this by handing the provider it read from to
-`unreadSecret` (`src/secrets-blocked.ts`);
-`features/rules/secret-readers.feature` lists every reader. A GitHub token that stops
+that needs it.
+
+A worker is the same with its own login. `worker:vault-renewal` owns it: a
+session that does not answer while Vault does is
+`UNATTENDED_VAULT_IDENTITY_REQUIRED`, fixed by the worker's token (the next
+sync delivers it, `fleet-node-replace` issues a new one), and a Vault that
+does not answer the worker, or is sealed, is `VAULT_UNREACHABLE`, which no
+token repairs. The sync that would have delivered a token says the same as
+`auth:vault` and delivers none. Every check on the worker that needed a
+secret (`worker:github-sync`, `github:sync` and `github:token-current` for
+the GitHub token, `worker:proxy-authentication` and
+`provider:*:authentication` for the proxy client key) reports
+`SECRET_READ_BLOCKED by worker:vault-renewal`. Vault answers a lapsed
+session with the 403 of a policy that refuses, so
+`VAULT_POLICY_PERMISSION_REQUIRED` is reported only for a session that
+answers.
+
+A reader gets this by handing the provider it read from to `unreadSecret`
+(`src/secrets-blocked.ts`), with the owner of a worker's login when it runs
+on one; `features/rules/secret-readers.feature` lists every reader. A GitHub token that stops
 working fails `auth:github` and `worker:git-push-auth`; store the new one in
 Vault and the worker restores itself within ten minutes. During a proxy
 outage agents on workers wait: no worker is configured for native clients.
@@ -102,18 +119,18 @@ Every failure code is in [the runbooks](runbooks.md).
 
 <!-- generated: checks -->
 
-| Check                         | Measured in                                |
-| ----------------------------- | ------------------------------------------ |
-| `auth:github`                 | `src/github/checks.ts`                     |
-| `auth:vault`                  | `src/cli/fleet-sync-vault.ts`              |
-| `auth:vault-isolation`        | `src/cli/fleet-sync-vault.ts`              |
-| `worker:credential-renewal`   | `src/worker-host-checks.ts`                |
-| `worker:git-identity`         | `src/git-identity.ts`                      |
-| `worker:git-push-auth`        | `src/definition.ts`, `src/git-identity.ts` |
-| `worker:git-signing`          | `src/definition.ts`, `src/git-identity.ts` |
-| `worker:github-sync`          | `src/worker-access-checks.ts`              |
-| `worker:proxy-authentication` | `src/worker-access-checks.ts`              |
-| `worker:vault-renewal`        | `src/worker-access-checks.ts`              |
+| Check                         | Measured in                                         |
+| ----------------------------- | --------------------------------------------------- |
+| `auth:github`                 | `src/github/checks.ts`                              |
+| `auth:vault`                  | `src/auth-checks.ts`, `src/cli/fleet-sync-vault.ts` |
+| `auth:vault-isolation`        | `src/cli/fleet-sync-vault.ts`                       |
+| `worker:credential-renewal`   | `src/worker-host-checks.ts`                         |
+| `worker:git-identity`         | `src/git-identity.ts`                               |
+| `worker:git-push-auth`        | `src/definition.ts`, `src/git-identity.ts`          |
+| `worker:git-signing`          | `src/definition.ts`, `src/git-identity.ts`          |
+| `worker:github-sync`          | `src/worker-access-checks.ts`                       |
+| `worker:proxy-authentication` | `src/worker-access-checks.ts`                       |
+| `worker:vault-renewal`        | `src/worker-access-checks.ts`                       |
 
 <!-- end: checks -->
 

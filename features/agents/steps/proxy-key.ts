@@ -66,6 +66,14 @@ Given(
   }
 );
 
+/** The same fault of a worker's own login, when its providers are verified. */
+Given(
+  /^the worker (is not logged in to|cannot reach) its secrets provider$/,
+  (world, fault: string) => {
+    node(world).login = secretsFault(fault);
+  }
+);
+
 Given(SECRETS_FAULT, (world, fault: string) => {
   node(world).login = secretsFault(fault);
 });

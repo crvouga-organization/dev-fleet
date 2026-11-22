@@ -1,18 +1,19 @@
 Feature: Every reader of a secret answers a blocked read the same way
-  The manager reads its secrets with one login. When that login lapses, or
-  the secrets provider does not answer, every secret is unreadable at once:
-  one fault, owned by manager:vault-renewal. A check that only needed a
-  secret says SECRET_READ_BLOCKED by that owner, and keeps its own code for
-  a secret that is really absent. A reader gets that by handing the provider
-  it read from to the one answer in src/secrets-blocked.ts; this feature
-  lists every source that touches a provider, so a new reader is not added
-  without saying how it answers.
+  A machine reads its secrets with one login: the manager with its own, each
+  worker with its own. When that login lapses, or the secrets provider does
+  not answer, every secret is unreadable at once: one fault, owned by
+  manager:vault-renewal on the manager and by worker:vault-renewal on a
+  worker. A check that only needed a secret says SECRET_READ_BLOCKED by that
+  owner, and keeps its own code for a secret that is really absent. A reader
+  gets that by handing the provider it read from to the one answer in
+  src/secrets-blocked.ts; this feature lists every source that touches a
+  provider, so a new reader is not added without saying how it answers.
 
   Scenario: Every source that handles the fleet's secrets says how it answers for one it could not read
     A source handles secrets when it names a secrets provider or the proxy
     client key. One that only hands the provider to a reader, or that
-    reports no check, says so here; so does a check of a worker, whose
-    login is its own and is owned by its own Vault checks.
+    reports no check, says so here. A check of a worker is no exception: it
+    answers the same way and names the owner of the worker's login.
     When the sources that handle the fleet's secrets are listed
     Then they are exactly these, and each answers as it says:
       | source                           | a secret it could not read                |
@@ -35,11 +36,12 @@ Feature: Every reader of a secret answers a blocked read the same way
       | src/monitoring/hub-access.ts     | is blocked through the shared answer      |
       | src/monitoring/hub.ts            | is answered by the reader it hands it to  |
       | src/monitoring/manager-hub.ts    | is blocked through the shared answer      |
+      | src/node-converge-shared.ts      | is answered by the reader it hands it to  |
       | src/notify.ts                    | is blocked through the shared answer      |
       | src/t3/accounts.ts               | reports no check                          |
       | src/tailnet-cleanup.ts           | is blocked through the shared answer      |
       | src/tailnet-control.ts           | is blocked through the shared answer      |
-      | src/worker-access-checks.ts      | is a worker's, whose login is its own     |
+      | src/worker-access-checks.ts      | is blocked through the shared answer      |
 
   Scenario: Only the secrets layer measures the login
     A reader that looked the session up itself would tell the faults apart
@@ -50,20 +52,27 @@ Feature: Every reader of a secret answers a blocked read the same way
       | src/secrets.ts               | measures the login for every reader          |
       | src/cli/fleet-sync-vault.ts  | owns the login, on the manager and a worker  |
       | src/auth-checks.ts           | reports the session itself, as auth:vault    |
-      | src/worker-access-checks.ts  | owns a worker's renewal                      |
+      | src/worker-access-checks.ts  | owns a worker's login, and its renewal       |
 
-  Scenario Outline: A check blocked because the manager <fault> says so in one code, with the owner and what to do
-    When a check that fails for want of a secret is answered while the manager <fault> its secrets provider
-    Then its summary is "SECRET_READ_BLOCKED by manager:vault-renewal"
+  Scenario Outline: A check blocked because <machine> <fault> says so in one code, with the owner and what to do
+    When a check that fails for want of a secret is answered while <machine> <fault> its secrets provider
+    Then its summary is "SECRET_READ_BLOCKED by <owner>"
     And it still fails
     And its remedy says "<remedy>"
-    And its remedy says "Fix manager:vault-renewal"
+    And its remedy says "Fix <owner>"
 
     Examples:
-      | fault               | remedy                                                |
-      | is not logged in to | this machine is not logged in to the secrets provider |
-      | cannot reach        | logging in again does not help                        |
+      | machine     | fault               | owner                 | remedy                                                |
+      | the manager | is not logged in to | manager:vault-renewal | this machine is not logged in to the secrets provider |
+      | the manager | cannot reach        | manager:vault-renewal | logging in again does not help                        |
+      | a worker    | is not logged in to | worker:vault-renewal  | this machine is not logged in to the secrets provider |
+      | a worker    | cannot reach        | worker:vault-renewal  | logging in again does not help                        |
 
-  Scenario: A check whose secret is absent keeps its own code
-    When a check that fails for want of a secret is answered while the manager can read its secrets provider
+  Scenario Outline: A check whose secret is absent keeps its own code on <machine>
+    When a check that fails for want of a secret is answered while <machine> can read its secrets provider
     Then its summary is "EXAMPLE_SECRET_REQUIRED"
+
+    Examples:
+      | machine     |
+      | the manager |
+      | a worker    |

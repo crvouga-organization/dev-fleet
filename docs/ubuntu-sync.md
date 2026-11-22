@@ -216,7 +216,9 @@ the warning `VAULT_WORKER_TOKEN_SHARED`: every worker can read that document,
 so issue the worker its own token and remove the field. A password login with
 the fleet's shared Vault user on the worker's own terminal happens only with
 `fleet-sync --vault-password-login`. Without a token the node reports
-`VAULT_LOGIN_REQUIRED` and its T3 proxy providers stay unavailable.
+`VAULT_LOGIN_REQUIRED` and its T3 proxy providers stay unavailable. A node
+Vault does not answer reports `VAULT_UNREACHABLE` instead and is given no
+token and no prompt: neither would log it in.
 `devfleet fleet-node-retire --id ID --apply --yes` revokes a worker's token by
 its accessor and removes its document and policy.
 

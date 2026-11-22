@@ -99,7 +99,10 @@ export async function convergeManager(
       // for the token through the helper git.yml declared above.
       checks.push(
         ...(await attempt('github:sync', async () => [
-          await convergeGithub(input.workspace, run, undefined, secretVia(run)),
+          await convergeGithub(input.workspace, run, undefined, {
+            secrets: secretVia(run),
+            role: 'manager',
+          }),
         ]))
       );
       const providers = await attempt('provider:verification', () =>
