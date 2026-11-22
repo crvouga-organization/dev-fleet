@@ -275,6 +275,7 @@ export async function verifyResourceSafety(
 }
 
 const PROTECTION_ESCAPED = 'T3_PROTECTION_ESCAPED';
+const PROTECTION_UNOBSERVED = 'T3_PROTECTION_UNOBSERVED';
 
 /** The reserves the listener's cgroup lacks: `cpu`, `io`, `memory`. */
 async function missingReserves(group: string, run: Runner): Promise<string[]> {
@@ -297,17 +298,61 @@ async function missingReserves(group: string, run: Runner): Promise<string[]> {
   ];
 }
 
-/** Measure the listener itself: Electron can leave the service's cgroup. */
+/** Whether the user manager the listener runs under was handed the io
+ * controller. Ubuntu hands it cpu, memory and pids only, and it takes the io
+ * controller fleet-sync declares (`Delegate=` on `user@<uid>.service`) when
+ * it next starts: until then no unit under it has an `io.weight`, whatever
+ * its drop-ins say. Undefined when the listener runs under no user manager
+ * or its controllers cannot be read. */
+async function managerHasIo(
+  group: string,
+  run: Runner
+): Promise<boolean | undefined> {
+  const manager = /^((?:\/[^/]+)*\/user@\d+\.service)(?:\/|$)/.exec(group)?.[1];
+  if (!manager) return undefined;
+  const controllers = await run([
+    'cat',
+    '/sys/fs/cgroup' + manager + '/cgroup.controllers',
+  ]);
+  return controllers.ok
+    ? controllers.stdout.trim().split(/\s+/).includes('io')
+    : undefined;
+}
+
+const PROTECTION_REMEDY = {
+  unobserved:
+    'No process of the worker user was found listening on the T3 port, so there is no reserve to measure: T3 is stopped or restarting. Check worker:t3-recovery and worker:t3-health, then rerun devfleet fleet-status --workers.',
+  manager:
+    'The user manager has no io controller: fleet-sync declares it for the user manager, which takes it on its next start. Reboot the worker while it runs no agent turn (devfleet fleet-sync --maintenance-reboot). Restarting T3 does not change it, and the CPU and memory reserve are already in place.',
+  undeclared:
+    'Run devfleet fleet-sync on this worker: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. If the check still fails, the listener runs outside the units fleet-sync declares; inspect its cgroup.',
+};
+
+/** Measure the listener itself: Electron can leave the service's cgroup.
+ * A reserve the listener lacks is named, with why it is missing where that
+ * can be measured: a listener that is not there has nothing to measure, and
+ * an io reserve that waits for the user manager is no fault of T3's unit.
+ */
 export async function t3Protection(port: number, run: Runner): Promise<Check> {
   const listener = await run(['ss', '-Hltnp', 'sport', '=', String(port)]);
   const pid = listener.ok && /\bpid=(\d+)\b/.exec(listener.stdout)?.[1];
-  let missing = ['cpu', 'io', 'memory'];
+  let missing: string[] = [];
+  let group: string | undefined;
   if (pid) {
     const membership = await run(['cat', `/proc/${pid}/cgroup`]);
-    const group = /^0::(\/[^\n]*)$/m.exec(membership.stdout)?.[1];
-    if (membership.ok && group && !group.split('/').includes('..'))
+    const path = /^0::(\/[^\n]*)$/m.exec(membership.stdout)?.[1];
+    if (membership.ok && path && !path.split('/').includes('..')) {
+      group = path;
       missing = await missingReserves(group, run);
+    }
   }
+  if (group === undefined)
+    return {
+      id: 'worker:t3-protection',
+      status: 'fail',
+      summary: PROTECTION_UNOBSERVED,
+      remedy: { action: PROTECTION_REMEDY.unobserved },
+    };
   if (!missing.length)
     return {
       id: 'worker:t3-protection',
@@ -315,14 +360,15 @@ export async function t3Protection(port: number, run: Runner): Promise<Check> {
       summary: 'The T3 listener has its CPU, I/O and memory reserve.',
     };
   const ioOnly = missing.length === 1 && missing[0] === 'io';
+  const waitsForManager = ioOnly && (await managerHasIo(group, run)) !== true;
   return {
     id: 'worker:t3-protection',
     status: 'fail',
     summary: `${PROTECTION_ESCAPED} ${missing.join(' ')}`,
     remedy: {
-      action: ioOnly
-        ? 'The user manager has no io controller: fleet-sync declares it for the user manager, which takes it on its next start. Reboot the worker while it runs no agent turn (devfleet fleet-sync --maintenance-reboot).'
-        : 'Run fleet-sync on this worker and check the cgroup of the T3 listener after its next idle restart.',
+      action: waitsForManager
+        ? PROTECTION_REMEDY.manager
+        : PROTECTION_REMEDY.undeclared,
     },
   };
 }

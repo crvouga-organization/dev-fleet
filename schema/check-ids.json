@@ -1949,7 +1949,7 @@
     },
     {
       "id": "worker:agent-sessions",
-      "meaning": "How many agent sessions this worker runs, and how many its memory policy supports at the estimated size of a session; warns when more run.",
+      "meaning": "How many agent sessions this worker runs, and how many its memory policy supports at the estimated size of a session; warns when more run. Nothing refuses a session above that number: T3 Code has no limit on the sessions it starts.",
       "severity": "required",
       "repair": {
         "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
@@ -2417,7 +2417,7 @@
     },
     {
       "id": "worker:t3-protection",
-      "meaning": "The T3 listener has its CPU, I/O and memory reserve.",
+      "meaning": "The T3 listener has its CPU, I/O and memory reserve; fails naming the reserve it lacks, or as unobserved while nothing listens on the T3 port.",
       "severity": "required",
       "repair": {
         "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."

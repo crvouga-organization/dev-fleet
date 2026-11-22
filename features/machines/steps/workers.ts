@@ -15,9 +15,11 @@ import {
 import { workerPlatform } from '../../../src/platform/ubuntu-worker';
 import ubuntu from '../../../ansible/ubuntu/policy.json';
 import type { DataTable } from '../../support/gherkin';
+import { ANSWER, answer, commandLine } from '../../support/answers';
+import { succeeded } from '../../support/commands';
 import { machines } from './world';
 
-const { When, Then } = machines;
+const { Given, When, Then } = machines;
 
 When(
   'the resource safety of the worker whose home is {string} is measured',
@@ -154,6 +156,44 @@ Then(
   'the browser library {string} is pinned at {string}',
   (world, name: string, version: string) => {
     expect(world.browserPins?.[name]).toBe(version);
+  }
+);
+
+/** Where the kernel keeps the units of one user's manager. */
+const userManager = (uid: number): string =>
+  `/user.slice/user-${uid}.slice/user@${uid}.service`;
+
+Given(
+  'the T3 listener on port {int} runs in {string} under the user manager of user {int}, where:',
+  (world, port: number, unit: string, uid: number, table: DataTable) => {
+    const group = `${userManager(uid)}/${unit}`;
+    world.commands.answer(
+      commandLine(`ss -Hltnp sport = ${port}`),
+      succeeded('users:(("t3",pid=42))')
+    );
+    world.commands.answer(
+      commandLine('cat /proc/42/cgroup'),
+      succeeded(`0::${group}\n`)
+    );
+    for (const row of table.hashes())
+      world.commands.answer(
+        commandLine(`cat /sys/fs/cgroup${group}/${row['file']}`),
+        answer(row['answer'] ?? '')
+      );
+  }
+);
+
+Given(
+  new RegExp(
+    `^reading the controllers of the user manager of user (\\d+) ${ANSWER}$`
+  ),
+  (world, uid: string, written: string) => {
+    world.commands.answer(
+      commandLine(
+        `cat /sys/fs/cgroup${userManager(Number(uid))}/cgroup.controllers`
+      ),
+      answer(written)
+    );
   }
 );
 
