@@ -13,8 +13,9 @@ export interface ExposurePolicy {
   /** Opened on every interface; a listener on one is allowed. */
   publicPorts: PublicPort[];
   /** A listener outside the allow-list that no fleet service owns, such as
-   * an agent's development server: reported as a warning or a failure. The
-   * firewall closes it either way.
+   * an agent's development server (named apart, as
+   * WORKER_AGENT_LISTENER_UNRESTRICTED): reported as a warning or a failure.
+   * The firewall closes it either way.
    */
   otherListeners: 'warn' | 'fail';
 }

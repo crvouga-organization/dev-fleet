@@ -8,7 +8,7 @@ person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
 entry here, or a `devfleet` command quoted in the documents does not exist.
 
-There are 316 codes; 46 need a person.
+There are 318 codes; 46 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -125,7 +125,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - **Fix:** Resize a machine below the minimum, then run `devfleet fleet-sync`; nothing was installed on it. For a feature removal, run `devfleet fleet-sync` again. For too many sessions, finish some or move work to a larger worker.
 - **Escalate:** A package another package depends on stays installed until a person removes that one.
 
-- `AGENTS_OVER_CAPACITY`: agent session capacity exhausted: more agent sessions run than the memory policy supports (a warning; the size of a session is an estimate).
+- `AGENTS_OVER_CAPACITY`: agent session capacity exhausted: more agent sessions run than the memory policy supports (a warning; the size of a session is an estimate). The number is a recommendation, not an admission limit: T3 Code has no limit on the sessions it starts, so nothing refuses the next one. Memory is what is enforced: each agent is capped and the largest is stopped under pressure.
 - `WORKER_FEATURES_INVALID`: worker features invalid: the session is neither desktop nor headless.
 - `WORKER_FEATURE_REMOVAL_INCOMPLETE`: worker feature removal incomplete: a Docker package or the docker group membership is still there with containers off.
 - `WORKER_SIZE_BELOW_MINIMUM`: worker size below minimum: less memory, disk or CPUs than the minimum worker. **Needs a person.**
@@ -156,9 +156,10 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `FIREWALL_TAILNET_UNVERIFIED`: the tailnet path did not answer a new probe after the rules loaded; the previous rules were restored.
 - `FIREWALL_UNMANAGED_CONFLICT`: `/etc/personal-fleet/firewall.nft` exists without the fleet's marker. **Needs a person.**
 - `SSH_HARDENING_OVERRIDDEN`: `sshd -T` still allows passwords or root login: an earlier fragment or a Match block wins. **Needs a person.**
+- `WORKER_AGENT_LISTENER_UNRESTRICTED`: a process an agent started (in its `t3code-<agent>-<id>.scope`), such as a development server, listens beyond loopback and the tailnet outside the allow-list. It is no fleet service and fleet-sync does not change it; it warns or fails by `otherListeners`. Have the agent bind it to `127.0.0.1` or stop it, or declare its port in `publicPorts`; it ends with the agent session.
 - `WORKER_EXPOSURE_UNOBSERVED`: the addresses, sockets or firewall could not be read with `sudo -n`.
 - `WORKER_FIREWALL_INACTIVE`: the fleet firewall is not loaded.
-- `WORKER_LISTENER_UNRESTRICTED`: a socket listens beyond loopback and the tailnet outside the allow-list; the summary names the port and the owning unit. A fleet service fails; another warns or fails by `otherListeners`.
+- `WORKER_LISTENER_UNRESTRICTED`: a socket listens beyond loopback and the tailnet outside the allow-list; the summary names the port and the owning unit. A fleet service fails; another warns or fails by `otherListeners`. What an agent started is reported as `WORKER_AGENT_LISTENER_UNRESTRICTED` instead.
 - `WORKER_PUBLIC_PORT_UNRESTRICTED`: the manager connected to SSH, T3 or the monitoring port on the worker's public address.
 - `WORKER_PUBLIC_SSH_UNDECLARED`: SSH is still open beyond the tailnet without `publicSsh`, because no session over the tailnet proved the manager's path. **Needs a person.**
 
@@ -295,7 +296,8 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_PROVIDER_NAMES_UNVERIFIED`: t3 provider names unverified.
 - `T3_RENDERER_LIMIT_UNVERIFIED`: check the delegated renderer cgroup after an idle desktop restart and recovery timer tick.
 - `T3_RENDERERS_HIGH`: the desktop renderers exceed their memory budget. Reload the app when idle.
-- `T3_PROTECTION_ESCAPED`: the T3 listener lacks its CPU, I/O or memory reserve; the summary names which (`cpu`, `io`, `memory`). Apply fleet-sync and inspect its cgroup after the next idle restart. `io` alone means the user manager has no io controller yet: fleet-sync declares it, and the user manager takes it on its next start, so reboot the worker while it runs no agent turn (`devfleet fleet-sync --maintenance-reboot`).
+- `T3_PROTECTION_ESCAPED`: the T3 listener lacks its CPU, I/O or memory reserve; the summary names which (`cpu`, `io`, `memory`). Run fleet-sync: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. `io` alone, while the user manager has no io controller (measured in its `cgroup.controllers`), is not T3 leaving its unit: fleet-sync declares the controller, and the user manager takes it on its next start, so reboot the worker while it runs no agent turn (`devfleet fleet-sync --maintenance-reboot`); restarting T3 does not change it.
+- `T3_PROTECTION_UNOBSERVED`: no process of the worker user listens on the T3 port, so there is no reserve to measure: T3 is stopped or restarting. See `worker:t3-recovery` and `worker:t3-health`.
 - `T3_RESTART_PENDING`: t3 restart pending.
 - `T3_SERVER_INSTALL_FAILED`: t3 server install failed: the pinned server of a headless worker is missing from the toolchain, or `t3-headless.yml` did not apply.
 - `T3_SERVER_STOPPED`: t3 server stopped: the lingering `t3code-headless.service` of a headless worker is not running.
