@@ -105,12 +105,13 @@ function listing(roster: ProxyRoster) {
     rosterVersion: roster.rosterVersion,
     managementApi: roster.managementApi,
     accounts: roster.accounts.map(
-      ({ provider, index, label, state, until }) => ({
+      ({ provider, index, label, state, until, cooldowns }) => ({
         provider,
         index,
         label,
         state,
         until,
+        cooldowns,
       })
     ),
   };

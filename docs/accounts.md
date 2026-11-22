@@ -9,7 +9,7 @@ provider through the proxy.
 ## The roster
 
 ```sh
-npx devfleet fleet-accounts            # provider, index, label, state, when a cooldown clears
+npx devfleet fleet-accounts            # provider, index, label, state, cooldowns and when they clear
 npx devfleet fleet-accounts --diff     # and what this machine offers against it
 ```
 
@@ -23,6 +23,12 @@ management API:
 | `refresh-failing` | Its token refresh fails for now, and its access token is still valid       |
 | `needs-login`     | The provider refused its refresh token: only signing in again helps        |
 | `removed`         | Disabled on the proxy                                                      |
+
+The proxy also holds back single models: an account out of quota for one
+model still serves its others. Such an account stays `usable`, and its
+`cooldowns` name each model held back, the proxy's reason (`quota`,
+`payment_required`, …) and `until`. `proxy:account:<provider>` says so in its
+summary: "account 1 cooling-down on MODEL until …".
 
 The index of an account is its position among its provider's accounts, sorted
 by sign-in email. Checks name accounts by provider and index only.
@@ -40,8 +46,27 @@ proxy holds.
 | `accounts:roster-current`          | The node offers another roster version than the proxy's                                                |
 | `accounts:native-login`            | (warns) An agent CLI on the node keeps a provider login of its own                                     |
 | `proxy:reachable-from`             | The node gets no answer from the proxy; it warns above two seconds                                     |
-| `agent:<tool>:account-<n>:session` | That account's instance does not run a session; it warns while the account is cooling down             |
+| `agent:<tool>:account-<n>:session` | That account's instance does not run a session (see below); it warns while the account is cooling down |
 | `agent:<tool>:removed-<n>:session` | The node still offers an instance for an account the proxy no longer holds                             |
+
+A session check that does not pass says which of these it found:
+
+| Summary starts with                   | Status | Meaning                                                                                        |
+| ------------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
+| `AGENT_ACCOUNT_COOLING_DOWN`          | warn   | The provider limited the account. It clears on its own                                         |
+| `AGENT_ACCOUNT_VERIFICATION_REQUIRED` | fail   | The provider answers "Verify your account": a person completes it with the provider            |
+| `AGENT_ACCOUNT_AUTH_REJECTED`         | fail   | The account's credentials were refused; `fleet-accounts` says whether it needs a login         |
+| `AGENT_ACCOUNT_SESSION_TIMED_OUT`     | fail   | The session never ended, and the proxy named no cooldown and no refusal. Not a sign-in failure |
+| `AGENT_ACCOUNT_SESSION_FAILED`        | fail   | Anything else                                                                                  |
+
+OpenCode retries a request the proxy refuses until the session's deadline and
+prints nothing, so a limited account ends as a timeout. A node then asks the
+proxy for that account's model directly, with its own client key: a model the
+proxy holds back answers 429 at once, without a request to the provider, and
+the session is `AGENT_ACCOUNT_COOLING_DOWN`. A model it does not hold back is
+asked of the provider once, with one bounded request: an answer that names a
+verification or refuses the credentials is reported as that. A report never
+repeats what the provider said.
 
 Session results are cached for six hours under a key that holds the roster
 version and the version of the client key, so any account change or key
