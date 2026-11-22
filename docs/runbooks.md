@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 425 codes; 89 need a person.
+There are 427 codes; 89 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -143,10 +143,12 @@ write `1` to that agent scope’s `cgroup.kill`.
 
 - **Meaning:** The machine is smaller than the minimum worker (`sizing.minimumWorker` in `ansible/ubuntu/policy.json`), more agent sessions run than its memory policy supports, its declared `features` in `fleet.json` are not ones dev-fleet knows, or something dev-fleet installed for a feature that is now off is still there.
 - **Confirm:** `devfleet fleet-sync --dry-run` shows the `platform:worker-size` check of each worker and, under the plan, what turning a feature off removes; `devfleet fleet-status --workers` shows `worker:features` and `worker:agent-sessions`.
-- **Fix:** Resize a machine below the minimum, then run `devfleet fleet-sync`; nothing was installed on it. For a feature removal, run `devfleet fleet-sync` again. For too many sessions, finish some or move work to a larger worker.
+- **Fix:** Resize a machine below the minimum, then run `devfleet fleet-sync`; nothing was installed on it. For a feature removal, run `devfleet fleet-sync` again. For too many sessions, finish some or move work to a larger worker; to have the worker refuse sessions above a number you choose, declare `agentSessionLimit` in `fleet.json`.
 - **Escalate:** A package another package depends on stays installed until a person removes that one.
 
-- `AGENTS_OVER_CAPACITY`: agent session capacity exhausted: more agent sessions run than the memory policy supports (a warning; the size of a session is an estimate). The number is a recommendation, not an admission limit: T3 Code has no limit on the sessions it starts, so nothing refuses the next one. Memory is what is enforced: each agent is capped and the largest is stopped under pressure.
+- `AGENTS_OVER_CAPACITY`: agent session capacity exhausted: more agent sessions run than the memory policy supports (a warning; the size of a session is an estimate, and the summary holds it against what the running agents took at their peak). The number is a recommendation, not an admission limit: T3 Code has no limit on the sessions it starts, so nothing refuses the next one unless `fleet.json` declares `agentSessionLimit`. Memory is what is always enforced: each agent is capped and the largest is stopped under pressure.
+- `AGENT_SESSION_LIMIT_INACTIVE`: agent session limit inactive: `fleet.json` declares `agentSessionLimit` for the worker and the worker does not hold it, so it refuses no session. The summary says which: the user unit `personal-fleet-agent-session-limit.service` is not running, runs with another number, or the kernel holds another limit (`cgroup.max.descendants`) on the slice T3 starts agents in. Run `devfleet fleet-sync`; on the worker, `systemctl --user status personal-fleet-agent-session-limit.service` shows why the unit stopped.
+- `AGENT_SESSION_REFUSED`: agent session refused: a fleet launcher was started above the worker's `agentSessionLimit` and ended with code 75 without starting its agent. T3 shows the thread as failed with "exited with code 75 before it started"; the line is in T3's server log (`journalctl --user -u t3code-desktop.service`, or `t3code-headless.service`). End a session that is no longer needed and send the message again, or raise `agentSessionLimit` and run `devfleet fleet-sync`. An agent T3 starts with no fleet launcher is refused by the kernel two scopes higher, with no message: T3 shows "exited with code 1 before it started" and the user journal says `Failed to create cgroup … Resource temporarily unavailable`. To lift the limit at once on the worker: `systemctl --user stop personal-fleet-agent-session-limit.service`; to remove it, delete `agentSessionLimit` and sync.
 - `WORKER_FEATURES_INVALID`: worker features invalid: the session is neither desktop nor headless.
 - `WORKER_FEATURE_REMOVAL_INCOMPLETE`: worker feature removal incomplete: a Docker package or the docker group membership is still there with containers off.
 - `WORKER_SIZE_BELOW_MINIMUM`: worker size below minimum: less memory, disk or CPUs than the minimum worker. **Needs a person.**

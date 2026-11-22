@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "organization": "Session box",
+  "settings": {
+    "providerInstances.box_fleet": {
+      "locked": true,
+      "value": {
+        "driver": "claudeAgent",
+        "enabled": true,
+        "displayName": "Through a fleet launcher",
+        "config": {
+          "binaryPath": "/fleet/features/monitoring/support/session-box/fleet-launcher"
+        }
+      }
+    },
+    "providerInstances.box_plain": {
+      "locked": true,
+      "value": {
+        "driver": "claudeAgent",
+        "enabled": true,
+        "displayName": "With no fleet launcher",
+        "config": {
+          "binaryPath": "/fleet/features/monitoring/support/session-box/plain-agent"
+        }
+      }
+    }
+  },
+  "limits": { "updates": { "mode": "off", "allowNightly": true } }
+}

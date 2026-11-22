@@ -1,0 +1,5 @@
+#!/bin/sh
+# T3's binaryPath for the provider that starts agents through a fleet
+# launcher: the Claude driver wants an executable without an extension, as
+# agents/claude-proxy is.
+exec /usr/local/bin/bun "${0%/*}/launcher.ts" "$@"

@@ -142,8 +142,54 @@ More active sessions than the recommendation warn with `AGENTS_OVER_CAPACITY`.
 The number is a recommendation, not an admission limit: T3 Code starts a
 session whenever it is asked for one and its administrator policy has no limit
 on them, so nothing refuses the next session and the check says so. What is
-enforced is memory: each agent and the agents together are capped, and the
-largest is stopped under sustained pressure.
+always enforced is memory: each agent and the agents together are capped, and
+the largest is stopped under sustained pressure.
+
+The estimate cannot be right for every worker, so the check holds it against
+the agents running now: the median and the largest of their memory peaks (the
+kernel's `memory.peak` of each agent scope), how far the estimate is from that
+median and how many sessions the worker would support at it.
+
+### A limit on agent sessions
+
+`agentSessionLimit` is the opt-in for a worker that refuses sessions above a
+number you choose: fleet-wide under `worker`, or on one worker, which replaces
+the fleet-wide one. It is a whole number from 1; without it nothing is
+installed and nothing is refused.
+
+```json
+"worker": { "agentSessionLimit": 12 }
+```
+
+What it counts is the scopes T3 Code starts agents in, in the slice it owns:
+one for each Claude session, and one shared by all the threads of Codex or of
+OpenCode. Terminals, and the scope T3 probes with when it starts, are in
+another slice and are never refused. A T3 that restarts resumes the sessions
+it ran, and those count like any other.
+
+Neither T3 Code nor systemd can count those scopes, so the kernel does. The
+user unit `personal-fleet-agent-session-limit.service` of the worker's own
+user manager writes `cgroup.max.descendants` on that slice, two scopes above
+the declared limit, and looks again every two seconds because the slice
+exists only while an agent runs. Two things then refuse:
+
+| Started                  | Refused by                             | What T3 shows                                                                                              |
+| ------------------------ | -------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Through a fleet launcher | The launcher, above the limit          | The thread failed, "exited with code 75 before it started"; `AGENT_SESSION_REFUSED` in T3's server log     |
+| With no fleet launcher   | The kernel, two scopes above the limit | The thread failed, "exited with code 1 before it started"; `Failed to create cgroup` in the user's journal |
+
+T3 Code reports only how a provider ended, so the launcher is the one place a
+refusal can say why; the text T3 shows is its own. `worker:agent-sessions`
+says when a worker is at its limit, and fails with
+`AGENT_SESSION_LIMIT_INACTIVE` when a declared limit is not held.
+
+Ending a session admits the next one. To lift the limit at once on a worker,
+stop the unit (`systemctl --user stop personal-fleet-agent-session-limit.service`):
+it puts the kernel's limit back to `max` as it ends. To remove it, delete
+`agentSessionLimit` and run `fleet-sync`.
+`features/monitoring/agent-session-limit.feature` proves each of these
+against the pinned T3 server on a disposable machine.
+
 Projects can serialize heavy builds across their worktrees by running them
 under the same user-owned lock, for example
 `flock "$XDG_RUNTIME_DIR/project-build.lock" npm run build`.

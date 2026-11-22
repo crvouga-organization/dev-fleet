@@ -1,0 +1,17 @@
+---
+# The baseline's own tasks for the agent session limit, applied alone on the
+# session box with the values the baseline passes them. The steps copy this
+# beside baseline.yml on the machine, so `playbook_dir` is what it is there.
+- name: Hold or lift the agent session limit as the Ubuntu baseline does
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: false
+  vars_files:
+    - policy.json
+  vars:
+    development_user: ubuntu
+    development_uid: 1000
+  tasks:
+    - name: Apply the baseline's tasks
+      ansible.builtin.import_tasks: tasks/agent-session-limit.yml

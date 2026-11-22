@@ -267,6 +267,9 @@ propagates them without a full sync.
    no desktop. `containers` and `session` set each one; fleet-wide defaults go
    under `worker.features`. The [worker contract](docs/worker-contract.md)
    says what each feature installs and the minimum size of a worker.
+   `"agentSessionLimit": 12`, on a worker or under `worker`, has the worker
+   refuse agent sessions above that number; without it nothing is refused
+   ([a limit on agent sessions](docs/worker-contract.md#a-limit-on-agent-sessions)).
 
 3. Run `fleet-sync`. A machine that has only an SSH server and an account
    with sudo is enough: every pull request proves that against a bare

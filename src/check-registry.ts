@@ -461,7 +461,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'worker:account':
     "The declared worker account was created over a root login, with the manager's key and the fleet's sudo rule.",
   'worker:agent-sessions':
-    'How many agent sessions this worker runs, and how many its memory policy supports at the estimated size of a session; warns when more run. Nothing refuses a session above that number: T3 Code has no limit on the sessions it starts.',
+    'How many agent sessions this worker runs, how many its memory policy supports at the estimated size of a session, and how that estimate compares with the agents running now; warns when more run than it supports. Nothing refuses a session unless the fleet configuration declares agentSessionLimit; a declared limit the worker does not hold fails.',
   'worker:auto-park':
     'fleet-watch parked a worker idle longer than declared (only with parking.autoPark).',
   'worker:browser':
