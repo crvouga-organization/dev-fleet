@@ -151,6 +151,22 @@ checkout, the pinned tools and T3 Code. System packages roll forward only
 an older version and running `fleet-sync` does the same for any earlier
 release.
 
+The fleet moves only to a revision on the default branch of the source
+repository, which every release is. `fleet-sync` asks the manager's own copy
+of that repository, whatever selected the revision (the package, `--revision`,
+`--rollback`, the schedule, a checkout, a hand-off from a worker), and refuses
+any other with `FLEET_REVISION_UNMERGED` before anything changes.
+`--allow-unmerged` converges to such a revision on purpose. The report, the
+fleet state and `fleet-watch` say what selected the approved revision.
+
+mise's own pin (`min_version`) is a minimum. A machine that runs a newer mise
+than a revision pins keeps it, after a rollback too: replacing it would break
+every checkout on the machine whose pin is newer. `fleet-status` reports that
+as the warning `TOOLCHAIN_DOWNGRADE` of `tool:mise`, and
+[the runbook](docs/runbooks.md#the-pinned-toolchain) says how to install the
+older one on purpose. Each revision runs its own bootstrap, so a revision
+from before this rule still installs exactly the mise it pins.
+
 ## Your project's own tools
 
 On a fleet machine the global mise configuration (`~/.config/mise/config.toml`
@@ -410,7 +426,8 @@ bun run check
 
 Run from a checkout, `fleet-sync` converges the fleet to the checkout's `HEAD`
 commit (never to uncommitted files). The checkout's `origin` must be the
-repository `fleet.json` names under `source`. Every merge to `main` publishes a release;
+repository `fleet.json` names under `source`, and a `HEAD` that is not on its
+default branch needs `--allow-unmerged`. Every merge to `main` publishes a release;
 see [releasing](docs/releasing.md).
 
 What dev-fleet does is specified in Gherkin, under

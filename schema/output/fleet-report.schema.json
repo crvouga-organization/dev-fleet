@@ -68,6 +68,10 @@
           "durationMs": { "type": "number" },
           "trigger": { "enum": ["operator", "schedule"] },
           "revision": { "type": ["string", "null"] },
+          "selectedBy": {
+            "description": "What selected the revision, as in the fleet-sync report. Runs recorded before it was kept have none.",
+            "type": "object"
+          },
           "ok": { "type": "boolean" },
           "exitCode": { "type": "integer" },
           "failing": { "type": "array", "items": { "type": "string" } },

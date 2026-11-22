@@ -43,8 +43,9 @@ script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 checkout=$(cd "$script_dir/.." && pwd)
 cd "$checkout"
 # mise is pinned where every other tool is: `min_version` in mise.toml is the
-# version installed, and [vars] holds the digest of its release archive for
-# each platform. mise cannot read them for us before it exists.
+# version installed on a machine that has none or an older one, and [vars]
+# holds the digest of its release archive for each platform. mise cannot read
+# them for us before it exists.
 pin() { sed -n "s/^$1 = \"\\(.*\\)\"\$/\\1/p" "$checkout/mise.toml" | head -n 1; }
 MISE_VERSION=$(pin min_version)
 mise_sha256=$(pin "mise_${platform}_${arch}_sha256")
@@ -54,7 +55,40 @@ mise_sha256=$(pin "mise_${platform}_${arch}_sha256")
 # Reuse an observed matching managed executable. Repeated reconciliation must
 # not download/reinstall mise solely because a previous run finished.
 installed_mise=$("$HOME/.local/bin/mise" --version 2>/dev/null | awk '{print $1}') || installed_mise=''
+# `min_version` is a minimum: a newer mise satisfies this checkout's pin, and
+# every other checkout on the machine whose pin is newer than this one needs
+# it. So a newer mise is kept, and replaced with the older pinned one only
+# when that is asked for by name. The doctor reports a kept one as
+# TOOLCHAIN_DOWNGRADE (tool:mise).
+allow_downgrade=false
+for arg; do [[ "$arg" != --allow-mise-downgrade ]] || allow_downgrade=true; done
+# Whether release $1 is newer than release $2, number by number.
+newer() {
+  local IFS=. index left right
+  local -a first second
+  read -r -a first <<<"$1"
+  read -r -a second <<<"$2"
+  for index in 0 1 2; do
+    left=${first[index]:-0} right=${second[index]:-0}
+    left=${left//[^0-9]/} right=${right//[^0-9]/}
+    ((10#${left:-0} > 10#${right:-0})) && return 0
+    ((10#${left:-0} < 10#${right:-0})) && return 1
+  done
+  return 1
+}
+install_mise=false
 if [[ "$installed_mise" != "$MISE_VERSION" ]]; then
+  install_mise=true
+  if [[ -n "$installed_mise" ]] && newer "$installed_mise" "$MISE_VERSION"; then
+    if [[ "$allow_downgrade" == true ]]; then
+      echo "TOOLCHAIN_DOWNGRADE: replacing mise $installed_mise with the older $MISE_VERSION this checkout pins, as --allow-mise-downgrade asks." >&2
+    else
+      install_mise=false
+      echo "TOOLCHAIN_DOWNGRADE: this checkout pins mise $MISE_VERSION and the machine runs the newer $installed_mise, which is kept. Pass --allow-mise-downgrade to install the older one." >&2
+    fi
+  fi
+fi
+if [[ "$install_mise" == true ]]; then
 temp=$(mktemp -d)
 trap 'rm -rf "$temp"' EXIT
 asset="mise-v${MISE_VERSION}-${platform}-${arch}.tar.gz"

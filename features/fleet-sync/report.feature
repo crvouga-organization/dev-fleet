@@ -42,6 +42,15 @@ Feature: fleet-sync prints a short report that is the same every time
       Then the printed report does not name "ts.net"
       And the printed report contains "its private tailnet address. Inspect it."
 
+    Scenario: The report says what selected the revision, and which one it replaces
+      Given the report says the revision was selected by:
+        """
+        { "by": "checkout", "handOff": { "worker": "w1" }, "allowUnmerged": true }
+        """
+      And the report says the revision replaces "0123456789abcdef0123456789abcdef01234567"
+      When the report is printed in plain text
+      Then the printed report contains "selected   by the HEAD of the checkout fleet-sync was started in, handed off from w1 (--allow-unmerged); replaces 0123456789ab"
+
   Rule: Warnings alone are a converged run
 
     Background:

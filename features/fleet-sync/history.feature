@@ -34,6 +34,30 @@ Feature: Every fleet-sync run is kept in a history, and fleet-report says how re
       | failing    | ssh:timeout, tool:node                   |
       | not ready  | worker-one                               |
 
+  Scenario: A run is recorded with what selected its revision
+    Words and a worker's fleet id only; anything else a report says there is
+    left out.
+    When fleet-sync records the run of "2026-11-01T10:00:00Z" to "2026-11-01T10:01:00Z" that ended with 0 and reported:
+      """
+      {
+        "ok": true,
+        "desiredRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "selectedBy": { "by": "revision", "handOff": { "worker": "worker-one" }, "account": "PRIVATE" },
+        "checks": [],
+        "nodes": []
+      }
+      """
+    Then the history holds this run:
+      | trigger     | schedule                                 |
+      | ok          | true                                     |
+      | exitCode    | 0                                        |
+      | durationMs  | 60000                                    |
+      | revision    | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
+      | failing     |                                          |
+      | not ready   |                                          |
+      | selected by | --revision, handed off from worker-one   |
+    And the history does not mention "PRIVATE"
+
   Scenario: After three runs the report lists three, with their success rate, failing checks and time not ready
     Given fleet-sync recorded these runs:
       | finished             | seconds | ok  | failing                | not ready  |

@@ -1,3 +1,4 @@
+import { selectionText } from '../../../src/revision-selection';
 import { expect } from 'bun:test';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -156,7 +157,12 @@ Then('the history holds this run:', (_world, table: DataTable) => {
     revision: String(run.revision),
     failing: run.failing.join(', '),
     'not ready': run.notReady.join(', '),
+    ...(run.selectedBy ? { 'selected by': selectionText(run.selectedBy) } : {}),
   }).toEqual(expected as never);
+});
+
+Then('the history does not mention {string}', (_world, text: string) => {
+  expect(JSON.stringify(readHistory())).not.toContain(text);
 });
 
 Then('the history holds {int} runs', (_world, count: number) => {

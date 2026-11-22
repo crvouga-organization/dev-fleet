@@ -1,7 +1,8 @@
 # Shared workstation toolchain. Bootstrap installs this globally; projects may override it.
 # Commit mise.lock whenever changing these pins.
-# min_version is also the exact mise bootstrap/bootstrap.sh installs; the
-# mise_*_sha256 digests under [vars] move with it (bun bootstrap/pins.ts mise).
+# min_version is also the mise bootstrap/bootstrap.sh installs on a machine
+# that has none or an older one (a newer one is kept); the mise_*_sha256
+# digests under [vars] move with it (bun bootstrap/pins.ts mise).
 min_version = "2026.11.11"
 
 [settings]

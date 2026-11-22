@@ -12,6 +12,7 @@ import {
   forwardToManager,
   managerCommand,
 } from '../../../src/cli/fleet-sync-forward';
+import type { RevisionSelection } from '../../../src/revision-selection';
 import { failed, succeeded } from '../../support/commands';
 import type { DataTable } from '../../support/gherkin';
 import {
@@ -43,9 +44,23 @@ function prepare(
   revision: string | undefined
 ): void {
   const options = request(command);
-  world.command = managerCommand(definition, options, revision, world.script);
+  world.command = managerCommand(definition, options, revision, {
+    script: world.script,
+    selection: world.selection,
+  });
   world.forwarded = forwardedFlags(options, revision);
 }
+
+Given(
+  /^the worker "([^"]*)" selected the revision from "([^"]*)"( with --allow-unmerged)?$/,
+  (world, worker: string, by: string, allowed: string | undefined) => {
+    world.selection = {
+      by: by as RevisionSelection['by'],
+      handOff: { worker },
+      ...(allowed ? { allowUnmerged: true as const } : {}),
+    };
+  }
+);
 
 When(
   'a worker prepares to hand {string} at revision {string} to the manager',
@@ -83,6 +98,15 @@ Then(
     expect(world.command.at(-1)).toMatch(
       new RegExp(`${escaped(first)}\\W+${escaped(second)}`)
     );
+  }
+);
+
+Then(
+  'what the manager is asked to run names {string} before {string}',
+  (world, first: string, second: string) => {
+    const asked = world.command.at(-1)!;
+    expect(asked).toContain(first);
+    expect(asked.indexOf(first)).toBeLessThan(asked.indexOf(second));
   }
 );
 

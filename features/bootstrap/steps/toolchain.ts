@@ -10,6 +10,7 @@ import { dirname, join, resolve } from 'node:path';
 import {
   dockerChecks,
   globalConfigCheck,
+  miseCheck,
   toolChecks,
   worktreeTrustCheck,
   type Check,
@@ -395,6 +396,13 @@ When(
   }
 );
 
+When(
+  'the doctor checks mise itself against the pin {string}',
+  (world, pinned: string) => {
+    doctor(world).checks = [miseCheck(pinned, runner(world))];
+  }
+);
+
 When('the doctor checks the global mise configuration', (world) => {
   doctor(world).checks = [
     globalConfigCheck(published(world).target, published(world).source),
@@ -407,7 +415,7 @@ Then('the check says {string}', (world, text: string) => {
 });
 
 Then(
-  /^the check "([^"]*)" (passes|fails)$/,
+  /^the check "([^"]*)" (passes|warns|fails)$/,
   (world, id: string, verdict: keyof typeof STATUS) => {
     expect(doctor(world).checks.find((check) => check.id === id)?.status).toBe(
       STATUS[verdict]

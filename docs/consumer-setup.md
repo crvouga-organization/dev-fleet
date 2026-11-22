@@ -362,6 +362,7 @@ Read `summary` and `remedy.action` of the failing check. The common ones:
 | `FLEET_MANAGER_ENROLLMENT_REQUIRED`       | No worker is enrolled yet. The human runs the first `fleet-sync` in a terminal.                                               |
 | `FLEET_NOT_MANAGER`                       | You are not on the machine `manager` names. Run there, or from a worker that can SSH to it.                                   |
 | `FLEET_REVISION_REQUIRED`                 | No revision to converge to. Run the installed package (`npx devfleet`), not a copy of its source.                             |
+| `FLEET_REVISION_UNMERGED`                 | The revision is not on the default branch of the source repository. Nothing changed; a release always is.                     |
 | `FLEET_SOURCE_UNAVAILABLE`                | The revision could not be fetched from `source.repository`. Check the network and that the URL is right.                      |
 | `FLEET_STATE_DIVERGED`                    | This machine and the bucket hold different fleet states. `fleet-state --json` explains; never pick one without the human.     |
 | `FLEET_MANAGER_LOCKED`                    | Another run holds the manager's lock. Wait for it; do not delete the lock while a run is alive.                               |

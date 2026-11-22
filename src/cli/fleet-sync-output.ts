@@ -1,5 +1,6 @@
 import { Chalk, type ChalkInstance } from 'chalk';
 import type { ManagerNode, ManagerReport } from '../manager-sync';
+import { selectionText } from '../revision-selection';
 import { blocking, type Check, type Status } from '../types';
 
 /** Report columns: each owns the checks whose id matches. A check matches the
@@ -122,6 +123,7 @@ export function managerText(
     lines.push(
       `${c.dim('report   ')}  ${options.reportPath} ${c.dim('(full JSON; or rerun with --json)')}`
     );
+  lines.push(...selectedLine(c, report));
   if (report.enrolled?.length)
     lines.push(`${c.dim('enrolled ')}  ${report.enrolled.join(', ')}`);
   if (report.candidates)
@@ -130,6 +132,17 @@ export function managerText(
     );
   if (!report.applied) lines.push(c.dim('No node deployment was performed.'));
   return stableUrls(lines.join('\n'));
+}
+
+/** `selected   by --revision; replaces 0123456789ab`, when the report says. */
+function selectedLine(c: ChalkInstance, report: ManagerReport): string[] {
+  if (!report.selectedBy) return [];
+  const replaces = report.replacedRevision
+    ? `; replaces ${report.replacedRevision.slice(0, 12)}`
+    : '';
+  return [
+    `${c.dim('selected ')}  by ${selectionText(report.selectedBy)}${replaces}`,
+  ];
 }
 
 const TAILNET_URL =
