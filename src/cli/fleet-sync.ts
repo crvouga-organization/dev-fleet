@@ -51,6 +51,7 @@ import { selected } from './fleet-sync-remote';
 import { managerIdentity } from './fleet-sync-manager';
 import { inRunCheckout, managerRunScript, rehome } from './fleet-sync-checkout';
 import { syncAccounts } from './fleet-sync-accounts';
+import { workerCopyRefusal } from './fleet-sync-worker-copy';
 import { packageInfo } from '../package-info';
 import {
   asksAncestry,
@@ -261,14 +262,12 @@ export async function managerSync(
   const chosen = await managerRevision(options, state, settings, run);
   if ('exitCode' in chosen) return chosen;
   const { revision, selection } = chosen;
-  const unmerged = await unmergedRefusal(options, chosen, root, run);
-  if (unmerged) return unmerged;
-  const downgrade = await miseRefusal(options, chosen, settings, {
+  const unfit = await revisionRefusal(options, chosen, settings, {
     run,
     root,
     home,
   });
-  if (downgrade) return downgrade;
+  if (unfit) return unfit;
   if (options.schedule)
     return scheduleRequest(options, revision, settings, run);
   const rehomed = await rehome(
@@ -303,15 +302,57 @@ export async function managerSync(
     reloadFleet();
     return restart();
   }
-  return (
+  const edited =
     copyRefusal(home, revision) ??
-    previewOrApply(options, settings, state, {
-      run,
-      root,
-      chosen,
-      standing: fresh.standing,
-    })
+    (await workerCopies(options, revision, settings, { run, root }));
+  if (edited) return edited;
+  return previewOrApply(options, settings, state, {
+    run,
+    root,
+    chosen,
+    standing: fresh.standing,
+  });
+}
+
+/** Why the chosen revision stops the run before it leaves for the revision's
+ * own checkout, if it does: it is not on the default branch, or its
+ * bootstrap would replace a newer mise.
+ */
+async function revisionRefusal(
+  options: FleetSyncOptions,
+  chosen: Chosen,
+  settings: Settings,
+  at: { run: Runner; root: string; home: string | undefined }
+): Promise<CommandOutcome | null> {
+  return (
+    (await unmergedRefusal(options, chosen, at.root, at.run)) ??
+    (await miseRefusal(options, chosen, settings, at))
   );
+}
+
+/** Why a worker's copy of the configuration stops the run, if one does: the
+ * same refusal as for this machine's copy, asked of every worker the run is
+ * about to converge before the manager, the fleet state or any of them is
+ * changed. A worker's own bootstrap still refuses when it gets there.
+ */
+async function workerCopies(
+  options: FleetSyncOptions,
+  revision: string,
+  settings: Settings,
+  { run, root }: { run: Runner; root: string }
+): Promise<CommandOutcome | null> {
+  const report = await workerCopyRefusal(
+    { revision, ...(options.node ? { node: options.node } : {}) },
+    { root, roster: settings.config, checkout: settings.workspace },
+    run
+  );
+  return report
+    ? {
+        exitCode: 1,
+        data: report,
+        text: managerText(report, { color: stdoutColor() }),
+      }
+    : null;
 }
 
 /** The preview of a run for the chosen revision, or the run itself. */

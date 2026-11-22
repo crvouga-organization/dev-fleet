@@ -8,11 +8,18 @@ import {
   readFileSync,
   readdirSync,
   rmSync,
+  statSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import {
+  copyQuestion,
+  copyRefused,
+  sentDigest,
+} from '../../../src/worker-configuration-copy';
+import type { Check } from '../../../src/types';
 import { orchestration, type OrchestrationWorld } from '../support/world';
 
 /** The configuration-install step of the remote bootstrap, cut from the
@@ -69,6 +76,12 @@ interface Worker {
   clock: number;
   /** The revision that keeps no record, once one ran here. */
   recordless?: string;
+  /** What the manager's question was answered: the bootstrap's refusal, or
+   * null for a copy that would be replaced.
+   */
+  asked?: Check | null;
+  /** Every file on the worker before the question, when a scenario asks. */
+  before?: string;
 }
 const workers = new WeakMap<OrchestrationWorld, Worker>();
 
@@ -246,9 +259,99 @@ Given(
   }
 );
 
+/** The manager's question, as it arrives over SSH: the text of the tracked
+ * script's rule, run in the worker's home with the SHA-256 of the copy that
+ * would be sent.
+ */
+function ask(world: OrchestrationWorld, configuration: string): Check | null {
+  const question = copyQuestion(script());
+  expect(question).not.toBeNull();
+  const result = spawnSync(
+    '/bin/sh',
+    ['-c', question!, 'fleet-configuration-copy', sentDigest(configuration)],
+    {
+      env: { PATH: '/usr/bin:/bin', HOME: worker(world).home },
+      encoding: 'utf8',
+      timeout: 20_000,
+    }
+  );
+  expect(result.status).toBe(0);
+  const refused = copyRefused(result.stdout);
+  if (!refused) expect(result.stdout).toBe('copy=replaceable\n');
+  return refused;
+}
+
+/** Every file under the worker's home: its path, size, modification time
+ * and, for a regular file, what it holds.
+ */
+function everyFile(directory: string): string {
+  return readdirSync(directory, { recursive: true, encoding: 'utf8' })
+    .sort()
+    .map((name) => {
+      const stat = statSync(join(directory, name));
+      const holds = stat.isFile()
+        ? createHash('sha256')
+            .update(readFileSync(join(directory, name)))
+            .digest('hex')
+        : 'directory';
+      return `${name} ${stat.mtimeMs} ${holds}`;
+    })
+    .join('\n');
+}
+
+When(
+  'the manager asks what the bootstrap would decide for the configuration {string}',
+  (world, configuration: string) => {
+    worker(world).before = everyFile(worker(world).home);
+    worker(world).asked = ask(world, configuration);
+  }
+);
+
+Then(
+  "the manager is told the bootstrap's own refusal {string} of {string}",
+  (world, code: string, id: string) => {
+    const printed = spawnSync(
+      '/bin/sh',
+      [
+        '-c',
+        `${between('remedy() {', '# failure-report: end')}\nremedy ${code}`,
+      ],
+      { env: { PATH: '/usr/bin:/bin' }, encoding: 'utf8', timeout: 20_000 }
+    ).stdout.trim();
+    expect(printed).not.toBe('');
+    expect(worker(world).asked).toEqual({
+      id,
+      status: 'fail',
+      summary: code,
+      remedy: { action: printed },
+    });
+  }
+);
+
+Then('every file on the worker is as it was before the question', (world) => {
+  expect(everyFile(worker(world).home)).toBe(worker(world).before!);
+});
+
+Then(
+  /^the manager, asking beforehand, was told the copy would be (replaced|refused)$/,
+  (world, answer: string) => {
+    expect(worker(world).asked === null ? 'replaced' : 'refused').toBe(answer);
+    expect(worker(world).asked).not.toBeUndefined();
+  }
+);
+
+Then(
+  "there is no question to ask about a bootstrap script without the rule's markers",
+  () => {
+    expect(copyQuestion(scriptWithoutRecord())).toBeNull();
+  }
+);
+
 When(
   'the worker is sent the configuration {string}',
   (world, configuration: string) => {
+    // Asked first, of the worker as the bootstrap is about to find it.
+    worker(world).asked = ask(world, configuration);
     worker(world).stdout = operate(world, configuration).stdout;
   }
 );
