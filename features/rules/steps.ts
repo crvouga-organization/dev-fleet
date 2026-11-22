@@ -1313,8 +1313,26 @@ Then(
 const FAILURE =
   /^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*_(?:FAILED|FAILING|REQUIRED|MISSING|MISMATCH|CONFLICT|UNVERIFIED|UNAVAILABLE|UNREACHABLE|INVALID|REJECTED|INCOMPLETE|STALE|DRIFT|PENDING|DENIED|TIMEOUT|FULL|UNSUPPORTED|LOCKED|OFFLINE|UNSCHEDULED|UNDECLARED|OVERRIDDEN|REFUSED|UNHEALTHY|BROKEN|CONTENDED|INTERRUPTED|UNSAFE|DIVERGED|BLOCKED|STOPPED|EXHAUSTED|INACTIVE|CHANGED|UNREADABLE|LIMIT|LIMITED|UNSERVED|UNOBSERVED|UNPROVISIONED|REPLACED|INSTALLED|RUNNING|ENABLED|POLICY|BUSY|FLOOR|ENROLLED|DISCONNECTED|PROTOCOL|DAEMON|RESPONSE|UNRESTRICTED|PREVIEW|ERROR|ROLE|HUB|MANAGER|CONVERGED|POWER|MINIMUM|DOWNGRADE|UNMERGED)$/;
 
+/** A code that opens a sentence: `CODE: what was found`, `CODE 3 logs`,
+ * `CODE${measured}`. A check's summary and a refusal's message carry their
+ * code this way, so whatever opens a string like this is a code whatever its
+ * last word is, unless it is the name of an environment variable.
+ */
+const OPENS_A_SENTENCE = /['"`]([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)(?=[:, (]|\$\{)/g;
+
+/** Environment variables a sentence of the source starts with. */
+const ENVIRONMENT = [
+  'DEVFLEET_CONFIG',
+  'DEVFLEET_STATE',
+  'MISE_GLOBAL_CONFIG_FILE',
+];
+
 async function failureCodes(): Promise<string[]> {
   const codes = new Set<string>();
+  for (const pattern of ['src/**/*.ts', 'bootstrap/*.ts'])
+    for (const path of await files(pattern))
+      for (const match of read(path).matchAll(OPENS_A_SENTENCE))
+        if (!ENVIRONMENT.includes(match[1]!)) codes.add(match[1]!);
   const sources: [string, RegExp][] = [
     ['src/**/*.ts', /['"`]([A-Z][A-Z0-9_]+)['"`]/g],
     ['bootstrap/*.ts', /['"`]([A-Z][A-Z0-9_]+)['"`]/g],
@@ -1348,6 +1366,10 @@ When('the failure codes of the source are collected', async (world) => {
 
 Then('there are more than {int} of them', (world, count: number) => {
   expect(world.found.length).toBeGreaterThan(count);
+});
+
+Then(/^"([A-Z0-9_]+)" is (not )?one of them$/, (world, code: string, not) => {
+  expect(world.found.includes(code)).toBe(!not);
 });
 
 Then('each has an entry in {string}', (world, path: string) => {

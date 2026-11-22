@@ -96,6 +96,80 @@ Feature: Every per-account instance runs a real session, and account changes re-
     When the account sessions are checked
     Then the check "agent:codex:account-1:session" has no remedy
 
+  Scenario Outline: A cooling-down session names when the cooldown clears, when the proxy says so: <case>
+    The proxy answers a request for a model it holds back with 429 and says
+    how long it holds it: in Retry-After, as seconds or as a date, or in the
+    reset_seconds of its error. The check repeats that instant and invents
+    none: an answer that names no time, a time already past or one that is
+    not a time leaves the summary without one.
+    Given the proxy lists these models:
+      | antigravity-a@example.com/gemini-3.8-flash |
+    And the time is "2027-01-15T09:00:00Z"
+    And the session of the account "a@example.com" runs into its deadline
+    And the proxy answers a request for that account's model with the status 429 saying "<answer>"
+    And that answer carries the header "Retry-After: <retry after>"
+    When this node's account sessions are verified
+    Then the summary of the check "agent:opencode:account-1:session" is "AGENT_ACCOUNT_COOLING_DOWN: opencode account 1 <limited>; checked again on the next status."
+    And the check "agent:opencode:account-1:session" has no remedy
+    And no check repeats what the proxy answered
+
+    Examples:
+      | case                         | retry after                   | answer                                                                                        | limited                                      |
+      | seconds                      | 1800                          | {"error":{"message":"PRIVATE_SENTINEL","type":"rate_limit_error","param":null,"code":"model_cooldown"}} | is rate limited until 2027-01-15T09:30:00Z |
+      | a date                       | Fri, 15 Jan 2027 10:15:00 GMT | PRIVATE_SENTINEL                                                                              | is rate limited until 2027-01-15T10:15:00Z |
+      | the header before the error  | 60                            | {"error":{"code":"model_cooldown","reset_seconds":1800,"message":"PRIVATE_SENTINEL"}}         | is rate limited until 2027-01-15T09:01:00Z |
+      | a time already past          | Fri, 15 Jan 2027 08:00:00 GMT | PRIVATE_SENTINEL                                                                              | is rate limited                              |
+      | no seconds at all            | 0                             | PRIVATE_SENTINEL                                                                              | is rate limited                              |
+      | something that is not a time | soon                          | PRIVATE_SENTINEL                                                                              | is rate limited                              |
+      | a time a year away           | 31536000                      | PRIVATE_SENTINEL                                                                              | is rate limited                              |
+
+  Scenario Outline: A cooling-down session whose answer has no Retry-After reads the proxy's error: <case>
+    Given the proxy lists these models:
+      | antigravity-a@example.com/gemini-3.8-flash |
+    And the time is "2027-01-15T09:00:00Z"
+    And the session of the account "a@example.com" runs into its deadline
+    And the proxy answers a request for that account's model with the status 429 saying "<answer>"
+    When this node's account sessions are verified
+    Then the summary of the check "agent:opencode:account-1:session" is "AGENT_ACCOUNT_COOLING_DOWN: opencode account 1 <limited>; checked again on the next status."
+
+    Examples:
+      | case                      | answer                                                     | limited                                      |
+      | it names the seconds left | {"error":{"code":"model_cooldown","reset_seconds":1800}}   | is rate limited until 2027-01-15T09:30:00Z |
+      | it names no time          | {"error":{"code":"model_cooldown"}}                        | is rate limited                              |
+      | its seconds are no number | {"error":{"code":"model_cooldown","reset_seconds":"soon"}} | is rate limited                              |
+      | it is not an error object | RESOURCE_EXHAUSTED                                         | is rate limited                              |
+
+  Scenario Outline: A session the fleet's relay refused names the time the relay printed: <case>
+    The relay answers a request for an account it holds back with "cooling
+    down until" and an instant. Nothing else a session prints is read as a
+    time.
+    Given the proxy lists these models:
+      | claude-a@example.com/claude-sonnet-5-5 |
+    And the time is "2027-01-15T09:00:00Z"
+    And the session of the account "a@example.com" fails printing "<output>"
+    When this node's account sessions are verified
+    Then the summary of the check "agent:claude:account-1:session" is "AGENT_ACCOUNT_COOLING_DOWN: claude account 1 <limited>; checked again on the next status."
+    And the proxy was not asked about any account
+
+    Examples:
+      | case                    | output                                                      | limited                                      |
+      | the relay named it      | This account is cooling down until 2027-01-15T09:30:00.000Z. | is rate limited until 2027-01-15T09:30:00Z |
+      | the time is past        | This account is cooling down until 2027-01-15T08:30:00.000Z. | is rate limited                              |
+      | a provider named a date | 429 Too Many Requests, try again after 2027-01-15T09:30:00Z | is rate limited                              |
+      | nothing named a time    | 429 Too Many Requests                                       | is rate limited                              |
+
+  Scenario: A cooldown is named only for an account that is cooling down
+    Given the proxy lists these models:
+      | claude-a@example.com/claude-sonnet-5-5 |
+      | claude-b@example.com/claude-sonnet-5-5 |
+    And the sessions answer:
+      | account       | result       | clears               |
+      | a@example.com | cooling-down | 2027-01-15T09:30:00Z |
+      | b@example.com | failed       | 2027-01-15T09:30:00Z |
+    When the account sessions are checked
+    Then the summary of the check "agent:claude:account-1:session" is "AGENT_ACCOUNT_COOLING_DOWN: claude account 1 is rate limited until 2027-01-15T09:30:00Z; checked again on the next status."
+    And the summary of the check "agent:claude:account-2:session" is "AGENT_ACCOUNT_SESSION_FAILED: claude account 2 did not run a session."
+
   Scenario Outline: A session that ran into its deadline is what the proxy says of its account: <case>
     OpenCode retries a request the proxy refuses until the session's deadline,
     so a limited account ends as a timeout that printed nothing. The proxy is
@@ -116,6 +190,9 @@ Feature: Every per-account instance runs a real session, and account changes re-
       | the proxy holds its model back | 429    | {"error":{"code":"model_cooldown","reset_seconds":1800}} | warns   | AGENT_ACCOUNT_COOLING_DOWN          |
       | its provider limits it         | 429    | RESOURCE_EXHAUSTED                                       | warns   | AGENT_ACCOUNT_COOLING_DOWN          |
       | its provider wants it verified | 403    | Verify your account to continue.                         | fails   | AGENT_ACCOUNT_VERIFICATION_REQUIRED |
+      | the proxy wraps that in its error | 403 | {"error":{"message":"VERIFY  YOUR ACCOUNT","type":"invalid_request_error","param":null,"code":"PRIVATE"}} | fails | AGENT_ACCOUNT_VERIFICATION_REQUIRED |
+      | the proxy limits it in its error | 429  | {"error":{"message":"PRIVATE_SENTINEL","type":"rate_limit_error","param":null,"code":"PRIVATE"}} | warns | AGENT_ACCOUNT_COOLING_DOWN |
+      | the proxy refuses it in its error | 401 | {"error":{"message":"PRIVATE_SENTINEL","type":"authentication_error","param":null,"code":"PRIVATE"}} | fails | AGENT_ACCOUNT_AUTH_REJECTED |
       | its credentials are refused    | 401    | PRIVATE_SENTINEL                                         | fails   | AGENT_ACCOUNT_AUTH_REJECTED         |
       | the account answers            | 200    | PRIVATE_SENTINEL                                         | fails   | AGENT_ACCOUNT_SESSION_TIMED_OUT     |
       | the proxy does not say why     | 502    | PRIVATE_SENTINEL                                         | fails   | AGENT_ACCOUNT_SESSION_TIMED_OUT     |
