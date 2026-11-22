@@ -20,6 +20,7 @@ import {
 import {
   cacheKey,
   cachedCheck,
+  lastFailure,
   sourceKey,
   type VerifyCache,
 } from './verify-cache';
@@ -229,87 +230,143 @@ export const ACCOUNT_LAUNCH: Record<
   },
 };
 
+/** How long a session that did not pass is taken as found, before it is
+ * run again: back-to-back syncs do not pay for the same dead session twice.
+ * Any change to the roster, the client key or the profile runs it at once.
+ */
+export const SESSION_FAILURE_REUSE_MS = 10 * 60 * 1000;
+
+/** A session's deadline, and the one of a session that ran into it the last
+ * time: long enough to answer, short enough not to hold a sync up again.
+ */
+export const SESSION_DEADLINE_MS = 150_000;
+export const SESSION_RETRY_DEADLINE_MS = 30_000;
+
+interface SessionContext {
+  node: string;
+  workspace: string;
+  cwd: string;
+  launch: Launch;
+  cache: VerifyCache;
+  run: Runner;
+  profiles: string;
+}
+
+/** An outcome as the cache keeps it: `cooling-down 2027-01-15T09:30:00Z`. */
+const kept = ({ result, clears }: SessionOutcome): string =>
+  clears ? `${result} ${clears}` : result;
+
+function outcomeOf(summary: string): SessionOutcome {
+  const [result, clears] = summary.split(' ');
+  return { result: result as SessionResult, ...(clears ? { clears } : {}) };
+}
+
+/** One account's session, at the least cost that still proves it.
+ *
+ * - A pass is reused for six hours.
+ * - What a session found when it did not pass is taken as found for ten
+ *   minutes, and says so.
+ * - Before a session is launched the proxy is asked for the account's model:
+ *   an account it holds back, wants verified or refuses is reported at once,
+ *   with no session. OpenCode would retry such an account quietly until the
+ *   deadline.
+ * - A session that ran into its deadline the last time gets a short one.
+ */
 async function accountSession(
   instance: Instance,
   accounts: AccountContext,
-  context: {
-    node: string;
-    workspace: string;
-    cwd: string;
-    launch: Launch;
-    cache: VerifyCache;
-    run: Runner;
-    profiles: string;
-  }
+  context: SessionContext
 ): Promise<SessionOutcome> {
   const spec = ACCOUNT_LAUNCH[instance.tool];
   if (!spec) return { result: 'failed' };
+  const name = `account-${context.node}-${instance.tool}-${accountSlug(instance.account)}`;
+  const key = cacheKey(
+    context.node,
+    instance,
+    spec,
+    accounts.rosterVersion,
+    accounts.keyVersion,
+    await configurationKey(context.profiles, context.node, instance.tool)
+  );
+  const last = await lastFailure(name, key, context.cache);
+  if (last && last.ageMs < SESSION_FAILURE_REUSE_MS)
+    return {
+      ...outcomeOf(last.check.summary),
+      foundMinutesAgo: Math.round(last.ageMs / 60_000),
+    };
+  const hung =
+    last !== null && outcomeOf(last.check.summary).result === 'timed-out';
   let found: SessionOutcome | undefined;
   const check = await cachedCheck(
-    `account-${context.node}-${instance.tool}-${accountSlug(instance.account)}`,
-    cacheKey(
-      context.node,
-      instance,
-      spec,
-      accounts.rosterVersion,
-      accounts.keyVersion,
-      await configurationKey(context.profiles, context.node, instance.tool)
-    ),
+    name,
+    key,
     async () => {
-      const agents = join(context.workspace, 'agents');
-      const service = context.launch.kind === 'service';
-      const result = await context.run(
-        service
-          ? [join(agents, spec.launcher), ...spec.args]
-          : ['bun', join(agents, spec.wrapper), ...spec.args],
-        {
-          cwd: context.cwd,
-          env: {
-            ...(context.launch.kind === 'service'
-              ? context.launch.env
-              : { PATH: pinnedPath() }),
-            WS_AGENT_NODE: context.node,
-            WS_AGENT_ACCOUNT: instance.account,
-          },
-          ...(service ? { isolatedEnv: true } : {}),
-          input: '',
-          timeoutMs: 150_000,
-        }
-      );
-      const said = sessionResult(
-        result.ok,
-        result.stdout + result.stderr,
-        result.reason === 'timeout'
-      );
-      // A session that ran into its deadline printed nothing telling: the
-      // proxy still knows whether it holds the account's model back.
-      const live = accounts.live.find(
-        (account) =>
-          account.tool === instance.tool && account.email === instance.account
-      );
-      const clears =
-        said === 'cooling-down'
-          ? printedClears(
-              result.stdout + result.stderr,
-              (accounts.now ?? Date.now)()
-            )
-          : undefined;
-      const outcome: SessionOutcome =
-        said === 'timed-out' && live && accounts.consult
-          ? await accounts.consult(live)
-          : { result: said, ...(clears ? { clears } : {}) };
-      found = outcome;
-      // Only a pass is remembered, so the outcome is read back as it is.
+      found = await runSession(instance, spec, accounts, {
+        ...context,
+        timeoutMs: hung ? SESSION_RETRY_DEADLINE_MS : SESSION_DEADLINE_MS,
+      });
+      // A pass is read back as one; anything else as what was found.
       return {
         id: 'account-session',
-        status: outcome.result === 'ok' ? 'pass' : 'fail',
-        summary: outcome.result,
+        status: found.result === 'ok' ? 'pass' : 'fail',
+        summary: kept(found),
       };
     },
-    context.cache
+    { ...context.cache, keepFailure: true }
   );
   if (check.status === 'pass') return { result: 'ok' };
-  return found ?? { result: check.summary as SessionResult };
+  return found ?? outcomeOf(check.summary);
+}
+
+/** Asks the proxy, then launches the session unless the proxy already said
+ * what holds the account back. `timed-out` from the proxy means it named
+ * nothing: the account answered, or nothing said why it does not.
+ */
+async function runSession(
+  instance: Instance,
+  spec: (typeof ACCOUNT_LAUNCH)[string],
+  accounts: AccountContext,
+  context: SessionContext & { timeoutMs: number }
+): Promise<SessionOutcome> {
+  const live = accounts.live.find(
+    (account) =>
+      account.tool === instance.tool && account.email === instance.account
+  );
+  const consult = async (): Promise<SessionOutcome> =>
+    live && accounts.consult ? accounts.consult(live) : { result: 'timed-out' };
+  const before = await consult();
+  if (before.result !== 'timed-out') return before;
+  const agents = join(context.workspace, 'agents');
+  const service = context.launch.kind === 'service';
+  const result = await context.run(
+    service
+      ? [join(agents, spec.launcher), ...spec.args]
+      : ['bun', join(agents, spec.wrapper), ...spec.args],
+    {
+      cwd: context.cwd,
+      env: {
+        ...(context.launch.kind === 'service'
+          ? context.launch.env
+          : { PATH: pinnedPath() }),
+        WS_AGENT_NODE: context.node,
+        WS_AGENT_ACCOUNT: instance.account,
+      },
+      ...(service ? { isolatedEnv: true } : {}),
+      input: '',
+      timeoutMs: context.timeoutMs,
+    }
+  );
+  const output = result.stdout + result.stderr;
+  const said = sessionResult(result.ok, output, result.reason === 'timeout');
+  // A session that ran into its deadline printed nothing telling. The
+  // proxy is asked again: the session may have used another model of the
+  // account than the one asked for before, and found that one held back.
+  if (said === 'timed-out') return consult();
+  const clears =
+    said === 'cooling-down'
+      ? printedClears(output, (accounts.now ?? Date.now)())
+      : undefined;
+  return { result: said, ...(clears ? { clears } : {}) };
 }
 
 /** Reads `tool = "x"` and `"tool" = { version = "x", ... }` pins. */
