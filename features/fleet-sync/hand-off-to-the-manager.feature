@@ -57,6 +57,64 @@ Feature: fleet-sync started on a worker is handed to the manager
       When a worker prepares to hand "fleet-sync --take-over --yes" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then the manager is asked for exactly "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --yes --take-over"
 
+  Rule: Every option of the request reaches the manager, or is known not to
+    A request that loses an option on the way is another request: an
+    accounts-only one would become a full sync.
+
+    Scenario: No option of fleet-sync is dropped without a reason
+      An option added to fleet-sync fails here until it is listed with what
+      the manager is asked for.
+      When the options the "fleet-sync" command line offers are handed off by a worker
+      Then each option reaches the manager like this:
+        | option                 | started on a worker with                    | the manager is asked for                                                |
+        | --all                  | --all                                       | --all                                                                   |
+        | --allow-unmerged       | --allow-unmerged                            | nothing: the manager is told what selected the revision instead         |
+        | --apply                | --apply                                     | --apply                                                                 |
+        | --canary               | --canary w1                                 | --canary w1                                                             |
+        | --config               | --config /roster.json                       | nothing: the manager reads its own roster                               |
+        | --dry-run              | --dry-run                                   | --dry-run                                                               |
+        | --force                | --maintenance-reboot --force                | --maintenance-reboot --force                                            |
+        | --json                 | --json                                      | --json                                                                  |
+        | --maintenance-reboot   | --maintenance-reboot                        | --maintenance-reboot                                                    |
+        | --node                 | --node w1 --node w2                         | --node w1 --node w2                                                     |
+        | --non-interactive      | --non-interactive                           | --non-interactive                                                       |
+        | --only                 | --only accounts                             | --only accounts                                                         |
+        | --restart-busy         | --restart-busy                              | --restart-busy                                                          |
+        | --revision             | --revision bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb | nothing: the hand-off names the revision the worker selected     |
+        | --rollback             | --rollback                                  | nothing: it is refused on a worker                                      |
+        | --schedule             | --schedule status                           | --schedule status                                                       |
+        | --take-over            | --take-over                                 | --take-over                                                             |
+        | --vault-password-login | --vault-password-login                      | --vault-password-login                                                  |
+        | --workspace            | --workspace /checkout                       | nothing: the manager runs from its own checkout of the revision         |
+        | --yes                  | --yes                                       | --yes                                                                   |
+
+    Scenario: An accounts-only request stays accounts-only, on the manager's installed launcher
+      Workers keep the revision they run, and so does the manager: the
+      request names no revision, so neither the guard nor the revision's run
+      script, which installs that revision's toolchain, has anything to do.
+      Given the run script tracked at the revision is:
+        """
+        #!/bin/sh
+        echo run
+        """
+      When a worker prepares to hand "fleet-sync --only accounts --node w1 --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      Then the manager is asked to run exactly "devfleet fleet-sync --node w1 --only accounts --json"
+      But what the manager is asked to run does not contain "fleet-revision-guard"
+      And what the manager is asked to run does not contain "fleet-manager-run"
+
+    Scenario: fleet-sync --only accounts started on a worker runs the accounts-only sync on the manager
+      Given this machine is a worker, where no command is found
+      And the manager answers the hand-off with exit code 0 and:
+        """
+        {"ok":true}
+        """
+      When fleet-sync is started with "--only accounts --json"
+      Then the manager was asked to run exactly "devfleet fleet-sync --only accounts --json"
+      And the result is exactly exit code 0 and the report:
+        """
+        {"ok":true}
+        """
+
   Rule: The manager is asked whether the default branch holds the revision, before the revision's run script
     The run script installs the revision's toolchain on the manager. A
     revision that is not on the default branch of the source repository gets
