@@ -33,6 +33,7 @@ import { detectMachineClass } from './machine/machine-class';
 import { convergeGitIdentity } from './git-identity';
 import { workerSelection } from '../bootstrap/worker-tools';
 import { workerExposure } from './exposure';
+import { agentSessionLimit } from './agent-session-limit';
 import {
   applyAgentProfiles,
   attempt,
@@ -194,6 +195,9 @@ async function applyBaseline(
         // What the declared features leave out (tasks/features.yml).
         worker_containers: features.containers,
         worker_session: features.session,
+        // 0: no limit declared, so its unit is removed
+        // (tasks/agent-session-limit.yml).
+        worker_agent_session_limit: agentSessionLimit(fleet, node) ?? 0,
       }),
     },
     {

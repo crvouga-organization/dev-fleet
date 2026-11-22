@@ -32,6 +32,10 @@ import {
   portInBothLists,
   type ExposureDeclaration,
 } from './exposure';
+import {
+  SESSION_LIMIT_EXPECTED,
+  validSessionLimit,
+} from './agent-session-limit';
 import { parseTailnetConfig, type TailnetConfig } from './tailnet-control';
 
 export interface MachineDefinition {
@@ -48,6 +52,9 @@ export interface MachineDefinition {
   exposure?: ExposureDeclaration;
   /** This worker's features, over the fleet-wide `worker.features`. */
   features?: FeaturesDefinition;
+  /** This worker's limit on agent sessions, over the fleet-wide
+   * `worker.agentSessionLimit` (src/agent-session-limit.ts). */
+  agentSessionLimit?: number;
   /** Who restarts this machine after a power loss when it is a virtual
    * machine, such as "provider restarts instances"; shown with
    * worker:power-loss-recovery, which does not apply to one. */
@@ -440,6 +447,7 @@ function worker(value: unknown, path: string): MachineDefinition {
       'toolProfiles',
       'exposure',
       'features',
+      'agentSessionLimit',
       'powerRecoveryNote',
       'labels',
       'billing',
@@ -489,6 +497,7 @@ function worker(value: unknown, path: string): MachineDefinition {
     ...(fields['features'] === undefined
       ? {}
       : { features: features(fields['features'], `${path}.features`) }),
+    ...sessionLimit(fields, path),
     ...(fields['powerRecoveryNote'] === undefined
       ? {}
       : {
@@ -499,6 +508,19 @@ function worker(value: unknown, path: string): MachineDefinition {
             'one line of at most 120 characters'
           ),
         }),
+  };
+}
+/** A worker's own limit on agent sessions (src/agent-session-limit.ts). */
+function sessionLimit(
+  fields: Record<string, unknown>,
+  path: string
+): Pick<MachineDefinition, 'agentSessionLimit'> {
+  const value = fields['agentSessionLimit'];
+  if (value === undefined) return {};
+  return {
+    agentSessionLimit: validSessionLimit(value)
+      ? value
+      : fail(`${path}.agentSessionLimit`, SESSION_LIMIT_EXPECTED, value),
   };
 }
 /** What a worker record says about a worker beside how to reach it: its
@@ -942,6 +964,7 @@ const POLICY: Record<string, string> = {
   tools: 'a list of tool names from dev-fleet’s mise.toml, each once',
   exposure: EXPOSURE_EXPECTED,
   features: 'preset, containers and session',
+  agentSessionLimit: SESSION_LIMIT_EXPECTED,
 };
 function policy(value: unknown): WorkerPolicy {
   const fields = object(value, '$.worker');

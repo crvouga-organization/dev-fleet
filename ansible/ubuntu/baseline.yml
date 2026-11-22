@@ -87,6 +87,9 @@
       ansible.builtin.import_tasks: tasks/power.yml
     - name: Configure the development user
       ansible.builtin.import_tasks: tasks/user.yml
+    # After the user lingers: the limit is a unit of the user's own manager.
+    - name: Hold or lift the declared agent session limit
+      ansible.builtin.import_tasks: tasks/agent-session-limit.yml
     - name: Configure SSH
       ansible.builtin.import_tasks: tasks/ssh.yml
     # A container's network belongs to its host, which owns the firewall.

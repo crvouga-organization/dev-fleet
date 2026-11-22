@@ -5,6 +5,7 @@ import { TOOL_PROFILES, type ToolProfile } from '../bootstrap/worker-tools';
 import { parseExposure, type ExposureDeclaration } from './exposure';
 import { featuresFault } from '../bootstrap/worker-features';
 import type { FeaturesDefinition } from './definition';
+import { validSessionLimit } from './agent-session-limit';
 
 export interface WorkerPolicy {
   requiredCapabilities: Capability[];
@@ -24,6 +25,9 @@ export interface WorkerPolicy {
   exposure?: ExposureDeclaration;
   /** Features every worker has unless its own `features` say otherwise. */
   features?: FeaturesDefinition;
+  /** How many agent sessions a worker runs at once before it refuses the
+   * next (src/agent-session-limit.ts). Absent: nothing is refused. */
+  agentSessionLimit?: number;
 }
 const REQUIRED = [
   'github',
@@ -56,6 +60,7 @@ const FIELDS: Record<string, (value: unknown) => boolean> = {
   tools: (value) => value === undefined || toolNames(value),
   exposure: (value) => value === undefined || parseExposure(value) !== null,
   features: (value) => value === undefined || featuresFault(value) === null,
+  agentSessionLimit: (value) => value === undefined || validSessionLimit(value),
 };
 /** The first field of a worker policy that breaks its rule, or null. */
 export function policyFault(value: Record<string, unknown>): string | null {
