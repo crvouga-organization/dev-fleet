@@ -278,7 +278,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_MODELS_UNVERIFIED`: t3 models unverified.
 - `T3_POLICY_OWNER_CONFLICT`: t3 policy owner conflict. **Needs a person.**
 - `T3_POLICY_RESTART_FAILED`: t3 policy restart failed.
-- `T3_POLICY_RESTART_PENDING`: t3 policy restart pending.
+- `T3_POLICY_RESTART_PENDING`: the running T3 has not loaded the staged policy and its restart waits for agent turns to end; the remedy says how long it has waited and when its deadline falls. See `T3_RESTART_PENDING`.
 - `T3_POLICY_STAGE_FAILED`: t3 policy stage failed.
 - `T3_PRIVATE_IDENTITY_REQUIRED`: t3 private identity required.
 - `T3_PRIVATE_ROUTE_CONFLICT`: t3 private route conflict.
@@ -299,7 +299,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_RENDERERS_HIGH`: the desktop renderers exceed their memory budget. Reload the app when idle.
 - `T3_PROTECTION_ESCAPED`: the T3 listener lacks its CPU, I/O or memory reserve; the summary names which (`cpu`, `io`, `memory`). Run fleet-sync: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. `io` alone, while the user manager has no io controller (measured in its `cgroup.controllers`), is not T3 leaving its unit: fleet-sync declares the controller, and the user manager takes it on its next start, so reboot the worker while it runs no agent turn (`devfleet fleet-sync --maintenance-reboot`); restarting T3 does not change it.
 - `T3_PROTECTION_UNOBSERVED`: no process of the worker user listens on the T3 port, so there is no reserve to measure: T3 is stopped or restarting. See `worker:t3-recovery` and `worker:t3-health`.
-- `T3_RESTART_PENDING`: t3 restart pending.
+- `T3_RESTART_PENDING`: a restart of the worker's T3 (a new release, a staged policy, a return to loopback) waits for its agent turns to end. The remedy says how long it has waited and when its deadline falls: `personal-worker-recovery` applies it at the first check with no turn running, and `t3RestartMaxDeferralHours` after it was first deferred although turns run, which ends them. A failure means the deadline passed and the timer did not apply it: check `worker:service-recovery` and run `devfleet fleet-sync`. To restart at once, run `devfleet fleet-sync --restart-busy`.
 - `T3_SERVER_INSTALL_FAILED`: t3 server install failed: the pinned server of a headless worker is missing from the toolchain, or `t3-headless.yml` did not apply.
 - `T3_SERVER_STOPPED`: t3 server stopped: the lingering `t3code-headless.service` of a headless worker is not running.
 - `T3_SETTINGS_BUSY`: t3 settings busy.
