@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # cliproxy-fleet launcher
-# Tracked source: crvouga-organization/dev-fleet cliproxy/clients/launcher.py
+# Tracked source: crvouga/dev-fleet cliproxy/clients/launcher.py
 import json, os, pathlib, sys
 
 r = pathlib.Path.home() / ".config/cliproxy-fleet"

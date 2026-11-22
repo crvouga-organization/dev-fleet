@@ -330,7 +330,7 @@ under `source`: the commit a package names must be reachable there.
 ## Bugs and feature requests
 
 A defect in dev-fleet, or something it cannot do yet, is raised as an
-[issue](https://github.com/crvouga-organization/dev-fleet/issues). From your project that
+[issue](https://github.com/crvouga/dev-fleet/issues). From your project that
 is the only way to change dev-fleet, for you and for the coding agents working
 there. Do not patch the installed package, a checkout `fleet-sync` put on a
 machine or a file it manages: the next install or `fleet-sync` replaces them.
@@ -346,7 +346,7 @@ The fleet is managed with dev-fleet (`npx devfleet`, pinned in package.json).
 Read `npx devfleet commands --json` before using it. Never edit dev-fleet
 itself: not node_modules, not a clone, not what it installs on a machine. A
 bug in dev-fleet or a feature it lacks is a GitHub issue at
-https://github.com/crvouga-organization/dev-fleet/issues; tell me what is blocked and link
+https://github.com/crvouga/dev-fleet/issues; tell me what is blocked and link
 it. Issues are public: no credentials, hostnames, accounts, domains or
 fleet.json contents.
 ```
@@ -401,7 +401,7 @@ fleet.json contents.
 Working on dev-fleet itself is the only reason to clone it:
 
 ```sh
-git clone https://github.com/crvouga-organization/dev-fleet.git && cd dev-fleet
+git clone https://github.com/crvouga/dev-fleet.git && cd dev-fleet
 bash bootstrap/bootstrap.sh
 bun install --frozen-lockfile
 bun run check

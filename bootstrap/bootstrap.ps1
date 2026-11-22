@@ -18,10 +18,10 @@ if (Test-Path (Join-Path $LocalRoot 'mise.toml')) {
   $WorkspaceDir = (Resolve-Path $LocalRoot).Path
 } else {
   if (-not (Test-Path (Join-Path $WorkspaceDir '.git'))) {
-    Invoke-Checked git @('clone', 'https://github.com/crvouga-organization/dev-fleet.git', $WorkspaceDir)
+    Invoke-Checked git @('clone', 'https://github.com/crvouga/dev-fleet.git', $WorkspaceDir)
   }
   $Origin = & git -C $WorkspaceDir remote get-url origin
-  if ($LASTEXITCODE -ne 0 -or $Origin -ne 'https://github.com/crvouga-organization/dev-fleet.git') { throw "Unexpected checkout at $WorkspaceDir; choose an empty -WorkspaceDir." }
+  if ($LASTEXITCODE -ne 0 -or $Origin -ne 'https://github.com/crvouga/dev-fleet.git') { throw "Unexpected checkout at $WorkspaceDir; choose an empty -WorkspaceDir." }
 }
 # mise is pinned where every other tool is: `min_version` in mise.toml, read
 # from the checkout because mise cannot read it before it exists.
