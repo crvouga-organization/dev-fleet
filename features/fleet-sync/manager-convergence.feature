@@ -60,11 +60,14 @@ Feature: The manager converges itself before any worker
 
   Rule: The manager applies every proxy agent profile the workers get
 
-    Scenario: A profile is applied for every tool
+    One command applies them all: each start of the pinned Bun costs about
+    as much as a profile does.
+
+    Scenario: A profile is applied for every tool, by one command
       Given every agent profile applies cleanly
       When the agent profiles of "manager-mac" are applied
       Then the first check's status is "pass"
-      And a profile was applied for each of these tools, in this order:
+      And one command applied a profile for each of these tools, in this order:
         | codex       |
         | claude      |
         | gemini      |
@@ -80,7 +83,13 @@ Feature: The manager converges itself before any worker
       When the agent profiles of "manager-mac" are applied
       Then the first check's status is "fail"
       And the first check's summary is "MANAGER_AGENT_PROFILES_FAILED"
-      And the first check's remedy contains "--tool claude"
+      And the first check's remedy contains "--tool claude --profile proxy"
+
+    Scenario: A failure that names no tool asks for all of them again
+      Given no agent profile can be applied, and the command does not say which failed
+      When the agent profiles of "manager-mac" are applied
+      Then the first check's summary is "MANAGER_AGENT_PROFILES_FAILED"
+      And the first check's remedy contains "--tool codex,claude,gemini,opencode,grok,antigravity --profile proxy"
 
   Rule: The manager never sleeps on AC power
     The check reads the settings from the policy file the playbook applies, so

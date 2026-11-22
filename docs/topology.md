@@ -70,7 +70,10 @@ your project's `fleet.json` (version 3, checked by [the schema](../schema/fleet.
   canary that was deployed and failed stops promotion to the other workers.
   Each worker's applied revision is kept in the fleet state, so one that
   converged keeps its progress when another did not. Repeating a revision
-  that already converged everywhere runs all workers at once.
+  that already converged everywhere runs all workers at once. So does
+  repeating one the run before took to every worker with the same
+  configuration, even when a worker failed a check of its own there (an
+  account, a provider): it took the revision, and nothing is left to prove.
 
 ## Changing the topology
 

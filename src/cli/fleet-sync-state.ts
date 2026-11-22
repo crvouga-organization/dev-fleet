@@ -3,7 +3,9 @@ import { replicaCheck } from '../state/check';
 import { loadEnrollment, storeEnrollment } from '../state/enrollment';
 import { adoptEarlier } from '../state/legacy';
 import { databasePath, stateRoot } from '../state/paths';
-import { writeDocument } from '../state/store';
+import { readDocument, writeDocument } from '../state/store';
+import { readHistory } from '../state/history';
+import { blocksPromotion } from '../manager-sync';
 import {
   claimLease,
   refuseHeldLease,
@@ -129,4 +131,53 @@ export function runRecord(
       if (!settled) await publish().catch(() => undefined);
     },
   };
+}
+
+/** Whether the run before this one already rolled this revision out to these
+ * workers, with this configuration. Such a revision is not new to the fleet,
+ * so no worker has to prove it before the others: they converge at once.
+ *
+ * The last run in the history was of this revision, it reached every one of
+ * these workers (none was held back behind a failed canary), at least one
+ * took it, and the configuration is the one that run stored. A worker that
+ * took the revision and failed a check of its own (an account, a provider)
+ * still took it. Anything that cannot be read answers no: the canary goes
+ * first.
+ */
+export function rolledOutBefore(
+  revision: string,
+  workers: string[],
+  /** This run's configuration; undefined when it runs with the stored one. */
+  definition?: string,
+  env: NodeJS.ProcessEnv = process.env
+): boolean {
+  try {
+    const last = readHistory(env).runs.at(-1);
+    if (!last || last.revision !== revision || !last.workers) return false;
+    if (
+      definition !== undefined &&
+      readDocument(databasePath(stateRoot(env)), 'definition') !== definition
+    )
+      return false;
+    const results = workers.map((id) => last.workers![id]);
+    const took = (result: (typeof results)[number]): boolean =>
+      result !== undefined &&
+      (result.applied === revision ||
+        (result.failed !== undefined &&
+          !blocksPromotion({
+            id: result.failed,
+            status: 'fail',
+            summary: '',
+          })));
+    return (
+      results.length > 0 &&
+      results.every(
+        (result) =>
+          result !== undefined && result.failed !== 'rollout:promotion'
+      ) &&
+      results.some(took)
+    );
+  } catch {
+    return false;
+  }
 }

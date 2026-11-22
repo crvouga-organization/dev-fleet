@@ -49,69 +49,47 @@ export async function convergeManager(
   const id = definition.manager.id;
   const host = managerHost(definition.manager.os);
   const checks: Check[] = [];
-  /** One step: named while it runs, and its checks say how long it took. */
-  const step = async (
-    label: string,
-    work: () => Promise<Check | Check[]>
-  ): Promise<Check[]> => {
-    input.progress?.(label);
-    const began = Date.now();
-    const found = [await work()].flat();
-    const phaseDurationMs = Date.now() - began;
-    const timed = found.map((check) => ({ phaseDurationMs, ...check }));
-    checks.push(...timed);
-    return timed;
-  };
-  const [identity] = await step('Checking that this is the manager', () =>
-    managerIdentity(id, run, host)
-  );
+  const say = (label: string) => input.progress?.(label);
+  say('Checking that this is the manager');
+  const [identity] = await timed(() => managerIdentity(id, run, host));
+  checks.push(identity!);
   if (identity!.status === 'pass') {
     // Launchers and scheduled jobs on the manager read the installed copy.
-    if (input.apply) installConfig();
+    if (input.apply) {
+      installConfig();
+      say('Applying the manager playbook');
+      checks.push(
+        ...(await timed(() => convergeManagerPolicy(run, definition, host)))
+      );
+    }
+    say('Measuring power, boot recovery, Docker, Vault, IDEs and health');
+    checks.push(...(await managerMeasures(definition, input, run, host)));
     if (input.apply)
-      await step('Applying the manager playbook', () =>
-        convergeManagerPolicy(run, definition, host)
-      );
-    await step('Measuring power settings', () =>
-      managerPower(run, input.workspace, host)
-    );
-    await step('Measuring boot recovery', () =>
-      managerBootRecovery(run, input.workspace, host)
-    );
-    await step('Checking Docker', () => managerDocker(run));
-    // The renewal job is a launch agent: macOS managers only.
-    if (host.platform === 'macOS')
-      await step('Holding the Vault session', () =>
-        attempt('manager:vault-renewal', () =>
-          holdManagerVault(run, { apply: input.apply, root: PACKAGE_ROOT })
-        )
-      );
-    // Each enabled IDE: its settings, pinned version and policy.
-    await step('Checking IDEs', () =>
-      managerChecks(enabled(idesOf(definition), IDES), {
-        id,
-        workspace: input.workspace,
-        apply: input.apply,
-        run,
-      })
-    );
-    await step('Measuring health', () => managerHealth(run));
-    if (input.apply) await managerAgents(definition, input, run, step);
-    await step('Converging the CLI proxy', () =>
-      convergeProxy(id, input.revision, run, {
-        apply: input.apply,
-        cwd: input.workspace,
-      })
+      checks.push(...(await managerAgents(definition, input, run)));
+    say('Converging the CLI proxy');
+    checks.push(
+      ...(await timed(() =>
+        convergeProxy(id, input.revision, run, {
+          apply: input.apply,
+          cwd: input.workspace,
+        })
+      ))
     );
     if (input.apply) {
-      const hub = await step('Converging the monitoring hub', () =>
+      say('Converging the monitoring hub');
+      const hub = await timed(() =>
         convergeManagerHub(input.workspace, definition, run)
       );
+      checks.push(...hub);
       // The manager is always a monitored system on its own hub.
-      if (!hub.some(blocking))
-        await step('Enrolling the manager in monitoring', () =>
-          enrollManagerMonitoring(definition, input.workspace, run)
+      if (!hub.some(blocking)) {
+        say('Enrolling the manager in monitoring');
+        checks.push(
+          ...(await timed(() =>
+            enrollManagerMonitoring(definition, input.workspace, run)
+          ))
         );
+      }
     }
   }
   return {
@@ -126,61 +104,144 @@ export async function convergeManager(
   };
 }
 
-type Step = (
-  label: string,
-  work: () => Promise<Check | Check[]>
-) => Promise<Check[]>;
+/** One step's checks, each saying how long the step took. */
+async function timed(work: () => Promise<Check | Check[]>): Promise<Check[]> {
+  const began = Date.now();
+  const found = [await work()].flat();
+  const phaseDurationMs = Date.now() - began;
+  return found.map((check) => ({ phaseDurationMs, ...check }));
+}
+
+/** Steps that do not depend on each other, run side by side; their checks
+ * in the order the steps are written, whichever ended first.
+ */
+async function together(
+  steps: (() => Promise<Check | Check[]>)[]
+): Promise<Check[]> {
+  return (await Promise.all(steps.map(timed))).flat();
+}
+
+/** What is measured of the manager itself: each reads or holds something of
+ * its own (power settings, the boot recovery job, Docker, an IDE, the
+ * disk), so they run side by side once the Vault session is held.
+ */
+async function managerMeasures(
+  definition: FleetDefinition,
+  input: { apply: boolean; workspace: string },
+  run: Runner,
+  host: ManagerHost
+): Promise<Check[]> {
+  const id = definition.manager.id;
+  // The Vault session comes first and alone: later steps read secrets with
+  // it. Its renewal job is a launch agent: macOS managers only.
+  const vault =
+    host.platform === 'macOS'
+      ? await timed(() =>
+          attempt('manager:vault-renewal', () =>
+            holdManagerVault(run, { apply: input.apply, root: PACKAGE_ROOT })
+          )
+        )
+      : [];
+  const rest = await together([
+    () => managerPower(run, input.workspace, host),
+    () => managerBootRecovery(run, input.workspace, host),
+    () => managerDocker(run),
+    // Each enabled IDE: its settings, pinned version and policy.
+    () =>
+      managerChecks(enabled(idesOf(definition), IDES), {
+        id,
+        workspace: input.workspace,
+        apply: input.apply,
+        run,
+      }),
+    () => managerHealth(run),
+  ]);
+  return [...vault, ...rest];
+}
 
 /** The same provider profiles, Git identity, GitHub sign-in, agents,
  * versions and shared accounts as every worker: the instances launch from
  * these profiles, and the checks prove the credential works end to end
  * through the shared proxy.
+ *
+ * The profiles come first: every session launches from them. Git and GitHub
+ * then run beside the providers, accounts and agent sessions, which use
+ * neither.
  */
 async function managerAgents(
   definition: FleetDefinition,
-  input: { workspace: string },
-  run: Runner,
-  step: Step
-): Promise<void> {
+  input: { workspace: string; progress?: (step: string) => void },
+  run: Runner
+): Promise<Check[]> {
   const id = definition.manager.id;
-  await step('Rendering agent profiles', () =>
+  input.progress?.('Rendering agent profiles');
+  const profiles = await timed(() =>
     attempt('configuration:apply', () =>
       managerAgentProfiles(id, input.workspace, run)
     )
   );
-  await step('Converging the Git identity', () =>
+  input.progress?.(
+    'Converging Git and GitHub; verifying providers, accounts and agent sessions'
+  );
+  const [git, agents] = await Promise.all([
+    managerGit(definition, input.workspace, run),
+    managerSessions(id, input.workspace, run),
+  ]);
+  return [...profiles, ...git, ...agents];
+}
+
+/** The Git identity, then what reads it: git asks gh for the token through
+ * the helper git.yml declares, so these three keep their order.
+ */
+async function managerGit(
+  definition: FleetDefinition,
+  workspace: string,
+  run: Runner
+): Promise<Check[]> {
+  const identity = await timed(() =>
     attempt('git:configuration', () =>
-      convergeGitIdentity(input.workspace, definition.git, run)
+      convergeGitIdentity(workspace, definition.git, run)
     )
   );
   const { git } = definition;
-  if (git) await step('Checking Git', () => gitChecks(git, run));
+  const checked = git ? await timed(() => gitChecks(git, run)) : [];
   // The same GitHub sign-in as every worker, or only a check of a person's
-  // own login when the configuration names one. git asks gh for the token
-  // through the helper git.yml declared above.
-  await step('Converging the GitHub sign-in', () =>
+  // own login when the configuration names one.
+  const github = await timed(() =>
     attempt('github:sync', async () => [
-      await convergeGithub(input.workspace, run, undefined, {
+      await convergeGithub(workspace, run, undefined, {
         secrets: secretVia(run),
         role: 'manager',
       }),
     ])
   );
-  const providers = await step('Verifying providers through the proxy', () =>
+  return [...identity, ...checked, ...github];
+}
+
+/** Providers, then the accounts and the sessions that depend on what the
+ * providers found out of quota.
+ */
+async function managerSessions(
+  id: string,
+  workspace: string,
+  run: Runner
+): Promise<Check[]> {
+  const providers = await timed(() =>
     attempt('provider:verification', () => verifyFleetProviders(id))
   );
   const accounts = await accountContext();
-  await step('Checking accounts', () =>
+  const roster = await timed(() =>
     attempt('accounts:verification', () => nodeAccountChecks(accounts))
   );
-  await step('Verifying agent sessions', () =>
+  const sessions = await timed(() =>
     attempt('agent:verification', () =>
-      verifyNativeAgents(id, input.workspace, run, {
+      verifyNativeAgents(id, workspace, run, {
         outOfQuota: quotaLimited(providers),
         ...(accounts ? { accounts } : {}),
       })
     )
   );
+  return [...providers, ...roster, ...sessions];
 }
 
 function playbookPassed(cached: boolean): Check {
@@ -219,41 +280,43 @@ export async function managerAgentProfiles(
   workspace: string,
   run: Runner
 ): Promise<Check[]> {
-  for (const tool of PROFILE_TOOLS) {
-    const result = await run(
-      [
-        'mise',
-        'exec',
-        '--locked',
-        'bun',
-        '--',
-        'bun',
-        'src/agents/cli.ts',
-        '--json',
-        '--yes',
-        '--non-interactive',
-        'agents',
-        'apply',
-        '--node',
-        id,
-        '--tool',
-        tool,
-        '--profile',
-        'proxy',
-      ],
-      { cwd: workspace, timeoutMs: 120_000 }
-    );
-    if (!result.ok)
-      return [
-        {
-          id: 'configuration:apply',
-          status: 'fail',
-          summary: 'MANAGER_AGENT_PROFILES_FAILED',
-          remedy: {
-            action: `Run bun src/agents/cli.ts --yes agents apply --node ${id} --tool ${tool} --profile proxy in the dev-fleet checkout on the manager and review the result.`,
-          },
+  // One process for every tool: each start of the pinned Bun costs about
+  // as much as applying a profile does.
+  const result = await run(
+    [
+      'mise',
+      'exec',
+      '--locked',
+      'bun',
+      '--',
+      'bun',
+      'src/agents/cli.ts',
+      '--json',
+      '--yes',
+      '--non-interactive',
+      'agents',
+      'apply',
+      '--node',
+      id,
+      '--tool',
+      PROFILE_TOOLS.join(','),
+      '--profile',
+      'proxy',
+    ],
+    { cwd: workspace, timeoutMs: 300_000 }
+  );
+  if (!result.ok) {
+    const tool = failedTool(result.stdout) ?? PROFILE_TOOLS.join(',');
+    return [
+      {
+        id: 'configuration:apply',
+        status: 'fail',
+        summary: 'MANAGER_AGENT_PROFILES_FAILED',
+        remedy: {
+          action: `Run bun src/agents/cli.ts --yes agents apply --node ${id} --tool ${tool} --profile proxy in the dev-fleet checkout on the manager and review the result.`,
         },
-      ];
+      },
+    ];
   }
   return [
     {
@@ -262,6 +325,23 @@ export async function managerAgentProfiles(
       summary: `The manager has the same proxy agent profiles as every worker (${PROFILE_TOOLS.join(', ')}).`,
     },
   ];
+}
+
+/** The tool `agents apply` stopped at, from the line it printed for it. */
+function failedTool(stdout: string): string | undefined {
+  for (const line of stdout.split('\n').reverse()) {
+    try {
+      const said = JSON.parse(line) as { ok?: unknown; tool?: unknown };
+      if (
+        said.ok === false &&
+        (PROFILE_TOOLS as readonly unknown[]).includes(said.tool)
+      )
+        return said.tool as string;
+    } catch {
+      /* Not a line of the command's own. */
+    }
+  }
+  return undefined;
 }
 
 /** fleet-sync runs only on the declared manager. */

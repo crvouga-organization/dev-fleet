@@ -77,6 +77,10 @@ export class OrchestrationWorld extends World {
     report?: ManagerReport;
     /** When each parked worker was parked. */
     parked: Record<string, string>;
+    /** Set when the run has a manager that converges, taking a moment:
+     * what had happened to the workers by the time it was done.
+     */
+    manager?: { sessions: number; deployed: number };
   } = { checks: [], byWorker: {}, deployed: [], finished: [], parked: {} };
 
   health: { excludedMobile: number; checks: Check[] } = {

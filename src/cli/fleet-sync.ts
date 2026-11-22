@@ -39,7 +39,7 @@ import {
   stateContext,
   type Standing,
 } from '../state/sync';
-import { runRecord } from './fleet-sync-state';
+import { rolledOutBefore, runRecord } from './fleet-sync-state';
 import { planSources, planText, syncPlan } from './fleet-sync-plan';
 import { runCommand } from '../runner';
 import type { Runner } from '../types';
@@ -684,12 +684,24 @@ function applyLocked(
   context: ApplyContext
 ): Promise<CommandOutcome> {
   const { settings, run, revision } = context;
+  const definition =
+    definitionSource().kind === 'file'
+      ? JSON.stringify(canonicalDefinition, null, 2) + '\n'
+      : undefined;
+  // Read before this run records anything of its own.
+  const rolledOut =
+    state?.appliedRevision === revision ||
+    rolledOutBefore(
+      revision,
+      request.node?.length
+        ? request.node
+        : canonicalDefinition.workers.map((worker) => worker.id),
+      definition
+    );
   const record = runRecord(state, revision, {
     context: { ...stateContext(run), takeOver: request.takeOver === true },
     standing: context.standing,
-    ...(definitionSource().kind === 'file'
-      ? { definition: JSON.stringify(canonicalDefinition, null, 2) + '\n' }
-      : {}),
+    ...(definition === undefined ? {} : { definition }),
     scoped: Boolean(request.node?.length),
     ...(request.selection ? { selection: request.selection } : {}),
   });
@@ -697,7 +709,7 @@ function applyLocked(
     record.approve();
     try {
       return await selected(
-        { ...request, rolledOut: state?.appliedRevision === revision },
+        { ...request, rolledOut },
         settings,
         run,
         (report) => record.settle(report.ok, appliedRevisions(report))

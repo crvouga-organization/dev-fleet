@@ -140,8 +140,20 @@ Given('every agent profile applies cleanly', (world) => {
 Given(
   'every agent profile applies cleanly, except that of {string}',
   (world, tool: string) => {
-    world.commands.otherwise = succeeded();
-    world.commands.answer((argv) => argv.includes(tool), failed());
+    // As `agents apply` prints: one line for each tool, until one fails.
+    world.commands.otherwise = {
+      ok: false,
+      stdout: `{"ok":true}\n{"ok":false,"tool":"${tool}","error":"x"}\n`,
+      stderr: '',
+      reason: 'exit',
+    };
+  }
+);
+
+Given(
+  'no agent profile can be applied, and the command does not say which failed',
+  (world) => {
+    world.commands.otherwise = failed();
   }
 );
 
@@ -156,11 +168,13 @@ const after = (argv: string[], flag: string): string | undefined =>
   argv[argv.indexOf(flag) + 1];
 
 Then(
-  'a profile was applied for each of these tools, in this order:',
+  'one command applied a profile for each of these tools, in this order:',
   (world, table: DataTable) => {
     expect(
-      world.commands.calls.map((call) => after(call.command, '--tool'))
-    ).toEqual(table.list());
+      world.commands.calls.map((call) =>
+        after(call.command, '--tool')?.split(',')
+      )
+    ).toEqual([table.list()]);
   }
 );
 

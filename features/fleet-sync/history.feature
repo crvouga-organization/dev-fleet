@@ -160,3 +160,50 @@ Feature: Every fleet-sync run is kept in a history, and fleet-report says how re
     When fleet-sync records a run that finished at "2026-11-01T10:00:00Z"
     Then the history holds 2 runs
     And the oldest run in the history finished at "2026-09-01T10:00:00Z"
+
+  Rule: A revision the last run already rolled out needs no worker to prove it first
+
+    A revision new to the fleet is proven on one worker before the rest. The
+    run before this one may already have taken it to every worker: then no
+    worker waits for another. A worker that took the revision and failed a
+    check of its own, such as an account, still took it. A worker held back
+    behind a failed canary did not.
+
+    Scenario Outline: The last run <case>, so the canary <goes>
+      Given the last fleet-sync run was of the revision "<last>" and left these workers:
+        | worker     | result   |
+        | worker-one | <first>  |
+        | worker-two | <second> |
+      When a run of the revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" asks whether it was rolled out to "worker-one, worker-two"
+      Then the revision <verdict> rolled out before
+
+      Examples:
+        | case                                      | last                                     | first                            | second            | goes           | verdict |
+        | applied it everywhere                     | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | applied                          | applied           | is not needed  | was     |
+        | took it everywhere, an account failing    | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | agent:opencode:account-1:session | agent:opencode:account-1:session | is not needed | was |
+        | was of another revision                   | bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb | applied                          | applied           | goes first     | was not |
+        | held a worker back behind a failed canary | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | ubuntu:baseline                  | rollout:promotion | goes first     | was not |
+        | reached no worker                         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | ssh:fresh-session                | ssh:fresh-session | goes first     | was not |
+        | did not include a worker                  | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | applied                          |                   | goes first     | was not |
+
+    Scenario: A configuration that changed since is a new input, so the canary goes first
+      Given the last fleet-sync run was of the revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" and left these workers:
+        | worker     | result  |
+        | worker-one | applied |
+        | worker-two | applied |
+      And that run stored the configuration "one"
+      When a run of the revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" with the configuration "two" asks whether it was rolled out to "worker-one, worker-two"
+      Then the revision was not rolled out before
+
+    Scenario: The same configuration is no new input
+      Given the last fleet-sync run was of the revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" and left these workers:
+        | worker     | result  |
+        | worker-one | applied |
+        | worker-two | applied |
+      And that run stored the configuration "one"
+      When a run of the revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" with the configuration "one" asks whether it was rolled out to "worker-one, worker-two"
+      Then the revision was rolled out before
+
+    Scenario: With no history there is nothing to go by
+      When a run of the revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" asks whether it was rolled out to "worker-one, worker-two"
+      Then the revision was not rolled out before
