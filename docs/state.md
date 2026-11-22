@@ -7,10 +7,20 @@ cannot rebuild from Git is the **fleet state**:
 | Document     | What it is                                                                                                                                                                    |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `roster`     | The enrolled connection to each worker (SSH alias, Tailscale device)                                                                                                          |
-| `enrollment` | The revision `fleet-sync` approved and the one it last applied                                                                                                                |
+| `enrollment` | The revision `fleet-sync` approved, what selected it and when, and the one it last applied                                                                                    |
 | `definition` | The fleet configuration `fleet-sync` last applied: your `fleet.json`                                                                                                          |
-| `history`    | The last 90 days of `fleet-sync` runs (at most 500), and the schedule                                                                                                         |
+| `history`    | The last 90 days of `fleet-sync` runs (at most 500), each with what selected its revision, and the schedule                                                                   |
 | `workers`    | Per worker: its pinned SSH host key, whether it is parked and since when, whether it came from a worker record, and whether the manager is to pair its T3 after a replacement |
+
+The `enrollment` says what selected the approved revision, under
+`selectedBy`: `by` is one of `package`, `revision`, `rollback`, `schedule`,
+`checkout` or `approved`; `handOff.worker` is the fleet id of the worker that
+handed the run to the manager; `allowUnmerged` says the run was given
+`--allow-unmerged`; `at` is when the revision became the approved one. A run
+that approves the same revision again leaves the record as it is. It holds
+those words only: never an account, a host name or a command line. The
+`fleet-sync` report (`selectedBy`, `replacedRevision`), each run of the
+history and `fleet-watch` (`revision`) repeat it.
 
 `devfleet fleet-watch` also keeps `watch.json` in the bucket, beside the
 database: the health of each worker when it last looked, and when that was

@@ -1859,7 +1859,7 @@
     },
     {
       "id": "tool:*",
-      "meaning": "A pinned tool, or the global mise configuration (tool:global-mise-config), is as the revision declares.",
+      "meaning": "A pinned tool, mise itself (tool:mise, a warning when the machine keeps a newer one) or the global mise configuration (tool:global-mise-config), is as the revision declares.",
       "severity": "required",
       "repair": {
         "recipe": "workspace"

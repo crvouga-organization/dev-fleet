@@ -140,6 +140,73 @@ Feature: The shared toolchain is published as the global mise configuration
       mise warns about the setting in a project configuration and ignores it.
       Then the mise.toml of this repository has no setting "trusted_config_paths"
 
+  Rule: The bootstrap installs the pinned mise, and never replaces mise with an older release unasked
+    min_version is a minimum: a newer mise satisfies an older pin, and every
+    other checkout on the machine whose pin is newer needs it. A revision
+    that pinned an older mise once replaced the newer one on every machine,
+    and every mise shim then refused to run in a checkout of the default
+    branch.
+
+    These run the real bootstrap/bootstrap.sh in a home of its own. A
+    stand-in answers its download with the archive whose digest the
+    checkout's mise.toml pins, and the mise of that home only says its
+    version and records how it is called.
+
+    @bash
+    Scenario: A machine without mise gets the pinned release
+      Given a machine that has no mise
+      And a checkout whose mise.toml pins mise "2026.10.24"
+      When the checkout's bootstrap runs with "--tools-only"
+      Then it exits with 0
+      And the bootstrap downloaded the mise release "2026.10.24"
+      And the machine runs mise "2026.10.24"
+
+    @bash
+    Scenario Outline: A machine that runs mise <installed> bootstraps a checkout that pins <pinned>
+      Releases are compared number by number: 2026.10.3 is older than
+      2026.10.24.
+      Given a machine that runs mise "<installed>"
+      And a checkout whose mise.toml pins mise "<pinned>"
+      When the checkout's bootstrap runs with "--tools-only"
+      Then it exits with 0
+      And the bootstrap downloaded <downloaded>
+      And the machine runs mise "<afterwards>"
+      And the bootstrap went on to install the pinned tools with the mise of that machine
+
+      Examples:
+        | installed  | pinned     | downloaded                    | afterwards |
+        | 2026.10.3  | 2026.10.24 | the mise release "2026.10.24" | 2026.10.24 |
+        | 2026.10.24 | 2026.10.24 | nothing                       | 2026.10.24 |
+        | 2026.11.11 | 2026.10.24 | nothing                       | 2026.11.11 |
+        | 2027.1.0   | 2026.10.24 | nothing                       | 2027.1.0   |
+
+    @bash
+    Scenario: A newer mise that is kept is said out loud, with how to replace it
+      Given a machine that runs mise "2026.11.11"
+      And a checkout whose mise.toml pins mise "2026.10.24"
+      When the checkout's bootstrap runs with "--tools-only"
+      Then the bootstrap says "TOOLCHAIN_DOWNGRADE"
+      And the bootstrap says "the newer 2026.11.11, which is kept"
+      And the bootstrap says "--allow-mise-downgrade"
+
+    @bash
+    Scenario: An upgrade is not a downgrade
+      Given a machine that runs mise "2026.10.3"
+      And a checkout whose mise.toml pins mise "2026.10.24"
+      When the checkout's bootstrap runs with "--tools-only"
+      Then the bootstrap does not say "TOOLCHAIN_DOWNGRADE"
+
+    @bash
+    Scenario: Asked for by name, the older pinned release replaces the newer one, and that is said too
+      Given a machine that runs mise "2026.11.11"
+      And a checkout whose mise.toml pins mise "2026.10.24"
+      When the checkout's bootstrap runs with "--tools-only --allow-mise-downgrade"
+      Then it exits with 0
+      And the bootstrap downloaded the mise release "2026.10.24"
+      And the machine runs mise "2026.10.24"
+      And the bootstrap says "TOOLCHAIN_DOWNGRADE"
+      And the bootstrap says "replacing mise 2026.11.11 with the older 2026.10.24"
+
   Rule: Every base tool has locked artifacts for every supported OS and architecture
 
     Scenario: The lock holds what every machine installs

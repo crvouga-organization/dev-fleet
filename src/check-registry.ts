@@ -443,7 +443,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'tailscale:online': 'Tailscale is online on this machine.',
   'tailscale:reachability': 'The machine is online in the tailnet.',
   'tool:*':
-    'A pinned tool, or the global mise configuration (tool:global-mise-config), is as the revision declares.',
+    'A pinned tool, mise itself (tool:mise, a warning when the machine keeps a newer one) or the global mise configuration (tool:global-mise-config), is as the revision declares.',
   'tool:docker-cli':
     'Not applicable on a worker whose containers feature is off: the Docker CLI is not one of its tools.',
   'ubuntu:baseline': 'The Ubuntu baseline policy is applied.',

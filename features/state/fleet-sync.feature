@@ -7,8 +7,10 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
   The manager here has no worker enrolled and nothing installed but a
   stand-in for Litestream, so every run stops at
   FLEET_MANAGER_ENROLLMENT_REQUIRED, after it has used the state and before
-  it reaches a machine. Manager "b" is another manager of the same fleet, or
-  its replacement.
+  it reaches a machine. Git answers only about the manager's own copy of the
+  source repository, whose default branch holds every revision a scenario
+  does not say it lacks. Manager "b" is another manager of the same fleet,
+  or its replacement.
   `$BUCKET` is the directory that stands in for the bucket.
 
   Background:
@@ -45,15 +47,9 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
       """
     When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     Then the run started over 1 time
-    And the enrollment of the manager is exactly:
-      """
-      {
-        "version": 1,
-        "id": "manager",
-        "approvedRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "appliedRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
-      }
-      """
+    And the approved revision of the manager is "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    And the applied revision of the manager is "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    And the fleet state says the approved revision was selected by "--revision"
     And the manager stands "in-sync" with the bucket
 
   Scenario: A manager whose state diverged from the bucket changes nothing
@@ -192,3 +188,98 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
     Then the command exits 1
     And the report contains "FLEET_ROLLBACK_UNAVAILABLE"
     And the enrollment in the fleet state of the manager is what it was before the run
+
+  Rule: A revision that is not on the default branch of the source repository is refused before anything is recorded
+    A run started from a branch once made that branch's commit the fleet's
+    revision, and its older toolchain every machine's. The manager's own copy
+    of the source repository says whether its default branch holds the
+    revision, whatever selected it; --allow-unmerged is the way to converge
+    to an unmerged revision on purpose.
+
+    Background:
+      Given the manager stored the enrollment:
+        """
+        {
+          "version": 1,
+          "id": "manager",
+          "approvedRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "appliedRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "previousRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+        """
+
+    Scenario: A branch revision is refused, and the approved revision stays
+      Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
+      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      Then the command exits 1
+      And the report contains "FLEET_REVISION_UNMERGED"
+      And the report contains "selected by --revision"
+      And the report contains "--allow-unmerged"
+      And the enrollment in the fleet state of the manager is what it was before the run
+
+    Scenario: A preview of a branch revision is refused too
+      A preview says what a sync would do.
+      Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
+      When fleet-sync previews revision "cccccccccccccccccccccccccccccccccccccccc"
+      Then the command exits 1
+      And the report contains "FLEET_REVISION_UNMERGED"
+
+    Scenario: --rollback to a revision that is not on the default branch is refused
+      The revision applied before was itself converged with --allow-unmerged.
+      Given the default branch of the source repository does not hold revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      When fleet-sync rolls back
+      Then the command exits 1
+      And the report contains "FLEET_REVISION_UNMERGED"
+      And the report contains "selected by --rollback"
+      And the enrollment in the fleet state of the manager is what it was before the run
+
+    Scenario: A revision nobody can vouch for is refused
+      The manager's copy does not know the revision to be on the default
+      branch, and the source repository cannot be asked.
+      Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
+      And the source repository cannot be fetched
+      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      Then the command exits 1
+      And the report contains "FLEET_REVISION_UNVERIFIED"
+      And the enrollment in the fleet state of the manager is what it was before the run
+
+    Scenario: A revision already known to be on the default branch needs no fetch
+      The schedule converges the fleet while the source repository is away.
+      Given the source repository cannot be fetched
+      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
+      And the approved revision of the manager is "cccccccccccccccccccccccccccccccccccccccc"
+
+    Scenario: With --allow-unmerged the revision is approved, and the fleet state says so
+      Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
+      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc" with --allow-unmerged
+      Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
+      And the approved revision of the manager is "cccccccccccccccccccccccccccccccccccccccc"
+      And the fleet state says the approved revision was selected by "--revision (--allow-unmerged)"
+
+    Scenario: The run in the fleet-owned checkout is not asked again, and records what it was told selected the revision
+      The run a person or a worker started asked before it left for the
+      checkout; the run there is the revision's own code and is always given
+      --revision.
+      Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
+      And the process runs from the fleet-owned checkout of revision "cccccccccccccccccccccccccccccccccccccccc", told "cccccccccccccccccccccccccccccccccccccccc:checkout@worker-one+unmerged"
+      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
+      And the fleet state says the approved revision was selected by "the HEAD of the checkout fleet-sync was started in, handed off from worker-one (--allow-unmerged)"
+
+    Scenario: A run started on the manager's own launcher after a hand-off believes what it was told about its revision
+      The worker was given --allow-unmerged; the run on the manager is given
+      only --revision.
+      Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
+      And the process is told "cccccccccccccccccccccccccccccccccccccccc:revision@worker-one+unmerged"
+      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
+      And the fleet state says the approved revision was selected by "--revision, handed off from worker-one (--allow-unmerged)"
+
+    Scenario: What a run was told about another revision says nothing about this one
+      Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
+      And the process is told "dddddddddddddddddddddddddddddddddddddddd:revision+unmerged"
+      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      Then the command exits 1
+      And the report contains "FLEET_REVISION_UNMERGED"
+      And the enrollment in the fleet state of the manager is what it was before the run

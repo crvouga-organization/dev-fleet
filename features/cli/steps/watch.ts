@@ -3,6 +3,7 @@ import type { DataTable } from '../../support/gherkin';
 import {
   bucketStore,
   fleetWatch,
+  type WatchedRevision,
   type WatchStore,
 } from '../../../src/cli/fleet-watch';
 import { parseNotify, type NotifyConfig } from '../../../src/notify';
@@ -29,6 +30,7 @@ const watch = part(() => ({
   answer: 200,
   store: undefined as WatchStore | null | undefined,
   nodes: [] as NodeReport[],
+  revision: null as WatchedRevision | null,
 }));
 
 function nodes(failing: Record<string, string>): NodeReport[] {
@@ -93,6 +95,27 @@ Given('the bucket is a directory', async (world) => {
   });
 });
 
+Given(
+  'the fleet state says of the approved revision:',
+  (world, json: string) => {
+    watch(world).revision = JSON.parse(json) as WatchedRevision;
+  }
+);
+
+Then('fleet-watch reports the revision:', (world, json: string) => {
+  expect((outcome(world).data as { revision?: unknown }).revision).toEqual(
+    JSON.parse(json)
+  );
+});
+
+Then('fleet-watch prints {string}', (world, line: string) => {
+  expect((outcome(world).text ?? '').split('\n')).toContain(line);
+});
+
+Then('fleet-watch reports no revision', (world) => {
+  expect(outcome(world).data).not.toHaveProperty('revision');
+});
+
 Given('fleet-status sees every worker ready', (world) => {
   watch(world).nodes = nodes({ 'worker-a': '', 'worker-b': '' });
 });
@@ -102,6 +125,7 @@ async function run(world: CliWorld, test: boolean, at: string) {
   world.outcome = await fleetWatch(test ? { test } : {}, {
     notify: state.notify,
     status: () => Promise.resolve(state.nodes),
+    revision: () => Promise.resolve(state.revision),
     store: state.store ?? null,
     secrets: (name) => Promise.resolve(state.secrets[name] ?? null),
     send: fetch,

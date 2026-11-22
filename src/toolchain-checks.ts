@@ -56,7 +56,28 @@ const dockerCliNotApplicable: Check = {
 };
 
 /** Checks of the doctor that are not a tool version, with their own words. */
-const OWN: Record<string, { pass: string; fail: string; action: string }> = {
+const OWN: Record<
+  string,
+  {
+    pass: string;
+    fail: string;
+    action: string;
+    /** A warning of the doctor, when the check has one. */
+    warn?: { summary: string; action: string };
+  }
+> = {
+  mise: {
+    pass: 'mise is the release this revision pins.',
+    fail: 'mise is missing or older than the release this revision pins, so it refuses to run the pinned tools.',
+    action:
+      'Run devfleet fleet-sync from the project that holds fleet.json: the toolchain bootstrap installs the pinned mise.',
+    warn: {
+      summary:
+        'TOOLCHAIN_DOWNGRADE This revision pins an older mise than the machine runs. The newer one was kept: the bootstrap never replaces mise with an older release unasked.',
+      action:
+        'Nothing to do when a newer revision is expected back (after a rollback, or beside a checkout that needs the newer mise). To install the older pinned mise on purpose, run bash bootstrap/bootstrap.sh --allow-mise-downgrade in the revision checkout on that machine.',
+    },
+  },
   'global-mise-config': {
     pass: 'The global mise configuration is the one fleet-sync publishes.',
     fail: 'The global mise configuration is missing, was replaced by another project or tool, or is not the one this revision publishes.',
@@ -70,6 +91,13 @@ function ownCheck(id: string, status: Check['status']): Check | null {
   if (!Object.hasOwn(OWN, id)) return null;
   const own = OWN[id]!;
   const ok = status === 'pass';
+  if (status === 'warn' && own.warn)
+    return {
+      id: `tool:${id}`,
+      status,
+      summary: own.warn.summary,
+      remedy: { action: own.warn.action },
+    };
   return {
     id: `tool:${id}`,
     status,

@@ -77,7 +77,8 @@ if [ "$preview" = true ]; then
 elif [ "$(cat "$stamp" 2>/dev/null)" != "$key" ] || [ -z "$(find "$stamp" -mmin -1440 2>/dev/null)" ]; then
   rm -f -- "$stamp"
   # The toolchain bootstrap installs the pinned mise first when the manager
-  # has none (or another version), so Git is all a new manager needs.
+  # has none (or an older one; a newer one is kept), so Git is all a new
+  # manager needs.
   bash bootstrap/bootstrap.sh --tools-only >"$log" 2>&1 || failed
   printf '%s' "$key" >"$stamp"
 fi
