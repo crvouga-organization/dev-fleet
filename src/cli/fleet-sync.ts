@@ -3,6 +3,8 @@ import type { ManagerReport } from '../manager-sync';
 import { localCheckoutRevision } from '../machine/local-source';
 import {
   definitionSource,
+  editedCopyRemedy,
+  editedInstalledCopy,
   fleet as canonicalDefinition,
   reloadFleet,
 } from '../fleet-config';
@@ -188,6 +190,8 @@ export interface ManagerSync {
   root: string;
   /** Starts the request over once the fleet state has been replaced. */
   restart: () => Promise<CommandOutcome>;
+  /** The home directory that holds this machine's installed copy. */
+  home?: string;
 }
 
 /** Why the fleet state stops this run before any machine or the state is
@@ -215,11 +219,29 @@ function stateRefusal(
     : null;
 }
 
+/** Why this machine's copy of the configuration stops the run, if it does:
+ * a sync installs the copy again, and an edit made to it by hand would be
+ * lost. Refused the same way with or without a person, and never asked.
+ */
+function copyRefusal(
+  home: string | undefined,
+  revision: string
+): CommandOutcome | null {
+  const edited = editedInstalledCopy(process.env, home);
+  return edited
+    ? actionRequired(
+        'FLEET_CONFIGURATION_COPY_CHANGED',
+        editedCopyRemedy(edited, process.env, home),
+        revision
+      )
+    : null;
+}
+
 /** fleet-sync on the machine already known to be the manager. */
 export async function managerSync(
   options: FleetSyncOptions,
   settings: Settings,
-  { run, root, restart }: ManagerSync
+  { run, root, restart, home }: ManagerSync
 ): Promise<CommandOutcome> {
   await ensurePrivateRoot(root);
   const state = await loadEnrollment(legacyHome() ? root : null);
@@ -254,6 +276,29 @@ export async function managerSync(
     reloadFleet();
     return restart();
   }
+  return (
+    copyRefusal(home, revision) ??
+    previewOrApply(options, settings, state, {
+      run,
+      root,
+      chosen,
+      standing: fresh.standing,
+    })
+  );
+}
+
+/** The preview of a run for the chosen revision, or the run itself. */
+function previewOrApply(
+  options: FleetSyncOptions,
+  settings: Settings,
+  state: Enrollment | null,
+  {
+    run,
+    root,
+    chosen: { revision, selection },
+    standing,
+  }: { run: Runner; root: string; chosen: Chosen; standing: Standing }
+): Promise<CommandOutcome> {
   const request = {
     ...options,
     revision,
@@ -265,13 +310,13 @@ export async function managerSync(
       run,
       root,
       applied: state?.appliedRevision ?? null,
-      standing: fresh.standing,
+      standing,
     });
   return authorizeAndApply(root, state, request, {
     settings,
     run,
     revision,
-    standing: fresh.standing,
+    standing,
   });
 }
 

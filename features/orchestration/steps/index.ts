@@ -9,5 +9,6 @@ import './fleet-sync';
 import './repairs';
 import './tailnet-health';
 import './worker-bootstrap';
+import './worker-configuration-copy';
 
 export { OrchestrationWorld, orchestration } from '../support/world';

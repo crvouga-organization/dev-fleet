@@ -75,6 +75,7 @@ Feature: A headless worker runs the pinned T3 server, with no display
       | command                                                                     | answer                                                                                                                                         |
       | curl --fail --silent --max-time 10 http://127.0.0.1:3773/.well-known/t3/environment | prints {"environmentId":"e","serverVersion":"0.1.8-nightly.20261106.4262"}                                                       |
       | systemctl --user show --property=ExecStart --value t3code-headless.service  | prints { path=/home/dev/.local/share/personal/tools/t3-0.1.8-nightly.20261106.4262-linux-x64/t3 ; argv[]=/home/dev/.local/share/personal/tools/t3-0.1.8-nightly.20261106.4262-linux-x64/t3 serve ; } |
+      | cat /run/user/1000/personal-t3-restart-pending                              | fails                                                                                                                                          |
     When the release of the T3 of a headless worker is checked
     Then the check passes
     And the summary of the check is "The running T3 server is the installed release 0.1.8-nightly.20261106.4262."

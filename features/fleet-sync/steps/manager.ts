@@ -427,15 +427,129 @@ When('the Docker Desktop of the manager is measured', async (world) => {
 
 const vault = new WeakMap<
   FleetSyncWorld,
-  { session: boolean; loaded: boolean; applied: string[] }
+  {
+    session: boolean;
+    loaded: boolean;
+    applied: string[];
+    /** The `data` of what looking the token up prints. */
+    token: Record<string, unknown> | undefined;
+    /** What launchd prints about the renewal job. */
+    job: string;
+  }
 >();
 
 function vaultOf(world: FleetSyncWorld) {
   let found = vault.get(world);
   if (!found)
-    vault.set(world, (found = { session: true, loaded: false, applied: [] }));
+    vault.set(
+      world,
+      (found = {
+        session: true,
+        loaded: false,
+        applied: [],
+        token: undefined,
+        job: '',
+      })
+    );
   return found;
 }
+
+/** The instant the manager's clock reads in these scenarios: a token's times
+ * are written in the feature as seconds before or after it.
+ */
+const VAULT_NOW = Date.parse('2026-12-01T12:00:00Z');
+
+Given("the manager's Vault renewal job is loaded", (world) => {
+  vaultOf(world).loaded = true;
+});
+
+Given(
+  "the last run of the manager's Vault renewal job ended with the exit code {int}",
+  (world, code: number) => {
+    vaultOf(world).job = `\tstate = not running\n\tlast exit code = ${code}\n`;
+  }
+);
+
+Given(
+  /^the manager's Vault token is (renewable|not renewable), with (\d+) seconds left(?:, (\d+) seconds after a renewal that left it (\d+))?$/,
+  (
+    world,
+    renewable: string,
+    left: string,
+    ago: string | null,
+    granted: string | null
+  ) => {
+    const now = VAULT_NOW / 1000;
+    const renewed = ago === null ? null : now - Number(ago);
+    vaultOf(world).token = {
+      renewable: renewable === 'renewable',
+      ttl: Number(left),
+      explicit_max_ttl: 0,
+      creation_time: now - 86_400,
+      // As Vault writes them: the expiry with nanoseconds, the renewal in
+      // whole seconds, and no renewal at all for a token nobody renewed.
+      expire_time: new Date(
+        (renewed === null ? now + Number(left) : renewed + Number(granted)) *
+          1000
+      )
+        .toISOString()
+        .replace('.000Z', '.123456789Z'),
+      ...(renewed === null ? {} : { last_renewal_time: renewed }),
+    };
+  }
+);
+
+const tokenOf = (world: FleetSyncWorld): Record<string, unknown> => {
+  const { token } = vaultOf(world);
+  if (!token) throw new Error('The scenario describes no Vault token.');
+  return token;
+};
+
+Given(
+  'that token is periodic, renewed for {int} seconds at a time',
+  (world, period: number) => {
+    tokenOf(world)['period'] = period;
+  }
+);
+
+Given(
+  'that token was created {int} seconds ago with a maximum lifetime of {int} seconds',
+  (world, ago: number, lifetime: number) => {
+    Object.assign(tokenOf(world), {
+      creation_time: VAULT_NOW / 1000 - ago,
+      explicit_max_ttl: lifetime,
+    });
+  }
+);
+
+Given(
+  'looking that token up also prints the token {string}',
+  (world, token: string) => {
+    tokenOf(world)['id'] = token;
+  }
+);
+
+Then(
+  'the macOS policy has the renewal job ask Vault for {int} hours, and the manager warn {int} hours before a login ends',
+  (_world, increment: number, lead: number) => {
+    expect(policy.vaultRenewal).toEqual({
+      incrementHours: increment,
+      expiryWarnHours: lead,
+    });
+    expect(increment).toBeGreaterThan(lead);
+  }
+);
+
+Then(
+  '{string} renews for the hours the macOS policy names',
+  (_world, playbook: string) => {
+    const text = readFileSync(join(ROOT, playbook), 'utf8');
+    expect(text).toContain('- policy.json');
+    expect(text).toContain(
+      '<string>-increment={{ vaultRenewal.incrementHours | int }}h</string>'
+    );
+  }
+);
 
 Given('the manager is logged in to Vault', (world) => {
   vaultOf(world).session = true;
@@ -453,11 +567,14 @@ async function holdVault(world: FleetSyncWorld, apply: boolean) {
   const state = vaultOf(world);
   world.commands.answer(
     (command) => command[0] === 'vault' && command[2] === 'lookup',
-    () => (state.session ? succeeded() : failed())
+    () =>
+      state.session
+        ? succeeded(state.token ? JSON.stringify({ data: state.token }) : '')
+        : failed()
   );
   world.commands.answer(
     (command) => command[0] === 'launchctl' && command[1] === 'print',
-    () => (state.loaded ? succeeded() : failed())
+    () => (state.loaded ? succeeded(state.job) : failed())
   );
   world.commands.answer(
     (command) => command.some((arg) => arg.endsWith('vault-renew.yml')),
@@ -478,6 +595,7 @@ async function holdVault(world: FleetSyncWorld, apply: boolean) {
     home: '/Users/fixture',
     uid: 501,
     scratch,
+    now: VAULT_NOW,
   });
 }
 

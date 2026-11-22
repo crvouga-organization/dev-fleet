@@ -1,10 +1,10 @@
 import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { parseDefinition } from '../definition';
 import { FleetUsageError } from '../errors';
-import { definitionSource } from '../fleet-config';
+import { definitionSource, installedPath, fleetJson } from '../fleet-config';
 import { PACKAGE_ROOT, packageInfo } from '../package-info';
 import { makeReport, renderReport, reportExitCode } from '../report';
 import { runCommand } from '../runner';
@@ -218,14 +218,17 @@ const CREDENTIALS: Record<NonNullable<Connection['credentials']>, string> = {
   ambient: 'the standard AWS environment or profile',
 };
 
-function bucketCheck({ bucket, location, credentials }: Connection): Check {
+function bucketCheck(
+  { bucket, location, credentials }: Connection,
+  services: FleetStateServices
+): Check {
   if (!bucket)
     return {
       id: 'state:bucket',
       status: 'warn',
       summary: 'No bucket is configured.',
       remedy: {
-        action: `Name it under "state" in fleet.json and pass its credentials in ${ACCESS_KEY_ID_ENV} and ${SECRET_ACCESS_KEY_ENV}. Without a fleet.json, connect one on this machine: devfleet fleet-state --init --bucket NAME --endpoint https://HOST (docs/state.md lists the settings).`,
+        action: `Name it under "state" in ${fleetJson(services.env, services.home)} and pass its credentials in ${ACCESS_KEY_ID_ENV} and ${SECRET_ACCESS_KEY_ENV}. Without a fleet.json, connect one on this machine: devfleet fleet-state --init --bucket NAME --endpoint https://HOST (docs/state.md lists the settings).`,
       },
     };
   const named =
@@ -270,7 +273,7 @@ function report(
 ): CommandOutcome {
   const reached = reach(services);
   const checks = [
-    bucketCheck(reached),
+    bucketCheck(reached, services),
     replicaCheck(input.standing),
     ...DOCUMENTS.map((name) =>
       documentCheck(name, services, input.missing ?? 'fail')
@@ -431,16 +434,41 @@ async function importDefinition(
       '--import needs a readable JSON file: a fleet.json such as the one devfleet fleet-state --example prints.'
     );
   }
-  const body = JSON.stringify(parseDefinition(value), null, 2) + '\n';
+  parseDefinition(value);
+  // The copy fleet-sync installs is the configuration without the bucket:
+  // importing that file keeps the bucket the stored configuration names.
+  const copy =
+    resolve(path) === installedPath(services.home) &&
+    (value as { state?: unknown }).state === undefined;
   const target = context(services, options);
   const { standing: after } = await mutateState(target, () => {
     adoptEarlier(services.env, services.home);
-    return writeDocument(databasePath(target.root), 'definition', body);
+    const database = databasePath(target.root);
+    const bucket = copy ? storedBucket(database) : undefined;
+    const imported =
+      bucket === undefined ? value : { ...(value as object), state: bucket };
+    return writeDocument(
+      database,
+      'definition',
+      JSON.stringify(parseDefinition(imported), null, 2) + '\n'
+    );
   });
   return report(services, {
     standing: after,
     done: ['Stored the fleet configuration in the fleet state.'],
   });
+}
+
+/** The bucket the stored configuration names, as it is stored. */
+function storedBucket(database: string): unknown {
+  try {
+    const stored: unknown = JSON.parse(
+      readDocument(database, 'definition') ?? 'null'
+    );
+    return (stored as { state?: unknown } | null)?.state;
+  } catch {
+    return undefined;
+  }
 }
 
 function exportDefinition(services: FleetStateServices): CommandOutcome {
@@ -489,7 +517,7 @@ async function restore(
   const target = context(services, options);
   if (!target.bucket)
     throw new FleetUsageError(
-      'No bucket is configured, so there is nothing to restore from. Name it under "state" in fleet.json, or run devfleet fleet-state --init --bucket NAME --endpoint https://HOST.'
+      `No bucket is configured, so there is nothing to restore from. Name it under "state" in ${fleetJson(services.env, services.home)}, or run devfleet fleet-state --init --bucket NAME --endpoint https://HOST.`
     );
   if (options.timestamp !== undefined) {
     // The bucket's current version is replaced too: --yes is the consent.

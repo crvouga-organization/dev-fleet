@@ -1,6 +1,6 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
-import { fleet, secret } from '../fleet-config';
+import { fleet, secret, fleetJson } from '../fleet-config';
 import {
   deliver,
   observe,
@@ -110,8 +110,7 @@ function unconfigured(status: 'warn' | 'fail'): Check {
     status,
     summary: 'NOTIFY_NOT_CONFIGURED',
     remedy: {
-      action:
-        'Add a "notify" block to fleet.json with its targets, and store each target address as its secret (notify-webhook-url, notify-ntfy-url).',
+      action: `Add a "notify" block with its targets to ${fleetJson()}, and store each target address as its secret (notify-webhook-url, notify-ntfy-url).`,
     },
   };
 }
@@ -127,8 +126,7 @@ async function heartbeat(
       status: 'warn',
       summary: 'WATCH_HEARTBEAT_NO_BUCKET',
       remedy: {
-        action:
-          'Name the bucket under "state" in fleet.json: the heartbeat and what the watcher remembers are kept there.',
+        action: `Name the bucket under "state" in ${fleetJson()}: the heartbeat and what the watcher remembers are kept there.`,
       },
     };
   return store.write(text).then(

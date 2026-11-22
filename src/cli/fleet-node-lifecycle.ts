@@ -16,6 +16,7 @@ import {
 } from '../ssh-connection';
 import { changeWorkers, readPins } from '../state/workers';
 import { hubUrl } from '../topology';
+import { blockedBySecretsLogin, blockedCode } from '../secrets-blocked';
 import { FleetUsageError } from '../errors';
 import { fleet, secret } from '../fleet-config';
 import {
@@ -351,6 +352,8 @@ async function onHub(
   try {
     return await change(await services.monitoring());
   } catch (error) {
+    if (blockedCode(error))
+      return blockedBySecretsLogin('beszel:system', 'warn');
     return {
       id: 'beszel:system',
       status: 'warn',

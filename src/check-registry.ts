@@ -419,7 +419,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
     'T3 reconciliation can read and validate its local inputs.',
   't3:providers': "T3's provider instances are the declared ones.",
   't3:running-version':
-    'The running T3 server is the installed release; a restart the release needs waits for running agent turns.',
+    'The running T3 server is the installed release and no restart of it is pending; a pending restart waits for running agent turns, until its deadline.',
   't3:service': 'The pinned T3 app runs.',
   't3:settings': 'T3 settings are readable.',
   't3:updates': "T3's own updater is off, as the fleet's policy declares.",
@@ -461,7 +461,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'worker:account':
     "The declared worker account was created over a root login, with the manager's key and the fleet's sudo rule.",
   'worker:agent-sessions':
-    'How many agent sessions this worker runs, and how many its memory policy supports at the estimated size of a session; warns when more run.',
+    'How many agent sessions this worker runs, and how many its memory policy supports at the estimated size of a session; warns when more run. Nothing refuses a session above that number: T3 Code has no limit on the sessions it starts.',
   'worker:auto-park':
     'fleet-watch parked a worker idle longer than declared (only with parking.autoPark).',
   'worker:browser':
@@ -519,10 +519,12 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'worker:convergence':
     'The worker last applied the approved revision and its last apply succeeded.',
   'worker:pressure-events': 'The pressure guard reports recent agent stops.',
+  'worker:t3-deadline-restarts':
+    'No pending restart of T3 reached its deadline in the last 24 hours: none ended running agent turns.',
   'worker:t3-renderers':
     'Desktop renderer memory is within its declared budget.',
   'worker:t3-protection':
-    'The T3 listener has its CPU, I/O and memory reserve.',
+    'The T3 listener has its CPU, I/O and memory reserve; fails naming the reserve it lacks, or as unobserved while nothing listens on the T3 port.',
   'worker:t3-recovery':
     "The worker's T3 service is active, enabled for boot and restarts after a failure.",
   'worker:ubuntu': 'Required Ubuntu release and architecture.',
@@ -555,6 +557,7 @@ export const ADVISORY_CHECKS = [
   'worker:idle',
   'worker:parked-online',
   'worker:public-reachability',
+  'worker:t3-deadline-restarts',
   ...Object.keys(PROXY_ROUTED).map((id) => `auth:${id}`),
 ];
 

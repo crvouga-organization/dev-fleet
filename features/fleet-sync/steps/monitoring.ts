@@ -329,6 +329,10 @@ Then(
   }
 );
 
+Then('the health reports mention {string}', (world, text: string) => {
+  expect(JSON.stringify(world.reports)).toContain(text);
+});
+
 Then('the health reports do not mention {string}', (world, text: string) => {
   expect(JSON.stringify(world.reports)).not.toContain(text);
 });

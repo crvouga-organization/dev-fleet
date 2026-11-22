@@ -11,6 +11,7 @@ import { parseDefinition } from '../../../src/definition';
 import { readDocument } from '../../../src/state/store';
 import type { DataTable } from '../../support/gherkin';
 import {
+  EXAMPLE,
   STATE,
   WHO,
   act,
@@ -163,6 +164,18 @@ Then(
     });
   }
 );
+Then('the report does not contain {string}', (world, text: string) => {
+  expect(JSON.stringify(outcome(world).data)).not.toContain(text);
+});
+/** A command or a sentence of a remedy, with the paths a feature abbreviates:
+ * `~` is the manager's home and `$EXAMPLE` the fleet.json the process reads.
+ */
+Then('the report tells the operator {string}', (world, text: string) => {
+  const told = text
+    .replaceAll('~/', `${world.manager().home}/`)
+    .replaceAll('$EXAMPLE', EXAMPLE);
+  expect(JSON.stringify(outcome(world).data)).toContain(told);
+});
 Then('the output contains {string}', (world, text: string) => {
   expect(outcome(world).text).toContain(text);
 });

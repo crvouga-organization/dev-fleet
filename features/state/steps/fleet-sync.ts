@@ -143,6 +143,7 @@ function run(
   const services: ManagerSync = {
     run: manager.run,
     root: join(manager.home, 'manager'),
+    home: manager.home,
     restart: () => {
       sync(world).restarts += 1;
       return managerSync(options, settings, services);

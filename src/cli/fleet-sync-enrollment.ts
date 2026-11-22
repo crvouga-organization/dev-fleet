@@ -3,7 +3,7 @@ import { loadRoster } from './roster';
 import { enrolledRoster, sshTarget, type FleetDefinition } from '../definition';
 import { FleetUsageError } from '../errors';
 import { dirname } from 'node:path';
-import { fleet } from '../fleet-config';
+import { fleet, fleetJson } from '../fleet-config';
 import { discoverTailnet } from '../tailscale';
 import { matchComputers } from '../tailnet-matching';
 import { sshArgs, sshFailure } from '../ssh';
@@ -133,7 +133,7 @@ async function enrollOne(
     return null;
   }
   if (!options.interactive && !peers.length && !options.joinable) {
-    note(NOT_ON_TAILNET);
+    note(notOnTailnet());
     return null;
   }
   const connection = await inspectConnection(node, peers[0], {
@@ -159,15 +159,14 @@ const IDENTITY_CONFLICT: Check = {
   },
 };
 
-const NOT_ON_TAILNET: Check = {
+const notOnTailnet = (): Check => ({
   id: 'tailscale:enrolled-identity',
   status: 'fail',
   summary: 'TAILSCALE_ENROLLMENT_REQUIRED',
   remedy: {
-    action:
-      'No tailnet device matches this worker and fleet.json declares no tailnet control plane to join it with, so a run without a person did not enroll it. Declare tailnet with the secret tailnet-admin, join the machine yourself, or run fleet-sync once in a terminal.',
+    action: `No tailnet device matches this worker and the fleet configuration declares no tailnet control plane to join it with, so a run without a person did not enroll it. Declare tailnet in ${fleetJson()} with the secret tailnet-admin, join the machine yourself, or run fleet-sync once in a terminal.`,
   },
-};
+});
 
 /** A run without a person never prompts for sudo: the account has it, or the
  * worker is not enrolled.

@@ -1,8 +1,7 @@
 import { runAnsible } from './ansible';
 import { desired } from '../t3/desired';
 import policy from '../../ansible/ubuntu/t3/policy.json';
-import ubuntu from '../../ansible/ubuntu/policy.json';
-import { restartDeferral } from './t3-service';
+import { deferralRemedy, restartDeferral } from './t3-service';
 import { basename, dirname, join, resolve } from 'node:path';
 import { rename, rm, symlink } from 'node:fs/promises';
 import { userInfo } from 'node:os';
@@ -103,7 +102,8 @@ export const T3_RESTARTED_SUMMARY =
 /** `t3-policy.yml` restarts a running T3 that has not loaded the staged policy
  * so every node offers the same providers, but only while it runs no agent
  * turn: a busy T3 keeps its turns and the play records the restart as
- * pending, for personal-worker-recovery to apply at the first idle check.
+ * pending, for personal-worker-recovery to apply at the first idle check, or
+ * at its deadline (`t3RestartMaxDeferralHours`).
  * This measures the outcome; `restarted` says whether the app restarted
  * during this sync and so needs time to reconnect.
  */
@@ -140,9 +140,7 @@ export async function loadedT3Policy(
       status: deferral.overdue ? 'fail' : 'warn',
       summary: 'T3_POLICY_RESTART_PENDING',
       remedy: {
-        action: deferral.overdue
-          ? `Agent turns kept T3 from loading the staged policy for ${ubuntu.t3RestartMaxDeferralHours} hours. Finish or stop them, or restart t3code-desktop.service on the worker (this ends its running turns).`
-          : 'Agent turns are running, so T3 keeps them and loads the staged policy at the first check of personal-worker-recovery with no turn running.',
+        action: `T3 has not loaded the staged policy. ${deferralRemedy(deferral)}`,
       },
     };
   }

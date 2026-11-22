@@ -7,6 +7,7 @@ import { repairWorkspace, validRepairs } from './repair-runner';
 import { validSnapshot } from './protocol';
 import type { Fingerprint } from './types';
 import { machineProviders } from './t3/providers';
+import { accountModels } from './t3/models';
 import { accountContext, nodeAccountChecks } from './accounts/context';
 
 async function main(): Promise<void> {
@@ -39,12 +40,14 @@ async function main(): Promise<void> {
     );
     process.stdout.write(JSON.stringify({ version: 1, checks }));
   } else if (raw['action'] === 'accounts') {
-    // The fast account path: only the account-derived T3 instances. T3
-    // watches its settings, so no restart and no running turn ends.
+    // The fast account path: only the account-derived T3 instances and the
+    // models each shows. T3 watches its settings, so no restart and no
+    // running turn ends.
     if (raw['apply'] !== true)
       throw new Error('Account propagation requires explicit authorization.');
     const checks = [
       await machineProviders(node.id, node.workspace, true),
+      await accountModels(),
       ...(await nodeAccountChecks(await accountContext())),
     ];
     process.stdout.write(JSON.stringify({ version: 1, checks }));

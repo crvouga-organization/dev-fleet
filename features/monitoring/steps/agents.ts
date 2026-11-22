@@ -196,6 +196,15 @@ Then('these checks are reported:', (world, table: DataTable) => {
   expect(reported).toEqual(table.hashes());
 });
 
+Then(
+  'every check but the first has the summary {string}',
+  (world, summary: string) => {
+    expect(world.checks.length).toBeGreaterThan(1);
+    for (const check of world.checks.slice(1))
+      expect(check.summary).toBe(summary);
+  }
+);
+
 Then('the summary of the second check is {string}', (world, summary) => {
   expect(world.checks[1]?.summary).toBe(String(summary));
 });

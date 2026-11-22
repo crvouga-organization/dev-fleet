@@ -57,6 +57,15 @@ Feature: fleet-sync enrolls every machine on the manager's monitoring hub
       Then the first check's summary is "BESZEL_ACCOUNT_REQUIRED"
       And the first check's remedy contains "fleet-manager@example.com"
 
+    Scenario: A fleet login the manager could not read while logged out of Vault is blocked by that login
+      The fault is the manager's own login, which one check owns: this one
+      names it instead of asking for a hub account, and still fails.
+      Given logging in to the hub fails with "SECRET_READ_BLOCKED"
+      When the monitoring of that machine is synchronized at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      Then the first check's status is "fail"
+      And the first check's summary is "SECRET_READ_BLOCKED by manager:vault-renewal"
+      And the first check's remedy contains "Fix manager:vault-renewal"
+
   Rule: The manager is a monitored system on its own hub
 
     Scenario: The manager enrolls itself and installs its agent locally

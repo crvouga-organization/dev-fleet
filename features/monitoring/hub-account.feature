@@ -38,3 +38,21 @@ Feature: The manager signs in to the hub with one fleet account
       | another request | 400    | /api/collections/systems/records          | BESZEL_API_UNAVAILABLE  |
       | the login       | 403    | /api/collections/users/auth-with-password | BESZEL_AUTH_REQUIRED    |
       | the login       | 503    | /api/collections/users/auth-with-password | BESZEL_API_UNAVAILABLE  |
+
+  Rule: A password that cannot be read is a missing account only when the manager is logged in to Vault
+    The manager reads the password with its own Vault session. A session
+    that has lapsed is one fault with one owner, the check of the manager's
+    login; it is not a hub that lacks an account.
+
+    Background:
+      Given the command "vault kv get -address=https://vault.example.com …" fails
+
+    Scenario: A password Vault does not hold is a missing account
+      Given the command "vault token lookup -address=https://vault.example.com -format=json" succeeds
+      When the manager signs in to the hub "https://manager-mac-1.tail0a1b2c.ts.net:8443"
+      Then it is refused with exactly "BESZEL_ACCOUNT_REQUIRED"
+
+    Scenario: A password the manager cannot read while logged out of Vault is blocked by that login
+      Given the command "vault token lookup -address=https://vault.example.com -format=json" fails
+      When the manager signs in to the hub "https://manager-mac-1.tail0a1b2c.ts.net:8443"
+      Then it is refused with exactly "SECRET_READ_BLOCKED"

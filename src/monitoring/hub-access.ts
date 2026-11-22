@@ -1,7 +1,9 @@
 import { privateHub } from './beszel';
 import type { HubRequest } from './enroll';
 import { record } from '../config';
-import { fleet, secret } from '../fleet-config';
+import { fleet, secret, secretsLogin, secretVia } from '../fleet-config';
+import { SECRET_READ_BLOCKED } from '../secrets-blocked';
+import type { Runner } from '../types';
 
 /** The normal (non-superuser) Beszel account the manager enrolls nodes with.
  * Its password is the fleet's monitoring-account-password secret. A fresh hub on the
@@ -59,13 +61,24 @@ export async function fleetAccount(): Promise<{
 }
 
 /** Reads the existing account password only. This never creates credentials. The normal Beszel account must have fleet-node access.
+ * A password that cannot be read because the manager is not logged in to its
+ * secrets provider is refused as blocked by that login, not as a missing
+ * account. `run` stands in for the secrets tool.
  */
 export async function hubAccess(
-  hub: string
+  hub: string,
+  run?: Runner
 ): Promise<{ userId: string; request: HubRequest }> {
   const url = privateHub(hub);
-  const password = await secret('monitoring-account-password');
-  if (!password) throw new Error('BESZEL_ACCOUNT_REQUIRED');
+  const password = await (run ? secretVia(run) : secret)(
+    'monitoring-account-password'
+  );
+  if (!password)
+    throw new Error(
+      (await secretsLogin(run)) === 'required'
+        ? SECRET_READ_BLOCKED
+        : 'BESZEL_ACCOUNT_REQUIRED'
+    );
   const credentials = fleetCredentials(password);
   const login = await call(
     url,

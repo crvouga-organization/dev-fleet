@@ -2,7 +2,8 @@ Feature: The policy a worker's T3 has loaded is measured, never assumed
   fleet-sync stages the managed policy, and a playbook restarts a running T3
   that has not loaded it, but only while it runs no agent turn: a busy T3
   keeps its turns and the restart is recorded as pending, for the recovery
-  watchdog to apply at the first idle check. Afterwards T3 itself is asked,
+  watchdog to apply at the first idle check, or at its deadline when the
+  worker is never idle. Afterwards T3 itself is asked,
   with "t3 policy show", and only its own word that it loaded this policy
   counts.
 
@@ -71,25 +72,32 @@ Feature: The policy a worker's T3 has loaded is measured, never assumed
       Then the check fails with "T3_POLICY_RESTART_FAILED"
       And no command with the word "start" was run
 
-  Rule: A restart deferred while agent turns run is pending, until it has waited too long
+  Rule: A restart deferred while agent turns run is pending, and says how long it has waited
+    The recovery watchdog applies it at the first idle check, and 24 hours
+    after it was first deferred at the latest (t3RestartMaxDeferralHours in
+    the policy), which ends the turns still running then.
 
     Background:
       Given these commands answer:
         | command                 | answer                                                |
         | /managed/t3 policy show | prints Restart T3 Code to apply the installed policy. |
 
-    Scenario: A policy change while an agent turn runs leaves the turn running and reports the pending restart
+    Scenario: A policy change while an agent turn runs leaves the turn running and reports the wait and the deadline
       Given a restart of T3 has been deferred for 2 hours
       When the policy loaded by the T3 at "/managed/t3" is measured after a play that left it running
       Then the check warns
       And the summary of the check is "T3_POLICY_RESTART_PENDING"
+      And the remedy of the check contains "The restart has waited 2h 0m for agent turns to end."
+      And the remedy of the check contains "at the latest in 22h 0m, 24 hours after it was first deferred: the turns still running then end."
       And no command with the word "start" was run
 
-    Scenario: A restart deferred longer than the policy allows fails
-      The policy allows 24 hours.
+    Scenario: A restart still pending after its deadline fails
+      The watchdog applies it at the deadline; one that waits longer was not
+      applied.
       Given a restart of T3 has been deferred for 25 hours
       When the policy loaded by the T3 at "/managed/t3" is measured after a play that left it running
       Then the check fails with "T3_POLICY_RESTART_PENDING"
+      And the remedy of the check contains "longer than the 24 hours a restart is deferred at most, and personal-worker-recovery has not applied it."
 
   Rule: The staged policy keeps linked environments on
 
