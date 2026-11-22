@@ -67,6 +67,48 @@ class AccountState(unittest.TestCase):
         ]), [('claude', 1, 'cooling-down', '2027-01-15T09:00:00Z'),
              ('claude', 2, 'cooling-down', '2027-01-15T08:30:00Z')])
 
+    def cooldowns(self, entries):
+        return [a['cooldowns'] for a in accounts.roster(self.auths, entries, now=NOW)]
+
+    def test_a_model_in_cooldown_is_listed_and_leaves_the_account_usable(self):
+        # The pinned proxy lists an unexpired retry restriction per credential
+        # (`cooldowns`), by scope: one model, or the whole credential.
+        self.credential('antigravity-a.json', type='antigravity', email='a@example.com')
+        entries = [{'name': 'antigravity-a.json', 'unavailable': False, 'cooldowns': [
+            {'scope': 'model', 'model_key': 'gemini-3.8-flash-high', 'reason': 'quota',
+             'retry_at': '2027-01-15T09:00:00Z', 'remaining_seconds': 3600, 'http_status': 429},
+            {'scope': 'model', 'model_key': 'gemini-3.8-pro', 'reason': 'quota', 'retry_at': '2027-01-15T07:00:00Z'},
+        ]}]
+        self.assertEqual(self.states(entries), [('antigravity', 1, 'usable', None)])
+        self.assertEqual(self.cooldowns(entries), [[
+            {'model': 'gemini-3.8-flash-high', 'reason': 'quota', 'until': '2027-01-15T09:00:00Z'},
+        ]])
+
+    def test_a_cooldown_of_the_whole_credential_cools_the_account_down(self):
+        self.credential('codex-a.json', type='codex', email='a@example.com')
+        entries = [{'name': 'codex-a.json', 'cooldowns': [
+            {'scope': 'credential', 'reason': 'credential_quota', 'retry_at': '2027-01-15T10:00:00Z'},
+        ]}]
+        self.assertEqual(self.states(entries), [('codex', 1, 'cooling-down', '2027-01-15T10:00:00Z')])
+        self.assertEqual(self.cooldowns(entries), [[]])
+
+    def test_a_cooldown_reports_a_known_reason_and_never_what_a_provider_said(self):
+        self.credential('claude-a.json', type='claude', email='a@example.com')
+        entries = [{'name': 'claude-a.json', 'cooldowns': [
+            {'scope': 'model', 'model_key': 'claude-sonnet-5-5', 'reason': 'private upstream body',
+             'retry_at': '2027-01-15T09:00:00Z'},
+            {'scope': 'model', 'model_key': 'claude-a@example.com/claude-opus-5-5', 'reason': 'quota',
+             'retry_at': '2027-01-15T09:00:00Z'},
+        ]}]
+        self.assertEqual(self.cooldowns(entries), [[
+            {'model': 'claude-sonnet-5-5', 'reason': 'unknown', 'until': '2027-01-15T09:00:00Z'},
+        ]])
+
+    def test_a_proxy_that_does_not_say_lists_no_cooldown(self):
+        self.credential('claude-a.json', type='claude', email='a@example.com')
+        self.assertEqual(self.cooldowns([{'name': 'claude-a.json', 'cooldowns': None}]), [[]])
+        self.assertEqual(self.cooldowns([]), [[]])
+
     def test_a_rejected_refresh_token_needs_a_login_for_that_account_only(self):
         self.credential('codex-a.json', type='codex', email='a@example.com')
         self.credential('codex-b.json', type='codex', email='b@example.com')

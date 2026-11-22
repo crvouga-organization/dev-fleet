@@ -7,7 +7,10 @@ import { Commands, failed, succeeded } from '../support/commands';
 import { accountsFrom } from '../../src/agents/accounts';
 import { forward, RETRY_DELAYS } from '../../src/agents/account-relay';
 import { routeThroughRelay } from '../../src/agents/launch';
-import { ACCOUNT_LAUNCH } from '../../src/agents/native-verify';
+import {
+  ACCOUNT_LAUNCH,
+  verifyNativeAgents,
+} from '../../src/agents/native-verify';
 import { select } from '../../src/agents/registry';
 import { cacheKey, cachedCheck } from '../../src/agents/verify-cache';
 import {
@@ -28,13 +31,14 @@ import {
 import { AccountSelector } from '../../src/accounts/selection';
 import {
   accountSessionChecks,
+  proxyVerdict,
   sessionResult,
   type Instance,
   type SessionResult,
 } from '../../src/accounts/sessions';
 import { fleetAccounts } from '../../src/cli/fleet-accounts';
 import type { CommandOutcome } from '../../src/cli/contracts';
-import type { Check, FleetNode } from '../../src/types';
+import type { Check, CommandResult, FleetNode } from '../../src/types';
 
 /** 2027-01-15T08:00:00Z */
 const NOW = 1_800_000_000_000;
@@ -74,6 +78,12 @@ export class AccountsWorld extends World {
   sessions: Record<string, SessionResult> = {};
   sessionsRun: string[] = [];
   result?: SessionResult;
+  /** How the launcher of each account's session ends. */
+  launched: Record<string, CommandResult> = {};
+  /** What the proxy answers a request for one account's model. */
+  proxyAnswer?: { status: number; body: string };
+  /** The models the proxy was asked for directly. */
+  asked: string[] = [];
   cache?: string;
   computed = 0;
 
@@ -97,6 +107,7 @@ Given('the proxy reports these accounts:', (world, table: DataTable) => {
     prefix: `${row['provider']}-${row['label']}`,
     state: row['state'] as RosterAccount['state'],
     until: row['until'] || null,
+    cooldowns: [],
   }));
   world.roster = {
     version: 1,
@@ -106,6 +117,21 @@ Given('the proxy reports these accounts:', (world, table: DataTable) => {
     managementApi: true,
     accounts: list,
   };
+});
+
+Given('the proxy holds these models back:', (world, table: DataTable) => {
+  for (const row of table.hashes())
+    world
+      .roster!.accounts.find(
+        (account) =>
+          account.provider === row['provider'] &&
+          account.index === Number(row['index'])
+      )!
+      .cooldowns.push({
+        model: row['model']!,
+        reason: row['reason']!,
+        until: row['until']!,
+      });
 });
 
 Given(
@@ -147,6 +173,17 @@ Then(
     expect(named(world, id).remedy?.command).toBe(command);
   }
 );
+
+Then(
+  'the remedy of the check {string} mentions {string}',
+  (world, id: string, text: string) => {
+    expect(named(world, id).remedy?.action ?? '').toContain(text);
+  }
+);
+
+Then('the check {string} has no remedy', (world, id: string) => {
+  expect(named(world, id).remedy).toBeUndefined();
+});
 
 Then('it asks to run {string}', (world, command: string) => {
   expect(world.checks.map((check) => check.remedy?.command)).toContain(command);
@@ -279,6 +316,26 @@ Then(
         account.provider === provider && account.index === Number(index)
     );
     expect(listed?.state).toBe(state as RosterAccount['state']);
+  }
+);
+
+Then(
+  /^it lists the model "([^"]+)" of (\w+) account (\d+) as held back for "([^"]+)" until "([^"]+)"$/,
+  (
+    world,
+    model: string,
+    provider: string,
+    index: string,
+    reason: string,
+    until: string
+  ) => {
+    const listed = (
+      world.outcome!.data as { accounts: RosterAccount[] }
+    ).accounts.find(
+      (account) =>
+        account.provider === provider && account.index === Number(index)
+    );
+    expect(listed?.cooldowns).toEqual([{ model, reason, until }]);
   }
 );
 
@@ -630,11 +687,101 @@ Then('only the account {string} was run', (world, account: string) => {
 });
 
 When(
-  /^a session that (succeeded|failed) printed "(.*)" is read$/,
+  /^a session that (succeeded|failed|ran into its deadline) printed "(.*)" is read$/,
   (world, exit: string, output: string) => {
-    world.result = sessionResult(exit === 'succeeded', output);
+    world.result = sessionResult(
+      exit === 'succeeded',
+      output,
+      exit === 'ran into its deadline'
+    );
   }
 );
+
+// ── A session that ran into its deadline ─────────────────────────────────
+
+const timedOut: CommandResult = {
+  ok: false,
+  stdout: '',
+  stderr: '',
+  reason: 'timeout',
+};
+
+Given(
+  'the session of the account {string} runs into its deadline',
+  (world, account: string) => {
+    world.launched[account] = timedOut;
+  }
+);
+
+Given(
+  /^the session of the account "([^"]+)" fails printing "(.*)"$/,
+  (world, account: string, output: string) => {
+    world.launched[account] = failed(output);
+  }
+);
+
+Given(
+  /^the proxy answers a request for that account's model with the status (\d+) saying "(.*)"$/,
+  (world, status: string, body: string) => {
+    world.proxyAnswer = { status: Number(status), body };
+  }
+);
+
+When("this node's account sessions are verified", async (world) => {
+  const live = accountsFrom(world.models);
+  // Every launcher is a stand-in: an account's session ends as the scenario
+  // says, and nothing else on the node answers.
+  world.commands.answer(
+    (command) => command.some((word) => word.includes('/agents/')),
+    (_command, options) =>
+      world.launched[options?.env?.['WS_AGENT_ACCOUNT'] ?? ''] ?? failed()
+  );
+  const send = (async (_url: string, init: RequestInit) => {
+    world.asked.push(
+      (JSON.parse(String(init.body)) as { model: string }).model
+    );
+    if (!world.proxyAnswer) throw new TypeError('The proxy does not answer.');
+    return new Response(world.proxyAnswer.body, {
+      status: world.proxyAnswer.status,
+    });
+  }) as unknown as typeof fetch;
+  const checks = await verifyNativeAgents(
+    'node-a',
+    REPOSITORY,
+    world.commands.run,
+    {
+      // Unwritable: nothing verified earlier is remembered.
+      cache: { directory: '/dev/null/verify' },
+      profiles: '/dev/null/profiles',
+      accounts: {
+        live,
+        exposed: world.exposed,
+        rosterVersion: liveVersion(live),
+        keyVersion: 'key-1',
+        consult: (account) => proxyVerdict(account, 'client-key', send),
+      },
+    }
+  );
+  world.checks = checks.filter((check) =>
+    /:account-\d+:session$/.test(check.id)
+  );
+});
+
+Then('the proxy was asked for the model {string}', (world, model: string) => {
+  expect(world.asked).toEqual([model]);
+});
+
+Then('no check repeats what the proxy answered', (world) => {
+  expect(world.checks.length).toBeGreaterThan(0);
+  for (const check of world.checks)
+    expect(
+      [check.summary, check.remedy?.action, check.remedy?.command].join('\n')
+    ).not.toContain(world.proxyAnswer!.body);
+});
+
+Then('the proxy was not asked about any account', (world) => {
+  expect(world.asked).toEqual([]);
+});
 
 Then(
   'the OpenCode account session is launched with {string}',
