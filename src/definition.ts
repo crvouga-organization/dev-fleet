@@ -27,7 +27,9 @@ import { UBUNTU_RELEASES, ubuntuRelease } from './platform/ubuntu-release';
 import { parseGithubPolicy, type GithubPolicy } from './github/policy';
 import {
   EXPOSURE_EXPECTED,
+  effectiveExposure,
   parseExposure,
+  portInBothLists,
   type ExposureDeclaration,
 } from './exposure';
 import { parseTailnetConfig, type TailnetConfig } from './tailnet-control';
@@ -625,7 +627,7 @@ export function parseDefinition(value: unknown): FleetDefinition {
       );
     seen.add(entry.id);
   });
-  return {
+  const definition: FleetDefinition = {
     version: 3,
     source: source(fields['source']),
     secrets: secrets(fields['secrets']),
@@ -661,6 +663,22 @@ export function parseDefinition(value: unknown): FleetDefinition {
         }),
     ...operations(fields),
   };
+  // A worker's list replaces the fleet-wide one of the same name only: its
+  // other list still comes from worker.exposure.
+  workers.forEach((entry, index) => {
+    if (
+      entry.exposure &&
+      portInBothLists(
+        effectiveExposure(definition.worker?.exposure, entry.exposure)
+      )
+    )
+      fail(
+        `$.workers[${index}].exposure`,
+        'no port both in publicPorts and in tailnetOnlyPorts, counting the list of worker.exposure this worker does not replace',
+        entry.exposure
+      );
+  });
+  return definition;
 }
 /** How every node signs in to GitHub, how workers are parked, and the
  * tailnet control plane they are enrolled with. */

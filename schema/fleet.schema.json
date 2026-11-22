@@ -193,6 +193,27 @@
                 },
                 "description": "Ports opened on every interface; a listener on one passes worker:exposure. Default none."
               },
+              "tailnetOnlyPorts": {
+                "type": "array",
+                "maxItems": 32,
+                "uniqueItems": true,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["protocol", "port"],
+                  "properties": {
+                    "protocol": {
+                      "enum": ["tcp", "udp"]
+                    },
+                    "port": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 65535
+                    }
+                  }
+                },
+                "description": "Ports of services that cannot bind one address, such as a remote desktop: the fleet firewall drops each for everything but loopback and the tailnet, containers included, and a listener on one passes worker:exposure only while that rule is loaded. Opens nothing; a port also in publicPorts is refused. Default none."
+              },
               "otherListeners": {
                 "enum": ["warn", "fail"],
                 "description": "How worker:exposure reports a listener beyond loopback and the tailnet that no fleet service owns, such as an agent's development server on 0.0.0.0. The firewall closes it either way. Default warn; a fleet service there always fails."
@@ -577,6 +598,27 @@
                 }
               },
               "description": "Ports opened on every interface; a listener on one passes worker:exposure. Default none."
+            },
+            "tailnetOnlyPorts": {
+              "type": "array",
+              "maxItems": 32,
+              "uniqueItems": true,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["protocol", "port"],
+                "properties": {
+                  "protocol": {
+                    "enum": ["tcp", "udp"]
+                  },
+                  "port": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 65535
+                  }
+                }
+              },
+              "description": "Ports of services that cannot bind one address, such as a remote desktop: the fleet firewall drops each for everything but loopback and the tailnet, containers included, and a listener on one passes worker:exposure only while that rule is loaded. Opens nothing; a port also in publicPorts is refused. Default none."
             },
             "otherListeners": {
               "enum": ["warn", "fail"],
