@@ -15,6 +15,7 @@ import {
   failure,
   fleetCredentials,
   fleetIdentity,
+  hubAccess,
   publicViewerIdentity,
 } from '../../../src/monitoring/hub-access';
 import { ensurePublicViewer } from '../../../src/monitoring/hub-viewer';
@@ -258,6 +259,13 @@ When(
     });
   }
 );
+
+When('the manager signs in to the hub {string}', async (world, hub: string) => {
+  // Refused before anything is sent: no scenario here reaches a hub.
+  await world.attempt(async () => {
+    await hubAccess(hub, world.run);
+  });
+});
 
 Then(
   'the login is {string} with the password {string}',

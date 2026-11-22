@@ -19,6 +19,7 @@ import {
 
 type Tool = string | { version: string; lazy?: boolean; os?: string[] };
 type Config = {
+  min_version?: unknown;
   tools: Record<string, Tool>;
   vars?: Record<string, unknown>;
 };
@@ -139,6 +140,62 @@ export function dockerChecks(
   });
 }
 
+/** The numbers of a mise release, or null for anything else. */
+function release(text: string | undefined): number[] | null {
+  return text && /^\d+(?:\.\d+){1,3}$/.test(text)
+    ? text.split('.').map(Number)
+    : null;
+}
+
+/** Whether `first` is a newer release than `second`. */
+function newer(first: number[], second: number[]): boolean {
+  for (let index = 0; index < Math.max(first.length, second.length); index++) {
+    const difference = (first[index] ?? 0) - (second[index] ?? 0);
+    if (difference !== 0) return difference > 0;
+  }
+  return false;
+}
+
+/** What the doctor says when the machine runs a newer mise than the
+ * checkout pins: installing the pin would be a downgrade, and the bootstrap
+ * never makes one unasked.
+ */
+export const TOOLCHAIN_DOWNGRADE = 'TOOLCHAIN_DOWNGRADE';
+
+/** mise itself against `min_version`, which is a minimum. The pinned release
+ * passes. A newer one is a warning: the bootstrap kept it rather than
+ * replace it with the older pinned one, because every other checkout on the
+ * machine whose pin is newer needs it. An older one fails: mise refuses to
+ * run this checkout's tools.
+ */
+export function miseCheck(pinned: unknown, execute: Runner = run): Check {
+  const result = execute(['mise', '--version']);
+  const installed = result.ok ? result.output.split(/\s+/)[0] : undefined;
+  const pin = release(typeof pinned === 'string' ? pinned : undefined);
+  const found = release(installed);
+  if (!pin || !found)
+    return {
+      id: 'mise',
+      status: 'fail',
+      detail: pin
+        ? 'mise did not report its version; rerun the OS bootstrap.'
+        : 'mise.toml does not pin mise (min_version).',
+    };
+  if (newer(found, pin))
+    return {
+      id: 'mise',
+      status: 'warn',
+      detail: `${TOOLCHAIN_DOWNGRADE}: this checkout pins mise ${String(pinned)} and the machine runs the newer ${installed}, which the bootstrap keeps. bash bootstrap/bootstrap.sh --allow-mise-downgrade installs the older one.`,
+    };
+  return newer(pin, found)
+    ? {
+        id: 'mise',
+        status: 'fail',
+        detail: `Expected mise ${String(pinned)} or newer; rerun the OS bootstrap.`,
+      }
+    : { id: 'mise', status: 'pass', detail: installed! };
+}
+
 /** Agent worktree roots must be trusted, or every mise shim fails there. */
 export function worktreeTrustCheck(
   execute: Runner = run,
@@ -232,6 +289,7 @@ export function checkMachine(
         : config.tools
     ),
     ...dockerChecks(requireDocker),
+    miseCheck(config.min_version),
     worktreeTrustCheck(),
     globalConfigCheck(),
     {

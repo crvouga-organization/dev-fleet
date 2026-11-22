@@ -25,6 +25,7 @@ import {
   probedClock,
 } from './machine/platform';
 import { clockOffsetCheck } from './clock';
+import type { RevisionSelection } from './revision-selection';
 
 export interface ManagerNode extends NodeReport {
   /** The singleton manager converges locally; workers over SSH. */
@@ -42,6 +43,10 @@ export interface ManagerReport {
   ok: boolean;
   applied: boolean;
   desiredRevision: string | null;
+  /** What selected the desired revision. */
+  selectedBy?: RevisionSelection;
+  /** The approved revision this run's revision replaces, when it is another. */
+  replacedRevision?: string;
   /** The worker that proved a revision new to the fleet first, when one did. */
   canary?: string;
   /** The workers this run enrolled (added to the roster, or bound to their

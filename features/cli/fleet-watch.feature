@@ -57,6 +57,59 @@ Feature: The fleet tells someone when a worker becomes unhealthy
         | event    | node     | checks               |
         | degraded | worker-a | worker:capacity:disk |
 
+  Rule: Every run says which revision the fleet is to run and what selected it
+    The fleet state records what made a revision the approved one: fixed
+    words and a worker's fleet id, never an account or a command line.
+
+    Scenario: The approved revision is reported with what selected it and when
+      Given fleet-status sees every worker ready
+      And the fleet state says of the approved revision:
+        """
+        {
+          "approved": "cccccccccccccccccccccccccccccccccccccccc",
+          "applied": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "selectedBy": {
+            "by": "checkout",
+            "handOff": { "worker": "worker-a" },
+            "allowUnmerged": true,
+            "at": "2026-11-10T23:50:00.000Z"
+          }
+        }
+        """
+      When the watcher runs
+      Then fleet-watch reports the revision:
+        """
+        {
+          "approved": "cccccccccccccccccccccccccccccccccccccccc",
+          "applied": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "selectedBy": {
+            "by": "checkout",
+            "handOff": { "worker": "worker-a" },
+            "allowUnmerged": true,
+            "at": "2026-11-10T23:50:00.000Z"
+          }
+        }
+        """
+      And fleet-watch prints "revision cccccccccccc selected by the HEAD of the checkout fleet-sync was started in, handed off from worker-a (--allow-unmerged) at 2026-11-10T23:50:00.000Z (not applied to the whole fleet)"
+
+    Scenario: A fleet state that does not say what selected the revision still names it
+      Fleet states written before this was recorded have no such record.
+      Given fleet-status sees every worker ready
+      And the fleet state says of the approved revision:
+        """
+        {
+          "approved": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "applied": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        }
+        """
+      When the watcher runs
+      Then fleet-watch prints "revision bbbbbbbbbbbb"
+
+    Scenario: Before the first fleet-sync there is no revision to report
+      Given fleet-status sees every worker ready
+      When the watcher runs
+      Then fleet-watch reports no revision
+
   Rule: A test notification proves a target works, without a fleet to watch
 
     Scenario: The test reaches the webhook

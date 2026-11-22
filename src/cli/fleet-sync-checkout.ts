@@ -4,6 +4,11 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { prepareSource } from '../machine/source';
 import { PACKAGE_ROOT, packageInfo } from '../package-info';
+import {
+  encodeSelection,
+  SELECTED_BY_ENV,
+  type RevisionSelection,
+} from '../revision-selection';
 import { trackedScript } from '../remote-bootstrap';
 import type { Runner } from '../types';
 import type { CommandOutcome } from './contracts';
@@ -32,6 +37,8 @@ export interface RunSource {
   workspace: string;
   /** The manager's own caches; the fleet-owned source repository lives here. */
   root: string;
+  /** What selected the revision; the run in the checkout is told. */
+  selection?: RevisionSelection;
 }
 
 /** The revision's run script: tracked in a checkout, or shipped in the
@@ -79,6 +86,9 @@ export async function runFromCheckout(
   if (!repository || !script) return null;
   // The run script makes its checkout from this repository.
   process.env['DEVFLEET_REPO'] = repository;
+  // It is given --revision, which does not say what selected the revision.
+  if (source.selection)
+    process.env[SELECTED_BY_ENV] = encodeSelection(revision, source.selection);
   const result = await spawnLocal([
     'sh',
     '-c',

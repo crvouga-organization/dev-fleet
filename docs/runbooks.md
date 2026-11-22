@@ -8,7 +8,7 @@ person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
 entry here, or a `devfleet` command quoted in the documents does not exist.
 
-There are 319 codes; 46 need a person.
+There are 326 codes; 49 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -59,13 +59,14 @@ There are 319 codes; 46 need a person.
 
 - **Meaning:** mise, the pinned tools, the global mise configuration or the frozen dependencies did not converge.
 - **Confirm:** Run `bun bootstrap/doctor.ts --json --worker` in the checkout on the machine, or read the `tool:*` checks of `devfleet fleet-status`.
-- **Fix:** Run `devfleet fleet-sync`; it resumes. TOOLCHAIN_CONFIG_CONFLICT means another tool owns `~/.config/mise/config.toml`: move it away.
+- **Fix:** Run `devfleet fleet-sync`; it resumes. TOOLCHAIN_CONFIG_CONFLICT means another tool owns `~/.config/mise/config.toml`: move it away. TOOLCHAIN_DOWNGRADE (a warning of `tool:mise`) means the machine runs a newer mise than the revision pins: the bootstrap kept it, because `min_version` is a minimum and a checkout with a newer pin needs it. Nothing is to do after a rollback or beside such a checkout; to install the older pinned mise on purpose, run `bash bootstrap/bootstrap.sh --allow-mise-downgrade` in the revision's checkout on that machine (with `--tools-only` on the manager, `--worker --node ID` on a worker).
 - **Escalate:** A tool that fails to download from its pinned artifact needs a new pin in `mise.toml` and `mise.lock` (an issue).
 
 - `LAUNCHER_INSTALLATION_FAILED`: launcher installation failed.
 - `TOOLCHAIN_AWS_FAILED`: toolchain aws failed.
 - `TOOLCHAIN_CONFIG_CONFLICT`: toolchain config conflict.
 - `TOOLCHAIN_CONVERGENCE_FAILED`: toolchain convergence failed.
+- `TOOLCHAIN_DOWNGRADE`: the machine runs a newer mise than the revision pins, and it was kept.
 - `TOOLCHAIN_FROZEN_DEPENDENCIES_FAILED`: toolchain frozen dependencies failed.
 - `TOOLCHAIN_MISE_FAILED`: toolchain mise failed.
 - `TOOLCHAIN_PATH_CONFIGURATION_FAILED`: toolchain path configuration failed.
@@ -275,10 +276,11 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_MANAGER_ORIGIN_UNRESTRICTED`: t3 manager origin unrestricted.
 - `T3_MANAGER_ORIGIN_UNVERIFIED`: t3 manager origin unverified.
 - `T3_MODELS_MISMATCH`: t3 models mismatch.
+- `T3_MODELS_PENDING`: t3 models pending.
 - `T3_MODELS_UNVERIFIED`: t3 models unverified.
 - `T3_POLICY_OWNER_CONFLICT`: t3 policy owner conflict. **Needs a person.**
 - `T3_POLICY_RESTART_FAILED`: t3 policy restart failed.
-- `T3_POLICY_RESTART_PENDING`: t3 policy restart pending.
+- `T3_POLICY_RESTART_PENDING`: the running T3 has not loaded the staged policy and its restart waits for agent turns to end; the remedy says how long it has waited and when its deadline falls. See `T3_RESTART_PENDING`.
 - `T3_POLICY_STAGE_FAILED`: t3 policy stage failed.
 - `T3_PRIVATE_IDENTITY_REQUIRED`: t3 private identity required.
 - `T3_PRIVATE_ROUTE_CONFLICT`: t3 private route conflict.
@@ -299,7 +301,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_RENDERERS_HIGH`: the desktop renderers exceed their memory budget. Reload the app when idle.
 - `T3_PROTECTION_ESCAPED`: the T3 listener lacks its CPU, I/O or memory reserve; the summary names which (`cpu`, `io`, `memory`). Run fleet-sync: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. `io` alone, while the user manager has no io controller (measured in its `cgroup.controllers`), is not T3 leaving its unit: fleet-sync declares the controller, and the user manager takes it on its next start, so reboot the worker while it runs no agent turn (`devfleet fleet-sync --maintenance-reboot`); restarting T3 does not change it.
 - `T3_PROTECTION_UNOBSERVED`: no process of the worker user listens on the T3 port, so there is no reserve to measure: T3 is stopped or restarting. See `worker:t3-recovery` and `worker:t3-health`.
-- `T3_RESTART_PENDING`: t3 restart pending.
+- `T3_RESTART_PENDING`: a restart of the worker's T3 (a new release, a staged policy, a return to loopback) waits for its agent turns to end. The remedy says how long it has waited and when its deadline falls: `personal-worker-recovery` applies it at the first check with no turn running, and `t3RestartMaxDeferralHours` after it was first deferred although turns run, which ends them. A failure means the deadline passed and the timer did not apply it: check `worker:service-recovery` and run `devfleet fleet-sync`. To restart at once, run `devfleet fleet-sync --restart-busy`.
 - `T3_SERVER_INSTALL_FAILED`: t3 server install failed: the pinned server of a headless worker is missing from the toolchain, or `t3-headless.yml` did not apply.
 - `T3_SERVER_STOPPED`: t3 server stopped: the lingering `t3code-headless.service` of a headless worker is not running.
 - `T3_SETTINGS_BUSY`: t3 settings busy.
@@ -419,15 +421,17 @@ write `1` to that agent scope’s `cgroup.kill`.
 
 ## Vault and credentials
 
-- **Meaning:** A machine cannot read the secrets it needs with its own Vault session.
-- **Confirm:** `vault token lookup` on the machine and the `worker:vault-renewal` or `manager:vault-renewal` check.
-- **Fix:** Log the machine in once (`devfleet fleet-sync` asks on the manager); renewal is automatic afterwards.
-- **Escalate:** A refused policy needs the Vault administrator.
+- **Meaning:** A machine cannot read the secrets it needs with its own Vault session, or soon will not.
+- **Confirm:** `vault token lookup` on the machine and the `worker:vault-renewal` or `manager:vault-renewal` check. In the lookup, `renewable`, `ttl`, `period`, `explicit_max_ttl` and `creation_time` say how long the login can last; on the manager `launchctl print gui/$(id -u)/dev.devfleet.vault-renew` shows the `last exit code` of the renewal job.
+- **Fix:** Log the machine in once (`devfleet fleet-sync` asks on the manager); renewal is automatic afterwards, up to the maximum lifetime of the token.
+- **Escalate:** A refused policy needs the Vault administrator. So does a login that ends too often: its maximum lifetime is set where the token is issued (the auth method, or the user or role in it).
 
+- `SECRET_READ_BLOCKED`: secret read blocked: the check needed a secret the machine could not read because it is not logged in to Vault. It is not a fault of that check: fix the check its summary names (`manager:vault-renewal`, `VAULT_LOGIN_REQUIRED`), then run `devfleet fleet-sync`. **Needs a person.**
 - `UNATTENDED_VAULT_IDENTITY_REQUIRED`: unattended vault identity required.
+- `VAULT_LOGIN_EXPIRY_PENDING`: vault login expiry pending: the manager's login ends within a day and renewal cannot extend it, because Vault renews a token only up to its maximum lifetime or the token is not renewable. Log the manager in again before then; see [Authentication](authentication.md#rotation-and-failure). **Needs a person.**
 - `VAULT_LOGIN_REQUIRED`: vault login required. **Needs a person.**
 - `VAULT_POLICY_PERMISSION_REQUIRED`: vault policy permission required. **Needs a person.**
-- `VAULT_RENEWAL_FAILING`: vault renewal failing.
+- `VAULT_RENEWAL_FAILING`: vault renewal failing: the last run of the renewal job failed (a worker's `personal-worker-auth.service`, the manager's `dev.devfleet.vault-renew`), and the login lapses unless a renewal succeeds.
 - `VAULT_RENEWAL_MISSING`: vault renewal missing: the manager's renewal job is not loaded. Run `devfleet fleet-sync` on the manager.
 - `VAULT_RENEWAL_NOT_MANAGER`: vault renewal not manager.
 - `VAULT_WORKER_POLICY_FAILED`: vault worker policy failed.
@@ -467,10 +471,11 @@ write `1` to that agent scope’s `cgroup.kill`.
 - **Meaning:** fleet-sync could not plan, lock, reach a machine, promote a revision or keep the fleet state.
 - **Confirm:** `devfleet fleet-state` for the state, `devfleet fleet-status` for machines, and the report `devfleet fleet-sync` writes.
 - **Fix:** Follow the remedy; most clear by running `devfleet fleet-sync` again once the holder of a lock finishes.
-- **Escalate:** FLEET_STATE_DIVERGED needs a person to choose which copy of the state to keep (docs/state.md).
+- **Escalate:** FLEET_STATE_DIVERGED needs a person to choose which copy of the state to keep (docs/state.md). FLEET_CONFIGURATION_COPY_CHANGED needs a person to keep the edit (in `fleet.json`, or with the import the remedy prints) or to delete the copy. FLEET_REVISION_UNMERGED means the revision is not on the default branch of the source repository, so nothing was changed: merge it, or pass `--allow-unmerged` to converge the fleet to it on purpose. FLEET_REVISION_UNVERIFIED means the manager's own copy of the source repository could not be fetched to answer that: restore its network and Git access.
 
 - `ANSIBLE_VARIABLE_LIMIT`: ansible variable limit.
 - `CONTAINER_WATCHDOG_UNOBSERVED`: container watchdog unobserved.
+- `FLEET_CONFIGURATION_COPY_CHANGED`: fleet configuration copy changed: `~/.config/dev-fleet/fleet.json` on the machine was edited by hand, and is not replaced until the edit is kept or discarded. **Needs a person.**
 - `FLEET_CONNECTION_REQUIRED`: fleet connection required.
 - `FLEET_MANAGER_ENROLLMENT_REQUIRED`: fleet manager enrollment required. **Needs a person.**
 - `FLEET_MANAGER_LOCKED`: fleet manager locked.
@@ -481,6 +486,8 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `FLEET_REMOTE_LOCKED`: fleet remote locked.
 - `FLEET_REMOTE_OPERATION_FAILED`: fleet remote operation failed.
 - `FLEET_REVISION_REQUIRED`: fleet revision required.
+- `FLEET_REVISION_UNMERGED`: the revision is not on the default branch of the source repository.
+- `FLEET_REVISION_UNVERIFIED`: the source repository could not be asked whether its default branch holds the revision.
 - `FLEET_ROLLBACK_UNAVAILABLE`: fleet rollback unavailable.
 - `FLEET_SCHEDULE_PREVIEW`: fleet schedule preview.
 - `FLEET_SOURCE_UNAVAILABLE`: fleet source unavailable.

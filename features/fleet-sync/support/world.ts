@@ -6,6 +6,7 @@ import type { FleetSyncOptions } from '../../../src/cli/fleet-sync';
 import type { ForwardSpawn } from '../../../src/cli/fleet-sync-forward';
 import type { CliOptions } from '../../../src/cli/options';
 import type { Settings } from '../../../src/cli/settings';
+import type { RevisionSelection } from '../../../src/revision-selection';
 import { loadDefinition } from '../../../src/definition';
 import type { Tailnet } from '../../../src/tailscale';
 import type {
@@ -58,6 +59,8 @@ export class FleetSyncWorld extends World {
   // The hand-off and the run from a checkout.
   script: string | null = null;
   spawn: ForwardSpawn | undefined;
+  /** What selected the revision on the machine that hands the run off. */
+  selection: RevisionSelection | undefined;
   spawned: string[][] = [];
   forwarded: string[] = [];
   /** The manager's own caches, made when a scenario first needs them. */

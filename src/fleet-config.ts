@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
@@ -17,8 +18,10 @@ import { FleetUsageError } from './errors';
 import { pinnedPath } from './agents/toolchain';
 import type { Runner } from './types';
 import {
+  secretsLogin as providerLogin,
   secretsProvider,
   type SecretCommand,
+  type SecretsLogin,
   type SecretsProvider,
 } from './secrets';
 import { isOperator, stateDefinition } from './state/operator';
@@ -29,8 +32,15 @@ import { expandRecords } from './worker-records';
 /** Where every machine keeps the fleet configuration fleet-sync approved.
  * Launchers and scheduled jobs get no environment and read it from here.
  */
-const installedPath = (home: string): string =>
+export const installedPath = (home: string): string =>
   join(home, '.config/dev-fleet/fleet.json');
+
+/** Beside the installed copy: the SHA-256 of the copy as fleet-sync last
+ * wrote it, so the next run can tell a copy edited by hand from one the
+ * configuration has moved on from. A cache: fleet-sync writes it again. The
+ * copy itself is JSON that Node and Python read, and cannot carry a header.
+ */
+const recordPath = (home: string): string => `${installedPath(home)}.sha256`;
 
 /** Where this process reads the fleet configuration from, in this order:
  * - `file`: the file `DEVFLEET_CONFIG` names. The devfleet CLI sets it to the
@@ -81,12 +91,101 @@ export function configPath(env = process.env, home = homedir()): string {
 }
 
 /** Installs the configuration this process runs with as the machine's copy,
- * so launchers and scheduled jobs (which get no environment) use the same one.
- * Returns whether the file changed.
+ * so launchers and scheduled jobs (which get no environment) use the same one,
+ * and records what it wrote. Returns whether the copy changed.
  */
 export function installConfig(home = homedir()): boolean {
-  return writePrivate(installedPath(home), installedDefinition(fleet));
+  const body = installedDefinition(fleet);
+  const changed = writePrivate(installedPath(home), body);
+  writePrivate(recordPath(home), `${digest(body)}\n`);
+  return changed;
 }
+
+const digest = (text: string): string =>
+  createHash('sha256').update(text).digest('hex');
+
+function readText(path: string): string | null {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
+    return null;
+  }
+}
+
+/** A configuration as fleet-sync would install it, whatever wrote the text:
+ * two texts that say the same render the same. Null for one that is not a
+ * fleet configuration.
+ */
+function rendered(text: string | null): string | null {
+  if (text === null) return null;
+  try {
+    return installedDefinition(parseDefinition(JSON.parse(text)));
+  } catch {
+    return null;
+  }
+}
+
+/** The path of this machine's installed copy when it holds an edit the next
+ * install would lose, or null. It holds none when it is still what fleet-sync
+ * last wrote (its record says so), when it says what this run would install,
+ * or when it says what the fleet state records as last applied: a copy
+ * written before the record existed, or by a revision that keeps none, is
+ * not an edit. Reads only.
+ */
+export function editedInstalledCopy(
+  env = process.env,
+  home = homedir()
+): string | null {
+  const path = installedPath(home);
+  // A machine that reads its configuration from the copy loses nothing.
+  if (definitionSource(env, home).kind === 'installed') return null;
+  const copy = readText(path);
+  if (copy === null) return null;
+  if (readText(recordPath(home))?.trim() === digest(copy)) return null;
+  const says = rendered(copy);
+  if (says === installedDefinition(fleet)) return null;
+  const applied = rendered(stateDefinition(stateRoot(env, home)));
+  return says !== null && says === applied ? null : path;
+}
+
+/** What the operator does about an edited copy at `path`: how to keep the
+ * edit, for the way this process found its configuration, and how to discard
+ * it. Names paths and commands only, never what the files hold.
+ */
+export function editedCopyRemedy(
+  path: string,
+  env = process.env,
+  home = homedir()
+): string {
+  const source = definitionSource(env, home);
+  const kept =
+    source.kind === 'file' &&
+    source.path !== definitionPath(stateRoot(env, home))
+      ? `this run reads the configuration from ${source.path}. To keep the edit, make the same change in ${source.path}. Then, or to discard the edit, delete the copy (rm ${path}) and run fleet-sync again`
+      : `the configuration is kept in the fleet state. To keep the edit, run devfleet fleet-state --import ${path} and then fleet-sync again. To discard it, delete the copy (rm ${path}) and run fleet-sync again`;
+  return `The copy of the fleet configuration on this manager (${path}) was edited since fleet-sync last wrote it, and a sync would replace it, so nothing was changed. That file is a copy fleet-sync installs for launchers and scheduled jobs; ${kept}: it installs the copy anew.`;
+}
+
+/** How a remedy names fleet.json: the file itself, for the way this process
+ * found its configuration. A project's file, or the one DEVFLEET_CONFIG
+ * names, by its path; a configuration kept in the fleet state by the commands
+ * that change it; and on a machine that holds only the copy fleet-sync
+ * installs, where the file is instead. Every remedy that tells the operator
+ * to declare something uses this, so none sends them to the copy.
+ */
+export function fleetJson(env = process.env, home = homedir()): string {
+  const source = definitionSource(env, home);
+  const stored = definitionPath(stateRoot(env, home));
+  if (source.kind === 'file' && source.path !== stored)
+    return `fleet.json (${source.path})`;
+  if (source.kind === 'installed')
+    return `fleet.json (the one in the project the fleet is synced from, on the manager; not ${source.path}, the copy fleet-sync installs from it)`;
+  return `fleet.json (kept in the fleet state: ${STATE_EDIT})`;
+}
+
+/** Changing a configuration that is kept in the fleet state. */
+const STATE_EDIT =
+  'devfleet fleet-state --export > fleet.json, edit that file, then devfleet fleet-state --import fleet.json';
 
 function read(path: string): FleetDefinition {
   let value: unknown;
@@ -159,6 +258,20 @@ export const secretVia = (run: Runner): SecretsProvider =>
       return result.ok ? result.stdout : null;
     },
   });
+
+/** Whether a secret that could not be read is behind a login this node does
+ * not hold (`secretsLogin` in src/secrets.ts), through the same commands as
+ * `secret`, or as `secretVia` through an injected runner.
+ */
+export const secretsLogin = (run?: Runner): Promise<SecretsLogin> =>
+  providerLogin(fleet.secrets, {
+    run: run
+      ? async (argv) => {
+          const result = await run(argv, { timeoutMs: 20_000 });
+          return result.ok ? result.stdout : null;
+        }
+      : pinned,
+  })();
 
 const pinned: SecretCommand = (argv) =>
   new Promise((resolve) => {

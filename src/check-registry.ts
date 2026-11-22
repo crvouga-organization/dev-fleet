@@ -419,7 +419,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
     'T3 reconciliation can read and validate its local inputs.',
   't3:providers': "T3's provider instances are the declared ones.",
   't3:running-version':
-    'The running T3 server is the installed release; a restart the release needs waits for running agent turns.',
+    'The running T3 server is the installed release and no restart of it is pending; a pending restart waits for running agent turns, until its deadline.',
   't3:service': 'The pinned T3 app runs.',
   't3:settings': 'T3 settings are readable.',
   't3:updates': "T3's own updater is off, as the fleet's policy declares.",
@@ -443,7 +443,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'tailscale:online': 'Tailscale is online on this machine.',
   'tailscale:reachability': 'The machine is online in the tailnet.',
   'tool:*':
-    'A pinned tool, or the global mise configuration (tool:global-mise-config), is as the revision declares.',
+    'A pinned tool, mise itself (tool:mise, a warning when the machine keeps a newer one) or the global mise configuration (tool:global-mise-config), is as the revision declares.',
   'tool:docker-cli':
     'Not applicable on a worker whose containers feature is off: the Docker CLI is not one of its tools.',
   'ubuntu:baseline': 'The Ubuntu baseline policy is applied.',
@@ -519,6 +519,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'worker:convergence':
     'The worker last applied the approved revision and its last apply succeeded.',
   'worker:pressure-events': 'The pressure guard reports recent agent stops.',
+  'worker:t3-deadline-restarts':
+    'No pending restart of T3 reached its deadline in the last 24 hours: none ended running agent turns.',
   'worker:t3-renderers':
     'Desktop renderer memory is within its declared budget.',
   'worker:t3-protection':
@@ -555,6 +557,7 @@ export const ADVISORY_CHECKS = [
   'worker:idle',
   'worker:parked-online',
   'worker:public-reachability',
+  'worker:t3-deadline-restarts',
   ...Object.keys(PROXY_ROUTED).map((id) => `auth:${id}`),
 ];
 

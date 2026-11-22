@@ -66,6 +66,7 @@ export function t3Ide(inputs: T3Inputs = {}): Ide {
         t3Home: home(),
         roster: inputs.roster ?? proxyAccounts,
         ...(required ? { required } : {}),
+        apply: context.apply,
       }),
     ];
   };

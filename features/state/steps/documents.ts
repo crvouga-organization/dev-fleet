@@ -5,6 +5,7 @@ import { runRecord, type RunRecord } from '../../../src/cli/fleet-sync-state';
 import { addNode, loadRoster, readRoster } from '../../../src/cli/roster';
 import { resolveSettings, type Settings } from '../../../src/cli/settings';
 import type { Enrollment } from '../../../src/machine/state';
+import type { RevisionSelection } from '../../../src/revision-selection';
 import { loadEnrollment, storeEnrollment } from '../../../src/state/enrollment';
 import {
   adoptEarlier,
@@ -266,6 +267,15 @@ Then(
     ).toBe(revision);
   }
 );
+Then(
+  phrase('the applied revision of ', WHO, ' is "([a-f0-9]{40})"'),
+  async (world, name: string | undefined, revision: string) => {
+    expect(
+      (await loadEnrollment(null, world.manager(name).stateEnv))
+        ?.appliedRevision
+    ).toBe(revision);
+  }
+);
 Then(phrase(WHO, ' has no enrollment'), async (world, name?: string) => {
   expect(await loadEnrollment(null, world.manager(name).stateEnv)).toBeNull();
 });
@@ -286,7 +296,8 @@ const runs = scratch<{
 async function approve(
   world: StateWorld,
   revision: string,
-  scoped = false
+  scoped = false,
+  selected?: { selection: RevisionSelection; now: Date }
 ): Promise<void> {
   const manager = world.manager();
   const run = runs(world);
@@ -300,10 +311,20 @@ async function approve(
       standing: run.started,
       env: manager.stateEnv,
       scoped,
+      ...selected,
     }
   );
   run.record.approve();
 }
+
+Given(
+  /^a fleet-sync run for revision "([a-f0-9]{40})" (?:is|was) approved at "([^"]+)", selected by:$/,
+  (world, revision: string, at: string, selection: string) =>
+    approve(world, revision, false, {
+      selection: json(selection) as RevisionSelection,
+      now: new Date(at),
+    })
+);
 
 Given(
   /^a fleet-sync run for revision "([a-f0-9]{40})"( scoped with --node)? (?:is|was) approved$/,

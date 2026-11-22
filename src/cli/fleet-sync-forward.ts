@@ -1,5 +1,10 @@
 import { spawn } from 'node:child_process';
 import type { FleetDefinition } from '../definition';
+import {
+  encodeSelection,
+  SELECTED_BY_ENV,
+  type RevisionSelection,
+} from '../revision-selection';
 import { shellQuote, sshArgs } from '../ssh';
 import type { FleetNode } from '../types';
 import type { CommandOutcome } from './contracts';
@@ -17,6 +22,35 @@ export function forwardingDisabled(): boolean {
   return Boolean(process.env[NO_FORWARD_ENV]);
 }
 
+/** Whether a request's revision has to be on the default branch of the
+ * source repository: always, unless --allow-unmerged says otherwise or the
+ * request converges nothing (the schedule's status, or taking it away).
+ */
+export function asksAncestry(options: FleetSyncOptions): boolean {
+  return (
+    !options.allowUnmerged &&
+    !['status', 'pause', 'disable'].includes(options.schedule ?? '')
+  );
+}
+
+/** What the guard below exits with; nothing else on the manager uses them. */
+const GUARD_EXIT = { unmerged: 65, unverified: 66 } as const;
+
+/** Run on the manager before a handed-off revision's own run script, which
+ * installs that revision's toolchain there: the manager's own copy of the
+ * source repository says whether its default branch holds the revision. A
+ * revision already known to be on it needs no network; anything else is
+ * fetched first. `$1` is the revision.
+ */
+export const ANCESTRY_GUARD = [
+  'source="$HOME/.local/share/personal/fleet/manager/source"',
+  'held() { git -C "$source" merge-base --is-ancestor "$1" refs/remotes/origin/HEAD 2>/dev/null; }',
+  'held "$1" && exit 0',
+  `git -C "$source" fetch --quiet --no-tags origin >/dev/null 2>&1 || exit ${GUARD_EXIT.unverified}`,
+  `git -C "$source" rev-parse --verify --quiet 'refs/remotes/origin/HEAD^{commit}' >/dev/null 2>&1 || exit ${GUARD_EXIT.unverified}`,
+  `held "$1" || exit ${GUARD_EXIT.unmerged}`,
+].join('\n');
+
 /** fleet-sync only ever runs on the manager. Started on a worker, it hands the
  * same request to the manager over host-key-verified SSH (no agent forwarding,
  * no credentials copied) and reports the manager's result unchanged.
@@ -25,19 +59,23 @@ export async function forwardToManager(
   definition: FleetDefinition,
   options: FleetSyncOptions,
   revision: string | undefined,
-  remote: { spawn?: ForwardSpawn | undefined; script?: string | null } = {}
+  remote: {
+    spawn?: ForwardSpawn | undefined;
+    script?: string | null;
+    /** What selected the revision on the machine that hands the run off. */
+    selection?: RevisionSelection;
+  } = {}
 ): Promise<CommandOutcome> {
   // A test must inject the spawn: it can never reach the real manager.
   if (!remote.spawn && process.env['NODE_ENV'] === 'test')
     throw new Error('FLEET_FORWARD_IN_TEST');
   const spawnRemote = remote.spawn ?? spawnInherited;
-  const runScript = remote.script ?? null;
   const { manager } = definition;
   process.stderr.write(
     `fleet-sync runs on the manager; handing off to ${manager.id} over SSH…\n`
   );
   const result = await spawnRemote(
-    managerCommand(definition, options, revision, runScript)
+    managerCommand(definition, options, revision, remote)
   );
   const stdout = result.stdout.trim();
   if (options.json) {
@@ -47,16 +85,8 @@ export async function forwardToManager(
       /* Fall through to the structured failure below. */
     }
   }
-  if (result.exitCode === 255 && !stdout)
-    return {
-      exitCode: 1,
-      data: {
-        version: 1,
-        ok: false,
-        code: 'FLEET_MANAGER_UNREACHABLE',
-        error: `Could not reach the manager (${manager.id}) over SSH. Wake it, check Tailscale and SSH (Remote Login), or run fleet-sync on the manager directly.`,
-      },
-    };
+  const failure = handOffFailure(result.exitCode, definition, revision);
+  if (failure && !stdout) return failure;
   return {
     exitCode: result.exitCode,
     data: { version: 1, forwardedTo: manager.id, exitCode: result.exitCode },
@@ -64,16 +94,58 @@ export async function forwardToManager(
   };
 }
 
+/** Why a hand-off that printed nothing ended as it did, when that is known:
+ * the manager's guard stopped it, or the manager could not be reached.
+ */
+function handOffFailure(
+  exitCode: number,
+  definition: FleetDefinition,
+  revision: string | undefined
+): CommandOutcome | null {
+  const { manager } = definition;
+  const { repository } = definition.source;
+  const failed = (code: string, error: string, more: object = {}) => ({
+    exitCode: 1,
+    data: { version: 1, ok: false, code, error, ...more },
+  });
+  if (exitCode === GUARD_EXIT.unmerged)
+    return failed(
+      'FLEET_REVISION_UNMERGED',
+      `The revision is not on the default branch of ${repository}, so the manager changed nothing. Merge it first, or pass --allow-unmerged to converge the fleet to an unmerged revision on purpose: every machine, the manager included, then gets that revision's toolchain and policy.`,
+      { revision: revision ?? null }
+    );
+  if (exitCode === GUARD_EXIT.unverified)
+    return failed(
+      'FLEET_REVISION_UNVERIFIED',
+      `The manager changed nothing: it has no copy of ${repository} yet, or could not fetch it, so it is not known whether its default branch holds the revision. Run fleet-sync once on the manager itself, and check its network and Git access; --allow-unmerged converges without asking.`,
+      { revision: revision ?? null }
+    );
+  if (exitCode === 255)
+    return failed(
+      'FLEET_MANAGER_UNREACHABLE',
+      `Could not reach the manager (${manager.id}) over SSH. Wake it, check Tailscale and SSH (Remote Login), or run fleet-sync on the manager directly.`
+    );
+  return null;
+}
+
 /** With the revision's tracked `fleet-manager-run.sh`, the manager runs
  * fleet-sync from a clean checkout of that exact revision; otherwise (no
  * revision, or an older one without the script) its installed launcher.
+ * Either way the manager is first asked whether the default branch holds the
+ * revision, and is told what selected it.
  */
 export function managerCommand(
   definition: FleetDefinition,
   options: FleetSyncOptions,
   revision: string | undefined,
-  runScript: string | null = null
+  remote: {
+    /** The revision's own run script, when it has one. */
+    script?: string | null;
+    /** What selected the revision on the machine that hands the run off. */
+    selection?: RevisionSelection | undefined;
+  } = {}
 ): string[] {
+  const { script: runScript = null, selection } = remote;
   const { manager } = definition;
   const target: FleetNode = {
     id: manager.id,
@@ -91,13 +163,47 @@ export function managerCommand(
           revision,
           ...forwardedFlags(options, undefined),
         ]
-      : ['devfleet', 'fleet-sync', ...forwardedFlags(options, revision)];
+      : [
+          'devfleet',
+          'fleet-sync',
+          ...forwardedFlags(options, revision),
+          // With no revision to say it about, the manager is told directly.
+          ...(!revision && options.allowUnmerged ? ['--allow-unmerged'] : []),
+        ];
   const color = process.stdout.isTTY && !process.env['NO_COLOR'];
   // A login shell gives the manager's normal PATH (mise, Docker, Tailscale).
-  const script = `export ${NO_FORWARD_ENV}=1${color ? ' FORCE_COLOR=1' : ''}; exec ${args.map(shellQuote).join(' ')}`;
+  const { told, guard } = revision
+    ? aboutRevision(options, revision, selection)
+    : { told: '', guard: '' };
+  const script = `export ${NO_FORWARD_ENV}=1${color ? ' FORCE_COLOR=1' : ''}${told}; ${guard}exec ${args.map(shellQuote).join(' ')}`;
   return [...sshArgs(target), `exec /bin/zsh -lc ${shellQuote(script)}`];
 }
 
+/** What a hand-off that names a revision adds to the manager's command: what
+ * selected the revision, exported for the run there, and the guard that runs
+ * before it.
+ */
+function aboutRevision(
+  options: FleetSyncOptions,
+  revision: string,
+  selection: RevisionSelection | undefined
+): { told: string; guard: string } {
+  const quoted = (words: string[]) => words.map(shellQuote).join(' ');
+  return {
+    told: selection
+      ? ` ${SELECTED_BY_ENV}=${shellQuote(encodeSelection(revision, selection))}`
+      : '',
+    guard: asksAncestry(options)
+      ? `${quoted(['sh', '-c', ANCESTRY_GUARD, 'fleet-revision-guard', revision])} || exit $?; `
+      : '',
+  };
+}
+
+/** The flags of a request, for the run of the revision's own code. That code
+ * may be older than a flag, so --allow-unmerged is not among them: the run
+ * that hands the request on answers for it, and says so in what it tells the
+ * next (SELECTED_BY_ENV).
+ */
 export function forwardedFlags(
   options: FleetSyncOptions,
   revision: string | undefined

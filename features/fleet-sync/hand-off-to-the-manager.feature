@@ -57,6 +57,73 @@ Feature: fleet-sync started on a worker is handed to the manager
       When a worker prepares to hand "fleet-sync --take-over --yes" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then the manager is asked for exactly "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --yes --take-over"
 
+  Rule: The manager is asked whether the default branch holds the revision, before the revision's run script
+    The run script installs the revision's toolchain on the manager. A
+    revision that is not on the default branch of the source repository gets
+    that far only with --allow-unmerged.
+
+    Background:
+      Given the run script tracked at the revision is:
+        """
+        #!/bin/sh
+        echo run
+        """
+
+    Scenario: The guard runs first, against the manager's own copy of the source repository
+      When a worker prepares to hand "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      Then what the manager is asked to run contains:
+        | $HOME/.local/share/personal/fleet/manager/source |
+        | merge-base --is-ancestor                         |
+        | refs/remotes/origin/HEAD                         |
+      And what the manager is asked to run names "fleet-revision-guard" before "fleet-manager-run"
+
+    Scenario: --allow-unmerged skips the guard, and the manager is told rather than given a flag
+      The run on the manager is the revision's own code, which may be older
+      than the flag: it is told what selected its revision instead.
+      Given the worker "worker-one" selected the revision from "checkout" with --allow-unmerged
+      When a worker prepares to hand "fleet-sync --allow-unmerged --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      Then what the manager is asked to run does not contain "fleet-revision-guard"
+      And what the manager is asked to run contains:
+        | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:checkout@worker-one+unmerged |
+      And the manager is asked for exactly "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --json"
+
+    Scenario: With no revision to say it about, --allow-unmerged reaches the manager's launcher
+      When a worker prepares to hand "fleet-sync --allow-unmerged" with no revision to the manager
+      Then what the manager is asked to run names "fleet-sync" directly followed by "--allow-unmerged"
+
+    Scenario Outline: "<request>" converges nothing, so the guard is left out
+      When a worker prepares to hand "fleet-sync <request>" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      Then what the manager is asked to run does not contain "fleet-revision-guard"
+
+      Examples:
+        | request                         |
+        | --schedule status               |
+        | --schedule pause --apply --yes  |
+        | --schedule disable --apply --yes |
+
+    Scenario: The manager is told what selected the revision, and which worker hands it off
+      Words and the worker's fleet id only: the run on the manager is always
+      given --revision, which says nothing about who chose it.
+      Given the worker "worker-one" selected the revision from "checkout"
+      When a worker prepares to hand "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      Then what the manager is asked to run contains:
+        | DEVFLEET_SELECTED_BY                                        |
+        | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:checkout@worker-one |
+
+    Scenario Outline: A guard that exits with <exit> is reported as <code>, and nothing ran
+      Given the manager answers the hand-off with exit code <exit> and nothing
+      When "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
+      Then the command exits with 1
+      And the report has:
+        | code     | <code>                                   |
+        | revision | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
+      And the report mentions "--allow-unmerged"
+
+      Examples:
+        | exit | code                      |
+        | 65   | FLEET_REVISION_UNMERGED   |
+        | 66   | FLEET_REVISION_UNVERIFIED |
+
   Rule: A worker reports what the manager answered and runs nothing itself
 
     Scenario: A worker hands fleet-sync to the manager and reports its result

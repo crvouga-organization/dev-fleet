@@ -62,6 +62,19 @@ Given(
   }
 );
 
+Given(
+  'the report says the revision was selected by:',
+  (world, text: string) => {
+    state(world).report!.selectedBy = JSON.parse(text) as NonNullable<
+      ManagerReport['selectedBy']
+    >;
+  }
+);
+
+Given('the report says the revision replaces {string}', (world, revision) => {
+  state(world).report!.replacedRevision = revision as string;
+});
+
 When(
   'the report is printed in plain text, for a run of {int} ms saved at {string}',
   (world, durationMs: number, reportPath: string) => {

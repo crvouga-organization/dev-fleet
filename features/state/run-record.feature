@@ -159,3 +159,70 @@ Feature: A fleet-sync run records its approval and its result in the fleet state
       And a refresh of the manager reports "in-sync"
       And a refresh of manager "b" reports "in-sync"
       And the enrollment in the fleet state of manager "b" contains "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+  Rule: The fleet state says what selected the approved revision, and when
+    Words and a worker's fleet id only: never an account, a host name or a
+    command line.
+
+    Scenario: The run that makes a revision the approved one records what selected it
+      Given a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is approved at "2026-11-22T10:00:00.000Z", selected by:
+        """
+        { "by": "checkout", "handOff": { "worker": "worker-one" }, "allowUnmerged": true }
+        """
+      When the run ends without converging
+      Then the enrollment of the manager is exactly:
+        """
+        {
+          "version": 1,
+          "id": "manager",
+          "approvedRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "selectedBy": {
+            "by": "checkout",
+            "handOff": { "worker": "worker-one" },
+            "allowUnmerged": true,
+            "at": "2026-11-22T10:00:00.000Z"
+          }
+        }
+        """
+
+    Scenario: A run that approves the same revision again did not change it
+      The schedule repeats the revision a person selected: the record still
+      says who moved the fleet there.
+      Given a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" was approved at "2026-11-22T10:00:00.000Z", selected by:
+        """
+        { "by": "revision" }
+        """
+      And a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is approved at "2026-11-22T10:30:00.000Z", selected by:
+        """
+        { "by": "schedule" }
+        """
+      When the run ends without converging
+      Then the enrollment of the manager is exactly:
+        """
+        {
+          "version": 1,
+          "id": "manager",
+          "approvedRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "selectedBy": { "by": "revision", "at": "2026-11-22T10:00:00.000Z" }
+        }
+        """
+
+    Scenario: A run for another revision replaces the record
+      Given a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" was approved at "2026-11-22T10:00:00.000Z", selected by:
+        """
+        { "by": "revision", "allowUnmerged": true }
+        """
+      And a fleet-sync run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" is approved at "2026-11-22T10:30:00.000Z", selected by:
+        """
+        { "by": "schedule" }
+        """
+      When the run ends without converging
+      Then the enrollment of the manager is exactly:
+        """
+        {
+          "version": 1,
+          "id": "manager",
+          "approvedRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "selectedBy": { "by": "schedule", "at": "2026-11-22T10:30:00.000Z" }
+        }
+        """

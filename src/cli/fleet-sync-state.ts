@@ -12,6 +12,7 @@ import {
   type Standing,
   type StateContext,
 } from '../state/sync';
+import type { RevisionSelection } from '../revision-selection';
 import type { Check } from '../types';
 
 /** What one fleet-sync run records in the fleet state: the revision it was
@@ -47,6 +48,12 @@ export function runRecord(
      * records their revisions, never one applied for the whole fleet.
      */
     scoped?: boolean;
+    /** What selected the revision. Recorded when this run makes it the
+     * approved one: a run that approves the same revision again did not
+     * change it, so what is recorded stands.
+     */
+    selection?: RevisionSelection;
+    now?: Date;
   }
 ): RunRecord {
   const env = state.env ?? process.env;
@@ -55,6 +62,14 @@ export function runRecord(
     version: 1,
     id: 'manager',
     approvedRevision: revision,
+    ...(state.selection && previous?.approvedRevision !== revision
+      ? {
+          selectedBy: {
+            ...state.selection,
+            at: (state.now ?? new Date()).toISOString(),
+          },
+        }
+      : {}),
   };
   let settled = false;
   /** Uploads only what this run changed; otherwise the bucket stands as it

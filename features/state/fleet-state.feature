@@ -115,6 +115,34 @@ Feature: fleet-state shows the fleet state and connects it to a bucket
       When the operator runs "fleet-state --init" on the manager
       Then the output does not contain "Moved into the fleet state"
 
+  Rule: Importing the copy fleet-sync installed keeps the bucket the stored configuration names
+    The installed copy is the configuration without its "state" block, and
+    fleet-sync sends an operator who edited it to this command
+    (installed-copy.feature). Importing it must not disconnect the bucket.
+
+    Background:
+      Given "~/fleet.json" on the manager holds the example fleet with the bucket:
+        """
+        { "directory": "$BUCKET" }
+        """
+      And the operator ran "fleet-state --import ~/fleet.json" on the manager
+      And "~/.config/dev-fleet/fleet.json" on the manager holds the example fleet with "worker-two" renamed "worker-edited"
+
+    Scenario: The edit is stored and the bucket stays named
+      When the operator runs "fleet-state --import ~/.config/dev-fleet/fleet.json" on the manager
+      Then the command exits 0
+      And the configuration in the fleet state of the manager contains "worker-edited"
+      And the configuration in the fleet state of the manager names the bucket:
+        """
+        { "directory": "$BUCKET" }
+        """
+
+    Scenario: Any other file without a "state" block stores a configuration without a bucket
+      Given "~/edited.json" on the manager holds the example fleet with "worker-two" renamed "worker-edited"
+      When the operator runs "fleet-state --import ~/edited.json" on the manager
+      Then the configuration in the fleet state of the manager contains "worker-edited"
+      And the configuration in the fleet state of the manager names no bucket
+
   Rule: A bucket that already holds the fleet is never overwritten from earlier files
 
     Scenario: A second manager's stale enrollment file stays out of the fleet state

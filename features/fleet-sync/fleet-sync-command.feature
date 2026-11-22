@@ -46,6 +46,7 @@ Feature: devfleet fleet-sync refuses before it changes anything
         | --apply    |
         | --yes      |
         | --revision |
+        | --allow-unmerged |
 
   Rule: An approval is bound to the plan it approved
 
@@ -98,3 +99,5 @@ Feature: devfleet fleet-sync refuses before it changes anything
         | fleet doctor                          |
         | fleet-sync --restart-busy --only accounts |
         | fleet-sync --restart-busy --schedule enable |
+        | fleet-sync --allow-unmerged --schedule enable |
+        | fleet-sync --allow-unmerged --only accounts |

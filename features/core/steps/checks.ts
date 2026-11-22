@@ -12,6 +12,7 @@ import {
   serviceState,
 } from '../../../src/worker-host-checks';
 import {
+  deadlineRestartsCheck,
   runningVersionCheck,
   t3RestartMarker,
 } from '../../../src/platform/t3-service';
@@ -107,6 +108,10 @@ When("the worker's service recovery is checked", async (world) => {
 
 When('the release of the running T3 is checked', async (world) => {
   reported(world, [await runningVersionCheck(world.commands.run, 1000)]);
+});
+
+When('the restarts of T3 at a deadline are checked', async (world) => {
+  reported(world, [await deadlineRestartsCheck(world.commands.run)]);
 });
 
 Given(

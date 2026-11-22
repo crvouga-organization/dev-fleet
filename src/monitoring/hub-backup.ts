@@ -8,6 +8,7 @@ import {
   type HubLogin,
   type Session,
 } from './hub-viewer';
+import { fleetJson } from '../fleet-config';
 
 /** A scheduled backup older than this means the schedule is not running. */
 export const BACKUP_MAX_AGE_MS = 48 * 60 * 60 * 1000;
@@ -29,8 +30,8 @@ function backupCheck(
   };
 }
 
-const UNDECLARED =
-  'Declare services.monitoring.backups in fleet.json (a schedule, how many to keep and S3-compatible storage off the manager) and the secrets monitoring-backup-access-key and monitoring-backup-secret-key; fleet-sync then sets them through the hub.';
+const undeclared = (): string =>
+  `Declare services.monitoring.backups (a schedule, how many to keep and S3-compatible storage off the manager) in ${fleetJson()}, and the secrets monitoring-backup-access-key and monitoring-backup-secret-key; fleet-sync then sets them through the hub.`;
 const DECLARED =
   "fleet-sync sets the backups declared under services.monitoring.backups. Check that the secrets monitoring-backup-access-key and monitoring-backup-secret-key are readable on the manager and that the manager's Vault session is logged in, then rerun fleet-sync.";
 
@@ -48,7 +49,7 @@ export async function verifyHubBackups(
   base: string = LOCAL_HUB,
   options: { now?: number; declared?: HubBackups | undefined } = {}
 ): Promise<Check> {
-  const SETTINGS = options.declared ? DECLARED : UNDECLARED;
+  const SETTINGS = options.declared ? DECLARED : undeclared();
   if (!login)
     return backupCheck(
       'skip',
@@ -97,7 +98,7 @@ function judgeBackups(
   now: number,
   declared: HubBackups | undefined
 ): Check {
-  const SETTINGS = declared ? DECLARED : UNDECLARED;
+  const SETTINGS = declared ? DECLARED : undeclared();
   const missing: Check['status'] = declared ? 'fail' : 'warn';
   if (!policy.cron)
     return backupCheck(

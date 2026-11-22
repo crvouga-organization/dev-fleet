@@ -2,11 +2,17 @@ import { readFile, lstat } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { FleetUsageError } from '../errors';
 import { record } from '../config';
+import { parseSelection, type RevisionSelection } from '../revision-selection';
 
 export interface Enrollment {
   version: 1;
   id: string;
   approvedRevision: string;
+  /** What selected the approved revision, and when it became the approved
+   * one. A run that approves the same revision again leaves it as it is.
+   * Fleet states written before this was recorded have none.
+   */
+  selectedBy?: RevisionSelection & { at: string };
   appliedRevision?: string;
   previousRevision?: string;
   /** The revision each worker last converged to, by fleet id. A worker
@@ -78,6 +84,18 @@ function validRetired(value: unknown): boolean {
   );
 }
 
+/** What selected the approved revision, or nothing when the record does not
+ * say so in words this version knows: it only describes the past, so an
+ * unreadable one never makes the enrollment invalid.
+ */
+function selectedBy(value: unknown): Pick<Enrollment, 'selectedBy'> {
+  const selection = parseSelection(value);
+  const at = record(value) ? value['at'] : undefined;
+  return selection && typeof at === 'string' && !Number.isNaN(Date.parse(at))
+    ? { selectedBy: { ...selection, at } }
+    : {};
+}
+
 /** A valid enrollment record, or null. */
 export function parseEnrollment(data: unknown): Enrollment | null {
   if (!record(data) || data['version'] !== 1) return null;
@@ -92,6 +110,11 @@ export function parseEnrollment(data: unknown): Enrollment | null {
     ) &&
     validWorkers(data['workers']) &&
     validRetired(data['retired'])
-    ? (data as unknown as Enrollment)
+    ? withSelection(data)
     : null;
+}
+
+function withSelection(data: Record<string, unknown>): Enrollment {
+  const { selectedBy: stored, ...rest } = data;
+  return { ...(rest as unknown as Enrollment), ...selectedBy(stored) };
 }

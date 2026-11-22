@@ -23,6 +23,37 @@
     "ok": { "type": "boolean" },
     "applied": { "type": "boolean" },
     "desiredRevision": { "type": ["string", "null"] },
+    "selectedBy": {
+      "description": "What selected the desired revision: the installed package, --revision, --rollback, the manager's schedule, the HEAD of the checkout fleet-sync was started in, or the revision already approved.",
+      "type": "object",
+      "required": ["by"],
+      "properties": {
+        "by": {
+          "enum": [
+            "package",
+            "revision",
+            "rollback",
+            "schedule",
+            "checkout",
+            "approved"
+          ]
+        },
+        "handOff": {
+          "description": "The run was handed to the manager by this worker, or by a machine the fleet does not declare (null).",
+          "type": "object",
+          "required": ["worker"],
+          "properties": { "worker": { "type": ["string", "null"] } }
+        },
+        "allowUnmerged": {
+          "description": "The run was given --allow-unmerged.",
+          "const": true
+        }
+      }
+    },
+    "replacedRevision": {
+      "description": "The approved revision the desired one replaces, when it is another.",
+      "type": "string"
+    },
     "checks": { "type": "array", "items": { "$ref": "check.schema.json" } },
     "candidates": { "type": "integer" },
     "dashboardUrl": { "type": ["string", "null"] },
@@ -95,7 +126,8 @@
             "properties": {
               "service": { "type": "string" },
               "reason": { "type": "string" },
-              "endsRunningTurns": { "type": "boolean" }
+              "endsRunningTurns": { "type": "boolean" },
+              "deadlineHours": { "type": "number" }
             }
           }
         },
