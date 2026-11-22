@@ -14,6 +14,7 @@ import {
 import { hubAccess } from '../monitoring/hub-access';
 import { hubUrl } from '../topology';
 import { leftoverSystems, listSystems } from '../monitoring/systems';
+import { blockedBySecretsLogin, blockedCode } from '../secrets-blocked';
 
 export interface DashboardAccess {
   (hub: string): Promise<{ request: BeszelRequest }>;
@@ -80,6 +81,10 @@ async function nodeEvidence(
     }
     dashboard.checks.push(...(await leftovers(request)));
   } catch (error) {
+    if (blockedCode(error)) {
+      dashboard.checks.push(blockedBySecretsLogin('beszel:access', 'skip'));
+      return;
+    }
     dashboard.checks.push({
       id: 'beszel:access',
       status: 'skip',

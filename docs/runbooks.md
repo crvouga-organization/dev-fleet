@@ -8,7 +8,7 @@ person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
 entry here, or a `devfleet` command quoted in the documents does not exist.
 
-There are 316 codes; 46 need a person.
+There are 318 codes; 48 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -416,15 +416,17 @@ write `1` to that agent scope’s `cgroup.kill`.
 
 ## Vault and credentials
 
-- **Meaning:** A machine cannot read the secrets it needs with its own Vault session.
-- **Confirm:** `vault token lookup` on the machine and the `worker:vault-renewal` or `manager:vault-renewal` check.
-- **Fix:** Log the machine in once (`devfleet fleet-sync` asks on the manager); renewal is automatic afterwards.
-- **Escalate:** A refused policy needs the Vault administrator.
+- **Meaning:** A machine cannot read the secrets it needs with its own Vault session, or soon will not.
+- **Confirm:** `vault token lookup` on the machine and the `worker:vault-renewal` or `manager:vault-renewal` check. In the lookup, `renewable`, `ttl`, `period`, `explicit_max_ttl` and `creation_time` say how long the login can last; on the manager `launchctl print gui/$(id -u)/dev.devfleet.vault-renew` shows the `last exit code` of the renewal job.
+- **Fix:** Log the machine in once (`devfleet fleet-sync` asks on the manager); renewal is automatic afterwards, up to the maximum lifetime of the token.
+- **Escalate:** A refused policy needs the Vault administrator. So does a login that ends too often: its maximum lifetime is set where the token is issued (the auth method, or the user or role in it).
 
+- `SECRET_READ_BLOCKED`: secret read blocked: the check needed a secret the machine could not read because it is not logged in to Vault. It is not a fault of that check: fix the check its summary names (`manager:vault-renewal`, `VAULT_LOGIN_REQUIRED`), then run `devfleet fleet-sync`. **Needs a person.**
 - `UNATTENDED_VAULT_IDENTITY_REQUIRED`: unattended vault identity required.
+- `VAULT_LOGIN_EXPIRY_PENDING`: vault login expiry pending: the manager's login ends within a day and renewal cannot extend it, because Vault renews a token only up to its maximum lifetime or the token is not renewable. Log the manager in again before then; see [Authentication](authentication.md#rotation-and-failure). **Needs a person.**
 - `VAULT_LOGIN_REQUIRED`: vault login required. **Needs a person.**
 - `VAULT_POLICY_PERMISSION_REQUIRED`: vault policy permission required. **Needs a person.**
-- `VAULT_RENEWAL_FAILING`: vault renewal failing.
+- `VAULT_RENEWAL_FAILING`: vault renewal failing: the last run of the renewal job failed (a worker's `personal-worker-auth.service`, the manager's `dev.devfleet.vault-renew`), and the login lapses unless a renewal succeeds.
 - `VAULT_RENEWAL_MISSING`: vault renewal missing: the manager's renewal job is not loaded. Run `devfleet fleet-sync` on the manager.
 - `VAULT_RENEWAL_NOT_MANAGER`: vault renewal not manager.
 - `VAULT_WORKER_POLICY_FAILED`: vault worker policy failed.

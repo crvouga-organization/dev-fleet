@@ -164,6 +164,37 @@ export function secretsProvider(
   };
 }
 
+/** Why this node's provider gave no secret: `required` when the provider
+ * needs a login this node does not hold, `held` when it can be read, so the
+ * secret itself is not there.
+ */
+export type SecretsLogin = 'held' | 'required';
+
+/** Tells a provider that cannot be read from a secret it does not hold, for
+ * a check that got no secret: asked only then, never before a read. Only
+ * Vault has a login (the node's own session); a secret the environment, a
+ * file or a sops document does not hold is absent. The session is measured
+ * the way the check that owns it does, by looking the token up, and nothing
+ * the lookup prints is kept: it holds the token.
+ */
+export function secretsLogin(
+  config: SecretsConfig,
+  options: { run?: SecretCommand } = {}
+): () => Promise<SecretsLogin> {
+  if (config.provider !== 'vault') return () => Promise.resolve('held');
+  const run = options.run ?? execute;
+  return async () =>
+    (await run([
+      'vault',
+      'token',
+      'lookup',
+      `-address=${config.address}`,
+      '-format=json',
+    ])) === null
+      ? 'required'
+      : 'held';
+}
+
 const execute: SecretCommand = (argv) =>
   new Promise((resolve) => {
     const child = spawn(argv[0]!, argv.slice(1), {
