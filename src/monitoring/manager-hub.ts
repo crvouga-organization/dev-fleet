@@ -8,7 +8,8 @@ import { publicViewerIdentity, fleetAccount } from './hub-access';
 import { ensurePublicViewer, type HubLogin } from './hub-viewer';
 import { verifyHubBackups } from './hub-backup';
 import type { FleetDefinition } from '../definition';
-import { secretVia } from '../fleet-config';
+import { secretsLogin, secretVia } from '../fleet-config';
+import { blockedBySecretsLogin } from '../secrets-blocked';
 import { hostId, hubUrl } from '../topology';
 import { publicHubUrl, privateHub } from './beszel';
 import type { Check, Runner } from '../types';
@@ -85,6 +86,12 @@ export async function convergeManagerHub(
   const backups = await (
     options.backupStorage ?? (() => backupVariables(definition, run))
   )();
+  // A credential that could not be read is absent, or behind a login the
+  // manager does not hold: then the checks that needed it name that login
+  // instead of asking for a tunnel, an account or a viewer.
+  const blocked =
+    (tunnel === null || account === null) &&
+    (await secretsLogin(run)) === 'required';
   const monitoring = resolve(root, 'ansible/monitoring');
   const result = await runAnsibleWithReceipt(
     run,
@@ -135,15 +142,21 @@ export async function convergeManagerHub(
       status: 'pass',
       summary: `Pinned hub on the manager is healthy locally and at ${hub}; authentication and agent metrics are separate checks.`,
     },
-    publicEndpointCheck(tunnel !== null),
-    await ensureViewer(options, account),
-    await (
-      options.backups ??
-      ((login) =>
-        verifyHubBackups(login, fetch, LOCAL_HUB, {
-          declared: definition.services.monitoring.backups,
-        }))
-    )(account),
+    blocked && tunnel === null
+      ? blockedBySecretsLogin('beszel:public-endpoint', 'warn')
+      : publicEndpointCheck(tunnel !== null),
+    blocked && account === null
+      ? blockedBySecretsLogin('beszel:public-viewer', 'warn')
+      : await ensureViewer(options, account),
+    blocked && account === null
+      ? blockedBySecretsLogin('beszel:backup', 'skip')
+      : await (
+          options.backups ??
+          ((login) =>
+            verifyHubBackups(login, fetch, LOCAL_HUB, {
+              declared: definition.services.monitoring.backups,
+            }))
+        )(account),
   ];
 }
 

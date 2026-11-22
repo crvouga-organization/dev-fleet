@@ -31,6 +31,10 @@
     "label": "dev.devfleet.fleet-watch",
     "intervalMinutes": 15
   },
+  "vaultRenewal": {
+    "incrementHours": 48,
+    "expiryWarnHours": 24
+  },
   "jobLogs": {
     "directory": ".local/share/personal/fleet/manager/logs",
     "maxKiB": 1024,
