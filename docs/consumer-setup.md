@@ -315,7 +315,11 @@ matches it (or none, when `fleet.json` declares `tailnet` and its secret
 what it enrolled (`enrolled` in the JSON). A machine made with
 `devfleet fleet-node-seed` meets all of these.
 
-It converges the manager first, then the canary worker, then the rest. It
+It converges the manager first, and inspects every worker meanwhile, which
+only reads them. Then the canary worker takes the revision, then the rest, all
+at once. A revision the run before already took to every worker, with the same
+configuration, is not new to the fleet: no worker waits for a canary then. On
+the manager, steps that do not depend on each other run side by side. It
 prints one table and the path of the full JSON report
 (`~/.local/share/personal/fleet/manager/last-sync.json`, readable by the human
 only). The first run on a bare worker takes several minutes: it installs the

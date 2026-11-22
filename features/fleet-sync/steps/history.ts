@@ -1,3 +1,6 @@
+import { rolledOutBefore } from '../../../src/cli/fleet-sync-state';
+import { databasePath, stateRoot } from '../../../src/state/paths';
+import { writeDocument } from '../../../src/state/store';
 import { selectionText } from '../../../src/revision-selection';
 import { expect } from 'bun:test';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -454,5 +457,56 @@ Then(
     expect(check.status).toBe('warn');
     for (const fragment of table.list())
       expect(check.summary).toContain(fragment);
+  }
+);
+
+// ── A revision the last run already rolled out ───────────────────────────
+
+const rolled = new WeakMap<object, boolean>();
+
+Given(
+  'the last fleet-sync run was of the revision {string} and left these workers:',
+  (_world, revision: string, table: DataTable) => {
+    const finished = new Date('2026-11-01T10:00:00Z');
+    const workers: NonNullable<SyncRun['workers']> = {};
+    for (const { worker, result } of table.hashes())
+      if (result)
+        workers[worker!] =
+          result === 'applied' ? { applied: revision } : { failed: result };
+    appendRun(
+      {
+        ...runFrom({ finished: finished.toISOString(), ok: 'yes' }),
+        revision,
+        workers,
+      },
+      process.env,
+      finished
+    );
+  }
+);
+
+Given('that run stored the configuration {string}', (_world, text: string) => {
+  writeDocument(databasePath(stateRoot(process.env)), 'definition', text);
+});
+
+When(
+  /^a run of the revision "([^"]+)"(?: with the configuration "([^"]+)")? asks whether it was rolled out to "([^"]+)"$/,
+  (
+    world,
+    revision: string,
+    definition: string | undefined,
+    workers: string
+  ) => {
+    rolled.set(
+      world,
+      rolledOutBefore(revision, workers.split(', '), definition)
+    );
+  }
+);
+
+Then(
+  /^the revision (was|was not) rolled out before$/,
+  (world, verdict: string) => {
+    expect(rolled.get(world)).toBe(verdict === 'was');
   }
 );

@@ -182,10 +182,10 @@ export async function synchronizeManager(
     ).length,
   };
   const managerRun = input.manager ? convergeManagerNode(input) : null;
-  // The manager finishes first: updating it may restart the proxy every
-  // worker is then verified against.
-  if (managerRun) await managerRun;
-  const workers = await Promise.all(
+  // Inspecting a worker only reads it, so that goes on while the manager
+  // converges. Nothing is applied to a worker before the manager is done:
+  // updating it may restart the proxy every worker is then verified against.
+  const inspected = Promise.all(
     input.definition.workers.map((machine) => {
       input.progress?.(
         machine.id,
@@ -204,6 +204,7 @@ export async function synchronizeManager(
       );
     })
   );
+  const [workers] = await Promise.all([inspected, managerRun]);
   report.nodes.push(...workers);
   if (input.apply) await applyNodes(report, input, deploy);
   else workers.forEach((node) => input.finished?.(node));

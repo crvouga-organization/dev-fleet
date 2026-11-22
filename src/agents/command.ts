@@ -63,7 +63,7 @@ export function registerAgents(
       .requiredOption('--node <id>', 'Explicit fleet node ID')
       .option(
         '--tool <tool>',
-        'codex|claude|opencode|gemini|grok|antigravity',
+        'codex|claude|opencode|gemini|grok|antigravity; apply takes several, separated by commas',
         'codex'
       )
       .option('--profile <profile>', 'direct|proxy', 'direct')
@@ -76,19 +76,27 @@ export function registerAgents(
         'Spend tokens: one request, 16 output tokens, 30 second deadline'
       )
       .action(async (args: string[], options: AgentOptions) => {
-        try {
-          await execute(action, args, options, globals());
-        } catch (error) {
-          console.log(
-            JSON.stringify({
-              ok: false,
-              error:
-                error instanceof AgentConfigurationError
-                  ? error.message
-                  : 'Agent operation failed. Check node/tool/profile, review conflicts with preview, authenticate this node to Vault for proxy, and check approved model availability. No raw error or response is retained.',
-            })
-          );
-          process.exitCode = 1;
+        // `apply --tool a,b` applies each tool in turn in this one process
+        // and stops at the first that fails, which its line names.
+        const tools =
+          action === 'apply' ? options.tool.split(',') : [options.tool];
+        for (const tool of tools) {
+          try {
+            await execute(action, args, { ...options, tool }, globals());
+          } catch (error) {
+            console.log(
+              JSON.stringify({
+                ok: false,
+                ...(tools.length > 1 ? { tool } : {}),
+                error:
+                  error instanceof AgentConfigurationError
+                    ? error.message
+                    : 'Agent operation failed. Check node/tool/profile, review conflicts with preview, authenticate this node to Vault for proxy, and check approved model availability. No raw error or response is retained.',
+              })
+            );
+            process.exitCode = 1;
+            return;
+          }
         }
       });
   }

@@ -164,6 +164,7 @@ When(
         ...(canary ? { canary } : {}),
         ...(serial ? { serial: true } : {}),
         finished: (node) => world.sync.finished.push(node.node),
+        ...(world.sync.manager ? { manager: () => slowManager(world) } : {}),
       },
       world.run,
       async (node, revision) => {
@@ -181,6 +182,42 @@ When(
     world.sync.report = report;
     world.reports = report.nodes;
     world.outcome = report;
+  }
+);
+
+Given('the manager takes a moment to converge', (world) => {
+  world.sync.manager = { sessions: 0, deployed: 0 };
+});
+
+/** A manager that converges for a moment, then notes what the run had done
+ * to the workers meanwhile.
+ */
+async function slowManager(world: OrchestrationWorld): Promise<ManagerNode> {
+  await Bun.sleep(50);
+  world.sync.manager = {
+    sessions: world.commands.calls.filter((call) => isSession(call.command))
+      .length,
+    deployed: world.sync.deployed.length,
+  };
+  return {
+    node: 'manager',
+    role: 'manager',
+    checks: [{ id: 'manager:identity', status: 'pass', summary: 'fixture' }],
+    reachability: 'online',
+    desiredRevision: need(world.sync.revision, 'an approved revision'),
+    appliedRevision: need(world.sync.revision, 'an approved revision'),
+    durationMs: 50,
+  };
+}
+
+Then(
+  'every worker had been inspected, and none deployed to, when the manager was done',
+  (world) => {
+    const seen = need(world.sync.manager, 'a manager that converges');
+    expect(seen.sessions).toBeGreaterThanOrEqual(
+      need(world.sync.definition, 'a fleet configuration').workers.length
+    );
+    expect(seen.deployed).toBe(0);
   }
 );
 

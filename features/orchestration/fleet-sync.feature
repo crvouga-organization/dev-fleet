@@ -89,6 +89,19 @@ Feature: fleet-sync converges every worker on one approved revision
       | first  |
       | second |
 
+  Scenario: Workers are inspected while the manager converges, and deployed to only once it is done
+    Inspecting a worker only reads it. Deploying waits: updating the manager
+    may restart the proxy every worker is then verified against.
+    Given the manager takes a moment to converge
+    And deploying a worker reports these checks:
+      | id       | status | summary |
+      | verified | pass   | fixture |
+    When fleet-sync applies the approved revision
+    Then every worker had been inspected, and none deployed to, when the manager was done
+    And the revision was deployed to these workers, in order:
+      | first  |
+      | second |
+
   Scenario: A failed canary stops promotion, and the workers after it are still inspected
     What a failed deployment threw may hold anything, so it is never reported.
     Given deploying a worker fails with the error "secret detail"
