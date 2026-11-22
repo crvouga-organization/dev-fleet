@@ -178,16 +178,7 @@ async function vaultRenewalCheck(run: Runner): Promise<Check> {
     if (!result.ok && !(await vaultAnswers(run, addr)))
       return { ...unavailable, ...VAULT_UNREACHABLE(addr) };
     const data: unknown = JSON.parse(result.stdout);
-    if (!result.ok || !record(data) || !record(data['data']))
-      return unavailable;
-    const token = data['data'];
-    if (
-      token['renewable'] !== true ||
-      typeof token['period'] !== 'number' ||
-      token['period'] <= 0 ||
-      typeof token['ttl'] !== 'number' ||
-      token['ttl'] <= 1200
-    )
+    if (!result.ok || !record(data) || !unattended(data['data']))
       return unavailable;
     if (!(await lastRenewalSucceeded(run)))
       return {
@@ -208,6 +199,17 @@ async function vaultRenewalCheck(run: Runner): Promise<Check> {
     return unavailable;
   }
 }
+
+/** A renewable periodic token with enough lifetime left for the renewal
+ * timer, in what a lookup printed.
+ */
+const unattended = (token: unknown): boolean =>
+  record(token) &&
+  token['renewable'] === true &&
+  typeof token['period'] === 'number' &&
+  token['period'] > 0 &&
+  typeof token['ttl'] === 'number' &&
+  token['ttl'] > 1200;
 
 /** Whether Vault answers this worker and is unsealed: its status needs no
  * session.
