@@ -52,6 +52,8 @@ Feature: Every per-account instance runs a real session, and account changes re-
       | OpenCode retried a quota | failed    | level=ERROR message=\"stream error\" AI_APICallError: 429 RESOURCE_EXHAUSTED | cooling-down |
       | it hung on a limit it printed | ran into its deadline | level=ERROR AI_APICallError: 429 RESOURCE_EXHAUSTED | cooling-down |
       | the provider wants it verified | failed | Verify your account to continue.              | verification-required |
+      | OpenCode printed the provider's demand | failed | level=ERROR message=\"stream error\" error.error=\"AI_APICallError: Verify your account to continue.\" | verification-required |
+      | only the provider's reason is left | failed | status: PERMISSION_DENIED, reason: VALIDATION_REQUIRED | verification-required |
       | its credentials were refused | failed  | unexpected status 401 Unauthorized             | rejected     |
       | it hung and said nothing | ran into its deadline | > build · gemini-3.8-flash           | timed-out    |
       | anything else            | failed    | model_not_found                                | failed       |
