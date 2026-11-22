@@ -8,8 +8,8 @@ on:
   # A hand-pushed vX.Y.Z tag (the bootstrap seed) still publishes that version.
   push:
     tags: ['v*']
-  # By auto-merge.yml, for a run of CI that a workflow started: its end
-  # starts no workflow_run, so it would never be released otherwise.
+  # By CI's last job, for a run of CI on main that a workflow started: its
+  # end starts no workflow_run, so it would never be released otherwise.
   workflow_dispatch: {}
 permissions:
   contents: write
@@ -26,10 +26,10 @@ concurrency:
 jobs:
   # Choose the version, stamp it and the commit into the package, and pack it
   # once. Every later job tests or publishes this one tarball.
-  # CI on main runs on a push, or is dispatched by auto-merge.yml after a merge
+  # CI on main runs on a push, or is dispatched by catch-up.yml after a merge
   # made with the workflow's own token (which starts no push workflow). A run
-  # of CI started that way starts no Release either: auto-merge.yml dispatches
-  # this workflow once CI has passed on the newest commit of main.
+  # of CI started that way starts no Release either: its last job dispatches
+  # this workflow once every job of it passed.
   pack:
     if: >-
       github.event_name == 'push' ||

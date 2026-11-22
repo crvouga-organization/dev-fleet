@@ -1,53 +1,37 @@
 name: Auto-merge
-# Every pull request from a branch of this repository is squash-merged as
-# soon as the required check passes; the branch is deleted by the repository
-# setting. Pull requests from forks and drafts are left to a person.
+# Every pull request from a branch of this repository has GitHub's native
+# auto-merge enabled when it is opened or marked ready, so it is squash-merged
+# as soon as its checks pass; the branch is deleted by the repository setting.
+# Pull requests from forks and drafts are left to a person. Nothing here polls:
+# no schedule and no workflow_run.
 #
 # Auto-merge is enabled with AUTO_MERGE_TOKEN (a maintainer's token) when it
 # is set, and with the workflow's own token otherwise. A merge made with the
 # workflow's own token starts no workflow at all: no CI on main, and so no
-# release. Nothing can be hung on the merge itself, so this workflow also
-# runs when a CI run ends (the last check of a pull request ending is what
-# merges it) and hourly, and each time starts CI on main when the newest
-# commit there has no run. A run started with the workflow's own token ends
-# without starting the workflows that follow it either, so the release is
-# started the same way: when CI has passed on the newest commit of main and
-# no release has run for it.
-#
-# The hourly run also enables auto-merge on any open pull request that missed
-# its event (one opened by another workflow, for example).
-#
-# A merge made with the workflow's own token does not close the issues its
-# pull request says it fixes either, so each run closes them for the pull
-# requests merged in the last three hours. Issues labelled ci-failure are left
-# to failures.yml, which closes one at the first passing run on main.
+# release. So each pull request that opens also starts CI on main when the
+# newest commit there has no run (catch-up.yml, which also runs once a day),
+# and CI on main started that way starts the release itself when it passes.
+# Set AUTO_MERGE_TOKEN to have every merge start CI and its release at once.
 on:
   pull_request:
-    types: [opened, reopened, ready_for_review, synchronize]
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-  schedule:
-    - cron: '23 * * * *'
-  workflow_dispatch: {}
+    types: [opened, reopened, ready_for_review]
 permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-  actions: write
+  contents: read
 concurrency:
-  group: auto-merge-${{ github.event.pull_request.number || 'main' }}
-  cancel-in-progress: false
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   enable:
     name: Enable auto-merge
     if: >-
-      github.event_name == 'pull_request' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !github.event.pull_request.draft &&
       github.event.pull_request.auto_merge == null
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
     steps:
       - name: Enable squash auto-merge
         env:
@@ -55,77 +39,12 @@ jobs:
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: gh pr merge --auto --squash "$PR_URL"
 
-  reconcile:
-    name: Keep pull requests merging and main checked
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    env:
-      REPO: ${{ github.repository }}
-      MAIN: ${{ github.event.repository.default_branch }}
-    steps:
-      - name: Enable squash auto-merge where it is off
-        env:
-          GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN || github.token }}
-        run: |
-          gh pr list --repo "$REPO" --state open --limit 200 \
-            --json number,isDraft,isCrossRepository,autoMergeRequest \
-            --jq '.[] | select(.isDraft | not) | select(.isCrossRepository | not) | select(.autoMergeRequest == null) | .number' |
-          while read -r number; do
-            # One pull request that cannot be merged never stops the others.
-            gh pr merge --repo "$REPO" --auto --squash "$number" ||
-              echo "::warning::Auto-merge could not be enabled on #$number."
-          done
-      - name: Start CI on main when its newest commit has no run
-        env:
-          GH_TOKEN: ${{ github.token }}
-          # The commit of the CI run that just passed, when one did: the
-          # merge of its pull request follows within seconds.
-          PASSED: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch != github.event.repository.default_branch && github.event.workflow_run.head_sha || '' }}
-        run: |
-          if [ -n "$PASSED" ]; then
-            for _ in $(seq 12); do
-              merged=$(gh api "repos/$REPO/commits/$PASSED/pulls" --jq 'map(select(.merged_at != null)) | length')
-              [ "$merged" -gt 0 ] && break
-              sleep 5
-            done
-          fi
-          commit=$(gh api "repos/$REPO/commits/$MAIN" --jq .sha)
-          runs=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$commit&branch=$MAIN" \
-            --jq '[.workflow_runs[] | select(.event == "push" or .event == "workflow_dispatch")] | length')
-          if [ "$runs" -gt 0 ]; then
-            echo "CI has a run for $commit."
-          else
-            echo "No CI run for $commit: starting one."
-            gh workflow run ci.yml --repo "$REPO" --ref "$MAIN"
-          fi
-      - name: Close the issues that merged pull requests fix
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          since=$(date -u -d '3 hours ago' +%Y-%m-%dT%H:%M:%SZ)
-          gh pr list --repo "$REPO" --state merged --base "$MAIN" --limit 50 \
-            --json number,mergedAt,closingIssuesReferences \
-            --jq ".[] | select(.mergedAt >= \"$since\") | .number as \$pr | .closingIssuesReferences[] | select(.repository.owner.login + \"/\" + .repository.name == \"$REPO\") | [.number, \$pr] | @tsv" |
-          while read -r issue pr; do
-            gh issue view "$issue" --repo "$REPO" --json state,labels \
-              --jq 'select(.state == "OPEN" and ([.labels[].name] | index("ci-failure") | not)) | 1' | grep -q 1 || continue
-            gh issue close "$issue" --repo "$REPO" --reason completed --comment "Fixed by #$pr." ||
-              echo "::warning::Issue #$issue could not be closed."
-          done
-      - name: Start the release when CI passed on main and nothing released it
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          commit=$(gh api "repos/$REPO/commits/$MAIN" --jq .sha)
-          passed=$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$commit&branch=$MAIN" \
-            --jq '[.workflow_runs[] | select(.event == "push" or .event == "workflow_dispatch") | select(.conclusion == "success")] | length')
-          released=$(gh api "repos/$REPO/actions/workflows/release.yml/runs?head_sha=$commit" --jq .total_count)
-          if [ "$passed" -eq 0 ]; then
-            echo "CI has not passed on $commit yet."
-          elif [ "$released" -gt 0 ]; then
-            echo "The release has run for $commit."
-          else
-            echo "CI passed on $commit and nothing released it: starting the release."
-            gh workflow run release.yml --repo "$REPO" --ref "$MAIN"
-          fi
+  catch-up:
+    name: Catch up main
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    permissions:
+      contents: read
+      pull-requests: read
+      issues: write
+      actions: write
+    uses: ./.github/workflows/catch-up.yml

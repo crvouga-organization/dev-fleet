@@ -52,6 +52,8 @@ const setup = part(() => {
     /** Whether npm recorded the commit the seed was published from. */
     recorded: true,
     trusted: false,
+    /** Trusted publishers other than the Release workflow of this repository. */
+    others: [] as { id: string; repository: string; file: string }[],
     tagLocal: false,
     tagRemote: false,
     clean: true,
@@ -79,10 +81,22 @@ const setup = part(() => {
           ? ok(state.target.name)
           : no('npm error code E404');
       if (line.startsWith('npm trust list'))
+        // As npm prints them: one object per trusted publisher, blank lines between.
         return ok(
-          state.trusted
-            ? `{"repository":"${state.target.repo}","file":"release.yml"}`
-            : '[]'
+          [
+            ...state.others,
+            ...(state.trusted
+              ? [
+                  {
+                    id: 'current',
+                    repository: state.target.repo,
+                    file: 'release.yml',
+                  },
+                ]
+              : []),
+          ]
+            .map((config) => JSON.stringify(config, null, 2))
+            .join('\n\n')
         );
       if (line.startsWith('git fetch')) return ok();
       if (line === 'git rev-parse HEAD') return ok(state.head);
@@ -104,6 +118,10 @@ const setup = part(() => {
       const line = command.join(' ');
       state.ran.push(line);
       if (line.startsWith('npm login')) state.user = 'someone';
+      if (line.startsWith('npm trust revoke'))
+        state.others = state.others.filter(
+          (config) => !line.endsWith(` --id ${config.id}`)
+        );
       if (line.startsWith('npm trust github')) state.trusted = true;
       if (line.startsWith('git push')) state.tagRemote = true;
       return true;
@@ -158,6 +176,13 @@ Given(
 Given('the Release workflow is trusted to publish the package', (world) => {
   setup(world).state.trusted = true;
 });
+
+Given(
+  'the package is trusted to {string} of the repository {string}, as {string}',
+  (world, file: string, repository: string, id: string) => {
+    setup(world).state.others.push({ id, repository, file });
+  }
+);
 
 Given('the seed tag exists here and on the remote', (world) => {
   Object.assign(setup(world).state, { tagLocal: true, tagRemote: true });

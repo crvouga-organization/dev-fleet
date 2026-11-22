@@ -8,24 +8,48 @@ installation candidate.
 
 Reads the Packages indexes of snapshot.ubuntu.com; changes nothing.
 """
+from concurrent.futures import ThreadPoolExecutor
 import gzip
 import json
 from pathlib import Path
 import sys
+import time
+import urllib.error
 import urllib.request
 
 POLICY = Path(__file__).resolve().parents[1] / 'policy.json'
 COMPONENTS = ('main', 'universe', 'restricted', 'multiverse')
+ATTEMPTS = 5
+# Few enough parallel fetches to stay polite to a mirror that is struggling.
+WORKERS = 4
+
+
+def fetch(url):
+    """The body at url, retrying the mirror's transient 5xx and timeouts."""
+    for attempt in range(1, ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=120) as response:
+                return response.read()
+        except urllib.error.HTTPError as error:
+            if error.code < 500 or attempt == ATTEMPTS:
+                raise
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == ATTEMPTS:
+                raise
+        time.sleep(5 * attempt)
 
 
 def versions(snapshot, codename, architecture):
     """Every version of every package the snapshot offers this release."""
+    urls = [
+        f'https://snapshot.ubuntu.com/ubuntu/{snapshot}/dists/{suite}/{component}/binary-{architecture}/Packages.gz'
+        for suite in (codename, f'{codename}-updates', f'{codename}-security')
+        for component in COMPONENTS
+    ]
     found = {}
-    for suite in (codename, f'{codename}-updates', f'{codename}-security'):
-        for component in COMPONENTS:
-            url = f'https://snapshot.ubuntu.com/ubuntu/{snapshot}/dists/{suite}/{component}/binary-{architecture}/Packages.gz'
-            with urllib.request.urlopen(url, timeout=120) as response:
-                index = gzip.decompress(response.read()).decode()
+    with ThreadPoolExecutor(WORKERS) as pool:
+        for body in pool.map(fetch, urls):
+            index = gzip.decompress(body).decode()
             name = None
             for line in index.splitlines():
                 if line.startswith('Package: '):

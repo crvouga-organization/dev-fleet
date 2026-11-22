@@ -91,24 +91,30 @@ CI never receives an npm token: it publishes through npm Trusted Publishing
 ## When a release fails
 
 A release that fails publishes nothing, and neither does any merge after it
-until one passes: npm stays at the last version. The
-[Failure issues workflow](../.github/workflows/failures.yml) keeps one open
-issue, `Release is failing on main` (label `ci-failure`), with the run, the
-commit and the jobs and steps that failed; a failed VM test keeps its
-redacted results and the guest's logs as an artifact of the run
-(`gh run download <run>`). The next passing release closes the issue and
-publishes everything since the last tag. The same holds for CI on `main`,
-which the release waits for.
+until one passes: npm stays at the last version. GitHub emails the failure;
+`gh run list --workflow release.yml` finds the run. A failed VM test keeps
+its redacted results and the guest's logs as an artifact of the run
+(`gh run download <run>`). The next passing release publishes everything
+since the last tag. The same holds for CI on `main`, which the release waits
+for.
 
 A pull request is merged by a workflow, and a merge made with a workflow's
-own token starts no CI on `main`. [`auto-merge.yml`](../.github/workflows/auto-merge.yml)
-starts it when the newest commit on `main` has no run: when a CI run ends,
-and every hour. A run started that way starts nothing when it ends either,
-so the same hourly run starts the release once CI has passed on the newest
-commit of `main` and no release has run for it, and the Failure issues
-workflow reads the newest finished run of every workflow it follows each
-hour as well. A merge is therefore released within about an hour of its CI
-passing.
+own token starts no CI on `main`. [`catch-up.yml`](../.github/workflows/catch-up.yml)
+starts it when the newest commit on `main` has no run: each time a pull
+request opens (called by `auto-merge.yml`) and once a day. A run started that
+way starts no workflow when it ends either, so its last job starts the
+release once every job passed. A merge is therefore released after the next
+pull request opens, or within a day. With an `AUTO_MERGE_TOKEN` secret (a
+maintainer's token) the merge itself starts CI and the release at once.
+
+`Publish to npm` failing with `E404 Not Found - PUT` after provenance was
+signed means npm does not trust the workflow that asked: the trusted
+publisher names another repository or workflow file, as after the repository
+moves. Run `bun run bootstrap` from `main`: it makes `release.yml` of the
+repository in `package.json` a trusted publisher and revokes any that name
+something else, which could otherwise still publish. Then re-run the release:
+npm validates a new trusted publisher on its first publish, which it expects
+within two days.
 
 ## One-time setup
 

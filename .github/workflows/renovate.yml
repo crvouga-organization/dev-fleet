@@ -32,7 +32,8 @@ jobs:
     timeout-minutes: 5
     permissions:
       actions: write
-      pull-requests: read
+      contents: write
+      pull-requests: write
     steps:
       - name: Start CI for dependency updates whose push did not trigger it
         env:
@@ -45,4 +46,18 @@ jobs:
           while read -r branch commit; do
             count=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$commit" --jq .total_count)
             if [ "$count" = 0 ]; then gh workflow run ci.yml --ref "$branch"; fi
+          done
+      # A pull request opened with the workflow's own token starts no
+      # auto-merge.yml run, so auto-merge is enabled here.
+      - name: Enable auto-merge on dependency updates
+        env:
+          GH_TOKEN: ${{ secrets.AUTO_MERGE_TOKEN || github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          gh pr list --limit 200 --json number,headRefName,isDraft,isCrossRepository,autoMergeRequest \
+            --jq '.[] | select(.isCrossRepository == false and .isDraft == false and .autoMergeRequest == null and (.headRefName | startswith("renovate/"))) | .number' |
+          while read -r number; do
+            gh pr merge --auto --squash "$number" ||
+              echo "::warning::Auto-merge could not be enabled on #$number."
           done
