@@ -11,6 +11,7 @@ bun test features/state                  # one area
 DEVFLEET_TEST_FRESH_BOX=1 bun test features/fresh-box
 DEVFLEET_TEST_AGENT_BOX=1 bun test features/monitoring
 DEVFLEET_TEST_TAILNET_BOX=1 bun test features/tailnet-box
+DEVFLEET_TEST_PROXY_BOX=1 bun test features/accounts
 ```
 
 ## Layout
@@ -75,7 +76,8 @@ Then('the report lists these checks:', (world, table: DataTable) => { … });
   contacts a machine, a bucket or an account. The exceptions say so in a tag
   and are skipped unless asked for: `@fresh-box` (a disposable container),
   `@agent-box` and `@tailnet-box` (disposable systemd machines, the second
-  on a private tailnet with a self-hosted control plane), the Litestream
+  on a private tailnet with a self-hosted control plane), `@proxy-box` (the
+  pinned CLI proxy in a container, with a stand-in provider), the Litestream
   scenarios in `state/`, and the `@ansible` scenarios in `agents/`, which run
   the agents play against a directory of their own.
 - Keep a step short and reusable. When two steps differ by a value, capture
@@ -92,6 +94,7 @@ skipped where it cannot.
 | `@fresh-box`   | When `DEVFLEET_TEST_FRESH_BOX` is set; needs Docker and an SSH client                    |
 | `@agent-box`   | When `DEVFLEET_TEST_AGENT_BOX` is set; needs Docker that can run systemd                 |
 | `@tailnet-box` | When `DEVFLEET_TEST_TAILNET_BOX` is set; needs Docker that can run systemd and `openssl` |
+| `@proxy-box`   | When `DEVFLEET_TEST_PROXY_BOX` is set; needs Docker with host networking (Linux)         |
 | `@litestream`  | Where the pinned Litestream is installed; required in CI                                 |
 | `@s3`          | Where `DEVFLEET_TEST_S3` names a throwaway S3 service                                    |
 | `@vault`       | Where `vault` is on PATH, or `DEVFLEET_TEST_VAULT=required`; a dev server                |

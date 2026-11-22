@@ -63,18 +63,28 @@ A session check that does not pass says which of these it found:
 OpenCode retries a request the proxy refuses until the session's deadline and
 prints nothing, so a limited account ends as a timeout. A node then asks the
 proxy for that account's model directly, with its own client key: a model the
-proxy holds back answers 429 at once, without a request to the provider, and
-the session is `AGENT_ACCOUNT_COOLING_DOWN`. A model it does not hold back is
-asked of the provider once, with one bounded request: an answer that names a
-verification or refuses the credentials is reported as that. A report never
-repeats what the provider said.
+proxy holds back for a limit answers 429 at once, without a request to the
+provider, and the session is `AGENT_ACCOUNT_COOLING_DOWN`. An account the
+proxy holds back because its provider refused it answers 503 with the
+provider's last words, read for a verification ("Verify your account", or the
+reason `VALIDATION_REQUIRED`) or refused credentials. A model it does not hold
+back is asked of the provider once, with one bounded request, and its answer
+is read the same way. A report never repeats what the provider said.
 
 A cooling-down session names when the cooldown clears, when the proxy says
 so: "… is rate limited until 2027-01-15T09:30:00Z". The instant is read from
 the `Retry-After` of the proxy's 429 (else the `reset_seconds` of its
 `model_cooldown` error), or from the instant the fleet's relay prints when it
 refuses a request for an account it holds back. An answer that names no time
-adds none to the summary; `fleet-accounts` still lists `until` per model.
+adds none to the summary; `fleet-accounts` still lists `until` per model. The
+proxy names a time when the provider did: a limit the provider gave no time
+for is held for a moment and asked again.
+
+`features/accounts/proxy-box.feature` runs the pinned proxy in a container
+against a stand-in provider, on every pull request, so these answers are the
+proxy's own and not an assumption: the 429 and its `Retry-After`, the
+`model_cooldown` error of the OpenAI protocols, and the 503 that carries a
+provider's demand for verification.
 
 Session results are cached for six hours under a key that holds the roster
 version and the version of the client key, so any account change or key

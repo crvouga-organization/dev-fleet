@@ -181,10 +181,14 @@ export async function accountSessionChecks(
 }
 
 /** What a provider or the proxy said, by the condition it names. The text
- * itself is never reported: only which of these it matched.
+ * itself is never reported: only which of these it matched. A provider that
+ * wants an account verified says so in words ("Verify your account to
+ * continue.") and, in the details of the same error, in the reason
+ * `VALIDATION_REQUIRED`; a session prints only the words, the proxy repeats
+ * both.
  */
 const SAID: [RegExp, SessionResult][] = [
-  [/verify\s+your\s+account/i, 'verification-required'],
+  [/verify\s+your\s+account|\bVALIDATION_REQUIRED\b/i, 'verification-required'],
   [
     /cooling down until|model_cooldown|rate[ _-]?limit|\b429\b|quota|resource_exhausted/i,
     'cooling-down',
@@ -267,9 +271,12 @@ export function answeredClears(
 /** What the proxy answers when it is asked for one account's model directly,
  * read after a session of that account timed out. OpenCode retries a refused
  * request quietly until the deadline, so only the proxy still knows why. A
- * model the proxy holds back answers 429 at once, without a request to the
- * provider; one it does not hold back is asked of the provider once, with
- * the bounded request the provider checks send. Anything else leaves the
+ * model the proxy holds back for a limit answers 429 at once, without a
+ * request to the provider; an account it holds back because the provider
+ * refused it answers 503 with the provider's last words. One it does not
+ * hold back is asked of the provider once, with the bounded request the
+ * provider checks send. `features/accounts/proxy-box.feature` holds the
+ * pinned proxy to these answers. Anything else leaves the
  * session `timed-out`: the account answered, or nothing said why it does
  * not. The answer is read for its condition and for when a cooldown clears,
  * and never kept.
