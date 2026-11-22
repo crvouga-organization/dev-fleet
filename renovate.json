@@ -23,9 +23,25 @@
         "\"headscale\": \"(?<depName>[^:\"]+):(?<currentValue>[^@\"]+)@(?<currentDigest>sha256:[a-f0-9]{64})\""
       ],
       "datasourceTemplate": "docker"
+    },
+    {
+      "customType": "regex",
+      "description": "Tailscale on workers: the version of the package, which is the release's number.",
+      "managerFilePatterns": ["/^ansible/ubuntu/policy\\.json$/"],
+      "matchStrings": [
+        "\"tailscale\": \\{\\s*\"version\": \"(?<currentValue>[^\"]+)\""
+      ],
+      "depNameTemplate": "tailscale/tailscale",
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v(?<version>.+)$"
     }
   ],
   "packageRules": [
+    {
+      "description": "A worker whose Tailscale is older than the pin stops with TAILSCALE_UPGRADE_PENDING, so the pin follows a release only once workers have had time to take it by themselves.",
+      "matchPackageNames": ["tailscale/tailscale"],
+      "minimumReleaseAge": "14 days"
+    },
     {
       "description": "Agent CLIs are what every node runs; review each bump on its own.",
       "matchManagers": ["mise"],
