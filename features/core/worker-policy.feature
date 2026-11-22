@@ -28,6 +28,15 @@ Feature: What every worker must have
       | workstation |
       | worker      |
 
+  Scenario: A roster entry for a machine the configuration does not declare is refused
+    The refusal names the fleet.json to declare the worker in by the path
+    this run read it from, and never the copy fleet-sync installs.
+    Given a roster of these workers:
+      | id          | ssh         | workspace           | required |
+      | worker-nine | worker-nine | /home/dev/workspace | nothing  |
+    When the manager enrolls the workers of the roster
+    Then it is refused, saying "/fleet.json) before rollout; the manager is never a roster node."
+
   Scenario Outline: A worker policy that does not require "<capability>" is refused
     When the worker policy is read without "<capability>" among its required capabilities
     Then it is refused
