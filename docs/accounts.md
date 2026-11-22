@@ -48,6 +48,7 @@ proxy holds.
 | `proxy:reachable-from`             | The node gets no answer from the proxy; it warns above two seconds                                     |
 | `agent:<tool>:account-<n>:session` | That account's instance does not run a session (see below); it warns while the account is cooling down |
 | `agent:<tool>:removed-<n>:session` | The node still offers an instance for an account the proxy no longer holds                             |
+| `t3:models`                        | (warns) An account's instance shows or starts on a model its account does not serve                    |
 
 A session check that does not pass says which of these it found:
 
@@ -72,6 +73,22 @@ Session results are cached for six hours under a key that holds the roster
 version and the version of the client key, so any account change or key
 rotation re-verifies at once.
 
+## Models per account
+
+Accounts of one provider are not entitled to the same models. Each tool has
+preferred defaults, in order (`proxy.accounts` in `agents/registry.json`): an
+account's launcher and its T3 instance start on the first one the account
+serves. In T3, an account's instance hides the models of T3's catalogue that
+its account does not serve (`providerModelPreferences` in T3's settings), so
+it shows only what works; `fleet-sync` writes that, and shows a model again
+when the account serves it. T3 opens an instance on its own catalogue's
+default when the account serves it, and on the first preferred default
+otherwise.
+
+`t3:models` warns with `T3_MODELS_MISMATCH` when an account serves none of
+its tool's preferred defaults (it then starts on its first model by name) or
+nothing of T3's catalogue.
+
 ## Adding, signing in again, removing
 
 ```sh
@@ -92,8 +109,8 @@ npx devfleet fleet-sync --only accounts
 ```
 
 On the manager and every worker at once, each node re-reads the proxy's
-roster and rewrites only its per-account T3 instances. T3 watches its
-settings, so nothing restarts and no running turn ends. Instance ids derive
+roster and rewrites only its per-account T3 instances and the models each
+shows. T3 watches its settings, so nothing restarts and no running turn ends. Instance ids derive
 from the account's routing prefix and stay the same. A node that cannot be
 reached catches up on the next propagation or sync; until then
 `accounts:roster-current` reports the version it has.

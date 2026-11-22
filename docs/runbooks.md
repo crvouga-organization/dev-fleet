@@ -8,7 +8,7 @@ person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
 entry here, or a `devfleet` command quoted in the documents does not exist.
 
-There are 318 codes; 46 need a person.
+There are 319 codes; 46 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -274,6 +274,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_MANAGER_ORIGIN_UNRESTRICTED`: t3 manager origin unrestricted.
 - `T3_MANAGER_ORIGIN_UNVERIFIED`: t3 manager origin unverified.
 - `T3_MODELS_MISMATCH`: t3 models mismatch.
+- `T3_MODELS_PENDING`: t3 models pending.
 - `T3_MODELS_UNVERIFIED`: t3 models unverified.
 - `T3_POLICY_OWNER_CONFLICT`: t3 policy owner conflict. **Needs a person.**
 - `T3_POLICY_RESTART_FAILED`: t3 policy restart failed.
