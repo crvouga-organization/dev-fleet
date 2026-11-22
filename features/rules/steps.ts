@@ -35,6 +35,9 @@ import {
   repairPlan,
 } from '../../src/repair-plan';
 import { World, scenariosOf, steps, type DataTable } from '../support/gherkin';
+import { secretsFault, standInSecrets } from '../support/secrets';
+import { unreadSecret } from '../../src/secrets-blocked';
+import type { Check } from '../../src/types';
 
 const root = resolve(import.meta.dir, '../..');
 const read = (path: string): string =>
@@ -1911,3 +1914,111 @@ Then(
     expect(world.output).toContain(text);
   }
 );
+
+// ── Readers of secrets ───────────────────────────────────────────────────
+
+/** The layer itself: what reads, what measures the login and what answers. */
+const SECRETS_LAYER = [
+  'src/secrets.ts',
+  'src/secrets-blocked.ts',
+  'src/fleet-config.ts',
+];
+
+/** A source handles secrets when it names a provider or the proxy client
+ * key every agent presents.
+ */
+const HANDLES_SECRETS =
+  /\b(?:SecretsProvider|secretsProvider|secretVia|proxyKey)\b|import \{[^}]*\bsecret\b[^}]*\} from '[./]+fleet-config'/;
+
+async function sources(): Promise<{ path: string; text: string }[]> {
+  const paths = [
+    ...(await files('src/**/*.ts')),
+    ...(await files('bootstrap/**/*.ts')),
+  ];
+  return paths.map((path) => ({ path, text: read(path) }));
+}
+
+When(
+  "the sources that handle the fleet's secrets are listed",
+  async (world) => {
+    world.found = (await sources())
+      .filter(
+        ({ path, text }) =>
+          !SECRETS_LAYER.includes(path) && HANDLES_SECRETS.test(text)
+      )
+      .map(({ path }) => path)
+      .sort();
+  }
+);
+
+Then(
+  'they are exactly these, and each answers as it says:',
+  (world, table: DataTable) => {
+    const rows = table.hashes() as {
+      source: string;
+      'a secret it could not read': string;
+    }[];
+    expect(world.found).toEqual(rows.map((row) => row.source).sort());
+    for (const row of rows) {
+      const answer = row['a secret it could not read'];
+      expect([
+        'is blocked through the shared answer',
+        'is answered by the reader it hands it to',
+        'reports no check',
+        "is a worker's, whose login is its own",
+      ]).toContain(answer);
+      const shared = /from '[./]+secrets-blocked'/.test(read(row.source));
+      expect(`${row.source}: ${shared}`).toBe(
+        `${row.source}: ${answer === 'is blocked through the shared answer'}`
+      );
+    }
+  }
+);
+
+When('the sources that look up a Vault session are listed', async (world) => {
+  world.found = (await sources())
+    .filter(({ text }) => /\bvaultTokenLookup\b|'token',\s*'lookup'/.test(text))
+    .map(({ path }) => path)
+    .sort();
+});
+
+Then('they are exactly these:', (world, table: DataTable) => {
+  expect(world.found).toEqual(
+    (table.hashes() as { source: string }[]).map((row) => row.source).sort()
+  );
+});
+
+const blocked = new WeakMap<RulesWorld, Check>();
+
+When(
+  /^a check that fails for want of a secret is answered while the manager (is not logged in to|cannot reach|can read) its secrets provider$/,
+  async (world, state: string) => {
+    blocked.set(
+      world,
+      await unreadSecret(
+        standInSecrets(
+          () => null,
+          () => (state === 'can read' ? 'held' : secretsFault(state))
+        ),
+        {
+          id: 'example:secret',
+          status: 'fail',
+          summary: 'EXAMPLE_SECRET_REQUIRED',
+          remedy: { action: 'Store the example secret.' },
+        }
+      )
+    );
+  }
+);
+
+Then('its summary is {string}', (world, summary: string) => {
+  expect(blocked.get(world)?.summary).toBe(summary);
+});
+
+Then('it still fails', (world) => {
+  expect(blocked.get(world)?.status).toBe('fail');
+});
+
+Then('its remedy says {string}', (world, text: string) => {
+  expect(blocked.get(world)?.remedy?.action).toContain(text);
+});

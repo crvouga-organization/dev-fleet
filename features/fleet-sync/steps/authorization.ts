@@ -76,6 +76,16 @@ Given(
 );
 
 Given(
+  /^Vault (answers|does not answer) a request for its status$/,
+  (world, answers: string) => {
+    world.commands.answer(
+      /vault status/,
+      answers === 'answers' ? succeeded('{"sealed":false}') : failed()
+    );
+  }
+);
+
+Given(
   'Vault holds the issued token {string} for that machine',
   (world, token: string) => {
     world.commands.answer(/kv.*get/, inTurn([succeeded(`${token}\n`)]));

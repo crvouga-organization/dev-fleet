@@ -1,5 +1,12 @@
 import { record } from './config';
 import type { SecretsProvider } from './secrets';
+import type { Check } from './types';
+import {
+  SECRET_READ_BLOCKED,
+  blockedBySecretsLogin,
+  secretsFault,
+  type SecretsFault,
+} from './secrets-blocked';
 
 /** The tailnet control plane a fleet enrols its workers with: the hosted
  * Tailscale (API v2) or a self-hosted Headscale (its REST API). The contract
@@ -77,13 +84,35 @@ export class TailnetControlError extends Error {
   constructor(
     readonly code:
       | 'TAILNET_ADMIN_REQUIRED'
+      | typeof SECRET_READ_BLOCKED
       | 'TAILNET_CONTROL_DENIED'
       | 'TAILNET_CONTROL_REJECTED'
       | 'TAILNET_CONTROL_UNAVAILABLE'
-      | 'TAILNET_CONTROL_RESPONSE_INVALID'
+      | 'TAILNET_CONTROL_RESPONSE_INVALID',
+    /** What kept the credential from being read, for the blocked code. */
+    readonly fault?: SecretsFault
   ) {
     super(code);
   }
+}
+
+/** The check a refusal of the control plane becomes. A credential that
+ * could not be read is blocked by the manager's login, like every other
+ * check that needed a secret (src/secrets-blocked.ts).
+ */
+export function controlFailure(
+  id: string,
+  status: 'fail' | 'warn' | 'skip',
+  error: TailnetControlError
+): Check {
+  return error.code === SECRET_READ_BLOCKED
+    ? blockedBySecretsLogin(id, status, error.fault)
+    : {
+        id,
+        status,
+        summary: error.code,
+        remedy: { action: controlRemedy(error.code) },
+      };
 }
 
 export interface AuthKey {
@@ -298,7 +327,8 @@ function headscaleApi(
 }
 
 /** The fleet's control plane, or null when it declares none. A declared one
- * without its credential is refused: nothing is enrolled on a guess.
+ * without its credential is refused: nothing is enrolled on a guess. One the
+ * manager could not read is refused as blocked, not as missing.
  */
 export async function fleetTailnetControl(
   config: TailnetConfig | undefined,
@@ -307,13 +337,23 @@ export async function fleetTailnetControl(
 ): Promise<TailnetControl | null> {
   if (!config) return null;
   const credential = await secret('tailnet-admin');
-  if (!credential) throw new TailnetControlError('TAILNET_ADMIN_REQUIRED');
+  if (!credential) {
+    const fault = await secretsFault(secret);
+    throw fault
+      ? new TailnetControlError(SECRET_READ_BLOCKED, fault)
+      : new TailnetControlError('TAILNET_ADMIN_REQUIRED');
+  }
   return tailnetControl(config, credential, http);
 }
 
 /** What each code asks the operator to do. Never what the server answered. */
-export function controlRemedy(code: TailnetControlError['code']): string {
+export function controlRemedy(
+  code: TailnetControlError['code'],
+  fault?: SecretsFault
+): string {
   return {
+    SECRET_READ_BLOCKED: blockedBySecretsLogin('', 'fail', fault).remedy!
+      .action,
     TAILNET_ADMIN_REQUIRED:
       'fleet.json declares a tailnet control plane, but the secrets provider holds no tailnet-admin. Store an API credential that can create auth keys there (a Tailscale API access token or OAuth client secret with the auth_keys and devices scopes, or a Headscale API key), then rerun.',
     TAILNET_CONTROL_DENIED:

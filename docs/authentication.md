@@ -59,12 +59,20 @@ lifetime of its own, or one that is not renewable. The fix is one login of
 the manager before then. A renewal job whose last run failed warns with
 `VAULT_RENEWAL_FAILING`.
 
-When the manager's login has lapsed, that is one fault:
-`manager:vault-renewal` fails with `VAULT_LOGIN_REQUIRED`, and every check
-that needed a secret the manager could not read (the hub's account, tunnel,
-viewer and backups) reports `SECRET_READ_BLOCKED by manager:vault-renewal`
-instead of a code of its own. A secret that is absent while the manager is
-logged in keeps the code of the check that needs it. A GitHub token that stops
+When the manager cannot read its secrets, that is one fault, and
+`manager:vault-renewal` says which. A session that does not answer is asked
+about twice: Vault's own status needs no login, so a Vault that answers it
+leaves a lapsed login (`VAULT_LOGIN_REQUIRED`, fixed by one login), and one
+that does not answer, or is sealed, is `VAULT_UNREACHABLE`, which no login
+repairs. Either way every check on the manager that needed a secret (the
+hub's account, tunnel, viewer and backups, a notification target, the
+tailnet control plane's credential, the GitHub token, the proxy client key)
+reports `SECRET_READ_BLOCKED by manager:vault-renewal` instead of a code of
+its own, and `fleet-node-seed` refuses with the same words. A secret that is
+absent while the manager can read its provider keeps the code of the check
+that needs it. A reader gets this by handing the provider it read from to
+`unreadSecret` (`src/secrets-blocked.ts`);
+`features/rules/secret-readers.feature` lists every reader. A GitHub token that stops
 working fails `auth:github` and `worker:git-push-auth`; store the new one in
 Vault and the worker restores itself within ten minutes. During a proxy
 outage agents on workers wait: no worker is configured for native clients.

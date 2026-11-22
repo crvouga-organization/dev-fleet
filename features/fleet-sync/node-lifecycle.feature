@@ -139,6 +139,23 @@ Feature: A worker is replaced or retired with one command
       And the control plane was asked nothing
       And the report has the check "tailscale:device" skipped, saying "the secrets provider holds no tailnet-admin"
 
+    Scenario Outline: A tailnet-admin credential the manager could not read leaves the device blocked by the manager's login
+      Given the fleet declares the tailnet control plane:
+        """
+        { "api": "tailscale", "tag": "tag:fleet-worker" }
+        """
+      And the secrets provider holds a tailnet-admin credential generated for this scenario
+      And the manager <fault> its secrets provider
+      When the operator runs fleet-node-retire for "worker-one" with --apply --yes
+      Then the command exits with 0
+      And the control plane was asked nothing
+      And the report has the check "tailscale:device" skipped, saying "SECRET_READ_BLOCKED by manager:vault-renewal"
+
+      Examples:
+        | fault               |
+        | is not logged in to |
+        | cannot reach        |
+
   Rule: The manager pairs its T3 with a replaced worker's new environment
     A rebuilt machine runs a new T3 environment, and the manager pairs with
     it without a person. The worker mints a one-time pairing code over the

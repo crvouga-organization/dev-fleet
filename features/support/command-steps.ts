@@ -202,6 +202,11 @@ export function commandSteps<W extends CommandWorld>(registry: Steps<W>): void {
     }
   );
 
+  Then('the checks contain {string}', (world, text: string) => {
+    if (world.failure !== undefined) throw world.failure;
+    expect(JSON.stringify(world.checks)).toContain(text);
+  });
+
   Then('the checks do not contain {string}', (world, text: string) => {
     if (world.failure !== undefined) throw world.failure;
     expect(world.checks.length).toBeGreaterThan(0);

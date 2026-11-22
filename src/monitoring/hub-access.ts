@@ -1,8 +1,8 @@
 import { privateHub } from './beszel';
 import type { HubRequest } from './enroll';
 import { record } from '../config';
-import { fleet, secret, secretsLogin, secretVia } from '../fleet-config';
-import { SECRET_READ_BLOCKED } from '../secrets-blocked';
+import { fleet, secret, secretVia } from '../fleet-config';
+import { unreadSecretCode } from '../secrets-blocked';
 import type { Runner } from '../types';
 
 /** The normal (non-superuser) Beszel account the manager enrolls nodes with.
@@ -70,15 +70,10 @@ export async function hubAccess(
   run?: Runner
 ): Promise<{ userId: string; request: HubRequest }> {
   const url = privateHub(hub);
-  const password = await (run ? secretVia(run) : secret)(
-    'monitoring-account-password'
-  );
+  const secrets = run ? secretVia(run) : secret;
+  const password = await secrets('monitoring-account-password');
   if (!password)
-    throw new Error(
-      (await secretsLogin(run)) === 'required'
-        ? SECRET_READ_BLOCKED
-        : 'BESZEL_ACCOUNT_REQUIRED'
-    );
+    throw new Error(await unreadSecretCode(secrets, 'BESZEL_ACCOUNT_REQUIRED'));
   const credentials = fleetCredentials(password);
   const login = await call(
     url,

@@ -204,6 +204,25 @@ Feature: The fleet tells someone when a worker becomes unhealthy
         """
       When the watcher sends a test notification
       Then fleet-watch exits with 1 and its check "notify:ntfy" fails
+      And the check "notify:ntfy" of fleet-watch says "NOTIFY_TARGET_UNAVAILABLE"
+
+    Scenario Outline: A target whose address the manager could not read is blocked by the manager's login, not missing
+      Nothing is to be stored: the manager <fault> its secrets provider, and
+      the check that owns that says what to do.
+      Given the fleet configuration says:
+        """
+        { "notify": { "targets": ["ntfy"] } }
+        """
+      And the manager <fault> its secrets provider
+      When the watcher sends a test notification
+      Then fleet-watch exits with 1 and its check "notify:ntfy" fails
+      And the check "notify:ntfy" of fleet-watch says "SECRET_READ_BLOCKED by manager:vault-renewal"
+      And nothing fleet-watch reported contains "NOTIFY_TARGET_UNAVAILABLE"
+
+      Examples:
+        | fault               |
+        | is not logged in to |
+        | cannot reach        |
 
     Scenario: A fleet with no notify block is told how to add one
       Given the fleet configuration has no notify block
