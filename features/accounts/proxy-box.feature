@@ -5,8 +5,8 @@ Feature: The pinned CLI proxy says of an account it holds back what the session 
   whose provider is a stand-in the scenario controls. It proves what the
   proxy itself answers about an account it holds back, and that the session
   check of that account reads it. No provider is contacted and no agent
-  runs: the session is one that ran into its deadline, after which the check
-  asks the proxy.
+  runs: the check asks the proxy before it would launch a session, and
+  what the proxy says is the result.
 
   Runs only when DEVFLEET_TEST_PROXY_BOX is set, because it downloads the
   pinned proxy image.

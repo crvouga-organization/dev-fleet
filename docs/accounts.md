@@ -86,9 +86,21 @@ proxy's own and not an assumption: the 429 and its `Retry-After`, the
 `model_cooldown` error of the OpenAI protocols, and the 503 that carries a
 provider's demand for verification.
 
-Session results are cached for six hours under a key that holds the roster
-version and the version of the client key, so any account change or key
-rotation re-verifies at once.
+Session results are cached under a key that holds the roster version and the
+version of the client key, so any account change or key rotation re-verifies
+at once. A pass is reused for six hours.
+
+A session that cannot pass must not hold every sync up for its 150 second
+deadline on every node:
+
+- The proxy is asked for the account's model **before** the session is
+  launched. An account it holds back, wants verified or refuses is reported
+  at once and no session is started.
+- What a session found when it did not pass is taken as found for ten
+  minutes. Its check says so: "(found 4m ago; a session that does not pass is
+  run again after 10m or on any change)".
+- A session that ran into its deadline is given 30 seconds the next time,
+  until it passes or six hours have gone by.
 
 ## Models per account
 

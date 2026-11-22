@@ -6,7 +6,9 @@ Feature: Every per-account instance runs a real session, and account changes re-
   ended are each reported under a code of their own. An instance whose
   account the proxy no longer holds fails without being run. Results are
   cached under a key that holds the roster version and the client key's
-  version.
+  version: a pass for six hours, anything else for ten minutes. The proxy is
+  asked about an account before its session is launched, so an account it
+  already answers for costs no session.
 
   Scenario: Each account the proxy holds gets its own session check
     Given the proxy lists these models:
@@ -152,7 +154,7 @@ Feature: Every per-account instance runs a real session, and account changes re-
     And the session of the account "a@example.com" fails printing "<output>"
     When this node's account sessions are verified
     Then the summary of the check "agent:claude:account-1:session" is "AGENT_ACCOUNT_COOLING_DOWN: claude account 1 <limited>; checked again on the next status."
-    And the proxy was not asked about any account
+    And the proxy was asked 1 time
 
     Examples:
       | case                    | output                                                      | limited                                      |
@@ -207,14 +209,112 @@ Feature: Every per-account instance runs a real session, and account changes re-
     When this node's account sessions are verified
     Then the check "agent:opencode:account-1:session" fails saying "AGENT_ACCOUNT_SESSION_TIMED_OUT"
 
-  Scenario: A session that ended on its own is read from what it printed, and the proxy is not asked
+  Scenario: A session that ended on its own is read from what it printed, and the proxy is not asked again
     Given the proxy lists these models:
       | antigravity-a@example.com/gemini-3.8-flash |
     And the session of the account "a@example.com" fails printing "Verify your account to continue."
     When this node's account sessions are verified
     Then the check "agent:opencode:account-1:session" fails saying "AGENT_ACCOUNT_VERIFICATION_REQUIRED"
-    And the proxy was not asked about any account
+    And the proxy was asked 1 time
     And no check names "Verify your account"
+
+  Scenario Outline: An account the proxy already answers for is reported without a session: <case>
+    The proxy is asked for the account's model before its session is
+    launched. OpenCode would retry such an account quietly until the
+    session's deadline, on every node of every sync.
+    Given the proxy lists these models:
+      | antigravity-a@example.com/gemini-3.8-flash |
+    And the session of the account "a@example.com" runs into its deadline
+    And the proxy answers a request for that account's model with the status <status> saying "<answer>"
+    When this node's account sessions are verified
+    Then the check "agent:opencode:account-1:session" <verdict> saying "<code>"
+    And 0 sessions were launched
+    And the proxy was asked 1 time
+
+    Examples:
+      | case                           | status | answer                           | verdict | code                                |
+      | the proxy holds its model back | 429    | {"error":{"code":"model_cooldown","reset_seconds":1800}} | warns | AGENT_ACCOUNT_COOLING_DOWN |
+      | its provider wants it verified | 503    | auth_unavailable: no auth available (last upstream error: 403: Verify your account to continue.) | fails | AGENT_ACCOUNT_VERIFICATION_REQUIRED |
+      | its credentials are refused    | 401    | PRIVATE_SENTINEL                 | fails   | AGENT_ACCOUNT_AUTH_REJECTED         |
+
+  Scenario: An account the proxy names nothing for gets its session, with the full deadline
+    Given the proxy lists these models:
+      | antigravity-a@example.com/gemini-3.8-flash |
+    And the session of the account "a@example.com" runs into its deadline
+    And the proxy answers a request for that account's model with the status 200 saying "PRIVATE_SENTINEL"
+    When this node's account sessions are verified
+    Then the check "agent:opencode:account-1:session" fails saying "AGENT_ACCOUNT_SESSION_TIMED_OUT"
+    And 1 session was launched
+    And the last session was given 150 seconds to end
+    And the proxy was asked 2 times
+
+  Scenario: A session that did not pass is not run again within ten minutes, and its check says when that was found
+    Back-to-back syncs do not pay for the same dead session twice.
+    Given the proxy lists these models:
+      | antigravity-a@example.com/gemini-3.8-flash |
+    And this node remembers what its account sessions found
+    And the session of the account "a@example.com" runs into its deadline
+    And this node's account sessions were verified 4 minutes ago
+    When this node's account sessions are verified
+    Then the summary of the check "agent:opencode:account-1:session" is "AGENT_ACCOUNT_SESSION_TIMED_OUT: opencode account 1 did not end a session before the deadline; the proxy named no cooldown and no refusal for it. (found 4m ago; a session that does not pass is run again after 10m or on any change)"
+    And 0 sessions were launched
+    And the proxy was asked 0 times
+
+  Scenario: A remembered cooldown keeps the instant it clears
+    Given the proxy lists these models:
+      | claude-a@example.com/claude-sonnet-5-5 |
+    And this node remembers what its account sessions found
+    And the time is "2027-01-15T09:00:00Z"
+    And the session of the account "a@example.com" fails printing "This account is cooling down until 2027-01-15T09:30:00.000Z."
+    And this node's account sessions were verified 2 minutes ago
+    When this node's account sessions are verified
+    Then the summary of the check "agent:claude:account-1:session" is "AGENT_ACCOUNT_COOLING_DOWN: claude account 1 is rate limited until 2027-01-15T09:30:00Z; checked again on the next status. (found 2m ago; a session that does not pass is run again after 10m or on any change)"
+    And 0 sessions were launched
+
+  Scenario: A session that ran into its deadline is run again after ten minutes, with a short deadline
+    Given the proxy lists these models:
+      | antigravity-a@example.com/gemini-3.8-flash |
+    And this node remembers what its account sessions found
+    And the session of the account "a@example.com" runs into its deadline
+    And this node's account sessions were verified 11 minutes ago
+    When this node's account sessions are verified
+    Then the check "agent:opencode:account-1:session" fails saying "AGENT_ACCOUNT_SESSION_TIMED_OUT"
+    And the summary of the check "agent:opencode:account-1:session" is "AGENT_ACCOUNT_SESSION_TIMED_OUT: opencode account 1 did not end a session before the deadline; the proxy named no cooldown and no refusal for it."
+    And 1 session was launched
+    And the last session was given 30 seconds to end
+
+  Scenario: A session that failed for another reason is run again after ten minutes, with the full deadline
+    Given the proxy lists these models:
+      | antigravity-a@example.com/gemini-3.8-flash |
+    And this node remembers what its account sessions found
+    And the session of the account "a@example.com" fails printing "model_not_found"
+    And this node's account sessions were verified 11 minutes ago
+    When this node's account sessions are verified
+    Then 1 session was launched
+    And the last session was given 150 seconds to end
+
+  Scenario: An account that answers again passes on the next run, and nothing of its failure is kept
+    Given the proxy lists these models:
+      | antigravity-a@example.com/gemini-3.8-flash |
+    And this node remembers what its account sessions found
+    And the session of the account "a@example.com" runs into its deadline
+    And this node's account sessions were verified 11 minutes ago
+    And the account "a@example.com" answers its session again
+    When this node's account sessions are verified
+    Then the check "agent:opencode:account-1:session" passes
+
+  Scenario: A change to the roster runs a remembered session at once
+    Given the proxy lists these models:
+      | antigravity-a@example.com/gemini-3.8-flash |
+    And this node remembers what its account sessions found
+    And the session of the account "a@example.com" runs into its deadline
+    And this node's account sessions were verified 4 minutes ago
+    And the proxy lists these models:
+      | antigravity-a@example.com/gemini-3.8-flash |
+      | antigravity-b@example.com/gemini-3.8-flash |
+    When this node's account sessions are verified
+    Then 2 sessions were launched
+    And the last session was given 150 seconds to end
 
   Scenario: An OpenCode account session prints its errors, so a rate limit it retries shows
     OpenCode retries a request the proxy refuses with 429 until the session's
