@@ -1,14 +1,16 @@
 # Runbooks
 
-One entry for every failure code dev-fleet reports: in a check's summary, a
-bootstrap phase or an Ansible assertion. Each family says what its codes
+One entry for every failure code dev-fleet reports: as a check's summary or
+the code that opens it, at the start of a refusal, in a bootstrap phase or an
+Ansible assertion. A few are warnings or notes rather than failures; their
+entries say so. Each family says what its codes
 mean, how to confirm one, the fix (a command or a `fleet-sync` that applies
 the playbook that owns it) and when to escalate. A code whose fix needs a
 person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
 entry here, or a `devfleet` command quoted in the documents does not exist.
 
-There are 328 codes; 49 need a person.
+There are 374 codes; 64 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -111,6 +113,16 @@ There are 328 codes; 49 need a person.
 - `WORKER_RECOVERY_SETUP_FAILED`: worker recovery setup failed.
 - `WORKER_NOT_CONVERGED`: the last recorded worker apply failed or its receipt differs from the approved revision. Follow the reported check and rerun the worker sync.
 - `WORKER_RECOVERY_TIMER_INACTIVE`: worker recovery timer inactive.
+- `CLOCK_DRIFTING`: the clock is further from the manager's than the warning offset of `clock` in `ansible/ubuntu/policy.json`. The check names the offset. Enable the time service as the remedy says before it becomes CLOCK_SKEWED.
+- `CLOCK_NOT_SYNCHRONISED`: the machine is not synchronised to a time source; it fails when no time service is enabled at all. Run `devfleet fleet-sync`, which enables the time service the baseline declares.
+- `CLOCK_SKEWED`: the clock is further from the manager's than the failing offset. TLS, token validation, apt signatures and Vault logins fail with errors that never mention time. Enable the time service as the remedy says, then run `devfleet fleet-sync`.
+- `CLOCK_UNOBSERVED`: the clock synchronisation could not be read, so the check is skipped. Nothing is known to be wrong.
+- `INODES_EXHAUSTED`: the worker's file system has almost no free inodes: every new file fails although bytes are free. The hourly disk collector removes idle dependency trees and worktrees under pressure; delete them by hand when it has not.
+- `PACKAGE_BELOW_PIN`: a package is missing or older than the version `ansible/ubuntu/policy.json` pins. Run `devfleet fleet-sync`, which installs the pinned version.
+- `PACKAGE_NEWER_THAN_PIN`: an unattended security update moved a package past its pin. It is kept: a warning, never undone. The pin is raised in dev-fleet when the snapshot moves.
+- `REBOOT_PENDING`: installed updates apply only after a reboot; it fails once the reboot has waited longer than `rebootPendingFailDays`. Reboot the worker when no agent turn is running, then confirm it with `devfleet fleet-status --workers`.
+- `WORKER_MANIFEST_DRIFT`: something was installed, removed or changed on the worker outside fleet-sync; the check lists the differences. Rebuild the worker with `devfleet fleet-node-replace`, or ask for the change to be declared in dev-fleet. **Needs a person.**
+- `WORKER_RECOVERY_LAST_RUN_FAILED`: the last run of `personal-worker-recovery.service` did not succeed; the check names its result. On the worker, `systemctl --user status personal-worker-recovery.service` and `journalctl --user -u personal-worker-recovery.service`, then run `devfleet fleet-sync`.
 
 Under sustained I/O or memory pressure the pressure guard can stop a build.
 Inspect `journalctl -u personal-fleet-pressure-guard --since yesterday` for
@@ -197,6 +209,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `GIT_SIGNING_FAILED`: git signing failed: the node's own key is missing or cannot sign without a prompt.
 - `GIT_SIGNING_MISSING`: git signing missing.
 - `GIT_SIGNING_OVERRIDDEN`: git signing overridden.
+- `GITHUB_GIT_CREDENTIAL_MISSING`: git does not take its GitHub credential from `gh`, so a push asks for a password or fails. Declare the `git` block and run `devfleet fleet-sync`; on a manager with a personal login, `gh auth setup-git`.
 
 ## GitHub sign-in
 
@@ -211,6 +224,17 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `GITHUB_TOKEN_MISSING`: github token missing.
 - `GITHUB_TOKEN_REJECTED`: github token rejected.
 - `GITHUB_UNREACHABLE`: github unreachable.
+- `COPILOT_TOKEN_UNSUPPORTED`: the node's GitHub token is of a kind Copilot CLI refuses (a classic personal access token). Store a fine-grained token with the Copilot Requests permission as `github-token` and run `devfleet fleet-sync`. **Needs a person.**
+- `GITHUB_ORG_MEMBERSHIP_MISSING`: the fleet login is not an active member of an organisation the fleet declares; the check names it. Someone who administers the organisation adds the login. **Needs a person.**
+- `GITHUB_PERMISSION_MISSING`: the token lacks a declared scope or cannot push to a declared repository; the check names each. Issue a token with them, store it as `github-token` and run `devfleet fleet-sync`. **Needs a person.**
+- `GITHUB_RATE_LIMIT_LOW`: little of the login's hourly request limit is left; the check names what remains and when it resets. Wait for the reset, or give every node its own credential (`github.credential` set to `per-node`).
+- `GITHUB_SCOPES_NOT_OBSERVABLE`: the token reports no scopes (a fine-grained token), so the declared scopes cannot be compared; the declared repositories were checked instead. A warning with nothing to fix.
+- `GITHUB_SSO_AUTHORIZATION_REQUIRED`: an organisation requires single sign-on and the token is not authorised for it; the check names the organisation. Authorise the token in the GitHub settings (Configure SSO). **Needs a person.**
+- `GITHUB_TOKEN_EXPIRING`: the stored token expires within days; the check names the instant. Issue a new token, store it as `github-token` and run `devfleet fleet-sync` before then: every node adopts it while the old one still works. **Needs a person.**
+- `GITHUB_TOKEN_EXPIRING_SOON`: the same, earlier: a warning that leaves time to issue the next token. **Needs a person.**
+- `GITHUB_TOKEN_STALE`: the node still signs requests with a token the store no longer holds. Run `devfleet fleet-sync`; a worker also adopts the stored token within ten minutes.
+- `GITHUB_WORKFLOW_CLEANUP_FAILED`: the workflow probe passed but left a branch or pull request on the sandbox repository; the check names them. Close the pull request and delete the branch.
+- `GITHUB_WORKFLOW_FAILED`: the workflow probe (clone the sandbox, push a branch, open a draft pull request, read its checks, comment) stopped at the step the check names. Follow the remedy of that step.
 
 ## Tailscale
 
@@ -230,6 +254,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `TAILSCALE_SETUP_OR_LOGIN_REQUIRED`: tailscale setup or login required. **Needs a person.**
 - `TAILSCALE_SOURCE_OWNER_CONFLICT`: tailscale source owner conflict. **Needs a person.**
 - `TAILSCALE_UPGRADE_PENDING`: tailscale upgrade pending. **Needs a person.**
+- `TAILSCALE_KEY_EXPIRES_SOON`: the node key of the machine expires in the days the check names, and the machine leaves the tailnet when it does. Disable key expiry for a worker in the Tailscale admin console or tag it; renew the manager's with `tailscale up --force-reauth`. **Needs a person.**
 
 ## A new worker with no hands on it
 
@@ -411,15 +436,23 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `PROVIDER_UPSTREAM_UNAVAILABLE`: provider upstream unavailable.
 - `PROXY_RECONCILE_UNVERIFIED`: proxy reconcile unverified.
 - `UNATTENDED_PROXY_AUTHENTICATION_REQUIRED`: unattended proxy authentication required.
+- `AUTH_NOT_SUPPORTED_ON_ROUTE`: not a failure. The service is reached through the CLI proxy on this fleet, so a login of its own on the machine is not applicable and is not checked; the summary says why.
 
 ## Provider accounts
 
-- **Meaning:** A change to a provider account on the CLI proxy (sign-in, removal, cooldown) did not complete.
-- **Confirm:** `devfleet fleet-accounts` lists every account and its state; `devfleet fleet-accounts --diff` compares this machine.
-- **Fix:** Retry the change with `devfleet fleet-accounts`; see [Provider accounts](accounts.md).
-- **Escalate:** Signing an account in again needs a person.
+- **Meaning:** A change to a provider account on the CLI proxy (sign-in, removal, cooldown) did not complete, a node does not reach the proxy, or the session a node runs through one account's instance (`agent:<tool>:account-<n>:session`) did not answer. A session check names the tool and the account's index, never the account, and never repeats what a provider answered.
+- **Confirm:** `devfleet fleet-accounts` lists every account by its index with its state, the models the proxy holds back and until when; `devfleet fleet-accounts --diff` compares this machine. The session checks are in `devfleet fleet-status`.
+- **Fix:** Retry the change with `devfleet fleet-accounts`; see [Provider accounts](accounts.md). A cooldown clears on its own.
+- **Escalate:** Signing an account in again needs a person, and so does a verification its provider asks for. A session that keeps failing or hanging on an account `devfleet fleet-accounts` calls usable is an issue.
 
 - `ACCOUNT_CHANGE_FAILED`: account change failed.
+- `AGENT_ACCOUNT_AUTH_REJECTED`: the session of one account was refused its credentials. `devfleet fleet-accounts` says whether the account needs a login; one that does is signed in again with `--relogin`, as [Provider accounts](accounts.md) describes. **Needs a person.**
+- `AGENT_ACCOUNT_COOLING_DOWN`: a warning, never a failure. The provider limited the account, or the proxy holds its model back. The summary names when the cooldown clears when the proxy said so; `devfleet fleet-accounts` lists each model held back and `until`. It clears on its own and is checked again on the next status. Nothing to fix; add an account if every one of a provider cools down often.
+- `AGENT_ACCOUNT_REMOVED`: the node still offers an instance for an account the proxy no longer holds. Run `devfleet fleet-sync --only accounts`, which propagates the roster to every node.
+- `AGENT_ACCOUNT_SESSION_FAILED`: the session of one account did not answer, and nothing it printed named a limit, a verification or a refusal. Read the account's state with `devfleet fleet-accounts` and the `provider:*` checks of `devfleet fleet-status`; report it when the account is usable and the session still fails.
+- `AGENT_ACCOUNT_SESSION_TIMED_OUT`: the session never ended, and the proxy named no cooldown and no refusal for the account. Not a sign-in failure: signing in again does not help. Read which models the proxy holds back with `devfleet fleet-accounts`, then run `devfleet fleet-status` again; report a session that keeps hanging.
+- `AGENT_ACCOUNT_VERIFICATION_REQUIRED`: the provider wants the account verified before it serves requests. Sign in to the provider as that account (find it by its index in `devfleet fleet-accounts`) and complete the verification it asks for. Signing in again on the proxy does not replace it. **Needs a person.**
+- `PROXY_UNREACHABLE`: the node got no answer from the CLI proxy, or the route answered and the proxy did not. Agents retry for about a minute and then report it. Check the node's tailnet, and the proxy on the manager with `devfleet cliproxy status`.
 
 ## Vault and credentials
 
@@ -450,6 +483,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `DEFINITION_MISSING`: definition missing.
 - `DEFINITION_UNREADABLE`: definition unreadable.
 - `SSH_HOST_KEY_NOT_CHANGED`: ssh host key not changed.
+- `DEFINITION_PLAYBOOK_SYNTAX`: the pinned Ansible cannot parse a playbook the installed dev-fleet package carries; `devfleet fleet-validate --ansible` names it. Nothing in `fleet.json` fixes it: report it as an issue.
 
 ## Parked, idle, replaced and retired workers
 
@@ -504,6 +538,18 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `MANAGER_UPDATES_UNOBSERVED`: manager updates unobserved.
 - `REMOTE_CONFIGURATION_INCOMPLETE`: remote configuration incomplete.
 - `REMOTE_PHASE_FAILED`: remote phase failed.
+- `CONTAINER_RESTARTED_UNHEALTHY`: the container watchdog restarted a container of the manager that stayed unhealthy, within the last hour; the check names it. A warning: read the watchdog log and the container's logs for the cause.
+- `CONTAINER_RESTART_STORM`: the watchdog reached its limit of restarts for a container within the last hour and stopped restarting it. Read the watchdog log and the container's logs, fix the cause, then `docker restart` the container.
+- `FLEET_MANAGER_LEASE_HELD`: another manager holds the fleet state until the instant the message names. Nothing was changed. Run devfleet from that manager; to make this machine the manager once the other is gone, repeat with `--take-over` (see [Recovering the manager](manager-recovery.md)). **Needs a person.**
+- `FLEET_STATE_NEWER_THAN_CLI`: a newer dev-fleet wrote the fleet state, and this one cannot read its schema version. Nothing was read or changed. Install the dev-fleet version the fleet runs, then run the command again.
+- `MANAGER_BOOT_RECOVERY_INCOMPLETE`: after a power cut the manager would not come back by itself; the check names what is missing (restart after power loss, a user session, the container engine at login). Follow the remedy. A Mac with FileVault waits for a person at the disk password: that is a warning.
+- `MANAGER_DISK_FULL`: the manager's data volume has less free space than `disk.failFreeMiB` of the macOS policy. Free space: `docker system prune` removes unused images and build cache.
+- `MANAGER_DISK_LOW`: the same below `disk.warnFreeMiB`: a warning.
+- `MANAGER_DOCKER_DISK_LARGE`: Docker Desktop holds more than `disk.dockerWarnGiB` on the manager: a warning. `docker system prune` removes unused images and build cache.
+- `MANAGER_POWER_POLICY_DRIFT`: a power setting of the manager is not what the policy declares; the check names it. Give the manager its grant once, as an administrator, with the command the remedy prints; every `devfleet fleet-sync` then applies the policy. **Needs a person.**
+- `MANAGER_RELEASE_UNSUPPORTED`: the manager runs an older macOS than the policy requires. Update it in System Settings, then run `devfleet fleet-sync`. **Needs a person.**
+- `MANAGER_RESTART_PENDING`: a macOS update of the manager waits for a restart: a warning. Install it at a time no worker depends on the manager. **Needs a person.**
+- `MANAGER_UPDATES_PENDING`: macOS updates are pending on the manager: a warning. Install them at a time no worker depends on the manager. **Needs a person.**
 
 ## The manager's own policy and scheduled jobs
 
@@ -517,6 +563,8 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `MANAGER_PLAYBOOK_CHECK_FAILED`: manager playbook check failed: nothing was applied.
 - `MANAGER_PLAYBOOK_FAILED`: manager playbook failed.
 - `MANAGER_WATCH_INTERVAL_INVALID`: manager watch interval invalid: `manager.schedule.watchMinutes` is outside 5 to 1440.
+- `MANAGER_JOB_LOG_OVERSIZED`: logs of the scheduled jobs grew past twice the size newsyslog rotates them at, so it is not rotating them. Check that it runs with the command the remedy prints and read `/var/log/system.log` for its errors.
+- `MANAGER_WATCH_FAILING`: the last run of the fleet-watch job failed; the check names its exit code. Read the job's error log the remedy names and run `devfleet fleet-watch` on the manager to see the same failure.
 
 ## Notifications (fleet-watch)
 

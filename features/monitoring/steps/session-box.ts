@@ -14,7 +14,12 @@ const root = resolve(import.meta.dir, '../../..');
 const FLEET = '/fleet';
 const SUPPORT = `${FLEET}/features/monitoring/support/session-box`;
 const UBUNTU = `${FLEET}/ansible/ubuntu`;
-const PROJECT = '/home/ubuntu/project';
+const USER = 'ubuntu';
+const UID = 1000;
+const HOME = `/home/${USER}`;
+const RUNTIME = `/run/user/${UID}`;
+const MANAGER = `user@${UID}.service`;
+const PROJECT = `${HOME}/project`;
 const T3 = '/opt/t3/t3';
 const UNIT = 'personal-fleet-agent-session-limit.service';
 const AGENTS = 'app.slice/app-t3code.slice/app-t3code-agents.slice';
@@ -43,13 +48,13 @@ const asUser = (container: string, command: string, timeoutMs = 120_000) =>
       'docker',
       'exec',
       '-u',
-      'ubuntu',
+      USER,
       '-w',
-      '/home/ubuntu',
+      HOME,
       '-e',
-      'HOME=/home/ubuntu',
+      `HOME=${HOME}`,
       '-e',
-      'XDG_RUNTIME_DIR=/run/user/1000',
+      `XDG_RUNTIME_DIR=${RUNTIME}`,
       container,
       'sh',
       '-c',
@@ -102,17 +107,17 @@ async function pinnedServer(container: string): Promise<void> {
 /** The machine as a worker with a T3 server: the user's lingering manager,
  * the tracked playbook tasks and launcher code, and T3 with two providers. */
 async function prepare(container: string): Promise<void> {
-  expect((await on(container, 'loginctl enable-linger ubuntu')).ok).toBe(true);
+  expect((await on(container, `loginctl enable-linger ${USER}`)).ok).toBe(true);
   await until(
     'the user manager',
-    async () => (await on(container, 'test -S /run/user/1000/bus')).ok
+    async () => (await on(container, `test -S ${RUNTIME}/bus`)).ok
   );
   // What a worker's checkout holds of this, at the paths it holds it.
   expect(
     (
       await on(
         container,
-        `mkdir -p ${UBUNTU} ${FLEET}/ansible/net ${FLEET}/src/agents ${SUPPORT} /etc/t3code ${PROJECT} /var/tmp/session-box /home/ubuntu/.config/systemd/user`
+        `mkdir -p ${UBUNTU} ${FLEET}/ansible/net ${FLEET}/src/agents ${SUPPORT} /etc/t3code ${PROJECT} /var/tmp/session-box ${HOME}/.config/systemd/user`
       )
     ).ok
   ).toBe(true);
@@ -129,7 +134,7 @@ async function prepare(container: string): Promise<void> {
     (
       await on(
         container,
-        `cp ${SUPPORT}/limit.yml ${UBUNTU}/session-box-limit.yml && cp ${SUPPORT}/policy.json /etc/t3code/policy.json && cp ${SUPPORT}/t3code-headless.service /home/ubuntu/.config/systemd/user/ && chmod 0755 /usr/local/bin/bun && chown -R ubuntu:ubuntu /home/ubuntu /var/tmp/session-box`
+        `cp ${SUPPORT}/limit.yml ${UBUNTU}/session-box-limit.yml && cp ${SUPPORT}/policy.json /etc/t3code/policy.json && cp ${SUPPORT}/t3code-headless.service ${HOME}/.config/systemd/user/ && chmod 0755 /usr/local/bin/bun && chown -R ${USER}:${USER} ${HOME} /var/tmp/session-box`
       )
     ).ok
   ).toBe(true);
@@ -200,10 +205,10 @@ async function managerCgroup(container: string): Promise<string> {
   const own = (
     await on(
       container,
-      'cat /proc/$(systemctl show -p MainPID --value user@1000.service)/cgroup'
+      `cat /proc/$(systemctl show -p MainPID --value ${MANAGER})/cgroup`
     )
   ).stdout;
-  const path = /^0::(\/.*user@1000\.service)/m.exec(own)?.[1];
+  const path = new RegExp(`^0::(/.*${MANAGER})`, 'm').exec(own)?.[1];
   expect(path).toBeDefined();
   return `/sys/fs/cgroup${path}`;
 }
@@ -265,7 +270,7 @@ async function status(world: MonitoringWorld): Promise<string | undefined> {
 Given(
   'the pinned T3 Code server runs there in the user manager of {string}',
   async (world, user: string) => {
-    expect(user).toBe('ubuntu');
+    expect(user).toBe(USER);
     const box = await agentBox();
     box.sessions ??= prepare(box.container);
     await box.sessions;

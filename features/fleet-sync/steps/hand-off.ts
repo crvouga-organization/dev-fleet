@@ -1,4 +1,5 @@
 import { expect } from 'bun:test';
+import { Command } from 'commander';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fleetSync as runFleetSync } from '../../../src/cli/fleet-sync';
@@ -12,6 +13,9 @@ import {
   forwardToManager,
   managerCommand,
 } from '../../../src/cli/fleet-sync-forward';
+import { GLOBAL_OPTIONS } from '../../../src/cli/program';
+import { registerFleet } from '../../../src/cli/register-fleet';
+import { shellQuote } from '../../../src/ssh';
 import type { RevisionSelection } from '../../../src/revision-selection';
 import { failed, succeeded } from '../../support/commands';
 import type { DataTable } from '../../support/gherkin';
@@ -113,6 +117,64 @@ Then(
 Then('the manager is asked for exactly {string}', (world, text: string) => {
   expect(world.forwarded).toEqual(text.split(' '));
 });
+
+/** What the login shell on the manager ends up running, written as the SSH
+ * command carries it: every word quoted, after the environment and the guard.
+ */
+function ends(command: string[] | undefined, text: string): void {
+  const run = `exec ${text.split(' ').map(shellQuote).join(' ')}`;
+  expect(command?.at(-1)).toBe(
+    `exec /bin/zsh -lc ${shellQuote(`export PERSONAL_FLEET_NO_FORWARD=1; ${run}`)}`
+  );
+}
+
+Then('the manager is asked to run exactly {string}', (world, text: string) => {
+  ends(world.command, text);
+});
+
+Then('the manager was asked to run exactly {string}', (world, text: string) => {
+  expect(world.spawned).toHaveLength(1);
+  ends(world.spawned[0], text);
+});
+
+// ── Every option of the command line ─────────────────────────────────────
+
+When(
+  'the options the {string} command line offers are handed off by a worker',
+  (world, name: string) => {
+    const program = new Command();
+    for (const option of GLOBAL_OPTIONS)
+      program.option(option.flag, option.description);
+    registerFleet(program, world.settings, () => undefined);
+    const command = program.commands.find((entry) => entry.name() === name)!;
+    world.answer = [...program.options, ...command.options]
+      .map((option) => option.long!)
+      .sort();
+  }
+);
+
+Then(
+  'each option reaches the manager like this:',
+  (world, table: DataTable) => {
+    const rows = table.hashes();
+    expect(rows.map((row) => row['option'])).toEqual(world.answer as string[]);
+    for (const row of rows) {
+      const given = row['started on a worker with']!;
+      const asked = row['the manager is asked for']!;
+      // The option is in the request it is said to be handed off from.
+      expect(given.split(' ')).toContain(row['option']!);
+      const forwarded = forwardedFlags(
+        request(`fleet-sync ${given}`),
+        undefined
+      );
+      if (asked.startsWith('--')) expect(forwarded).toEqual(asked.split(' '));
+      else {
+        expect(asked).toMatch(/^nothing: \S/);
+        expect(forwarded).toEqual([]);
+      }
+    }
+  }
+);
 
 // ── What the hand-off, or the run from a checkout, answers ───────────────
 

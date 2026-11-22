@@ -126,13 +126,13 @@ Feature: A worker refuses agent sessions above a limit its fleet declares
     Scenario Outline: A launcher started <where> is never refused
       T3 asks a launcher for its version and its models from its own unit,
       outside any scope: those must answer whatever runs.
-      Given a launcher started in the cgroup "<cgroup>"
+      Given a launcher started in the cgroup "<cgroup>" of the user manager
       And the kernel limit beside it reads "1"
       When the launcher asks whether it may start
       Then the launcher starts its agent
 
       Examples:
-        | where                         | cgroup                                                                                                         |
-        | by T3's own unit              | /user.slice/user-1000.slice/user@1000.service/app.slice/t3code-headless.service                                |
-        | in the slice T3 probes in     | /user.slice/user-1000.slice/user@1000.service/app.slice/app-t3code.slice/app-t3code-agents.slice/t3code-opencode-service-00000001.scope |
-        | from a terminal session       | /user.slice/user-1000.slice/session-3.scope                                                                    |
+        | where                     | cgroup                                                                                   |
+        | by T3's own unit          | app.slice/t3code-headless.service                                                        |
+        | in the slice T3 probes in | app.slice/app-t3code.slice/app-t3code-agents.slice/t3code-opencode-service-00000001.scope |
+        | from a terminal           | app.slice/app-org.gnome.Terminal.slice/vte-spawn-00000001.scope                           |

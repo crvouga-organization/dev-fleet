@@ -1,4 +1,4 @@
-import { enrolledRoster } from '../definition';
+import { enrolledRoster } from '../enrolled-roster';
 import { selectNodes } from '../config';
 import { fleet as definition } from '../fleet-config';
 import { bundleProbe } from '../transport';

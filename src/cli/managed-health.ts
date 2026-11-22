@@ -2,7 +2,7 @@ import { verifyT3Linked } from '../t3-linked-check';
 import { verifyT3Endpoint } from '../t3-endpoint';
 import type { Check, NodeReport, Runner } from '../types';
 import { fleet as definition } from '../fleet-config';
-import { enrolledRoster } from '../definition';
+import { enrolledRoster } from '../enrolled-roster';
 import { readParked } from '../state/workers';
 import type { Tailnet } from '../tailscale';
 import type { FleetNode } from '../types';

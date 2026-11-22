@@ -62,9 +62,10 @@ export interface Operation {
 }
 
 /** Read-only. Prints whether the lock is held, whether the recorded process
- * runs, the operation record and its result, one per line. Holding the lock
- * for a moment to test it is not possible while another holds it, and takes
- * nothing from anyone when nobody does.
+ * runs, the operation record and its result, one per line. The lock can only
+ * be tested by taking it: that is not possible while another holds it, and
+ * lasts an instant when nobody does. An operation that starts in that instant
+ * waits for the lock (LOCK_WAIT_SECONDS in remote-lock.ts) and is not refused.
  */
 export const OPERATION_PROBE = [
   'r="$HOME/.local/share/personal/fleet"',

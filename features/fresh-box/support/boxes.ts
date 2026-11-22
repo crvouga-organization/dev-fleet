@@ -11,6 +11,7 @@ import {
 import { runCommand } from '../../../src/runner';
 import { sshArgs } from '../../../src/ssh';
 import type { Check, FleetNode, Runner } from '../../../src/types';
+import { buildImage } from './image';
 
 /** Disposable Ubuntu machines for the fresh-box features. Creating and
  * bootstrapping one is slow, so each is made once per run, by name, and every
@@ -157,20 +158,38 @@ async function authorize(container: string, name: string): Promise<void> {
   );
 }
 
+/** The image every machine is made from, built once: tried again when the
+ * build fails, and a failure of the runner when it still does (./image.ts).
+ */
+export function freshImage(): Promise<void> {
+  built ??= buildImage(async () => {
+    const result = await runCommand(
+      [
+        'docker',
+        'build',
+        '-q',
+        '--build-arg',
+        `RELEASE=${RELEASE_UNDER_TEST}`,
+        '-t',
+        image,
+        '-f',
+        'features/fresh-box/Dockerfile',
+        'features/fresh-box',
+      ],
+      { cwd: repo, timeoutMs: 300_000 }
+    );
+    if (!result.ok)
+      // Docker's own last words: a registry, an archive or the daemon.
+      console.log(
+        `The image build failed:\n${result.stderr.trim().split('\n').slice(-15).join('\n')}`
+      );
+    return result.ok;
+  });
+  return built;
+}
+
 async function createBox(name: string, options: BoxOptions): Promise<Box> {
-  built ??= must([
-    'docker',
-    'build',
-    '-q',
-    '--build-arg',
-    `RELEASE=${RELEASE_UNDER_TEST}`,
-    '-t',
-    image,
-    '-f',
-    'features/fresh-box/Dockerfile',
-    'features/fresh-box',
-  ]).then(() => undefined);
-  await built;
+  await freshImage();
   const container = `fleet-${name}-${process.pid}`;
   await must([
     'docker',
@@ -348,7 +367,10 @@ export async function waitFor(
   return false;
 }
 
-/** Whether a fleet operation holds the machine's remote operation lock. */
+/** Whether a fleet operation holds the machine's remote operation lock. Like
+ * the manager's own look, this takes the lock for an instant when nobody
+ * holds it; an operation that starts just then waits for it.
+ */
 export async function lockHeld(machine: Box): Promise<boolean> {
   return !(
     await asRoot(

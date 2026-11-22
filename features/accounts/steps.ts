@@ -34,6 +34,7 @@ import {
   proxyVerdict,
   sessionResult,
   type Instance,
+  type SessionOutcome,
   type SessionResult,
 } from '../../src/accounts/sessions';
 import { fleetAccounts } from '../../src/cli/fleet-accounts';
@@ -75,13 +76,15 @@ export class AccountsWorld extends World {
   relayEnv: NodeJS.ProcessEnv = {};
   relayed?: { args: string[] } | null;
   // Sessions
-  sessions: Record<string, SessionResult> = {};
+  sessions: Record<string, SessionOutcome> = {};
+  /** The clock a cooldown is read against; the real one when unset. */
+  clock?: number;
   sessionsRun: string[] = [];
   result?: SessionResult;
   /** How the launcher of each account's session ends. */
   launched: Record<string, CommandResult> = {};
   /** What the proxy answers a request for one account's model. */
-  proxyAnswer?: { status: number; body: string };
+  proxyAnswer?: { status: number; body: string; headers?: HeadersInit };
   /** The models the proxy was asked for directly. */
   asked: string[] = [];
   cache?: string;
@@ -659,9 +662,13 @@ When('this node checks that it reaches the proxy', async (world) => {
 
 Given('the sessions answer:', (world, table: DataTable) => {
   world.sessions = Object.fromEntries(
-    table
-      .hashes()
-      .map((row) => [row['account']!, row['result'] as SessionResult])
+    table.hashes().map((row) => [
+      row['account']!,
+      {
+        result: row['result'] as SessionResult,
+        ...(row['clears'] ? { clears: row['clears'] } : {}),
+      },
+    ])
   );
 });
 
@@ -675,6 +682,24 @@ When('the account sessions are checked', async (world) => {
     }
   );
 });
+
+Then(
+  'the summary of the check {string} is {string}',
+  (world, id: string, summary: string) => {
+    expect(named(world, id).summary).toBe(summary);
+  }
+);
+
+Given('the time is {string}', (world, at: string) => {
+  world.clock = Date.parse(at);
+});
+
+Given(
+  /^that answer carries the header "([^":]+): (.*)"$/,
+  (world, name: string, value: string) => {
+    world.proxyAnswer!.headers = { [name]: value };
+  }
+);
 
 Then('the checks are:', (world, table: DataTable) => {
   expect(world.checks.map((check) => `${check.id} ${check.status}`)).toEqual(
@@ -736,6 +761,7 @@ When("this node's account sessions are verified", async (world) => {
     (_command, options) =>
       world.launched[options?.env?.['WS_AGENT_ACCOUNT'] ?? ''] ?? failed()
   );
+  const now = () => world.clock ?? Date.now();
   const send = (async (_url: string, init: RequestInit) => {
     world.asked.push(
       (JSON.parse(String(init.body)) as { model: string }).model
@@ -743,6 +769,9 @@ When("this node's account sessions are verified", async (world) => {
     if (!world.proxyAnswer) throw new TypeError('The proxy does not answer.');
     return new Response(world.proxyAnswer.body, {
       status: world.proxyAnswer.status,
+      ...(world.proxyAnswer.headers
+        ? { headers: world.proxyAnswer.headers }
+        : {}),
     });
   }) as unknown as typeof fetch;
   const checks = await verifyNativeAgents(
@@ -758,7 +787,8 @@ When("this node's account sessions are verified", async (world) => {
         exposed: world.exposed,
         rosterVersion: liveVersion(live),
         keyVersion: 'key-1',
-        consult: (account) => proxyVerdict(account, 'client-key', send),
+        consult: (account) => proxyVerdict(account, 'client-key', send, now),
+        now,
       },
     }
   );
