@@ -6,6 +6,7 @@ import './replication';
 import './documents';
 import './fleet-state';
 import './fleet-sync';
+import './worker-copy';
 import './litestream';
 import './lifecycle';
 
