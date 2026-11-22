@@ -20,10 +20,18 @@ const UNIT = '/etc/systemd/system/beszel-agent.service';
 interface Box {
   container: string;
   installed?: Promise<void>;
+  /** The T3 server and its user manager (steps/session-box.ts). */
+  sessions?: Promise<void>;
 }
 let box: Promise<Box> | undefined;
 
-async function must(command: string[], timeoutMs = 600_000): Promise<string> {
+/** The feature's machine, once a scenario's background has asked for it. */
+export const agentBox = (): Promise<Box> => box!;
+
+export async function must(
+  command: string[],
+  timeoutMs = 600_000
+): Promise<string> {
   const result = await runCommand(command, { cwd: root, timeoutMs });
   if (!result.ok)
     throw new Error(
@@ -33,7 +41,7 @@ async function must(command: string[], timeoutMs = 600_000): Promise<string> {
 }
 
 /** A command on the machine, as root. */
-const on = (container: string, command: string) =>
+export const on = (container: string, command: string) =>
   runCommand(['docker', 'exec', container, 'sh', '-c', command], {
     timeoutMs: 600_000,
   });

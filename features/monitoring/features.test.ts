@@ -3,6 +3,7 @@ import { runFeatures } from '../support/gherkin';
 import { MonitoringWorld, monitoring } from './steps/world';
 import { discardAgentBox } from './steps/agent-box';
 import './steps/agents';
+import './steps/session-box';
 import './steps/hub';
 import './steps/backups';
 import './steps/watchdog';

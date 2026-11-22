@@ -68,14 +68,13 @@ function userShare(): number {
 
 /** How many agent sessions run side by side within the memory policy:
  * what user workloads may use, less what T3 keeps for itself, in sessions
- * of the estimated size `sizing.agentSessionMiB`. Never below zero.
+ * of the estimated size `sizing.agentSessionMiB` plus a build, or of the
+ * size given (a measured one). Never below zero.
  */
-export function supportedSessions(memoryMiB: number): number {
+export function supportedSessions(
+  memoryMiB: number,
+  eachMiB = policy.sizing.agentSessionMiB + policy.sizing.agentBuildMiB
+): number {
   const usable = memoryMiB * userShare() - policy.sizing.t3ReservedMiB;
-  return Math.max(
-    0,
-    Math.floor(
-      usable / (policy.sizing.agentSessionMiB + policy.sizing.agentBuildMiB)
-    )
-  );
+  return Math.max(0, Math.floor(usable / eachMiB));
 }

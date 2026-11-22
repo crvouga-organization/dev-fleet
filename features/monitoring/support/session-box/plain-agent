@@ -1,0 +1,7 @@
+#!/bin/sh
+# T3's binaryPath for the provider that starts agents with no fleet launcher:
+# it asks nothing and waits, as a provider someone added by hand would.
+case "$(cat /proc/self/cgroup)" in
+*/t3code-*.scope) echo 1 >>/var/tmp/session-box/plain ;;
+esac
+exec sleep 3600
