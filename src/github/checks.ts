@@ -4,6 +4,7 @@ import type { Check, Runner } from '../types';
 import { githubCredential } from './credential';
 import { githubNode, githubPolicy, type GithubNode } from './policy';
 import { activeToken, GITHUB_STEP_TIMEOUT_MS } from './sync';
+import { fleetJson } from '../fleet-config';
 
 export interface GithubCheckInput {
   definition: FleetDefinition;
@@ -404,8 +405,7 @@ async function gitCredential(run: Runner): Promise<Check> {
       ? {}
       : {
           remedy: {
-            action:
-              'Declare the git block in fleet.json and run fleet-sync: ansible/github/git.yml sets gh as the credential helper. On a manager with a personal login, run gh auth setup-git.',
+            action: `Declare the git block in ${fleetJson()} and run fleet-sync: ansible/github/git.yml sets gh as the credential helper. On a manager with a personal login, run gh auth setup-git.`,
           },
         }),
   };

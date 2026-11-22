@@ -1,7 +1,7 @@
 import type { Command } from 'commander';
 import { hostname } from 'node:os';
 import { FleetUsageError } from '../errors';
-import { fleet } from '../fleet-config';
+import { fleet, fleetJson } from '../fleet-config';
 import { githubPolicy } from '../github/policy';
 import { verifyGithubWorkflow } from '../github/workflow';
 import { runCommand } from '../runner';
@@ -19,7 +19,7 @@ export async function githubVerify(
   const sandbox = githubPolicy(fleet).sandbox;
   if (!sandbox)
     throw new FleetUsageError(
-      'No sandbox repository. Declare github.sandbox ("owner/name") in fleet.json: a repository the fleet login may branch, push to and open pull requests on.'
+      `No sandbox repository. Declare github.sandbox ("owner/name") in ${fleetJson()}: a repository the fleet login may branch, push to and open pull requests on.`
     );
   const result = await verifyGithubWorkflow({ run, sandbox, node });
   const ok = result.check.status === 'pass';

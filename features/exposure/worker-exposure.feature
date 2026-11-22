@@ -138,7 +138,12 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
       When the exposure of the worker is checked
       Then the check fails
 
-  Rule: An agent's development server is reported by the declared policy
+  Rule: What an agent started is reported apart from the fleet's services
+    T3 starts each agent in a scope of its own, `t3code-<agent>-<id>.scope`.
+    A development server an agent leaves on every address is no fault of a
+    fleet unit and fleet-sync does not change it: it has its own code and
+    remedy, and warns or fails by the declared policy like any listener that
+    is not the fleet's.
 
     Scenario Outline: A development server on every address <verdict> when other listeners are "<policy>"
       Given the exposure policy is:
@@ -146,17 +151,50 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
         {"otherListeners": "<policy>"}
         """
       And these sockets listen:
-        | protocol | address | port | unit                           |
-        | tcp      | 0.0.0.0 | 22   | ssh.service                    |
-        | tcp      | 0.0.0.0 | 5173 | t3code-agent-7f3a.scope        |
+        | protocol | address | port | unit                         |
+        | tcp      | 0.0.0.0 | 22   | ssh.service                  |
+        | tcp      | 0.0.0.0 | 5173 | t3code-claude-7fd17cb0.scope |
       When the exposure of the worker is checked
       Then the check <verdict>
-      And the summary of the check is "WORKER_LISTENER_UNRESTRICTED tcp 0.0.0.0:5173 (t3code-agent-7f3a.scope)"
+      And the summary of the check is "WORKER_AGENT_LISTENER_UNRESTRICTED tcp 0.0.0.0:5173 (t3code-claude-7fd17cb0.scope)"
+      And the remedy of the check contains "It is no fleet service and fleet-sync does not change it"
+      And the remedy of the check does not contain "fault of its unit"
 
       Examples:
         | policy | verdict |
         | warn   | warns   |
         | fail   | fails   |
+
+    Scenario: A fleet service and an agent's server are named apart, each with its remedy
+      The fleet service fails the check; the agent's server is listed after
+      it under its own code, so neither is taken for the other.
+      Given the exposure policy is:
+        """
+        {"otherListeners": "warn"}
+        """
+      And these sockets listen:
+        | protocol | address | port | unit                              |
+        | tcp      | 0.0.0.0 | 3773 | app-com.t3tools.T3Code-4242.scope |
+        | tcp      | 0.0.0.0 | 5173 | t3code-claude-7fd17cb0.scope      |
+        | tcp      | ::      | 8080 | t3code-codex-4d7f36df.scope       |
+      When the exposure of the worker is checked
+      Then the check fails
+      And the summary of the check is "WORKER_LISTENER_UNRESTRICTED tcp 0.0.0.0:3773 (app-com.t3tools.T3Code-4242.scope); WORKER_AGENT_LISTENER_UNRESTRICTED tcp 0.0.0.0:5173 (t3code-claude-7fd17cb0.scope), tcp [::]:8080 (t3code-codex-4d7f36df.scope)"
+      And the remedy of the check contains "A fleet service on a public address is a fault of its unit"
+      And the remedy of the check contains "Have the agent bind it to 127.0.0.1"
+
+    Scenario: A listener that neither the fleet nor an agent owns keeps the general code
+      Given the exposure policy is:
+        """
+        {"otherListeners": "warn"}
+        """
+      And these sockets listen:
+        | protocol | address | port | unit                         |
+        | tcp      | 0.0.0.0 | 3389 | gnome-remote-desktop.service |
+        | tcp      | 0.0.0.0 | 5173 | t3code-claude-7fd17cb0.scope |
+      When the exposure of the worker is checked
+      Then the check warns
+      And the summary of the check is "WORKER_LISTENER_UNRESTRICTED tcp 0.0.0.0:3389 (gnome-remote-desktop.service); WORKER_AGENT_LISTENER_UNRESTRICTED tcp 0.0.0.0:5173 (t3code-claude-7fd17cb0.scope)"
 
     Scenario: A port the policy opens may listen on every address
       Given the exposure policy is:
@@ -164,8 +202,8 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
         {"otherListeners": "fail", "publicPorts": [{"protocol": "tcp", "port": 5173}]}
         """
       And these sockets listen:
-        | protocol | address | port | unit                    |
-        | tcp      | 0.0.0.0 | 5173 | t3code-agent-7f3a.scope |
+        | protocol | address | port | unit                         |
+        | tcp      | 0.0.0.0 | 5173 | t3code-claude-7fd17cb0.scope |
       When the exposure of the worker is checked
       Then the check passes
 

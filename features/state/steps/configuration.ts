@@ -6,6 +6,7 @@ import {
   configPath,
   definitionSource,
   fleet,
+  fleetJson,
   installConfig,
   reloadFleet,
 } from '../../../src/fleet-config';
@@ -94,6 +95,16 @@ Given('the process is the devfleet CLI', (world) => {
   actAsOperator((root) => readDocument(databasePath(root), 'definition'));
   world.defer(() => actAsOperator(null));
 });
+Given('the process is passed no fleet.json of its own', (world) => {
+  const before = process.env['DEVFLEET_CONFIG'];
+  delete process.env['DEVFLEET_CONFIG'];
+  reloadFleet();
+  world.defer(() => {
+    if (before === undefined) delete process.env['DEVFLEET_CONFIG'];
+    else process.env['DEVFLEET_CONFIG'] = before;
+    reloadFleet();
+  });
+});
 Then('the process is not the devfleet CLI', () => {
   expect(isOperator()).toBe(false);
 });
@@ -150,6 +161,31 @@ Then(
   (world, name: string | undefined, path: string) => {
     const manager = world.manager(name);
     expect(manager.env['DEVFLEET_CONFIG']).toBe(world.expand(path, manager));
+  }
+);
+
+// ── How a remedy names fleet.json ────────────────────────────────────────
+
+Then(
+  phrase('a remedy on ', WHO, ' names "([^"]+)"'),
+  (world, name: string | undefined, text: string) => {
+    const manager = world.manager(name);
+    expect(fleetJson(manager.env, manager.home)).toBe(
+      text.replace('(~/', `(${manager.home}/`)
+    );
+  }
+);
+Then(
+  phrase(
+    'a remedy on ',
+    WHO,
+    ' names the project the fleet is synced from, and not the copy at "([^"]+)"'
+  ),
+  (world, name: string | undefined, path: string) => {
+    const manager = world.manager(name);
+    expect(fleetJson(manager.env, manager.home)).toBe(
+      `fleet.json (the one in the project the fleet is synced from, on the manager; not ${world.expand(path, manager)}, the copy fleet-sync installs from it)`
+    );
   }
 );
 

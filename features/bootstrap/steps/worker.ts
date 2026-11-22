@@ -249,6 +249,8 @@ const watchdog = part((world) => ({
   running: '',
   installed: '',
   idle: true,
+  /** The hours the recovery unit declares a restart is deferred at most. */
+  deferral: undefined as number | undefined,
   output: '',
 }));
 const log = (world: BootstrapWorld): string =>
@@ -309,6 +311,9 @@ function watch(world: BootstrapWorld): number {
         XDG_RUNTIME_DIR: directory,
         HOME: directory,
         T3_DESKTOP_DIR: app,
+        ...(state.deferral === undefined
+          ? {}
+          : { T3_RESTART_MAX_DEFERRAL_HOURS: String(state.deferral) }),
       },
     }
   );
@@ -376,6 +381,23 @@ Given(/^T3 runs (no|an) agent turn$/, (world, turn: string) => {
 Given('a restart for the staged policy is pending', (world) => {
   writeFileSync(marker(world), '1800000000\n');
 });
+
+Given(
+  'a restart for the staged policy has been pending for {int} hours',
+  (world, hours: number) => {
+    writeFileSync(
+      marker(world),
+      `${Math.floor(Date.now() / 1000) - hours * 3600}\n`
+    );
+  }
+);
+
+Given(
+  'the recovery service defers a restart for {int} hours at most',
+  (world, hours: number) => {
+    watchdog(world).deferral = hours;
+  }
+);
 
 Given(/^the watchdog has run (\d+) times?$/, (world, times: number) => {
   for (let run = 0; run < Number(times); run++) watch(world);

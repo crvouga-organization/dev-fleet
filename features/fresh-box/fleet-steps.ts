@@ -451,6 +451,39 @@ Given(
   }
 );
 
+const INSTALLED_COPY = '/home/fleettest/.config/dev-fleet/fleet.json';
+/** The key a person adds by hand: the copy stays readable JSON. */
+const EDIT = 'edited-by-hand';
+
+Given(
+  'the copy of the fleet configuration on {string} was edited there',
+  async (world, name: string) => {
+    const machine = named(world, name);
+    world.machine = machine;
+    // Removed afterwards with its record: the next run installs both anew.
+    world.defer(async () => {
+      await asRoot(machine, `rm -f ${INSTALLED_COPY} ${INSTALLED_COPY}.sha256`);
+    });
+    const edited = await asRoot(
+      machine,
+      `test -f ${INSTALLED_COPY}.sha256 && sed -i '1s/^{/{ "${EDIT}": true,/' ${INSTALLED_COPY}`,
+      60_000,
+      'fleettest'
+    );
+    expect(edited.ok).toBe(true);
+  }
+);
+
+Then(
+  'the edit is still in the copy of the fleet configuration on {string}',
+  async (world, name: string) => {
+    expect(
+      (await remote(named(world, name), `grep -c ${EDIT} ${INSTALLED_COPY}`))
+        .stdout
+    ).toBe('1');
+  }
+);
+
 When('the manager bootstraps {string}', async (world, name: string) => {
   world.machine = named(world, name);
   world.bootstrap = await bootstrap(world.machine);

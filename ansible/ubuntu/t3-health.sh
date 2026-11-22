@@ -14,8 +14,12 @@
 # - Stopped or failed: reset its start limit and start it.
 # - Running but its local API has not answered for three checks in a row:
 #   restart it, since a hung server serves no turns.
-# - Running another release than the installed one, or a policy restart that
-#   was deferred: restart it once it runs no agent turn (T3_RESTART_PENDING).
+# - Running another release than the installed one, or a restart a play
+#   deferred: restart it once it runs no agent turn (T3_RESTART_PENDING). A
+#   busy worker is never idle, so the wait is bounded: the restart is applied
+#   T3_RESTART_MAX_DEFERRAL_HOURS (policy.json) after it was first deferred
+#   although agent turns run, and they end (T3_RESTART_DEADLINE). T3 has no
+#   way to stop accepting turns first.
 set -u
 if [ -f /run/personal-fleet-pressure-guard/active ]; then
   echo "Deferring T3 recovery while the worker is under sustained pressure."
@@ -72,7 +76,8 @@ fi
 rm -f "$no_session" "$display_restarts"
 
 if ! systemctl --user is-active --quiet "$unit"; then
-  rm -f "$failures"
+  # A T3 that starts loads everything staged: no restart is pending after it.
+  rm -f "$failures" "$pending"
   echo "T3 is not running; starting it."
   systemctl --user reset-failed "$unit" 2>/dev/null
   exec systemctl --user start "$unit"
@@ -86,7 +91,7 @@ if ! environment=$(curl --fail --silent --max-time 10 "$url"); then
   failed=$(count "$failures")
   echo "T3 local API did not answer ($failed/$limit)."
   if [ "$failed" -ge "$limit" ]; then
-    rm -f "$failures"
+    rm -f "$failures" "$pending"
     echo "T3 is unresponsive; restarting it."
     systemctl --user reset-failed "$unit" 2>/dev/null
     exec systemctl --user restart "$unit"
@@ -116,12 +121,32 @@ else
   rm -f "$restarted"
 fi
 [ -z "$reason" ] && exit 0
-if python3 -I -B "$here/t3-idle.py" --state "${T3CODE_HOME:-$HOME/.t3}/userdata/statev2.sqlite"; then
+restart() {
   rm -f "$pending"
   [ "$reason" = "release $release" ] && echo "$release" > "$restarted"
-  echo "T3 runs no agent turn; restarting it to load $reason."
+  echo "$1"
   systemctl --user reset-failed "$unit" 2>/dev/null
   exec systemctl --user restart "$unit"
+}
+if python3 -I -B "$here/t3-idle.py" --state "${T3CODE_HOME:-$HOME/.t3}/userdata/statev2.sqlite"; then
+  restart "T3 runs no agent turn; restarting it to load $reason."
 fi
-echo "T3_RESTART_PENDING: agent turns are running; $reason loads at the first idle check."
+# The deadline counts from the second the restart was first deferred: the
+# play records it (tasks/t3-restart.yml), and this check does when it is the
+# first to defer. A time that cannot be read, or lies ahead, counts from now.
+now=$(date +%s)
+since=$(cat "$pending" 2>/dev/null)
+case "$since" in '' | 0* | *[!0-9]*) since=$((now + 1)) ;; esac
+if [ "$since" -gt "$now" ]; then
+  since=$now
+  echo "$since" > "$pending"
+fi
+waited=$((now - since))
+hours="${T3_RESTART_MAX_DEFERRAL_HOURS:-}"
+case "$hours" in '' | 0* | *[!0-9]*) hours= ;; esac
+spent="$((waited / 3600))h $((waited % 3600 / 60))m"
+if [ -n "$hours" ] && [ "$waited" -ge $((hours * 3600)) ]; then
+  restart "T3_RESTART_DEADLINE: $reason has waited $spent, the $hours hours a restart is deferred at most; restarting T3 although agent turns are running. They end."
+fi
+echo "T3_RESTART_PENDING: agent turns are running; $reason has waited $spent and loads at the first idle check${hours:+, or $hours hours after it was first deferred}."
 exit 0

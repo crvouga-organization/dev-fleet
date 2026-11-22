@@ -7,13 +7,22 @@ export type Account = {
   email: string;
   /** Models named `<prefix>/<model>` are served only by this account. */
   prefix: string;
-  /** Every model the account serves, preferred default first. */
+  /** Every model the account serves. Its default comes first: the first of
+   * the tool's preferred defaults it serves, else its first model by name.
+   */
   models: string[];
 };
 
 type Route = { provider: string; models: string[] };
 const ROUTES = registry.proxy.accounts as Record<string, Route>;
 const EMAIL = /^[^\s@/]{1,64}@[^\s@/]{1,255}$/;
+
+/** The models an account of the tool should default to, best first. Accounts
+ * of one tool are not entitled to the same models, so the list is an order
+ * and not one model.
+ */
+export const preferredModels = (tool: string): string[] =>
+  ROUTES[tool]?.models ?? [];
 
 /** Stable file and instance name for an account. */
 export const accountSlug = (value: string): string =>

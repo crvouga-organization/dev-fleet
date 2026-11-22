@@ -51,7 +51,9 @@ Feature: fleet-sync --dry-run says what a sync would change, and changes nothing
 
     Scenario: A pending T3 bump restarts T3 once it is idle, so no running agent turn ends
       A worker's T3 restarts only while it runs no agent turn; a busy one
-      keeps its turns and the restart stays pending until it is idle.
+      keeps its turns and the restart stays pending until it is idle, for
+      the 24 hours the policy allows at most: a worker that is never idle
+      restarts then, and the plan says that its turns end.
       Given the revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" pins, in its mise.toml:
         """
         [tools]
@@ -71,11 +73,12 @@ Feature: fleet-sync --dry-run says what a sync would change, and changes nothing
       And the plan restarts exactly:
         | service | ends running turns |
         | t3      | no                 |
+      And the restart of "t3" in the plan has a deadline of 24 hours
       And the plan prints:
         """
         Plan: aaaaaaaaaaaa → bbbbbbbbbbbb on worker-one.
           t3 0.1.8-nightly.20261106.4262 → 0.1.9
-          Restarts t3: T3 is upgraded on every worker and restarted once it runs no agent turn: running turns keep going and the restart is pending until then.
+          Restarts t3: T3 is upgraded on every worker and restarted once it runs no agent turn: running turns keep going and the restart is pending until then, for 24 hours at most. Turns still running at that deadline end.
         """
 
     Scenario: With --restart-busy, the plan says that running agent turns end
@@ -95,6 +98,7 @@ Feature: fleet-sync --dry-run says what a sync would change, and changes nothing
       Then the plan restarts exactly:
         | service | ends running turns |
         | t3      | yes                |
+      And the restart of "t3" in the plan has no deadline
       And the plan prints:
         """
         Plan: aaaaaaaaaaaa → bbbbbbbbbbbb on worker-one.

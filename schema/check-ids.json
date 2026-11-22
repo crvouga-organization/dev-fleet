@@ -1722,7 +1722,7 @@
     },
     {
       "id": "t3:running-version",
-      "meaning": "The running T3 server is the installed release; a restart the release needs waits for running agent turns.",
+      "meaning": "The running T3 server is the installed release and no restart of it is pending; a pending restart waits for running agent turns, until its deadline.",
       "severity": "required",
       "repair": {
         "manual": "A worker’s first T3 pairing and its private route are approved by a person; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest."
@@ -1949,7 +1949,7 @@
     },
     {
       "id": "worker:agent-sessions",
-      "meaning": "How many agent sessions this worker runs, and how many its memory policy supports at the estimated size of a session; warns when more run.",
+      "meaning": "How many agent sessions this worker runs, and how many its memory policy supports at the estimated size of a session; warns when more run. Nothing refuses a session above that number: T3 Code has no limit on the sessions it starts.",
       "severity": "required",
       "repair": {
         "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
@@ -2408,6 +2408,14 @@
       }
     },
     {
+      "id": "worker:t3-deadline-restarts",
+      "meaning": "No pending restart of T3 reached its deadline in the last 24 hours: none ended running agent turns.",
+      "severity": "advisory",
+      "repair": {
+        "manual": "It reports a restart that already happened and ended agent turns: nothing is left to repair, the threads continue with their next message."
+      }
+    },
+    {
       "id": "worker:t3-health",
       "meaning": "T3 local API answers with its environment identity within 10 seconds.",
       "severity": "required",
@@ -2417,7 +2425,7 @@
     },
     {
       "id": "worker:t3-protection",
-      "meaning": "The T3 listener has its CPU, I/O and memory reserve.",
+      "meaning": "The T3 listener has its CPU, I/O and memory reserve; fails naming the reserve it lacks, or as unobserved while nothing listens on the T3 port.",
       "severity": "required",
       "repair": {
         "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
