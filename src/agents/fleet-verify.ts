@@ -2,6 +2,9 @@ import { providerFailureCode } from './provider-errors';
 import { verifyRoundTrip } from './round-trip';
 import { proxyKey } from './secrets';
 import type { Check } from '../types';
+import { fleet, secret } from '../fleet-config';
+import type { SecretsProvider } from '../secrets';
+import { blockedBySecretsLogin, secretsFault } from '../secrets-blocked';
 import { registry, type Selection } from './registry';
 import { verifyProvider } from './verify';
 import { fileURLToPath } from 'node:url';
@@ -25,21 +28,34 @@ const VERIFIER_SOURCES = ['fleet-verify.ts', 'verify.ts', 'round-trip.ts'].map(
  */
 export async function verifyFleetProviders(
   node: string,
-  cache: VerifyCache = {}
+  cache: VerifyCache = {},
+  /** The node's secrets and where it keeps the last key they gave. */
+  from: { secrets?: SecretsProvider; lastKey?: string } = {}
 ): Promise<Check[]> {
+  const secrets = from.secrets ?? secret;
   let key: string;
   try {
-    key = await proxyKey();
+    key = await proxyKey({
+      read: () => secrets('proxy-client-key'),
+      ...(from.lastKey ? { path: from.lastKey } : {}),
+    });
   } catch {
-    return Object.keys(registry.proxy.routes).map((provider) => ({
+    // Neither the provider nor the last key it gave (src/agents/secrets.ts).
+    const absent = Object.keys(registry.proxy.routes).map((provider) => ({
       id: `provider:${provider}:authentication`,
-      status: 'fail',
+      status: 'fail' as const,
       summary: 'PROVIDER_UNATTENDED_CREDENTIAL_REQUIRED',
       remedy: {
         action:
           'Restore this node’s existing Vault authorization and renewal. No model requests or native OAuth login were attempted.',
       },
     }));
+    // The manager's login has an owner to name; a worker's is its own.
+    if (node !== fleet.manager.id) return absent;
+    const fault = await secretsFault(secrets);
+    return fault
+      ? absent.map(({ id, status }) => blockedBySecretsLogin(id, status, fault))
+      : absent;
   }
 
   // Warm runs reuse recent passes, but always prove this node's key still

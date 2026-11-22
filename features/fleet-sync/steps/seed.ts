@@ -24,7 +24,7 @@ import {
   type FleetSyncWorld,
 } from '../support/world';
 import { services } from './lifecycle';
-import { controlPlane, http } from './tailnet';
+import { controlPlane, controlSecrets, http } from './tailnet';
 
 /** fleet-node-seed, with ssh-keygen and the secrets provider answered here. */
 const { Given, When, Then } = fleetSync;
@@ -151,10 +151,7 @@ When(
             ? { ...definition, tailnet: controlPlane(world).config! }
             : definition,
         http: http(world),
-        secret: async (name) =>
-          name === 'tailnet-admin'
-            ? controlPlane(world).credential
-            : (seeding(world).secrets[name] ?? null),
+        secret: controlSecrets(world, seeding(world).secrets),
         home: seeding(world).directory,
       });
     } catch (error) {

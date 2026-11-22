@@ -8,7 +8,7 @@ import { verifyNativeAgents } from '../agents/native-verify';
 import { accountContext, nodeAccountChecks } from '../accounts/context';
 import { convergeManagerHub } from '../monitoring/manager-hub';
 import { enrollManagerMonitoring } from './fleet-sync-monitoring';
-import { installConfig } from '../fleet-config';
+import { installConfig, secretVia } from '../fleet-config';
 import { IDES } from '../ide';
 import { enabled, managerChecks } from '../ide/orchestrate';
 import { idesOf } from '../ide/definition';
@@ -99,7 +99,7 @@ export async function convergeManager(
       // for the token through the helper git.yml declared above.
       checks.push(
         ...(await attempt('github:sync', async () => [
-          await convergeGithub(input.workspace, run),
+          await convergeGithub(input.workspace, run, undefined, secretVia(run)),
         ]))
       );
       const providers = await attempt('provider:verification', () =>

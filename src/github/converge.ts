@@ -1,5 +1,7 @@
 import type { Check, Runner } from '../types';
 import type { GithubCode } from './sync';
+import type { SecretsProvider } from '../secrets';
+import { unreadSecret } from '../secrets-blocked';
 
 const CODES: GithubCode[] = [
   'GITHUB_OK',
@@ -30,7 +32,11 @@ const REMEDIES: Record<Exclude<GithubCode, 'GITHUB_OK'>, string> = {
 export async function convergeGithub(
   root: string,
   run: Runner,
-  node?: string
+  node?: string,
+  /** The manager's own secrets: a token the job found missing there may be
+   * one the manager could not read (src/secrets-blocked.ts).
+   */
+  secrets?: Pick<SecretsProvider, 'login'>
 ): Promise<Check> {
   const result = await run(
     ['bun', 'bootstrap/worker-github.ts', ...(node ? ['--node', node] : [])],
@@ -49,9 +55,9 @@ export async function convergeGithub(
       summary:
         'This node is signed in to GitHub as its declared login with the stored credential.',
     };
-  return {
+  const failure = {
     id: 'github:sync',
-    status: 'fail',
+    status: 'fail' as const,
     summary: code ?? 'GITHUB_SYNC_UNREPORTED',
     remedy: {
       action: code
@@ -59,4 +65,7 @@ export async function convergeGithub(
         : 'The GitHub sign-in job reported no result. Run bun bootstrap/worker-github.ts on this node to see its result line.',
     },
   };
+  return code === 'GITHUB_TOKEN_MISSING' && secrets
+    ? unreadSecret(secrets, failure)
+    : failure;
 }

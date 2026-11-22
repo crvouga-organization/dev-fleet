@@ -429,6 +429,8 @@ const vault = new WeakMap<
   FleetSyncWorld,
   {
     session: boolean;
+    /** Whether Vault itself answers, unsealed. */
+    reachable: boolean;
     loaded: boolean;
     applied: string[];
     /** The `data` of what looking the token up prints. */
@@ -445,6 +447,7 @@ function vaultOf(world: FleetSyncWorld) {
       world,
       (found = {
         session: true,
+        reachable: true,
         loaded: false,
         applied: [],
         token: undefined,
@@ -559,6 +562,11 @@ Given("the manager's Vault session has lapsed", (world) => {
   vaultOf(world).session = false;
 });
 
+Given('Vault does not answer the manager', (world) => {
+  vaultOf(world).session = false;
+  vaultOf(world).reachable = false;
+});
+
 Given("the manager's Vault renewal job is not loaded", (world) => {
   vaultOf(world).loaded = false;
 });
@@ -571,6 +579,10 @@ async function holdVault(world: FleetSyncWorld, apply: boolean) {
       state.session
         ? succeeded(state.token ? JSON.stringify({ data: state.token }) : '')
         : failed()
+  );
+  world.commands.answer(
+    (command) => command[0] === 'vault' && command[1] === 'status',
+    () => (state.reachable ? succeeded('{"sealed":false}') : failed())
   );
   world.commands.answer(
     (command) => command[0] === 'launchctl' && command[1] === 'print',

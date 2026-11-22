@@ -9,7 +9,15 @@ import {
 } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname } from 'node:path';
+import { verifyFleetProviders } from '../../../src/agents/fleet-verify';
 import { lastProxyKeyPath, proxyKey } from '../../../src/agents/secrets';
+import type { SecretsLogin } from '../../../src/secrets';
+import type { Check } from '../../../src/types';
+import {
+  SECRETS_FAULT,
+  secretsFault,
+  standInSecrets,
+} from '../../support/secrets';
 import { steps } from '../../support/gherkin';
 import { part, type AgentsWorld } from './world';
 
@@ -21,6 +29,8 @@ const node = part((world) => {
     home: undefined as string | undefined,
     provider: (async () => null) as () => Promise<string | null>,
     presented: undefined as string | undefined,
+    login: 'held' as SecretsLogin,
+    checks: [] as Check[],
   };
   world.defer(() =>
     state.home ? rm(state.home, { recursive: true, force: true }) : undefined
@@ -53,6 +63,39 @@ Given(
     const path = lastProxyKeyPath(await home(world));
     await mkdir(dirname(path), { recursive: true });
     await writeFile(path, `${key}\n`);
+  }
+);
+
+Given(SECRETS_FAULT, (world, fault: string) => {
+  node(world).login = secretsFault(fault);
+});
+
+When('the providers of {string} are verified', async (world, id: string) => {
+  const state = node(world);
+  state.checks = await verifyFleetProviders(
+    id,
+    {},
+    {
+      // The scenario's machine holds no key, in the provider or remembered.
+      secrets: standInSecrets(
+        () => null,
+        () => state.login
+      ),
+      lastKey: lastProxyKeyPath(await home(world)),
+    }
+  );
+});
+
+Then(
+  "every provider's authentication fails, saying {string}",
+  (world, summary: string) => {
+    const { checks } = node(world);
+    expect(checks.length).toBeGreaterThan(0);
+    for (const check of checks) {
+      expect(check.id).toMatch(/^provider:[a-z-]+:authentication$/);
+      expect(check.status).toBe('fail');
+      expect(check.summary).toBe(summary);
+    }
   }
 );
 

@@ -30,6 +30,47 @@ Feature: The manager's GitHub sign-in is checked like every worker's
     Then the check "github:principal" fails
     And the check "github:principal" says "GITHUB_LOGIN_MISMATCH"
 
+  Rule: A token the manager could not read is blocked by the manager's login, not missing
+    The manager reads the token with its own Vault session. A session that
+    lapsed, or a Vault that does not answer, has one owner; the GitHub checks
+    name it instead of asking for a token to be stored.
+
+    Background:
+      Given the fleet keeps its secrets with the "vault" provider
+      And the store gives the manager no "github-token"
+      And "manager-mac" is signed in with "TOKEN_A_PRIVATE_0001"
+      And the command "vault token lookup -address=https://vault.example.com -format=json" fails
+
+    Scenario Outline: The token cannot be compared while the manager <state>
+      Given the command "vault status -address=https://vault.example.com -format=json" <status>
+      When the GitHub checks run on the manager
+      Then the check "github:token-current" is skipped
+      And the check "github:token-current" says "SECRET_READ_BLOCKED by manager:vault-renewal"
+      And the remedy of the check "github:token-current" mentions "<remedy>"
+
+      Examples:
+        | state                      | status   | remedy                                                |
+        | is logged out of Vault     | succeeds | this machine is not logged in to the secrets provider |
+        | gets no answer from Vault  | fails    | logging in again does not help                        |
+
+    Scenario Outline: A sign-in job that found no token while the manager <state> leaves "github:sync" blocked
+      Given the command "vault status -address=https://vault.example.com -format=json" <status>
+      And the command "bun bootstrap/worker-github.ts" prints {"name":"dev-fleet-github","event":"job_finished","code":"GITHUB_TOKEN_MISSING","adopted":false}
+      When the GitHub sign-in of the manager is converged
+      Then the check "github:sync" fails
+      And the check "github:sync" says "SECRET_READ_BLOCKED by manager:vault-renewal"
+
+      Examples:
+        | state                     | status   |
+        | is logged out of Vault    | succeeds |
+        | gets no answer from Vault | fails    |
+
+    Scenario: A token Vault does not hold keeps the sign-in's own code
+      Given the command "vault token lookup -address=https://vault.example.com -format=json" succeeds
+      And the command "bun bootstrap/worker-github.ts" prints {"name":"dev-fleet-github","event":"job_finished","code":"GITHUB_TOKEN_MISSING","adopted":false}
+      When the GitHub sign-in of the manager is converged
+      Then the check "github:sync" says "GITHUB_TOKEN_MISSING"
+
   Rule: A manager with a personal login
 
     Background:

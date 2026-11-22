@@ -5,6 +5,7 @@ import { fleet as definition } from '../fleet-config';
 import { sshArgs, shellQuote } from '../ssh';
 import { resolveVaultConfig, usesVault } from '../vault-config';
 import { workerTokenLocation } from '../worker-credentials';
+import { vaultStatus, vaultTokenLookup } from '../secrets';
 import { runAnsible } from '../platform/ansible';
 import macos from '../../ansible/macos/policy.json';
 import { record } from '../config';
@@ -43,6 +44,13 @@ export async function authorizeManager(
   if (!usesVault()) return true;
   if ((await run(lookup(), { timeoutMs: 20_000 })).ok) return true;
   if (!options.interactive) return false;
+  // A Vault that does not answer takes no login: the prompt would fail too.
+  if (!(await run(status(), { timeoutMs: 20_000 })).ok) {
+    process.stderr.write(
+      'Vault does not answer this manager, so it cannot be asked for a login. The sync goes on and manager:vault-renewal says what to look at.\n'
+    );
+    return false;
+  }
   process.stderr.write(
     'This manager is not logged in to Vault. Log in once; each machine then gets its own token.\n'
   );
@@ -156,10 +164,8 @@ async function vaultState(node: FleetNode, run: Runner): Promise<VaultState> {
     : 'unauthenticated';
 }
 
-function lookup(): string[] {
-  const { addr } = resolveVaultConfig();
-  return ['vault', 'token', 'lookup', `-address=${addr}`, '-format=json'];
-}
+const lookup = (): string[] => vaultTokenLookup(resolveVaultConfig().addr);
+const status = (): string[] => vaultStatus(resolveVaultConfig().addr);
 
 function login(): string[] {
   const { addr } = resolveVaultConfig();
@@ -223,7 +229,9 @@ function required(node: FleetNode): Check {
  * The manager's own Vault session renews itself every ten minutes, like each
  * worker's: `ansible/macos/vault-renew.yml`, applied on every applying sync.
  * Measured as the session answering, the job being loaded, how its last run
- * ended and how long the login can still last. Renewal does not keep every
+ * ended and how long the login can still last. A session that does not
+ * answer is a lapsed login only when Vault itself answers; otherwise Vault is
+ * unreachable (`secretsLogin` in src/secrets.ts tells them the same way). Renewal does not keep every
  * login alive (`loginEndsIn`), so a login about to end warns while a person
  * can still log in again. A lapsed session needs one login by a person, and
  * until then agents on the manager use the proxy client key they last read
@@ -266,14 +274,7 @@ export async function holdManagerVault(
   );
   const looked = await run(lookup(), { timeoutMs: 20_000 });
   const login = managerLogin(addr);
-  if (!looked.ok)
-    return [
-      renewal(
-        'fail',
-        'VAULT_LOGIN_REQUIRED',
-        `Log the manager in once, in your own terminal: ${login}. Then run devfleet fleet-sync. Until then the manager's agents use the proxy client key they last read, and new worker tokens cannot be issued.`
-      ),
-    ];
+  if (!looked.ok) return [await unanswered(run, addr, login)];
   if (!job.ok)
     return [
       renewal(
@@ -291,6 +292,28 @@ export async function holdManagerVault(
         'The manager is logged in to Vault and renews its session every ten minutes.'
       ),
   ];
+}
+
+/** A session that does not answer. The lookup does not say why. Vault's
+ * status needs no login: an unsealed Vault that answers leaves the login;
+ * anything else is a Vault this manager cannot use, which no login repairs.
+ */
+async function unanswered(
+  run: Runner,
+  addr: string,
+  login: string
+): Promise<Check> {
+  if (!(await run(status(), { timeoutMs: 20_000 })).ok)
+    return renewal(
+      'fail',
+      'VAULT_UNREACHABLE',
+      `Vault at ${addr} does not answer the manager, or is sealed; logging in again does not help. On the manager, vault status -address=${addr} says which: no answer is the network between them (the tailnet, DNS, the address under secrets in the fleet configuration) or a Vault that is not running; "Sealed true" is a Vault to unseal. Then run devfleet fleet-sync. Until then the manager's agents use the proxy client key they last read, and a login that was held is still held if Vault returns before it lapses.`
+    );
+  return renewal(
+    'fail',
+    'VAULT_LOGIN_REQUIRED',
+    `Log the manager in once, in your own terminal: ${login}. Then run devfleet fleet-sync. Until then the manager's agents use the proxy client key they last read, and new worker tokens cannot be issued.`
+  );
 }
 
 /** The one command that logs the manager in, as a remedy names it. */

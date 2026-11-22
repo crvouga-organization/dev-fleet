@@ -54,6 +54,10 @@ Given(
   }
 );
 
+Given('the store gives the manager no {string}', (world, name: string) => {
+  world.stored.delete(name);
+});
+
 Given(
   'the store holds {string} as {string}',
   (world, token: string, name: string) => {
@@ -207,6 +211,17 @@ When(
     world.checks = [await convergeGithub(root, world.runner(node), node)];
   }
 );
+
+When('the GitHub sign-in of the manager is converged', async (world) => {
+  world.checks = [
+    await convergeGithub(
+      root,
+      world.runner(MANAGER),
+      undefined,
+      await world.secret(MANAGER)
+    ),
+  ];
+});
 
 When(
   'the sign-in of Copilot CLI is checked on {string}',
