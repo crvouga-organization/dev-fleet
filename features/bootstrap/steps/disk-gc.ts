@@ -17,6 +17,12 @@ import { part, type BootstrapWorld } from './world';
 const gc = resolve(import.meta.dir, '../../../ansible/ubuntu/disk-gc.py');
 const DAY = 24 * 3600;
 
+/** What the collector is told when it measures a filesystem, whichever one. */
+interface Disk {
+  freeMib: number;
+  inodesFreePercent: number;
+}
+
 interface Event {
   event: string;
   step?: string;
@@ -43,8 +49,43 @@ const collector = part((world) => {
     worktree: '',
     cache: '',
     mise: '',
+    disk: undefined as Disk | undefined,
   };
 });
+
+/** The collector, measuring the scenario's disk instead of the machine's.
+ *
+ * It is the deployed file, run unchanged behind a stand-in for `os.statvfs`.
+ * The stand-in is a file of its own so that the collector's second run of
+ * itself, as the development user, measures the same disk.
+ */
+function collectorOn(world: BootstrapWorld): string {
+  const { disk } = collector(world);
+  if (!disk) throw new Error('The scenario does not say what the disk holds.');
+  const blocks = disk.freeMib * 256;
+  const script = join(world.directory('disk-gc-disk-'), 'disk-gc.py');
+  writeFileSync(
+    script,
+    [
+      'import os, types',
+      'DISK = types.SimpleNamespace(',
+      `    f_frsize=4096, f_blocks=${blocks * 2}, f_bavail=${blocks},`,
+      `    f_files=1000000, f_favail=${Math.round(disk.inodesFreePercent * 10000)})`,
+      'os.statvfs = lambda path: DISK',
+      `exec(compile(open(${JSON.stringify(gc)}).read(), ${JSON.stringify(gc)}, 'exec'))`,
+      '',
+    ].join('\n')
+  );
+  return script;
+}
+
+function eventsOf(stdout: Uint8Array): Event[] {
+  return stdout
+    .toString()
+    .trim()
+    .split('\n')
+    .map((line) => JSON.parse(line) as Event);
+}
 
 function git(cwd: string, ...args: string[]): void {
   const out = Bun.spawnSync(['git', '-c', 'safe.directory=*', ...args], {
@@ -128,27 +169,12 @@ Given(
 );
 
 Given(
-  'the disk is under pressure, where {int} hours without use is idle',
-  (world, hours: number) => {
-    collector(world).options.push(
-      '--pressure-mib',
-      String(Number.MAX_SAFE_INTEGER),
-      '--pressure-idle-hours',
-      String(hours)
-    );
-  }
-);
-
-Given(
-  'the disk is short of inodes, where {int} hours without use is idle',
-  (world, hours: number) => {
-    // Every filesystem has fewer than 101% of its inodes free.
-    collector(world).options.push(
-      '--pressure-inode-percent',
-      '101',
-      '--pressure-idle-hours',
-      String(hours)
-    );
+  /^a disk with (\d+) MiB and ([\d.]+)% of its inodes free$/,
+  (world, free: string, inodes: string) => {
+    collector(world).disk = {
+      freeMib: Number(free),
+      inodesFreePercent: Number(inodes),
+    };
   }
 );
 
@@ -167,13 +193,11 @@ function runCollector(world: BootstrapWorld, dry: boolean): void {
     'python3',
     '-I',
     '-B',
-    gc,
+    collectorOn(world),
     '--home',
     state.home,
     '--path',
     state.home,
-    '--pressure-mib',
-    '0',
     '--proc',
     state.proc,
     // Never prune the machine's own Docker or apt cache.
@@ -182,11 +206,7 @@ function runCollector(world: BootstrapWorld, dry: boolean): void {
     ...(dry ? ['--dry-run'] : []),
   ]);
   expect(out.exitCode).toBe(0);
-  state.events = out.stdout
-    .toString()
-    .trim()
-    .split('\n')
-    .map((line) => JSON.parse(line) as Event);
+  state.events = eventsOf(out.stdout);
 }
 
 Then('these are gone from the checkout:', (world, table: DataTable) => {
@@ -346,8 +366,8 @@ Then(
 );
 
 When(
-  /^the disk GC dry-runs on the whole machine( without containers)?, with a docker command on its path$/,
-  (world, without: string | undefined) => {
+  /^the disk GC dry-runs on the whole machine( without containers)?, with a docker command on its path and a floor of (\d+) MiB free$/,
+  (world, without: string | undefined, floor: string) => {
     const state = collector(world);
     // A docker that would only record a call: in a dry run none is made.
     const bin = join(state.home, 'bin');
@@ -360,38 +380,48 @@ When(
         'python3',
         '-I',
         '-B',
-        gc,
+        collectorOn(world),
         '--home',
         state.home,
         '--path',
         state.home,
         '--proc',
         state.proc,
+        '--pressure-mib',
+        floor,
         '--dry-run',
         ...(without ? ['--no-docker'] : []),
       ],
       { env: { ...process.env, PATH: `${bin}:${process.env['PATH'] ?? ''}` } }
     );
     expect(out.exitCode).toBe(0);
-    state.events = out.stdout
-      .toString()
-      .trim()
-      .split('\n')
-      .map((line) => JSON.parse(line) as Event);
+    state.events = eventsOf(out.stdout);
   }
 );
 
-Then('the run would prune these Docker steps:', (world, table: DataTable) => {
-  expect(
-    collector(world)
-      .events.filter(
-        (event) =>
-          event.event === 'would_run' &&
-          String(event.step).startsWith('docker_')
-      )
-      .map((event) => event.step)
-  ).toEqual(table.list().filter((step) => step !== '(none)'));
-});
+Then(
+  /^the run would prune these Docker steps: (.+)$/,
+  (world, expected: string) => {
+    expect(
+      collector(world)
+        .events.filter(
+          (event) =>
+            event.event === 'would_run' &&
+            String(event.step).startsWith('docker_')
+        )
+        .map((event) => event.step)
+    ).toEqual(expected === '(none)' ? [] : expected.split(', '));
+  }
+);
+
+Then(
+  /^the checkout's "([^"]+)" is (gone|kept)$/,
+  (world, path: string, verdict: string) => {
+    expect(existsSync(join(collector(world).repo, path))).toBe(
+      verdict === 'kept'
+    );
+  }
+);
 
 Given('a stand-in for mise that records how it is run', (world) => {
   const state = collector(world);
