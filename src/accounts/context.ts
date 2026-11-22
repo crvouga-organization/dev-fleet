@@ -13,7 +13,7 @@ import {
   rosterCurrentCheck,
 } from './checks';
 import { liveVersion, rosterVersion } from './roster';
-import { exposedInstances, type Instance } from './sessions';
+import { exposedInstances, proxyVerdict, type Instance } from './sessions';
 
 /** This machine's T3 settings, where its account instances are written. */
 export const t3Settings = (): string =>
@@ -54,6 +54,7 @@ export async function accountContext(
       exposed: await exposedInstances(settings),
       rosterVersion: liveVersion(live),
       keyVersion: keyVersion(key),
+      consult: (account) => proxyVerdict(account, key),
     };
   } catch {
     return undefined;

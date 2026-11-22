@@ -29,14 +29,20 @@ export function providerAccountChecks(
     );
 }
 
-/** "account 2 needs-login, account 3 cooling-down until …" */
+/** "account 2 needs-login, account 3 cooling-down until …"; a usable account
+ * with a model held back says which: "account 1 cooling-down on m until …".
+ */
 const describe = (accounts: RosterAccount[]): string[] =>
-  accounts
-    .filter((account) => account.state !== 'usable')
-    .map(
-      (account) =>
-        `account ${account.index} ${account.state}${account.until ? ` until ${account.until}` : ''}`
-    );
+  accounts.flatMap((account) =>
+    account.state === 'usable'
+      ? account.cooldowns.map(
+          (cooldown) =>
+            `account ${account.index} cooling-down on ${cooldown.model} until ${cooldown.until}`
+        )
+      : [
+          `account ${account.index} ${account.state}${account.until ? ` until ${account.until}` : ''}`,
+        ]
+  );
 
 function reloginRemedy(provider: string, accounts: RosterAccount[]) {
   const login = accounts.find((account) => account.state === 'needs-login');

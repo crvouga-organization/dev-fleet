@@ -16,6 +16,17 @@ const STATES: AccountState[] = [
   'removed',
 ];
 
+/** One model the proxy holds back on one account, while the account serves
+ * its other models. `reason` is the proxy's own word for why (`quota`,
+ * `payment_required`, …), never what a provider answered.
+ */
+export interface ModelCooldown {
+  model: string;
+  reason: string;
+  /** When it clears (ISO 8601). */
+  until: string;
+}
+
 /** One account as the manager reports it. `index` is opaque: the position of
  * the account among its provider's, the only way checks name it.
  */
@@ -28,6 +39,8 @@ export interface RosterAccount {
   state: AccountState;
   /** While cooling down: when it clears (ISO 8601), when known. */
   until: string | null;
+  /** The models held back on this account alone; empty when none is. */
+  cooldowns: ModelCooldown[];
 }
 
 /** What `devfleet cliproxy accounts --json` prints on the manager. */
@@ -64,8 +77,22 @@ export function parseRoster(text: string): ProxyRoster {
       ...account,
       prefix: account.prefix ?? null,
       until: account.until ?? null,
+      cooldowns: modelCooldowns(account.cooldowns),
     })),
   };
+}
+
+/** A proxy that lists none, or an older one, reports no model cooldown. */
+function modelCooldowns(value: unknown): ModelCooldown[] {
+  if (!Array.isArray(value)) return [];
+  return (value as Partial<ModelCooldown>[]).flatMap(
+    ({ model, reason, until }) =>
+      typeof model === 'string' &&
+      typeof reason === 'string' &&
+      typeof until === 'string'
+        ? [{ model, reason, until }]
+        : []
+  );
 }
 
 /** The roster version: a digest of the routing prefixes of the accounts
