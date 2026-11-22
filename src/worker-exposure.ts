@@ -156,6 +156,47 @@ export function unitOf(cgroup: string): string | null {
 interface Firewall {
   active: boolean;
   publicSsh: boolean;
+  /** The ports a loaded rule closes to everything but loopback and the
+   * tailnet. */
+  tailnetOnly: PublicPort[];
+}
+
+const NO_FIREWALL: Firewall = {
+  active: false,
+  publicSsh: false,
+  tailnetOnly: [],
+};
+
+/** The port an expression matches: `tcp dport 3389`, as nft lists it. */
+function destinationPort(
+  expression: Record<string, unknown>
+): PublicPort | null {
+  const match = expression['match'];
+  if (!record(match) || match['op'] !== '==' || !record(match['left']))
+    return null;
+  const payload = match['left']['payload'];
+  const port = match['right'];
+  if (!record(payload) || payload['field'] !== 'dport') return null;
+  const protocol = payload['protocol'];
+  if (protocol !== 'tcp' && protocol !== 'udp') return null;
+  return typeof port === 'number' && Number.isInteger(port)
+    ? { protocol, port }
+    : null;
+}
+
+/** The port a rule of the input chain marked "tailnet-only" drops: `tcp dport
+ * 3389 drop`. A rule under that comment which matches anything else, or does
+ * not drop, closes nothing this check can name. */
+function tailnetOnlyPort(rule: Record<string, unknown>): PublicPort | null {
+  if (rule['comment'] !== 'tailnet-only' || rule['chain'] !== 'input')
+    return null;
+  const expressions = Array.isArray(rule['expr'])
+    ? rule['expr'].filter(record)
+    : [];
+  const [match, verdict] = expressions;
+  return expressions.length === 2 && 'drop' in verdict!
+    ? destinationPort(match!)
+    : null;
 }
 
 /** What `nft -j list table inet personal_fleet` says of the rules. */
@@ -172,12 +213,14 @@ export function parseFirewall(text: string): Firewall {
         item['chain']['hook'] === 'input' &&
         item['chain']['policy'] === 'drop'
     );
-    const publicSsh = items.some(
-      (item) => record(item['rule']) && item['rule']['comment'] === 'public-ssh'
-    );
-    return { active, publicSsh };
+    const rules = items.map((item) => item['rule']).filter(record);
+    const publicSsh = rules.some((rule) => rule['comment'] === 'public-ssh');
+    const tailnetOnly = rules
+      .map(tailnetOnlyPort)
+      .filter((port): port is PublicPort => port !== null);
+    return { active, publicSsh, tailnetOnly };
   } catch {
-    return { active: false, publicSsh: false };
+    return NO_FIREWALL;
   }
 }
 
@@ -207,6 +250,7 @@ export function allowList(rules: WorkerExposure): PublicPort[] {
 }
 
 const UNRESTRICTED = 'WORKER_LISTENER_UNRESTRICTED';
+const RULE_MISSING = 'WORKER_TAILNET_ONLY_RULE_MISSING';
 
 const REMEDY: Record<string, string> = {
   WORKER_FIREWALL_INACTIVE:
@@ -215,6 +259,8 @@ const REMEDY: Record<string, string> = {
     'SSH is still open beyond the tailnet because fleet-sync could not prove the manager reaches the worker over the tailnet. Point the SSH alias of this worker at its tailnet name, then run devfleet fleet-sync; declare exposure.publicSsh only for break-glass access.',
   WORKER_LISTENER_UNRESTRICTED:
     'Bind the named service to 127.0.0.1 or the tailnet address, or declare its port in exposure.publicPorts of fleet.json. A fleet service on a public address is a fault of its unit: run devfleet fleet-sync. The T3 desktop app returns to loopback when it next starts; fleet-sync restarts it once it runs no agent turn.',
+  WORKER_TAILNET_ONLY_RULE_MISSING:
+    'The named service listens on a port declared in exposure.tailnetOnlyPorts of fleet.json, but the loaded fleet firewall holds no tailnet-only rule for that port: run devfleet fleet-sync, which writes the rule and loads it (ansible/ubuntu/tasks/firewall.yml).',
   WORKER_EXPOSURE_UNOBSERVED:
     'The listening sockets or the firewall could not be read with sudo -n; check worker:sudo, then rerun devfleet fleet-status --workers.',
 };
@@ -308,9 +354,7 @@ async function observe(run: Runner): Promise<Observed | Check> {
   return {
     interfaces,
     listeners: parseListeners(sockets.stdout),
-    firewall: table.ok
-      ? parseFirewall(table.stdout)
-      : { active: false, publicSsh: false },
+    firewall: table.ok ? parseFirewall(table.stdout) : NO_FIREWALL,
     ephemeral: (range.ok && portRange(range.stdout)) || EPHEMERAL,
   };
 }
@@ -341,13 +385,17 @@ function exposedListeners(observed: Observed): Listener[] {
   );
 }
 
-/** The exposed listeners outside the allow-list, by who owns them: a fleet
- * service, or anything else. Each names its port and unit. */
+/** The exposed listeners outside the allow-list, each named by its port and
+ * unit: a fleet service's, anything else's, and those on a port the policy
+ * holds to the tailnet, by whether the loaded firewall has the rule that
+ * does (`held`) or not (`unenforced`). A fleet service is never held: it
+ * binds loopback or the tailnet itself. */
 async function unrestricted(
   rules: WorkerExposure,
-  exposed: Listener[],
+  observed: Observed,
   run: Runner
-): Promise<{ fleet: string[]; other: string[] }> {
+): Promise<Record<'fleet' | 'other' | 'held' | 'unenforced', string[]>> {
+  const exposed = exposedListeners(observed);
   const units = new Map<number, string | null>();
   for (const pid of new Set(exposed.flatMap((listener) => listener.pids))) {
     const cgroup = await run(['cat', `/proc/${pid}/cgroup`]);
@@ -355,16 +403,33 @@ async function unrestricted(
   }
   const permitted = allowList(rules);
   const fleetPorts = [rules.t3Port, MONITORING_AGENT_PORT];
-  const found = { fleet: new Set<string>(), other: new Set<string>() };
+  const found = {
+    fleet: new Set<string>(),
+    other: new Set<string>(),
+    held: new Set<string>(),
+    unenforced: new Set<string>(),
+  };
   for (const listener of exposed) {
     if (allowed(permitted, listener)) continue;
     const unit =
       listener.pids.map((pid) => units.get(pid)).find(Boolean) ?? null;
     const owned =
       fleetPorts.includes(listener.port) || (unit !== null && fleetUnit(unit));
-    (owned ? found.fleet : found.other).add(describe(listener, unit));
+    const kind = owned
+      ? 'fleet'
+      : !allowed(rules.policy.tailnetOnlyPorts, listener)
+        ? 'other'
+        : allowed(observed.firewall.tailnetOnly, listener)
+          ? 'held'
+          : 'unenforced';
+    found[kind].add(describe(listener, unit));
   }
-  return { fleet: [...found.fleet], other: [...found.other] };
+  return {
+    fleet: [...found.fleet],
+    other: [...found.other],
+    held: [...found.held],
+    unenforced: [...found.unenforced],
+  };
 }
 
 /** The firewall's own fault, when it has one. */
@@ -375,13 +440,15 @@ function firewallFault(rules: WorkerExposure, firewall: Firewall): string[] {
   return [];
 }
 
-const listed = (listeners: string[]): string[] =>
-  listeners.length ? [`${UNRESTRICTED} ${listeners.join(', ')}`] : [];
+const listed = (listeners: string[], code = UNRESTRICTED): string[] =>
+  listeners.length ? [`${code} ${listeners.join(', ')}`] : [];
 
 /** worker:exposure: nothing listens beyond loopback and the tailnet but what
  * the declared policy allows, and the firewall that closes the rest is
- * loaded. Not applicable without an address outside the tailnet. Reports a
- * port and the unit that owns it, never a process's arguments.
+ * loaded. A listener on a declared tailnet-only port is allowed only while
+ * the loaded rules hold that port to the tailnet. Not applicable without an
+ * address outside the tailnet. Reports a port and the unit that owns it,
+ * never a process's arguments.
  */
 export async function exposureCheck(
   rules: WorkerExposure,
@@ -389,15 +456,16 @@ export async function exposureCheck(
 ): Promise<Check> {
   const observed = await observe(run);
   if ('id' in observed) return observed;
-  const { fleet, other } = await unrestricted(
+  const { fleet, other, held, unenforced } = await unrestricted(
     rules,
-    exposedListeners(observed),
+    observed,
     run
   );
   const strict = rules.policy.otherListeners === 'fail';
   const failures = [
     ...firewallFault(rules, observed.firewall),
     ...listed(strict ? [...fleet, ...other] : fleet),
+    ...listed(unenforced, RULE_MISSING),
   ];
   const problems = [...failures, ...listed(strict ? [] : other)];
   if (problems.length)
@@ -406,11 +474,14 @@ export async function exposureCheck(
       [...new Set(problems.map((problem) => problem.split(' ')[0]!))],
       problems.join('; ')
     );
+  const summary = rules.policy.publicSsh
+    ? 'Only loopback, the tailnet and the declared allow-list listen beyond this worker, and the fleet firewall is loaded; SSH stays open beyond the tailnet by the declared break-glass opt-in.'
+    : 'Only loopback, the tailnet and the declared allow-list listen beyond this worker, and the fleet firewall admits inbound traffic only over the tailnet.';
   return result(
     'pass',
     [],
-    rules.policy.publicSsh
-      ? 'Only loopback, the tailnet and the declared allow-list listen beyond this worker, and the fleet firewall is loaded; SSH stays open beyond the tailnet by the declared break-glass opt-in.'
-      : 'Only loopback, the tailnet and the declared allow-list listen beyond this worker, and the fleet firewall admits inbound traffic only over the tailnet.'
+    held.length
+      ? `${summary} Its tailnet-only rules hold to loopback and the tailnet: ${held.join(', ')}.`
+      : summary
   );
 }

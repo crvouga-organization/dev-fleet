@@ -15,6 +15,23 @@ Feature: The baseline closes a worker to everything but the tailnet without lock
       And the input chain accepts UDP to tailscaled's port 41641
       And the SSH port is accepted beyond the tailnet only by a rule marked "public-ssh", written only when "firewall_public_ssh" holds
 
+    Scenario: A tailnet-only port is dropped for everything but loopback and the tailnet
+      The rule is written for a service that cannot bind one address. It
+      stands after loopback and the tailnet, which may reach the port, and
+      before the container bridges and the ports the policy opens, which may
+      not. worker:exposure reads it back by its mark.
+      When the firewall rules the baseline loads are read
+      Then each port of "tailnetOnlyPorts" is dropped by a rule marked "tailnet-only"
+      And the rules marked "tailnet-only" stand after what accepts:
+        | loopback    |
+        | the tailnet |
+      And the rules marked "tailnet-only" stand before what accepts:
+        | container bridges |
+        | public ports      |
+      And the play hands the rules these lists, empty unless declared:
+        | publicPorts      |
+        | tailnetOnlyPorts |
+
     Scenario: A published container port is dropped from outside the tailnet, only where Docker is installed
       When the firewall rules the baseline loads are read
       Then the forward chain is written only when "firewall_docker" holds
@@ -26,6 +43,16 @@ Feature: The baseline closes a worker to everything but the tailnet without lock
       And it applies "tasks/firewall.yml" unless the machine is a container
 
   Rule: The manager is never locked out
+
+    Scenario: A tailnet-only port cannot close what the fleet itself needs open
+      A declaration that names the SSH port, tailscaled's or DHCP's must not
+      cut the worker off: those are accepted before any tailnet-only rule.
+      When the firewall rules the baseline loads are read
+      Then the rules marked "tailnet-only" stand after what accepts:
+        | tailscaled          |
+        | DHCP                |
+        | DHCPv6              |
+        | the public SSH port |
 
     Scenario: The public SSH port closes only when the session arrived over the tailnet
       When the firewall tasks are read

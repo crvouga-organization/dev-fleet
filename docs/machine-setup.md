@@ -468,7 +468,8 @@ project that builds for Android on x86_64 workers pins `flutter`, `java` and
 `android-sdk` in its own `mise.toml` as above.
 
 `worker.exposure` (fleet-wide) or `exposure` on one worker says what a worker
-opens beyond loopback and the tailnet; without it, nothing. See
+opens beyond loopback and the tailnet; without it, nothing. A service that
+cannot bind one address is held to the tailnet with `tailnetOnlyPorts`. See
 [Exposure](ubuntu-sync.md#exposure).
 
 The source-owned `worker-auth.ts` timer renews the worker's existing Vault token
