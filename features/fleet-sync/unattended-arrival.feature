@@ -55,6 +55,17 @@ Feature: A new worker reaches ready in one fleet-sync, with no hands on it
       And the deployment reports "tailscale:enrolment-key" as "fail", saying "TAILNET_CONTROL_DENIED"
       And "PRIVATE_SENTINEL" appears nowhere in what the deployment reports
 
+    Scenario: A credential the manager could not read leaves the key blocked by the manager's login
+      Given the roster entry "worker-one", with the workspace "/home/dev/.local/share/personal/fleet"
+      And the manager is not logged in to its secrets provider
+      And each converge reports:
+        | check                   | status | summary                           |
+        | tailscale:configuration | fail   | TAILSCALE_SETUP_OR_LOGIN_REQUIRED |
+      When the worker is deployed
+      Then no converge was handed a key
+      And the control plane was asked nothing
+      And the deployment reports "tailscale:enrolment-key" as "fail", saying "SECRET_READ_BLOCKED by manager:vault-renewal"
+
   Rule: An enrolled worker's node key does not expire
 
     Scenario: A worker whose node key expires has expiry disabled through the control plane

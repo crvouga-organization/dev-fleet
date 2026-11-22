@@ -63,8 +63,8 @@ hub converge reads that document with the manager's own Vault session (the
 human's session; never printed or placed in argv), writes it to the per-user
 token file and starts the pinned `cloudflared` Compose profile. Until the
 credential is readable the step warns (`BESZEL_TUNNEL_CREDENTIAL_UNAVAILABLE`,
-or `SECRET_READ_BLOCKED` while the manager is logged out of Vault, which
-`manager:vault-renewal` owns) and the private dashboard is unaffected. Agents
+or `SECRET_READ_BLOCKED` while the manager is logged out of Vault or cannot
+reach it, which `manager:vault-renewal` owns) and the private dashboard is unaffected. Agents
 and the manager keep using the private URL; `fleet-status --workers` reports
 the public hostname as a warning-level `beszel:public-endpoint` check.
 

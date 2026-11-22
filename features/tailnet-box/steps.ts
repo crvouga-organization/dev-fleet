@@ -18,6 +18,7 @@ import { matchComputers } from '../../src/tailnet-matching';
 import { discoverTailnet, type TailnetComputer } from '../../src/tailscale';
 import type { Check, CommandResult, FleetNode, Runner } from '../../src/types';
 import { World, steps, type DataTable } from '../support/gherkin';
+import { standInSecrets } from '../support/secrets';
 import lock from './support/lock.json';
 
 const root = resolve(import.meta.dir, '../..');
@@ -649,7 +650,9 @@ When(
     current.joined.delete(name);
     world.check = await tailnetCleanup(
       world.api,
-      async (secret) => (secret === 'tailnet-admin' ? current.apiKey : null),
+      standInSecrets((secret) =>
+        secret === 'tailnet-admin' ? current.apiKey : null
+      ),
       trusting(current.ca)
     ).removeDevice({ id: name } as MachineDefinition, old);
     world.removed = old;

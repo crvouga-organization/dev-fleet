@@ -7,6 +7,11 @@ import { FleetUsageError } from '../errors';
 import { fleet, secret, fleetJson } from '../fleet-config';
 import type { SecretsProvider } from '../secrets';
 import {
+  SECRET_READ_BLOCKED,
+  blockedRefusal,
+  secretsFault,
+} from '../secrets-blocked';
+import {
   controlRemedy,
   fleetTailnetControl,
   loginServer,
@@ -156,12 +161,19 @@ async function seedAuthKey(
       return (await control!.createAuthKey({ worker })).key;
     } catch (error) {
       if (!(error instanceof TailnetControlError)) throw error;
-      throw new FleetUsageError(`${error.code}: ${controlRemedy(error.code)}`);
+      throw new FleetUsageError(
+        error.code === SECRET_READ_BLOCKED
+          ? blockedRefusal(error.fault)
+          : `${error.code}: ${controlRemedy(error.code)}`
+      );
     }
   const key = await services.secret('tailnet-auth-key');
-  if (!key)
+  if (!key) {
+    const fault = await secretsFault(services.secret);
+    if (fault) throw new FleetUsageError(blockedRefusal(fault));
     throw new FleetUsageError(
       `The secrets provider holds no tailnet-auth-key. Declare tailnet in ${fleetJson()} with the secret tailnet-admin so a key is minted per worker, or store a short-lived, single-use, tagged Tailscale auth key there first.`
     );
+  }
   return key;
 }

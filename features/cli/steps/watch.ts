@@ -7,7 +7,12 @@ import {
   type WatchStore,
 } from '../../../src/cli/fleet-watch';
 import { parseNotify, type NotifyConfig } from '../../../src/notify';
-import type { SecretName } from '../../../src/secrets';
+import type { SecretName, SecretsLogin } from '../../../src/secrets';
+import {
+  SECRETS_FAULT,
+  secretsFault,
+  standInSecrets,
+} from '../../support/secrets';
 import type { Check, NodeReport } from '../../../src/types';
 import { cli, outcome, part, temporary, type CliWorld } from './world';
 
@@ -26,6 +31,7 @@ interface Received {
 const watch = part(() => ({
   notify: undefined as NotifyConfig | undefined,
   secrets: {} as Partial<Record<SecretName, string>>,
+  login: 'held' as SecretsLogin,
   received: [] as Received[],
   answer: 200,
   store: undefined as WatchStore | null | undefined,
@@ -84,6 +90,10 @@ Given('the fleet configuration says:', (world, json: string) => {
   watch(world).notify = notify;
 });
 
+Given(SECRETS_FAULT, (world, fault: string) => {
+  watch(world).login = secretsFault(fault);
+});
+
 Given('the fleet configuration has no notify block', (world) => {
   watch(world).notify = undefined;
 });
@@ -127,7 +137,10 @@ async function run(world: CliWorld, test: boolean, at: string) {
     status: () => Promise.resolve(state.nodes),
     revision: () => Promise.resolve(state.revision),
     store: state.store ?? null,
-    secrets: (name) => Promise.resolve(state.secrets[name] ?? null),
+    secrets: standInSecrets(
+      (name) => state.secrets[name],
+      () => state.login
+    ),
     send: fetch,
     now: () => new Date(at),
   });
@@ -204,6 +217,14 @@ Then(
         verdict as 'passes'
       ]
     );
+  }
+);
+
+Then(
+  'the check {string} of fleet-watch says {string}',
+  (world, id: string, summary: string) => {
+    const { checks } = outcome(world).data as { checks: Check[] };
+    expect(checks.find((check) => check.id === id)?.summary).toBe(summary);
   }
 );
 

@@ -59,6 +59,28 @@ Feature: A new worker joins the fleet by itself from a seed
     When the operator seeds "worker-one"
     Then the seed is refused with "not a Tailscale auth key"
 
+  Scenario Outline: A key the manager could not read refuses the seed as blocked by the manager's login
+    Given the secrets provider holds a Tailscale auth key generated for this scenario
+    And the manager <fault> its secrets provider
+    When the operator seeds "worker-one"
+    Then the seed is refused with "SECRET_READ_BLOCKED by manager:vault-renewal"
+    And the seed is refused with "<remedy>"
+
+    Examples:
+      | fault               | remedy                                                |
+      | is not logged in to | this machine is not logged in to the secrets provider |
+      | cannot reach        | logging in again does not help                        |
+
+  Scenario: A control plane credential the manager could not read refuses the seed the same way
+    Given the secrets provider holds a tailnet-admin credential generated for this scenario
+    And the fleet declares the tailnet control plane:
+      """
+      { "api": "tailscale", "tag": "tag:fleet-worker" }
+      """
+    And the manager cannot reach its secrets provider
+    When the operator seeds "worker-one"
+    Then the seed is refused with "SECRET_READ_BLOCKED by manager:vault-renewal"
+
   Scenario: With a tailnet control plane, the seed carries a key minted for this worker alone
     The stored tailnet-auth-key is not used: each seed gets its own
     single-use, tagged key that expires within minutes.

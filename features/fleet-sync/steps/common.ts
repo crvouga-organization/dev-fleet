@@ -207,6 +207,11 @@ Then(
   }
 );
 
+Then("the check's remedy does not name {string}", (world, text: string) => {
+  expect(world.checks[0]?.remedy?.action).toBeDefined();
+  expect(world.checks[0]?.remedy?.action).not.toContain(text);
+});
+
 Then('the statuses of the checks are exactly:', (world, table: DataTable) => {
   expect(world.checks.map((check) => check.status)).toEqual(
     table.list() as Status[]

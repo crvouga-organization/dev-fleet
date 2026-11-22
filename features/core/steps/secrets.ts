@@ -75,7 +75,22 @@ When(
   }
 );
 
-Then(/^the login is (held|required)$/, (world, login: string) => {
+When(
+  "the provider that reads this fleet's secrets is asked for its login",
+  async (world) => {
+    world.secretsLogin = await secretsProvider(
+      need(world, world.secrets, 'a secrets block'),
+      {
+        run: async (argv) => {
+          const result = await world.commands.run(argv);
+          return result.ok ? result.stdout : null;
+        },
+      }
+    ).login();
+  }
+);
+
+Then(/^the login is (held|required|unreachable)$/, (world, login: string) => {
   expect<string | undefined>(world.secretsLogin).toBe(login);
 });
 
