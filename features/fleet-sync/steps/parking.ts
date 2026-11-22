@@ -39,8 +39,10 @@ function parkServices(world: FleetSyncWorld): NodeParkServices {
     definition: lifecycle.definition,
     state: lifecycle.state,
     now: lifecycle.now,
-    sync: async (id) => {
-      parking(world).synced.push(id);
+    sync: async (id, request) => {
+      parking(world).synced.push(
+        `--node ${id}${request.allowUnmerged ? ' --allow-unmerged' : ''}`
+      );
       const ok = parking(world).syncOk;
       return { exitCode: ok ? 0 : 1, data: { ok }, text: '' };
     },
@@ -115,9 +117,15 @@ When(
   }
 );
 
-When('the operator resumes {string}', async (world, id: string) => {
-  world.outcome = await fleetNodeResume({ id }, parkServices(world));
-});
+When(
+  /^the operator resumes "([^"]+)"( with --allow-unmerged)?$/,
+  async (world, id: string, allowed: string | undefined) => {
+    world.outcome = await fleetNodeResume(
+      { id, ...(allowed ? { allowUnmerged: true } : {}) },
+      parkServices(world)
+    );
+  }
+);
 
 Given('the operator has parked {string}', async (world, id: string) => {
   const outcome = await fleetNodePark({ id, force: true }, parkServices(world));
@@ -147,5 +155,12 @@ Then('no declared command ran', (world) => {
 });
 
 Then('fleet-sync ran for {string} only', (world, id: string) => {
-  expect(parking(world).synced).toEqual([id]);
+  expect(parking(world).synced).toEqual([`--node ${id}`]);
 });
+
+Then(
+  'the fleet-sync of the resume was given {string}',
+  (world, text: string) => {
+    expect(parking(world).synced).toEqual([text]);
+  }
+);

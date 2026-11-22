@@ -69,6 +69,14 @@ Feature: A worker that is off on purpose is parked, not failed
       And the fleet state records "worker-one" as active
       And fleet-sync ran for "worker-one" only
 
+    Scenario: A resume from a revision that is not on the default branch says so to its sync
+      fleet-sync refuses such a revision with FLEET_REVISION_UNMERGED unless
+      it is given --allow-unmerged, and a resume started from a branch
+      checkout selects that branch's commit.
+      When the operator resumes "worker-one" with --allow-unmerged
+      Then the command exits with 0
+      And the fleet-sync of the resume was given "--node worker-one --allow-unmerged"
+
     Scenario: A resume whose sync does not end ready fails
       Given the fleet-sync after a resume does not end ready
       When the operator resumes "worker-one"

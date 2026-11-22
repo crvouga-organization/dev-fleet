@@ -110,6 +110,70 @@ Feature: The fleet tells someone when a worker becomes unhealthy
       When the watcher runs
       Then fleet-watch reports no revision
 
+  Rule: A changed approved revision is a notification
+    The watcher remembers the approved revision it saw. A run that finds
+    another one says so once, with what selected it: fixed words and a
+    worker's fleet id only.
+
+    Scenario: The first revision the watcher sees is only remembered
+      Given fleet-status sees every worker ready
+      And the fleet state says of the approved revision:
+        """
+        { "approved": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "applied": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+        """
+      When the watcher runs
+      Then the receiver got 0 notifications
+
+    Scenario: A new approved revision is notified once, with what selected it
+      Given fleet-status sees every worker ready
+      And the watcher ran while the fleet state said of the approved revision:
+        """
+        { "approved": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "applied": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+        """
+      And the fleet state says of the approved revision:
+        """
+        {
+          "approved": "cccccccccccccccccccccccccccccccccccccccc",
+          "applied": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "selectedBy": {
+            "by": "checkout",
+            "handOff": { "worker": "worker-a" },
+            "allowUnmerged": true,
+            "at": "2026-11-10T23:50:00.000Z"
+          }
+        }
+        """
+      When the watcher runs twice
+      Then the receiver got 1 notification
+      And the webhook receiver was told of the revision:
+        """
+        {
+          "event": "revision-changed",
+          "node": "fleet",
+          "revision": {
+            "approved": "cccccccccccccccccccccccccccccccccccccccc",
+            "replaced": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "selectedBy": "the HEAD of the checkout fleet-sync was started in, handed off from worker-a (--allow-unmerged)"
+          },
+          "text": "dev-fleet: the approved revision of the fleet changed from bbbbbbbbbbbb to cccccccccccc, selected by the HEAD of the checkout fleet-sync was started in, handed off from worker-a (--allow-unmerged)"
+        }
+        """
+
+    Scenario: A fleet state that cannot be read does not forget the revision
+      The next run that reads it compares with the revision seen last.
+      Given fleet-status sees every worker ready
+      And the watcher ran while the fleet state said of the approved revision:
+        """
+        { "approved": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "applied": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
+        """
+      And the watcher ran while the fleet state could not be read
+      And the fleet state says of the approved revision:
+        """
+        { "approved": "cccccccccccccccccccccccccccccccccccccccc", "applied": "cccccccccccccccccccccccccccccccccccccccc" }
+        """
+      When the watcher runs
+      Then the receiver got 1 notification
+
   Rule: A test notification proves a target works, without a fleet to watch
 
     Scenario: The test reaches the webhook

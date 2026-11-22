@@ -5,9 +5,11 @@ import {
   deliver,
   observe,
   parseMemory,
+  revisionChange,
   transitions,
   type Notification,
   type NotifyConfig,
+  type WatchMemory,
 } from '../notify';
 import { connection } from '../state/connection';
 import { loadEnrollment } from '../state/enrollment';
@@ -54,38 +56,61 @@ export interface FleetWatchServices {
   autoPark?: (reports: NodeReport[]) => Promise<Check[]>;
 }
 
-/** Compares the fleet's health with the previous run and notifies on
- * transitions only. `--test` sends one test notification and nothing else.
+/** Sends one test notification and nothing else. */
+async function testNotification(
+  services: FleetWatchServices
+): Promise<CommandOutcome> {
+  const test: Notification = { event: 'test', node: 'fleet-watch', checks: [] };
+  const checks = services.notify
+    ? await deliver(services.notify, test, services.secrets, services.send)
+    : [unconfigured('fail')];
+  return outcome(checks, [test]);
+}
+
+/** The notification for an approved revision that is another one than at
+ * the previous run, and what this run remembers of it. A fleet state that
+ * could not be read keeps the revision seen last.
+ */
+function revisionSeen(
+  previous: WatchMemory | null,
+  revision: WatchedRevision | null
+): { notifications: Notification[]; remembered: { revision?: string } } {
+  const approved = revision?.approved ?? previous?.revision;
+  return {
+    notifications: revisionChange(
+      previous,
+      revision?.approved,
+      revision?.selectedBy && selectionText(revision.selectedBy)
+    ),
+    remembered: approved ? { revision: approved } : {},
+  };
+}
+
+/** Compares the fleet's health and its approved revision with the previous
+ * run and notifies on transitions only. `--test` sends one test notification
+ * and nothing else.
  */
 export async function fleetWatch(
   options: FleetWatchOptions,
   services: FleetWatchServices
 ): Promise<CommandOutcome> {
   const { notify } = services;
-  if (options.test) {
-    const checks = notify
-      ? await deliver(
-          notify,
-          { event: 'test', node: 'fleet-watch', checks: [] },
-          services.secrets,
-          services.send
-        )
-      : [unconfigured('fail')];
-    return outcome(checks, [
-      { event: 'test', node: 'fleet-watch', checks: [] },
-    ]);
-  }
+  if (options.test) return testNotification(services);
   const previous = services.store
     ? parseMemory(await services.store.read().catch(() => null))
     : null;
   const reports = await services.status();
   const observed = observe(reports);
-  const { notifications, memory } = transitions(
+  const health = transitions(
     previous,
     observed,
     services.now(),
     notify?.repeatHours ?? 0
   );
+  const revision = (await services.revision?.().catch(() => null)) ?? null;
+  const seen = revisionSeen(previous, revision);
+  const notifications = [...seen.notifications, ...health.notifications];
+  const memory = { ...health.memory, ...seen.remembered };
   const checks: Check[] = [];
   for (const notification of notifications)
     if (notify)
@@ -100,8 +125,7 @@ export async function fleetWatch(
   if (!notify) checks.push(unconfigured('warn'));
   if (services.autoPark) checks.push(...(await services.autoPark(reports)));
   checks.push(await heartbeat(services.store, JSON.stringify(memory)));
-  const revision = await services.revision?.().catch(() => null);
-  return outcome(checks, notifications, revision ?? null);
+  return outcome(checks, notifications, revision);
 }
 
 function unconfigured(status: 'warn' | 'fail'): Check {

@@ -5,36 +5,12 @@ import { prepareSource } from '../machine/source';
 import { managerFailure } from '../manager-failure';
 import type { ManagerReport } from '../manager-sync';
 import { trackedScript } from '../remote-bootstrap';
-import { readParked } from '../state/workers';
-import type { FleetNode, Runner } from '../types';
+import type { Runner } from '../types';
 import {
   editedWorkerCopies,
   type EditedWorkerCopy,
 } from '../worker-configuration-copy';
-import { loadRoster } from './roster';
-
-/** The workers a run is about to converge: the enrolled ones the request
- * selects, without the parked. None when the roster cannot be read; the run
- * then stops for that reason by itself.
- */
-async function workersToConverge(
-  options: { node?: string[] },
-  roster: string
-): Promise<FleetNode[]> {
-  try {
-    const declared = new Set(fleet.workers.map((worker) => worker.id));
-    const parked = readParked();
-    const only = options.node ?? [];
-    return (await loadRoster(roster)).nodes.filter(
-      (node) =>
-        declared.has(node.id) &&
-        !parked[node.id] &&
-        (only.length === 0 || only.includes(node.id))
-    );
-  } catch {
-    return [];
-  }
-}
+import { workersToConverge } from './fleet-sync-mise';
 
 /** The report of a run that a worker's edited copy stops before anything is
  * changed, if one does. Each worker's bootstrap refuses to replace a copy of

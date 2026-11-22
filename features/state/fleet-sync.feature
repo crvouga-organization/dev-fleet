@@ -283,3 +283,77 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
       Then the command exits 1
       And the report contains "FLEET_REVISION_UNMERGED"
       And the enrollment in the fleet state of the manager is what it was before the run
+
+  Rule: A revision whose own bootstrap would replace a newer mise is refused before anything is recorded
+    Each revision runs its own toolchain bootstrap. One from before the rule
+    that keeps a newer mise installs exactly the mise its revision pins, and
+    every checkout on the machine whose mise.toml asks for a newer one then
+    stops working. The run reads the pin from the revision's own files in the
+    manager's copy of the source repository and measures the mise of the
+    machines it is about to converge, before it leaves for the revision's
+    checkout. --allow-mise-downgrade lets the bootstrap run.
+
+    Background:
+      Given the manager stored the enrollment:
+        """
+        {
+          "version": 1,
+          "id": "manager",
+          "approvedRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "appliedRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "previousRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+        """
+      And the manager runs mise "2026.11.11"
+
+    Scenario: --rollback to an earlier release that would replace the manager's mise is refused
+      Given revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
+      When fleet-sync rolls back
+      Then the command exits 1
+      And the report contains "FLEET_MISE_DOWNGRADE"
+      And the report contains "pins mise 2026.10.24"
+      And the report contains "(2026.11.11)"
+      And the report contains "--allow-mise-downgrade"
+      And the enrollment in the fleet state of the manager is what it was before the run
+
+    Scenario: A run for such a revision is refused whatever selected it
+      Given revision "cccccccccccccccccccccccccccccccccccccccc" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
+      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      Then the command exits 1
+      And the report contains "FLEET_MISE_DOWNGRADE"
+      And the enrollment in the fleet state of the manager is what it was before the run
+
+    Scenario: A preview of such a revision is refused too
+      A preview says what a sync would do.
+      Given revision "cccccccccccccccccccccccccccccccccccccccc" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
+      When fleet-sync previews revision "cccccccccccccccccccccccccccccccccccccccc"
+      Then the command exits 1
+      And the report contains "FLEET_MISE_DOWNGRADE"
+
+    Scenario: With --allow-mise-downgrade the rollback goes on
+      Given revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
+      When fleet-sync rolls back with --allow-mise-downgrade
+      Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
+      And the approved revision of the manager is "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+    Scenario: A revision whose bootstrap keeps a newer mise is not refused
+      Its bootstrap keeps the manager's mise, and fleet-status reports the
+      warning TOOLCHAIN_DOWNGRADE.
+      Given revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" pins mise "2026.10.24", and its toolchain bootstrap keeps a newer mise
+      When fleet-sync rolls back
+      Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
+      And the approved revision of the manager is "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+    Scenario: A revision that pins the mise the manager runs is not refused
+      Given revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" pins mise "2026.11.11", and its toolchain bootstrap is from before the rule that keeps a newer mise
+      When fleet-sync rolls back
+      Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
+      And the approved revision of the manager is "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+
+    Scenario: The run in the fleet-owned checkout is not asked again
+      The run a person or a worker started asked before it left for the
+      checkout; the run there is the revision's own code.
+      Given revision "cccccccccccccccccccccccccccccccccccccccc" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
+      And the process runs from the fleet-owned checkout of revision "cccccccccccccccccccccccccccccccccccccccc", told "cccccccccccccccccccccccccccccccccccccccc:revision"
+      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"

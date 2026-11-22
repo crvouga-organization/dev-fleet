@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 428 codes; 90 need a person.
+There are 429 codes; 90 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -68,7 +68,7 @@ There are 428 codes; 90 need a person.
 
 - **Meaning:** mise, the pinned tools, the global mise configuration or the frozen dependencies did not converge.
 - **Confirm:** Run `bun bootstrap/doctor.ts --json --worker` in the checkout on the machine, or read the `tool:*` checks of `devfleet fleet-status`.
-- **Fix:** Run `devfleet fleet-sync`; it resumes. TOOLCHAIN_CONFIG_CONFLICT means another tool owns `~/.config/mise/config.toml`: move it away. TOOLCHAIN_DOWNGRADE (a warning of `tool:mise`) means the machine runs a newer mise than the revision pins: the bootstrap kept it, because `min_version` is a minimum and a checkout with a newer pin needs it. Nothing is to do after a rollback or beside such a checkout; to install the older pinned mise on purpose, run `bash bootstrap/bootstrap.sh --allow-mise-downgrade` in the revision's checkout on that machine (with `--tools-only` on the manager, `--worker --node ID` on a worker).
+- **Fix:** Run `devfleet fleet-sync`; it resumes. TOOLCHAIN_CONFIG_CONFLICT means another tool owns `~/.config/mise/config.toml`: move it away. TOOLCHAIN_DOWNGRADE (a warning of `tool:mise`) means the machine runs a newer mise than the revision pins: the bootstrap kept it, because `min_version` is a minimum and a checkout with a newer pin needs it. Nothing is to do after a rollback or beside such a checkout; to install the older pinned mise on purpose, run `devfleet fleet-sync --allow-mise-downgrade`, which asks the bootstrap of every machine it converges for that (for a revision from before the flag reached the bootstrap, run `bash bootstrap/bootstrap.sh --allow-mise-downgrade` in the revision's checkout on that machine, with `--tools-only` on the manager, `--worker --node ID` on a worker).
 - **Escalate:** A tool that fails to download from its pinned artifact needs a new pin in `mise.toml` and `mise.lock` (an issue).
 
 - `LAUNCHER_INSTALLATION_FAILED`: launcher installation failed.
@@ -543,7 +543,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - **Meaning:** fleet-sync could not plan, lock, reach a machine, promote a revision or keep the fleet state.
 - **Confirm:** `devfleet fleet-state` for the state, `devfleet fleet-status` for machines, and the report `devfleet fleet-sync` writes.
 - **Fix:** Follow the remedy; most clear by running `devfleet fleet-sync` again once the holder of a lock finishes.
-- **Escalate:** FLEET_STATE_DIVERGED needs a person to choose which copy of the state to keep (docs/state.md). FLEET_CONFIGURATION_COPY_CHANGED needs a person to keep the edit (in `fleet.json`, or with the import the remedy prints) or to delete the copy. FLEET_REVISION_UNMERGED means the revision is not on the default branch of the source repository, so nothing was changed: merge it, or pass `--allow-unmerged` to converge the fleet to it on purpose. FLEET_REVISION_UNVERIFIED means the manager's own copy of the source repository could not be fetched to answer that: restore its network and Git access.
+- **Escalate:** FLEET_STATE_DIVERGED needs a person to choose which copy of the state to keep (docs/state.md). FLEET_CONFIGURATION_COPY_CHANGED needs a person to keep the edit (in `fleet.json`, or with the import the remedy prints) or to delete the copy. FLEET_REVISION_UNMERGED means the revision is not on the default branch of the source repository, so nothing was changed: merge it, or pass `--allow-unmerged` to converge the fleet to it on purpose. FLEET_REVISION_UNVERIFIED means the manager's own copy of the source repository could not be fetched to answer that: restore its network and Git access. FLEET_MISE_DOWNGRADE means the revision's own toolchain bootstrap is from before the rule that keeps a newer mise, and would replace the mise of the machines the remedy names with the older one the revision pins; nothing was changed. Every checkout on those machines whose `mise.toml` asks for a newer mise would stop working, so converge to a later revision instead, or pass `--allow-mise-downgrade` to `devfleet fleet-sync` to install the older one on purpose.
 
 - `ANSIBLE_VARIABLE_LIMIT`: ansible variable limit.
 - `CONTAINER_WATCHDOG_UNOBSERVED`: container watchdog unobserved.
@@ -552,6 +552,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `FLEET_MANAGER_ENROLLMENT_REQUIRED`: fleet manager enrollment required. **Needs a person.**
 - `FLEET_MANAGER_LOCKED`: fleet manager locked.
 - `FLEET_MANAGER_UNREACHABLE`: fleet manager unreachable.
+- `FLEET_MISE_DOWNGRADE`: the revision's own bootstrap would replace a newer mise with the older one it pins.
 - `FLEET_NOT_MANAGER`: fleet not manager.
 - `FLEET_PLAN_STALE`: fleet plan stale.
 - `FLEET_PROMOTION_BLOCKED`: fleet promotion blocked.

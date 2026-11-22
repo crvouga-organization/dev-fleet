@@ -170,7 +170,7 @@ Given(
   }
 );
 
-function run(
+export function startRunScript(
   world: FleetSyncWorld,
   revision: (node: Manager) => string,
   flags: string,
@@ -184,7 +184,7 @@ function run(
 When(
   /^the run script is started for the commit "([^"]*)" with "([^"]*)"$/,
   (world, message: string, flags: string) => {
-    run(world, (node) => sha(node, message), flags);
+    startRunScript(world, (node) => sha(node, message), flags);
   }
 );
 
@@ -192,7 +192,7 @@ When(
   'the run script is started for the commit {string} with {string}, from the repository fleet-sync prepared',
   (world, message: string, flags: string) => {
     // fleet-sync names the repository it prepared: the manager's own copy.
-    run(
+    startRunScript(
       world,
       (node) => sha(node, message),
       flags,
@@ -204,7 +204,7 @@ When(
 When(
   'the run script is started for the revision {string} with {string}',
   (world, revision: string, flags: string) => {
-    run(world, () => revision, flags);
+    startRunScript(world, () => revision, flags);
   }
 );
 

@@ -17,6 +17,11 @@ say() { printf 'fleet-sync (manager): %s\n' "$1" >&2; }
 # profiles and never prunes run checkouts. Only an apply does.
 preview=false
 for arg in "$@"; do [ "$arg" != --dry-run ] || preview=true; done
+# The run that started this one was given --allow-mise-downgrade for this
+# revision: the toolchain bootstrap installs the mise the revision pins even
+# when the manager runs a newer one. Without it a newer mise is kept.
+downgrade=''
+[ "${DEVFLEET_MISE_DOWNGRADE_ALLOWED:-}" != "$revision" ] || downgrade=--allow-mise-downgrade
 # mise is installed here by the toolchain step below; a login shell is not
 # required to find it.
 export PATH="$HOME/.local/bin:$PATH"
@@ -74,12 +79,12 @@ if [ "$preview" = true ]; then
   # its other versions without making it the global one.
   command -v mise >/dev/null 2>&1 || { say 'this manager has no toolchain yet, so a preview cannot run; fleet-sync without --dry-run installs it.'; exit 6; }
   mise install --locked bun >"$log" 2>&1 || failed
-elif [ "$(cat "$stamp" 2>/dev/null)" != "$key" ] || [ -z "$(find "$stamp" -mmin -1440 2>/dev/null)" ]; then
+elif [ -n "$downgrade" ] || [ "$(cat "$stamp" 2>/dev/null)" != "$key" ] || [ -z "$(find "$stamp" -mmin -1440 2>/dev/null)" ]; then
   rm -f -- "$stamp"
   # The toolchain bootstrap installs the pinned mise first when the manager
   # has none (or an older one; a newer one is kept), so Git is all a new
   # manager needs.
-  bash bootstrap/bootstrap.sh --tools-only >"$log" 2>&1 || failed
+  bash bootstrap/bootstrap.sh --tools-only ${downgrade:+"$downgrade"} >"$log" 2>&1 || failed
   printf '%s' "$key" >"$stamp"
 fi
 if [ ! -d node_modules ]; then

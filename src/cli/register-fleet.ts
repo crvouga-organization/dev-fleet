@@ -228,6 +228,10 @@ function registerSync({ program, defaults, complete }: Registration) {
       'Converge to a revision that is not on the default branch of the source repository; without it such a revision is refused before anything changes'
     )
     .option(
+      '--allow-mise-downgrade',
+      'Install the mise the revision pins on machines that run a newer one; without it a newer mise is kept, and a revision whose bootstrap would replace it unasked is refused before anything changes'
+    )
+    .option(
       '--canary <id>',
       'The worker that proves a new revision first when it is reachable; defaults to canary in fleet.json, then the first worker'
     )
@@ -522,7 +526,7 @@ function registerLifecycle({ program, defaults, complete }: Registration) {
     async (_options: unknown, command: Command) => {
       const options = command.optsWithGlobals<NodeParkOptions & CliOptions>();
       const settings = await withSettings(defaults, options);
-      const services = parkServices(settings.config, (id) =>
+      const services = parkServices(settings.config, (id, request) =>
         fleetSync(
           {
             node: [id],
@@ -530,6 +534,7 @@ function registerLifecycle({ program, defaults, complete }: Registration) {
             yes: true,
             nonInteractive: true,
             ...(options.json ? { json: true } : {}),
+            ...(request.allowUnmerged ? { allowUnmerged: true } : {}),
           },
           {
             ...defaults,
@@ -561,6 +566,10 @@ function registerLifecycle({ program, defaults, complete }: Registration) {
       'Bring a parked worker back: run the declared start command, then fleet-sync that worker and verify it'
     )
     .requiredOption('--id <name>', 'The declared worker to resume')
+    .option(
+      '--allow-unmerged',
+      'Let the fleet-sync of that worker converge to a revision that is not on the default branch of the source repository, as fleet-sync --allow-unmerged does'
+    )
     .option('--dry-run', 'Say what would change; change nothing')
     .action(parking('resume'));
   program

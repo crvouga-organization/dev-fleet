@@ -38,7 +38,17 @@ export interface BootstrapPayload {
    * policy even while agent turns run. By default it waits for idle.
    */
   restartBusy?: boolean;
+  /** `fleet-sync --allow-mise-downgrade`: the worker's bootstrap installs the
+   * mise the revision pins even when the worker runs a newer one.
+   */
+  allowMiseDowngrade?: boolean;
 }
+
+/** What the remote bootstrap is given, after its other arguments, to install
+ * the older mise its revision pins. Without it a newer mise is kept. The
+ * word crosses from TypeScript to the script of the same revision.
+ */
+export const WORKER_MISE_DOWNGRADE = 'allow-mise-downgrade';
 
 /** No manager tool installation; Git/source preparation is part of apply approval. */
 export async function prepareBootstrap(
@@ -141,6 +151,7 @@ export async function bootstrapRemote(
     transfer.mode,
     UBUNTU_RELEASES.map((entry) => entry.release).join(' '),
     T3_RESTART_MODES[payload.restartBusy ? 1 : 0],
+    ...(payload.allowMiseDowngrade ? [WORKER_MISE_DOWNGRADE] : []),
   ]
     .map(shellQuote)
     .join(' ');

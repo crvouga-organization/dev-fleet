@@ -55,11 +55,18 @@ import { workerCopyRefusal } from './fleet-sync-worker-copy';
 import { packageInfo } from '../package-info';
 import {
   asksAncestry,
+  asksMise,
   forwardingDisabled,
   forwardToManager,
   type ForwardSpawn,
 } from './fleet-sync-forward';
-import { defaultBranchHolds } from '../machine/source';
+import { defaultBranchHolds, prepareSource } from '../machine/source';
+import {
+  allowsMiseDowngrade,
+  miseDowngrade,
+  miseDowngradeRemedy,
+  workersToConverge,
+} from './fleet-sync-mise';
 import {
   decodeSelection,
   SELECTED_BY_ENV,
@@ -78,6 +85,12 @@ export interface FleetSyncOptions {
    * changes.
    */
   allowUnmerged?: boolean;
+  /** Let the revision's bootstrap replace a newer mise with the older one
+   * the revision pins. Without it a revision whose bootstrap would do that
+   * unasked is refused before anything changes, and one whose bootstrap
+   * keeps a newer mise keeps it.
+   */
+  allowMiseDowngrade?: boolean;
   dryRun?: boolean;
   apply?: boolean;
   yes?: boolean;
@@ -249,13 +262,25 @@ export async function managerSync(
   const chosen = await managerRevision(options, state, settings, run);
   if ('exitCode' in chosen) return chosen;
   const { revision, selection } = chosen;
-  const unmerged = await unmergedRefusal(options, chosen, root, run);
-  if (unmerged) return unmerged;
+  const unfit = await revisionRefusal(options, chosen, settings, {
+    run,
+    root,
+    home,
+  });
+  if (unfit) return unfit;
   if (options.schedule)
     return scheduleRequest(options, revision, settings, run);
   const rehomed = await rehome(
     options,
-    { revision, workspace: settings.workspace, root, selection },
+    {
+      revision,
+      workspace: settings.workspace,
+      root,
+      selection,
+      ...(allowsMiseDowngrade(options, revision)
+        ? { allowMiseDowngrade: true }
+        : {}),
+    },
     run
   );
   if (rehomed === 'unavailable')
@@ -287,6 +312,22 @@ export async function managerSync(
     chosen,
     standing: fresh.standing,
   });
+}
+
+/** Why the chosen revision stops the run before it leaves for the revision's
+ * own checkout, if it does: it is not on the default branch, or its
+ * bootstrap would replace a newer mise.
+ */
+async function revisionRefusal(
+  options: FleetSyncOptions,
+  chosen: Chosen,
+  settings: Settings,
+  at: { run: Runner; root: string; home: string | undefined }
+): Promise<CommandOutcome | null> {
+  return (
+    (await unmergedRefusal(options, chosen, at.root, at.run)) ??
+    (await miseRefusal(options, chosen, settings, at))
+  );
 }
 
 /** Why a worker's copy of the configuration stops the run, if one does: the
@@ -448,6 +489,43 @@ async function unmergedRefusal(
         `Nothing was changed: ${repository} could not be fetched into the manager's own copy of it, so it is not known whether its default branch holds revision ${revision} (${selected}). Check the network and Git access to it, then run fleet-sync again; --allow-unmerged converges without asking.`,
         revision
       );
+}
+
+/** Why the revision's own toolchain bootstrap may not run, if it may not: it
+ * is from before the rule that keeps a newer mise, and would replace the
+ * mise of the manager or of a worker this run converges with the older one
+ * the revision pins, which breaks every checkout there whose mise.toml asks
+ * for a newer one. Asked like the question above, by the run a person or the
+ * schedule started, before it leaves for the fleet-owned checkout: from
+ * there on everything is the revision's own code. The pin is read from the
+ * revision's own files. --allow-mise-downgrade lets the bootstrap run.
+ */
+async function miseRefusal(
+  options: FleetSyncOptions,
+  { revision }: Chosen,
+  settings: Settings,
+  { run, root, home }: { run: Runner; root: string; home: string | undefined }
+): Promise<CommandOutcome | null> {
+  if (!asksMise(options) || allowsMiseDowngrade(options, revision)) return null;
+  if (inRunCheckout(revision)) return null;
+  const source = await prepareSource(root, revision, run, settings.workspace);
+  if (!source) return null;
+  const found = await miseDowngrade(
+    { revision, source },
+    {
+      manager: canonicalDefinition.manager.id,
+      home,
+      workers: await workersToConverge(options, settings.config),
+    },
+    run
+  );
+  return found
+    ? actionRequired(
+        'FLEET_MISE_DOWNGRADE',
+        miseDowngradeRemedy(revision, found),
+        revision
+      )
+    : null;
 }
 
 /** The preview: the read-only report of every machine, and the plan of what
@@ -693,6 +771,10 @@ function validateUnmerged(options: FleetSyncOptions): void {
   if (options.allowUnmerged && (options.only || options.schedule))
     throw new FleetUsageError(
       '--allow-unmerged applies to one sync a person starts: it takes neither --only nor --schedule.'
+    );
+  if (options.allowMiseDowngrade && (options.only || options.schedule))
+    throw new FleetUsageError(
+      '--allow-mise-downgrade applies to one sync a person starts: it takes neither --only nor --schedule.'
     );
 }
 function validateMaintenance(options: FleetSyncOptions): void {

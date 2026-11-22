@@ -170,9 +170,15 @@ mise's own pin (`min_version`) is a minimum. A machine that runs a newer mise
 than a revision pins keeps it, after a rollback too: replacing it would break
 every checkout on the machine whose pin is newer. `fleet-status` reports that
 as the warning `TOOLCHAIN_DOWNGRADE` of `tool:mise`, and
-[the runbook](docs/runbooks.md#the-pinned-toolchain) says how to install the
-older one on purpose. Each revision runs its own bootstrap, so a revision
-from before this rule still installs exactly the mise it pins.
+`fleet-sync --allow-mise-downgrade` installs the older one on purpose, on
+every machine it converges. Each revision runs its own bootstrap, and one from
+before this rule installs exactly the mise it pins. So `fleet-sync` reads the
+pin from the revision's own files and measures the mise of the manager and of
+each worker it is about to converge before that bootstrap runs anywhere: a
+revision that would replace a newer mise is refused with
+`FLEET_MISE_DOWNGRADE`, after a `--rollback` to an earlier release too, unless
+`--allow-mise-downgrade` asks for it. A hand-off from a worker measures the
+manager only.
 
 ## Your project's own tools
 

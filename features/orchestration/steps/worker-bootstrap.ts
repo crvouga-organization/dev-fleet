@@ -286,6 +286,22 @@ Given(
   }
 );
 
+Given(
+  /^the sync (keeps a newer mise|may downgrade mise \(--allow-mise-downgrade\))$/,
+  (world, request: string) => {
+    need(world.bootstrap.payload, 'a bootstrap payload').allowMiseDowngrade =
+      request.startsWith('may');
+  }
+);
+
+Then(
+  'the last thing the bootstrap was passed is {string}',
+  (world, word: string) => {
+    for (const { command } of bootstraps(world))
+      expect(command.at(-1)!.endsWith(` '${word}'`)).toBe(true);
+  }
+);
+
 Then(
   "the bootstrap passed {string} as how the worker's T3 restarts",
   (world, mode: string) => {

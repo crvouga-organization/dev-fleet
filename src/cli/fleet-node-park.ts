@@ -15,6 +15,10 @@ export interface NodeParkOptions {
   /** Park although agent turns are under way, or cannot be counted. */
   force?: boolean;
   dryRun?: boolean;
+  /** fleet-node-resume: its fleet-sync may converge to a revision that is
+   * not on the default branch of the source repository.
+   */
+  allowUnmerged?: boolean;
 }
 
 export interface NodeParkServices {
@@ -25,13 +29,16 @@ export interface NodeParkServices {
   state: () => StateContext;
   now: () => Date;
   /** A normal fleet-sync of one worker, which verifies it. */
-  sync: (id: string) => Promise<CommandOutcome>;
+  sync: ParkSync;
 }
 
-export function parkServices(
-  roster: string,
-  sync: (id: string) => Promise<CommandOutcome>
-): NodeParkServices {
+/** `allowUnmerged`: the sync is given --allow-unmerged. */
+export type ParkSync = (
+  id: string,
+  request: { allowUnmerged: boolean }
+) => Promise<CommandOutcome>;
+
+export function parkServices(roster: string, sync: ParkSync): NodeParkServices {
   return {
     run: runCommand,
     roster,
@@ -214,7 +221,9 @@ export async function fleetNodeResume(
       summary: `${worker.id} is active again after ${duration(Math.max(0, since))} parked.`,
     });
   }
-  const synced = await services.sync(worker.id);
+  const synced = await services.sync(worker.id, {
+    allowUnmerged: options.allowUnmerged === true,
+  });
   const report = synced.data as { ok?: boolean };
   checks.push(
     synced.exitCode === 0 && report.ok !== false
@@ -228,7 +237,7 @@ export async function fleetNodeResume(
           status: 'fail',
           summary: 'WORKER_RESUME_FAILED',
           remedy: {
-            action: `fleet-sync --node ${worker.id} did not end ready; its report (sync in this output) says why. Fix that, then run devfleet fleet-sync --node ${worker.id}.`,
+            action: `fleet-sync --node ${worker.id} did not end ready; its report (sync in this output) says why. Fix that, then run devfleet fleet-sync --node ${worker.id}. FLEET_REVISION_UNMERGED there means this command was started from a revision that is not on the default branch: run it from the installed package, or repeat it with --allow-unmerged.`,
           },
         }
   );

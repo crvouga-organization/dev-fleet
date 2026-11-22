@@ -15,7 +15,12 @@ releases=${5:-}
 # Whether a worker's T3 restarts while agent turns run (fleet-sync
 # --restart-busy); an older manager passes nothing and turns are kept.
 t3_restart=${6:-keep-turns}
+# Whether the toolchain bootstrap installs the mise this revision pins even
+# when the worker runs a newer one (fleet-sync --allow-mise-downgrade);
+# without it a newer mise is kept.
+mise_downgrade=${7:-}
 case "$source_mode" in cached|transfer) ;; *) exit 2;; esac
+case "$mise_downgrade" in ''|allow-mise-downgrade) ;; *) exit 2;; esac
 case "$t3_restart" in keep-turns|restart-busy) ;; *) exit 2;; esac
 case "$releases" in *[!0-9.\ ]*|'') exit 2;; esac
 case "$revision" in *[!a-f0-9]*|'') exit 2;; esac
@@ -328,7 +333,8 @@ toolchain_key=$(git rev-parse HEAD:mise.toml HEAD:mise.lock HEAD:.mise HEAD:bun.
 if [ -f "$HOME/.config/dev-fleet/fleet.json" ]; then
   toolchain_key="$toolchain_key$(cksum <"$HOME/.config/dev-fleet/fleet.json" | cut -d' ' -f1)"
 fi
-if [ "$(cat "$ready_file" 2>/dev/null)" = "$toolchain_key" ] && [ -n "$(find "$ready_file" -mmin -1440 2>/dev/null)" ]; then
+# A requested mise downgrade is the bootstrap's to do, so it runs.
+if [ -z "$mise_downgrade" ] && [ "$(cat "$ready_file" 2>/dev/null)" = "$toolchain_key" ] && [ -n "$(find "$ready_file" -mmin -1440 2>/dev/null)" ]; then
   toolchain_warm=1
 else
   toolchain_warm=''
@@ -336,7 +342,7 @@ else
 fi
 bounded='timeout 1800'
 # shellcheck disable=SC2086
-if [ -z "$toolchain_warm" ] && ! $bounded bash bootstrap/bootstrap.sh --worker --node "$node" --non-interactive --status-file "$status_file" >/dev/null 2>&1; then
+if [ -z "$toolchain_warm" ] && ! $bounded bash bootstrap/bootstrap.sh --worker --node "$node" --non-interactive --status-file "$status_file" ${mise_downgrade:+"--$mise_downgrade"} >/dev/null 2>&1; then
   tool_phase=$(sed -n 's/.*"phase":"\([a-z0-9-]*\)".*/\1/p' "$status_file" 2>/dev/null) || tool_phase=''
   case "$tool_phase" in
     managed-config) die TOOLCHAIN_CONFIG_CONFLICT;;
