@@ -52,7 +52,13 @@ Feature: The manager signs in to the hub with one fleet account
       When the manager signs in to the hub "https://manager-mac-1.tail0a1b2c.ts.net:8443"
       Then it is refused with exactly "BESZEL_ACCOUNT_REQUIRED"
 
-    Scenario: A password the manager cannot read while logged out of Vault is blocked by that login
+    Scenario Outline: A password the manager cannot read <while> is blocked by its login to Vault
       Given the command "vault token lookup -address=https://vault.example.com -format=json" fails
+      And the command "vault status -address=https://vault.example.com -format=json" <status>
       When the manager signs in to the hub "https://manager-mac-1.tail0a1b2c.ts.net:8443"
       Then it is refused with exactly "SECRET_READ_BLOCKED"
+
+      Examples:
+        | while                       | status   |
+        | while logged out of Vault   | succeeds |
+        | while Vault does not answer | fails    |

@@ -1,8 +1,8 @@
 import type { FleetDefinition } from '../definition';
 import {
-  controlRemedy,
   TailnetControlError,
   type TailnetControl,
+  controlFailure,
 } from '../tailnet-control';
 import type { TailnetComputer } from '../tailscale';
 import type { PackagePlaybook } from '../platform/ansible';
@@ -124,7 +124,7 @@ async function enrolmentKey(
     return minted.key;
   } catch (error) {
     if (!(error instanceof TailnetControlError)) throw error;
-    checks.push(controlFailure('tailscale:enrolment-key', error));
+    checks.push(controlFailure('tailscale:enrolment-key', 'fail', error));
     return undefined;
   }
 }
@@ -156,22 +156,8 @@ async function keyExpiry(
     ];
   } catch (error) {
     if (!(error instanceof TailnetControlError)) throw error;
-    return [
-      {
-        ...controlFailure('tailscale:key-expiry-policy', error),
-        status: 'warn',
-      },
-    ];
+    return [controlFailure('tailscale:key-expiry-policy', 'warn', error)];
   }
-}
-
-function controlFailure(id: string, error: TailnetControlError): Check {
-  return {
-    id,
-    status: 'fail',
-    summary: error.code,
-    remedy: { action: controlRemedy(error.code) },
-  };
 }
 
 /** The bootstrap refused to run as root: the alias logs in as root. With a

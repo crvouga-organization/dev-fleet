@@ -178,3 +178,16 @@ Feature: A tailnet control plane issues one single-use key per new worker
       When a key is created for "worker-one"
       Then it is refused with "TAILNET_ADMIN_REQUIRED"
       And the control plane was asked nothing
+
+    Scenario Outline: A credential the manager could not read is refused as blocked, not as missing
+      The credential is stored; the manager <fault> its secrets provider.
+      Storing it again repairs nothing, so the refusal names the read.
+      Given the manager <fault> its secrets provider
+      When a key is created for "worker-one"
+      Then it is refused with "SECRET_READ_BLOCKED"
+      And the control plane was asked nothing
+
+      Examples:
+        | fault               |
+        | is not logged in to |
+        | cannot reach        |

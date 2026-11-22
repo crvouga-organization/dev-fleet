@@ -25,7 +25,7 @@ import {
 import { knownHostsPath, readPinsWith } from '../../../src/ssh-connection';
 import { declareFleet, workersOf } from '../../support/fleet';
 import { tailnetCleanup } from '../../../src/tailnet-cleanup';
-import { controlPlane, http } from './tailnet';
+import { controlPlane, controlSecrets, http } from './tailnet';
 import { managerT3, type T3Transport } from '../../../src/t3/peer-link';
 import { pairIfRequested } from '../../../src/t3/pairing';
 import type { FleetNode } from '../../../src/types';
@@ -291,8 +291,7 @@ export function services(world: FleetSyncWorld): NodeLifecycleServices {
       ? {
           tailnet: tailnetCleanup(
             controlPlane(world).config!,
-            async (name) =>
-              name === 'tailnet-admin' ? controlPlane(world).credential : null,
+            controlSecrets(world),
             http(world)
           ),
         }

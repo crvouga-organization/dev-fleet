@@ -87,6 +87,7 @@ Feature: Every machine keeps its own Vault session
 
     Scenario Outline: With the lookups "<lookups>", <mode> sync leaves the manager <result> after <prompts> prompts
       Given looking up the Vault session answers, in turn, "<lookups>"
+      And Vault answers a request for its status
       And the operator completes every prompt on the terminal
       When the Vault session of the manager is authorized in <mode> sync
       Then the manager is <result>
@@ -97,3 +98,12 @@ Feature: Every machine keeps its own Vault session
         | yes     | an interactive   | logged in     | 0       |
         | no      | a noninteractive | not logged in | 0       |
         | no, yes | an interactive   | logged in     | 1       |
+
+    Scenario: A Vault that does not answer is not asked for a login
+      The prompt would fail the same way, and a person would type a password
+      for nothing.
+      Given looking up the Vault session answers, in turn, "no"
+      And Vault does not answer a request for its status
+      And a prompt on the terminal would fail the scenario
+      When the Vault session of the manager is authorized in an interactive sync
+      Then the manager is not logged in

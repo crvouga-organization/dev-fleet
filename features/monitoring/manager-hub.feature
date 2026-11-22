@@ -87,12 +87,13 @@ Feature: The hub runs on the manager, and only there
       And the summary of the second check is "BESZEL_TUNNEL_CREDENTIAL_UNAVAILABLE"
       And the first playbook run, "hub-darwin.yml", was not given the variable "beszel_tunnel_token"
 
-    Scenario: A manager logged out of Vault has one fault, and the checks that needed a secret are blocked by it
+    Scenario Outline: A manager <state> has one fault, and the checks that needed a secret are blocked by it
       No tunnel, hub account or viewer is missing: the manager could read
       none of them. The check that owns the manager's login fails the run;
       these name it, and none of them passes.
       Given the command "vault kv get …" fails
       And the command "vault token lookup …" fails
+      And the command "vault status -address=https://vault.example.com -format=json" <status>
       When the hub is converged on the manager
       Then these checks are reported:
         | check                  | status |
@@ -103,6 +104,12 @@ Feature: The hub runs on the manager, and only there
       And every check but the first has the summary "SECRET_READ_BLOCKED by manager:vault-renewal"
       And the checks do not contain "BESZEL_TUNNEL_CREDENTIAL_UNAVAILABLE"
       And the checks do not contain "BESZEL_VIEWER_UNPROVISIONED"
+      And the checks contain "<remedy>"
+
+      Examples:
+        | state                           | status   | remedy                                              |
+        | logged out of Vault             | succeeds | this machine is not logged in to the secrets provider |
+        | whose Vault does not answer     | fails    | logging in again does not help                      |
 
     Scenario Outline: <what fails> cannot pass readiness
       Given the command "<command>" <answer>

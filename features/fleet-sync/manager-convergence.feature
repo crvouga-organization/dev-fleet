@@ -225,6 +225,18 @@ Feature: The manager converges itself before any worker
       Then the check's summary is "VAULT_LOGIN_REQUIRED"
       And the check's remedy contains "vault login -address=https://vault.example.com -method=userpass"
 
+    Scenario: A Vault that does not answer is not a login to repeat
+      A session that does not answer says nothing about why. Vault's status
+      needs no login: when that fails too, the manager cannot reach Vault or
+      Vault is sealed, and logging in again would fail the same way.
+      Given Vault does not answer the manager
+      When the manager's Vault session is measured
+      Then the check's status is "fail"
+      And the check's summary is "VAULT_UNREACHABLE"
+      And the check's remedy contains "vault status -address=https://vault.example.com"
+      And the check's remedy contains "logging in again does not help"
+      And the check's remedy does not name "vault login"
+
   Rule: The manager warns a day before a login that renewal cannot extend ends
     Renewal does not keep every login alive. Vault extends a token only up to
     its maximum lifetime (its own, or that of the auth method that issued

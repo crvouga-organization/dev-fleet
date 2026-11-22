@@ -10,7 +10,7 @@ person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
 entry here, or a `devfleet` command quoted in the documents does not exist.
 
-There are 374 codes; 64 need a person.
+There are 375 codes; 65 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -458,10 +458,10 @@ write `1` to that agent scope’s `cgroup.kill`.
 
 - **Meaning:** A machine cannot read the secrets it needs with its own Vault session, or soon will not.
 - **Confirm:** `vault token lookup` on the machine and the `worker:vault-renewal` or `manager:vault-renewal` check. In the lookup, `renewable`, `ttl`, `period`, `explicit_max_ttl` and `creation_time` say how long the login can last; on the manager `launchctl print gui/$(id -u)/dev.devfleet.vault-renew` shows the `last exit code` of the renewal job.
-- **Fix:** Log the machine in once (`devfleet fleet-sync` asks on the manager); renewal is automatic afterwards, up to the maximum lifetime of the token.
+- **Fix:** Log the machine in once (`devfleet fleet-sync` asks on the manager); renewal is automatic afterwards, up to the maximum lifetime of the token. A Vault that does not answer (`VAULT_UNREACHABLE`) is not repaired by a login: restore the way to it, or unseal it.
 - **Escalate:** A refused policy needs the Vault administrator. So does a login that ends too often: its maximum lifetime is set where the token is issued (the auth method, or the user or role in it).
 
-- `SECRET_READ_BLOCKED`: secret read blocked: the check needed a secret the machine could not read because it is not logged in to Vault. It is not a fault of that check: fix the check its summary names (`manager:vault-renewal`, `VAULT_LOGIN_REQUIRED`), then run `devfleet fleet-sync`. **Needs a person.**
+- `SECRET_READ_BLOCKED`: secret read blocked: the check needed a secret the manager could not read, because it is not logged in to Vault or Vault does not answer it. It is not a fault of that check: fix the check its summary names (`manager:vault-renewal`, which says `VAULT_LOGIN_REQUIRED` or `VAULT_UNREACHABLE`), then run `devfleet fleet-sync`. Every check on the manager that needs a secret answers this way: the hub's account, tunnel, viewer and backups, a notification target, the tailnet control plane's credential, the GitHub token and the proxy client key. **Needs a person.**
 - `UNATTENDED_VAULT_IDENTITY_REQUIRED`: unattended vault identity required.
 - `VAULT_LOGIN_EXPIRY_PENDING`: vault login expiry pending: the manager's login ends within a day and renewal cannot extend it, because Vault renews a token only up to its maximum lifetime or the token is not renewable. Log the manager in again before then; see [Authentication](authentication.md#rotation-and-failure). **Needs a person.**
 - `VAULT_LOGIN_REQUIRED`: vault login required. **Needs a person.**
@@ -469,6 +469,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `VAULT_RENEWAL_FAILING`: vault renewal failing: the last run of the renewal job failed (a worker's `personal-worker-auth.service`, the manager's `dev.devfleet.vault-renew`), and the login lapses unless a renewal succeeds.
 - `VAULT_RENEWAL_MISSING`: vault renewal missing: the manager's renewal job is not loaded. Run `devfleet fleet-sync` on the manager.
 - `VAULT_RENEWAL_NOT_MANAGER`: vault renewal not manager.
+- `VAULT_UNREACHABLE`: vault unreachable: the manager's Vault session does not answer and neither does Vault's own status, which needs no login. Logging in again does not help. `vault status -address=ADDRESS` on the manager says which it is: no answer is the network between them (the tailnet, DNS, the address under `secrets` in the fleet configuration) or a Vault that is not running; `Sealed true` is a Vault to unseal. A login that was held is still held if Vault returns before it lapses. **Needs a person.**
 - `VAULT_WORKER_POLICY_FAILED`: vault worker policy failed.
 
 ## The fleet definition and a worker's lifecycle

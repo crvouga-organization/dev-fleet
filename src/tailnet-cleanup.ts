@@ -7,7 +7,9 @@ import {
   type ControlHttp,
   type TailnetConfig,
   type TailnetControl,
+  controlFailure,
 } from './tailnet-control';
+import { SECRET_READ_BLOCKED } from './secrets-blocked';
 import type { Check } from './types';
 import { fleetJson } from './fleet-config';
 
@@ -62,6 +64,11 @@ export function tailnetCleanup(
             device,
             'the secrets provider holds no tailnet-admin'
           );
+        if (
+          error instanceof TailnetControlError &&
+          error.code === SECRET_READ_BLOCKED
+        )
+          return controlFailure('tailscale:device', 'skip', error);
         throw error;
       }
       if (!control) return deviceLeftToPerson(worker, device);
@@ -77,7 +84,7 @@ export function tailnetCleanup(
           status: 'warn',
           summary: error.code,
           remedy: {
-            action: `${controlRemedy(error.code)} Or remove the device ${device} in the tailnet's admin console.`,
+            action: `${controlRemedy(error.code, error.fault)} Or remove the device ${device} in the tailnet's admin console.`,
           },
         };
       }
@@ -134,14 +141,7 @@ export async function tailnetLeftovers(
   } catch (error) {
     if (!(error instanceof TailnetControlError)) throw error;
     if (error.code === 'TAILNET_ADMIN_REQUIRED') return [];
-    return [
-      {
-        id: 'tailscale:leftover',
-        status: 'skip',
-        summary: error.code,
-        remedy: { action: controlRemedy(error.code) },
-      },
-    ];
+    return [controlFailure('tailscale:leftover', 'skip', error)];
   }
   const declared = new Set(
     [definition.manager, ...definition.workers].flatMap((machine) => [

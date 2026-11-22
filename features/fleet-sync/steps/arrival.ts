@@ -1,7 +1,7 @@
 import { expect } from 'bun:test';
 import { randomUUID } from 'node:crypto';
 import { deployWorker } from '../../../src/cli/fleet-sync-worker';
-import { tailnetControl } from '../../../src/tailnet-control';
+import { fleetTailnetControl } from '../../../src/tailnet-control';
 import type { TailnetComputer } from '../../../src/tailscale';
 import type { Check, CommandResult, NodeReport } from '../../../src/types';
 import { failed, succeeded } from '../../support/commands';
@@ -12,7 +12,7 @@ import {
   fleetSync,
   type FleetSyncWorld,
 } from '../support/world';
-import { controlPlane, http } from './tailnet';
+import { controlPlane, controlSecrets, http } from './tailnet';
 
 /** One worker's deployment around its converge: the converge, the playbooks
  * the manager applies and the tailnet answer from memory.
@@ -155,11 +155,10 @@ When(
           });
         },
         control: () =>
-          Promise.resolve(
-            plane.credential
-              ? tailnetControl(config, plane.credential, http(world))
-              : null
-          ),
+          // As fleet-sync asks: through the manager's secrets.
+          plane.credential
+            ? fleetTailnetControl(config, controlSecrets(world), http(world))
+            : Promise.resolve(null),
         computers: () => Promise.resolve(state.computers),
         readyBefore: state.readyBefore,
         ...(flags ? { maintenanceReboot: true } : {}),

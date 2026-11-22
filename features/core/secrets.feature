@@ -82,11 +82,14 @@ Feature: Secrets are read by purpose
       When the secret "monitoring-tunnel-token" is read
       Then the secret is not available
 
-  Rule: A provider this machine is not logged in to is told apart from a secret it does not hold
+  Rule: A provider this machine cannot read is told apart from a secret it does not hold
     A check that got no secret asks which it was, so that a Vault login that
     has expired is reported once, by the check that owns it, and a secret that
     is really absent keeps the code of the check that needs it. Only Vault has
-    a login; what the lookup prints holds the token and is never kept.
+    a login; what the lookup prints holds the token and is never kept. A
+    lookup that fails does not say why, so Vault is asked for its status,
+    which needs no login: a Vault that does not answer, or is sealed, is not
+    repaired by logging in.
 
     Background:
       Given a fleet whose secrets block is:
@@ -111,8 +114,9 @@ Feature: Secrets are read by purpose
       And the only command run was:
         | vault | token | lookup | -address=https://vault.example.org | -format=json |
 
-    Scenario Outline: A Vault session that <answer> is a login that is required
+    Scenario Outline: A Vault session that <answer>, on a Vault that answers, is a login that is required
       Given the command "vault token lookup" fails with the error "<error>"
+      And the command "vault status -address=https://vault.example.org -format=json" prints '{"sealed":false}'
       When this machine's login to the secrets provider is measured
       Then the login is required
 
@@ -120,6 +124,26 @@ Feature: Secrets are read by purpose
         | answer                 | error                                  |
         | Vault refuses          | Code: 403. Errors: * permission denied |
         | gives no reason at all |                                        |
+
+    Scenario Outline: A Vault that <answer> is unreachable, whatever the session was
+      Given the command "vault token lookup" fails with the error "<error>"
+      And the command "vault status -address=https://vault.example.org -format=json" fails with the error "<error>"
+      When this machine's login to the secrets provider is measured
+      Then the login is unreachable
+
+      Examples:
+        | answer            | error                                           |
+        | does not answer   | dial tcp: lookup vault.example.org: no such host |
+        | refuses the connection | connect: connection refused                |
+        | is sealed         | Vault is sealed                                 |
+
+    Scenario: A provider that reads a secret says how it can be read
+      A reader hands the provider it read from to the one answer for a secret
+      it did not get, so no reader measures the login itself.
+      Given the command "vault token lookup" fails with the error "permission denied"
+      And the command "vault status -address=https://vault.example.org -format=json" prints '{"sealed":false}'
+      When the provider that reads this fleet's secrets is asked for its login
+      Then the login is required
 
     Scenario Outline: A fleet that keeps its secrets in <where> has no login to lose
       Given a fleet whose secrets block is:

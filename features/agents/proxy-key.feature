@@ -29,3 +29,28 @@ Feature: Agents keep reaching the proxy while the secrets provider is down
     Given the secrets provider cannot answer
     When an agent launches
     Then it is refused with "Required secret unavailable: proxy-client-key"
+
+  Rule: A manager with no key to present names the login that kept it from reading one
+    A node that never read the key has nothing to fall back on, and every
+    provider fails for want of it. On the manager that is one fault when its
+    secrets provider cannot be read: the check that owns the manager's login
+    says what to do, and the providers name it. A worker's login is its own.
+
+    Scenario Outline: The providers of a manager that <fault> its secrets provider are blocked by its login
+      Given the manager <fault> its secrets provider
+      When the providers of "manager-mac" are verified
+      Then every provider's authentication fails, saying "SECRET_READ_BLOCKED by manager:vault-renewal"
+
+      Examples:
+        | fault               |
+        | is not logged in to |
+        | cannot reach        |
+
+    Scenario: A key the provider does not hold keeps the providers' own code
+      When the providers of "manager-mac" are verified
+      Then every provider's authentication fails, saying "PROVIDER_UNATTENDED_CREDENTIAL_REQUIRED"
+
+    Scenario: A worker's providers keep their own code
+      Given the manager is not logged in to its secrets provider
+      When the providers of "worker-one" are verified
+      Then every provider's authentication fails, saying "PROVIDER_UNATTENDED_CREDENTIAL_REQUIRED"
