@@ -11,8 +11,10 @@ import type { Account } from './accounts';
 import { accountSlug } from './accounts';
 import {
   accountSessionChecks,
+  printedClears,
   sessionResult,
   type Instance,
+  type SessionOutcome,
   type SessionResult,
 } from '../accounts/sessions';
 import {
@@ -196,7 +198,9 @@ export interface AccountContext {
   /** Asks the proxy what holds one account back, after its session timed
    * out (`proxyVerdict`). Without it a timed-out session stays `timed-out`.
    */
-  consult?: (account: Account) => Promise<SessionResult>;
+  consult?: (account: Account) => Promise<SessionOutcome>;
+  /** The clock a cooldown a session printed is read against. */
+  now?: () => number;
 }
 
 /** How a per-account instance is launched: its tool's launcher, pinned to
@@ -237,9 +241,10 @@ async function accountSession(
     run: Runner;
     profiles: string;
   }
-): Promise<SessionResult> {
+): Promise<SessionOutcome> {
   const spec = ACCOUNT_LAUNCH[instance.tool];
-  if (!spec) return 'failed';
+  if (!spec) return { result: 'failed' };
+  let found: SessionOutcome | undefined;
   const check = await cachedCheck(
     `account-${context.node}-${instance.tool}-${accountSlug(instance.account)}`,
     cacheKey(
@@ -282,20 +287,29 @@ async function accountSession(
         (account) =>
           account.tool === instance.tool && account.email === instance.account
       );
-      const outcome =
+      const clears =
+        said === 'cooling-down'
+          ? printedClears(
+              result.stdout + result.stderr,
+              (accounts.now ?? Date.now)()
+            )
+          : undefined;
+      const outcome: SessionOutcome =
         said === 'timed-out' && live && accounts.consult
           ? await accounts.consult(live)
-          : said;
+          : { result: said, ...(clears ? { clears } : {}) };
+      found = outcome;
       // Only a pass is remembered, so the outcome is read back as it is.
       return {
         id: 'account-session',
-        status: outcome === 'ok' ? 'pass' : 'fail',
-        summary: outcome,
+        status: outcome.result === 'ok' ? 'pass' : 'fail',
+        summary: outcome.result,
       };
     },
     context.cache
   );
-  return check.status === 'pass' ? 'ok' : (check.summary as SessionResult);
+  if (check.status === 'pass') return { result: 'ok' };
+  return found ?? { result: check.summary as SessionResult };
 }
 
 /** Reads `tool = "x"` and `"tool" = { version = "x", ... }` pins. */
