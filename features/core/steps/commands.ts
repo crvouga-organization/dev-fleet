@@ -257,6 +257,13 @@ Then(
 );
 
 Then(
+  'the summary of the check {string} does not mention {string}',
+  (world, id: string, text: string) => {
+    expect(checkNamed(world, id).summary).not.toContain(text);
+  }
+);
+
+Then(
   'the remedy of the check {string} names the fleet.json this process reads, by its path',
   (world, id: string) => {
     expect(checkNamed(world, id).remedy?.action).toContain(

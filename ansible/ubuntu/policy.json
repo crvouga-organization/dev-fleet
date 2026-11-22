@@ -181,6 +181,11 @@
       "cooldown": 120,
       "interval": 5
     },
+    "agentSessionLimit": {
+      "reserve": 2,
+      "intervalSeconds": 2,
+      "refusedExitCode": 75
+    },
     "diskGuardWriteMiB": 32,
     "diskGuardIntervalSeconds": 5,
     "diskGcIdleDays": 7,

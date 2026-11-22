@@ -82,6 +82,33 @@ Feature: A worker's disk and memory lines scale with the machine
       And the summary of the check "worker:agent-sessions" mentions "AGENTS_OVER_CAPACITY: 12 agent sessions running; the memory policy supports 11 at once on 60416 MiB (an estimated 4608 MiB each). Nothing refuses a session above that number."
       And the remedy of the check "worker:agent-sessions" mentions "a recommendation, not an admission limit: T3 Code has no limit on the sessions it starts"
 
+    Scenario: The estimate is held against the agents running now
+      The estimate cannot be right for every worker, so the check says what
+      the running agents took at their peak, how far the estimate is from
+      their median and how many sessions the worker would support at it.
+      When a worker with 60416 MiB of memory and no declared limit measures:
+        | agentsessions     | 12   |
+        | agentpeaks        | 11   |
+        | agentpeakmedianmb | 795  |
+        | agentpeakmaxmb    | 9422 |
+      Then the check "worker:agent-sessions" warns
+      And the summary of the check "worker:agent-sessions" mentions "Measured: the 11 running now peaked at a median of 795 MiB and at most 9422 MiB each; the estimate is 3813 MiB above that median, at which this worker would support 66."
+
+    Scenario: A measured median above the estimate is reported the same way
+      When a worker with 16384 MiB of memory and no declared limit measures:
+        | agentsessions     | 2    |
+        | agentpeaks        | 2    |
+        | agentpeakmedianmb | 6000 |
+        | agentpeakmaxmb    | 7000 |
+      Then the check "worker:agent-sessions" passes
+      And the summary of the check "worker:agent-sessions" mentions "the estimate is 1392 MiB below that median, at which this worker would support 2."
+
+    Scenario: A worker that runs no agent has nothing to hold the estimate against
+      When a worker with 16384 MiB of memory and no declared limit measures:
+        | agentsessions | 0 |
+      Then the check "worker:agent-sessions" passes
+      And the summary of the check "worker:agent-sessions" does not mention "Measured"
+
     Scenario: The capacity probe of a worker reports its sessions
       Given every command prints:
         """
@@ -98,3 +125,58 @@ Feature: A worker's disk and memory lines scale with the machine
       Then the check "worker:agent-sessions" passes
       And the summary of the check "worker:agent-sessions" mentions "1 agent sessions running; the memory policy supports 1 at once"
       And the check "worker:capacity:disk" passes
+
+  Rule: A declared limit on agent sessions is measured, and one the worker does not hold fails
+
+    `agentSessionLimit` in the fleet configuration is opt-in. A unit of the
+    worker's user manager holds the kernel's limit on the slice T3 starts
+    agents in, 2 scopes above the declared limit, so that a fleet launcher
+    refuses first and can say why. The check reads the number that unit runs
+    with and the one the kernel holds.
+
+    Scenario: A worker under its declared limit says what refuses the next session
+      When a worker with 60416 MiB of memory and a declared limit of 16 agent sessions measures:
+        | agentsessions  | 12 |
+        | agentscopes    | 11 |
+        | agentlimitunit | 18 |
+        | agentlimitheld | 18 |
+      Then the check "worker:agent-sessions" warns
+      And the summary of the check "worker:agent-sessions" mentions "AGENTS_OVER_CAPACITY: 12 agent sessions running; the memory policy supports 11 at once on 60416 MiB (an estimated 4608 MiB each). The worker refuses a session above its declared limit of 16; 11 count toward it."
+      And the summary of the check "worker:agent-sessions" does not mention "Nothing refuses"
+      And the remedy of the check "worker:agent-sessions" mentions "the declared limit of 16 admits them"
+
+    Scenario: A worker at its declared limit says how a refusal looks in T3
+      When a worker with 60416 MiB of memory and a declared limit of 4 agent sessions measures:
+        | agentsessions  | 4 |
+        | agentscopes    | 4 |
+        | agentlimitunit | 6 |
+        | agentlimitheld | 6 |
+      Then the check "worker:agent-sessions" passes
+      And the summary of the check "worker:agent-sessions" mentions "It is at that limit: the next session is refused, which T3 shows as a provider that exited before it started."
+
+    Scenario: A worker that runs no agent holds the limit in its unit alone
+      The slice T3 owns exists only while an agent runs, so there is nothing
+      for the kernel to hold yet.
+      When a worker with 16384 MiB of memory and a declared limit of 4 agent sessions measures:
+        | agentsessions  | 0 |
+        | agentlimitunit | 6 |
+      Then the check "worker:agent-sessions" passes
+      And the summary of the check "worker:agent-sessions" mentions "The worker refuses a session above its declared limit of 4; 0 count toward it."
+
+    Scenario Outline: A declared limit the worker does not hold fails: <reason>
+      When a worker with 16384 MiB of memory and a declared limit of 4 agent sessions measures:
+        | agentsessions  | 2        |
+        | agentscopes    | <scopes> |
+        | agentlimitunit | <unit>   |
+        | agentlimitheld | <held>   |
+      Then the check "worker:agent-sessions" fails
+      And the summary of the check "worker:agent-sessions" mentions "AGENT_SESSION_LIMIT_UNENFORCED: the declared limit of 4 agent sessions is not held on this worker: <reason>."
+      And the remedy of the check "worker:agent-sessions" mentions "Run devfleet fleet-sync"
+
+      Examples:
+        | scopes | unit | held | reason                                                                    |
+        | 2      | 0    |      | its unit is not running                                                   |
+        | 2      |      |      | whether its unit runs could not be read                                   |
+        | 2      | 10   | 10   | its unit holds 10 scopes, not the 6 that limit needs                      |
+        | 2      | 6    | 3    | the kernel holds 3 scopes on the slice T3 starts agents in, not 6         |
+        | 2      | 6    |      | the kernel holds no limit on the slice T3 starts agents in                |
