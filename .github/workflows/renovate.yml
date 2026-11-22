@@ -36,8 +36,12 @@ jobs:
       pull-requests: write
     steps:
       # A pull request opened with the workflow's own token either starts no
-      # CI or starts a run that waits for a maintainer's approval
-      # (action_required) and never runs; neither counts as a run.
+      # CI, or starts a run that waits for a maintainer's approval
+      # (action_required) and never runs. A waiting run is approved: it then
+      # runs for the pull request, and only a pull_request run's checks count
+      # for it (a dispatched run reports on the commit, not the pull request).
+      # A branch with no run at all gets a dispatched one. The pins/ branches
+      # pins.yml opens the same way are included.
       - name: Start CI for dependency updates whose push did not trigger it
         env:
           GH_TOKEN: ${{ github.token }}
@@ -45,11 +49,17 @@ jobs:
         run: |
           set -euo pipefail
           gh pr list --limit 200 --json headRefName,headRefOid,isCrossRepository \
-            --jq '.[] | select(.isCrossRepository == false and (.headRefName | startswith("renovate/"))) | [.headRefName,.headRefOid] | @tsv' |
+            --jq '.[] | select(.isCrossRepository == false and (.headRefName | startswith("renovate/") or startswith("pins/"))) | [.headRefName,.headRefOid] | @tsv' |
           while read -r branch commit; do
-            count=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$commit" \
-              --jq '[.workflow_runs[] | select(.conclusion != "action_required")] | length')
-            if [ "$count" = 0 ]; then gh workflow run ci.yml --ref "$branch"; fi
+            runs=$(gh api "repos/$GH_REPO/actions/workflows/ci.yml/runs?head_sha=$commit" \
+              --jq '.workflow_runs[] | [.id, .conclusion // ""] | @tsv')
+            if [ -z "$runs" ]; then gh workflow run ci.yml --ref "$branch"; continue; fi
+            printf '%s\n' "$runs" | while read -r id conclusion; do
+              if [ "$conclusion" = action_required ]; then
+                gh api -X POST "repos/$GH_REPO/actions/runs/$id/approve" >/dev/null ||
+                  echo "::warning::CI for $branch waits for approval and could not be approved."
+              fi
+            done
           done
       # A pull request opened with the workflow's own token starts no
       # auto-merge.yml run, so auto-merge is enabled here.
