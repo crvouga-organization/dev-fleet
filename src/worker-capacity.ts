@@ -3,7 +3,7 @@ import { clockCheck } from './clock';
 import { healthChecks, parseProbe } from './machine-health';
 import type { Check, Runner } from './types';
 import policy from '../ansible/ubuntu/policy.json';
-import { supportedSessions } from './worker-sizing';
+import { agentMemoryMiB, supportedSessions } from './worker-sizing';
 import { fleet } from './fleet-config';
 import { agentSessionLimit, kernelSessionLimit } from './agent-session-limit';
 import type { HealthSample } from './machine-health';
@@ -73,18 +73,68 @@ export type SessionSample = Pick<
   | 'agentPeaks'
   | 'agentPeakMedianMb'
   | 'agentPeakMaxMb'
+  | 'agentPeakSumMb'
+  | 'agentsReachedMb'
 >;
 
 /** The estimate of a session's size against the agents running now: the
- * median and the largest of their memory peaks, how far the estimate is from
- * the median and how many sessions the worker would support at it. Empty
- * while no agent runs. */
+ * median and the largest of their memory peaks, those peaks added up against
+ * the memory the policy leaves agents, how far the estimate is from the
+ * median and how many sessions the worker would support at it. Empty while
+ * no agent runs. */
 function measured(memoryMiB: number, sample: SessionSample): string {
   const { agentPeaks, agentPeakMedianMb, agentPeakMaxMb } = sample;
   if (!agentPeaks || agentPeakMedianMb === undefined) return '';
   const each = policy.sizing.agentSessionMiB + policy.sizing.agentBuildMiB;
   const drift = each - agentPeakMedianMb;
-  return ` Measured: the ${agentPeaks} running now peaked at a median of ${agentPeakMedianMb} MiB and at most ${agentPeakMaxMb ?? agentPeakMedianMb} MiB each; the estimate is ${Math.abs(drift)} MiB ${drift >= 0 ? 'above' : 'below'} that median, at which this worker would support ${supportedSessions(memoryMiB, Math.max(1, agentPeakMedianMb))}.`;
+  const together =
+    sample.agentPeakSumMb === undefined
+      ? ''
+      : `, ${sample.agentPeakSumMb} MiB added up, of the ${agentMemoryMiB(memoryMiB)} MiB the memory policy leaves agents`;
+  return ` Measured: the ${agentPeaks} running now peaked at a median of ${agentPeakMedianMb} MiB and at most ${agentPeakMaxMb ?? agentPeakMedianMb} MiB each${together}; the estimate is ${Math.abs(drift)} MiB ${drift >= 0 ? 'above' : 'below'} that median, at which this worker would support ${supportedSessions(memoryMiB, Math.max(1, agentPeakMedianMb))}.${reached(sample)}`;
+}
+
+/** The most everything T3 started took at one moment, where the kernel
+ * kept it: the one number that holds the sessions that ended. */
+function reached({ agentsReachedMb }: SessionSample): string {
+  return agentsReachedMb === undefined
+    ? ''
+    : ` Everything T3 Code started on this worker, sessions that ended among it, took at most ${agentsReachedMb} MiB at one moment.`;
+}
+
+/** Whether more runs than the worker carries, and by what that was decided.
+ *
+ * Where the kernel measured the running agents it is a measurement: their
+ * peaks added up, which is what they would take if each returned to its own
+ * peak at once, against the memory the policy leaves agents. The estimate of
+ * a session's size decides only where nothing was measured: it budgets a
+ * build for every session at once, several times what a session takes, so
+ * it called a worker full that carried its sessions with room to spare.
+ */
+function capacity(
+  memoryMiB: number,
+  sample: SessionSample
+): { over: boolean; by: 'measurement' | 'estimate' } {
+  if (sample.agentPeakSumMb !== undefined)
+    return {
+      over: sample.agentPeakSumMb > agentMemoryMiB(memoryMiB),
+      by: 'measurement',
+    };
+  const running = sample.agentSessions;
+  return {
+    over: running !== undefined && running > supportedSessions(memoryMiB),
+    by: 'estimate',
+  };
+}
+
+/** More sessions than the estimate supports that fit by measurement: said,
+ * so the two numbers of one summary do not read as a contradiction. */
+function fits(memoryMiB: number, sample: SessionSample): string {
+  const running = sample.agentSessions ?? 0;
+  const { over, by } = capacity(memoryMiB, sample);
+  return by === 'measurement' && !over && running > supportedSessions(memoryMiB)
+    ? ' More run than the estimate supports, and that does not warn: what they took fits.'
+    : '';
 }
 
 /** Why a declared limit is not what the worker holds, or undefined when it
@@ -132,9 +182,10 @@ function counted(sample: SessionSample): string {
  * browser is not one, and a process Codex or OpenCode shares among its
  * sessions is one.
  *
- * The size of a session is an estimate (`sizing.agentSessionMiB`), so more
- * sessions than it supports only warns, and the check holds the estimate
- * against the peaks of the agents running now. That number is a
+ * The size of a session is an estimate (`sizing.agentSessionMiB`), so it
+ * does not decide the warning where the kernel measured the agents
+ * (`capacity`): the check warns when what they took does not fit, and says
+ * how far the estimate is from them. That number is a
  * recommendation: T3's administrator policy has no limit on sessions. What
  * refuses a session is the opt-in `agentSessionLimit` of the fleet
  * configuration (src/agent-session-limit.ts); a declared limit the worker
@@ -147,12 +198,11 @@ export function sessionsCheck(
   sample: SessionSample = {},
   limit?: number
 ): Check {
-  const running = sample.agentSessions;
   const supported = supportedSessions(memoryMiB);
   const each = policy.sizing.agentSessionMiB + policy.sizing.agentBuildMiB;
-  const over = running !== undefined && running > supported;
+  const { over, by } = capacity(memoryMiB, sample);
   const fault = limit === undefined ? undefined : unenforced(limit, sample);
-  const facts = `${counted(sample)}; the memory policy supports ${supported} at once on ${memoryMiB} MiB (an estimated ${each} MiB each).${fault === undefined ? admitted(limit, over, sample.agentScopes ?? 0) : ''}${measured(memoryMiB, sample)}`;
+  const facts = `${counted(sample)}; the memory policy supports ${supported} at once on ${memoryMiB} MiB (an estimated ${each} MiB each).${fault === undefined ? admitted(limit, over, sample.agentScopes ?? 0) : ''}${measured(memoryMiB, sample)}${fits(memoryMiB, sample)}`;
   if (fault !== undefined)
     return {
       id: 'worker:agent-sessions',
@@ -167,7 +217,7 @@ export function sessionsCheck(
     id: 'worker:agent-sessions',
     status: over ? 'warn' : 'pass',
     summary: `${over ? `${SESSIONS_EXHAUSTED}: ` : ''}${facts}`,
-    ...(over ? { remedy: { action: overRemedy(limit) } } : {}),
+    ...(over ? { remedy: { action: overRemedy(limit, by) } } : {}),
   };
 }
 
@@ -182,8 +232,15 @@ function admitted(
   return ` The worker refuses a session above its declared limit of ${limit}; ${counted} count toward it.${counted >= limit ? ' It is at that limit: the next session is refused, which T3 shows as a provider that exited before it started.' : ''}`;
 }
 
-function overRemedy(limit: number | undefined): string {
+function overRemedy(
+  limit: number | undefined,
+  by: 'measurement' | 'estimate'
+): string {
+  const found =
+    by === 'measurement'
+      ? 'The agents running now took more memory at their peaks, added up, than the memory policy leaves agents'
+      : 'More agent sessions run than the memory policy supports';
   return limit === undefined
-    ? 'More agent sessions run than the memory policy supports. The number is a recommendation, not an admission limit: T3 Code has no limit on the sessions it starts, so the worker accepts the next one too. Each session is still capped, so the largest may be stopped under pressure. Finish some, move work to a worker with more memory, or declare agentSessionLimit in fleet.json to have the worker refuse sessions above a number you choose.'
-    : `More agent sessions run than the memory policy supports, and the declared limit of ${limit} admits them. Each session is still capped, so the largest may be stopped under pressure. Finish some, move work to a worker with more memory, or lower agentSessionLimit in fleet.json.`;
+    ? `${found}. The number is a recommendation, not an admission limit: T3 Code has no limit on the sessions it starts, so the worker accepts the next one too. Each session is still capped, so the largest may be stopped under pressure. Finish some, move work to a worker with more memory, or declare agentSessionLimit in fleet.json to have the worker refuse sessions above a number you choose.`
+    : `${found}, and the declared limit of ${limit} admits them. Each session is still capped, so the largest may be stopped under pressure. Finish some, move work to a worker with more memory, or lower agentSessionLimit in fleet.json.`;
 }

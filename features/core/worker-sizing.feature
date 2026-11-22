@@ -61,9 +61,13 @@ Feature: A worker's disk and memory lines scale with the machine
 
     The memory user workloads may use (90%), less what T3 keeps for itself
     (1536 MiB), in sessions of 512 MiB plus a 4096 MiB build. The size of a
-    session is an estimate, so running more only warns. The number is a
-    recommendation: T3 Code has no limit on the sessions it starts, so nothing
-    refuses the next one, and the check says so instead of implying a limit.
+    session is an estimate that budgets a build for every session at once, so
+    it decides the warning only where nothing was measured. Where the kernel
+    kept the peak of each running agent, the check warns when those peaks,
+    added up, are more than the memory the policy leaves agents. The number
+    is a recommendation: T3 Code has no limit on the sessions it starts, so
+    nothing refuses the next one, and the check says so instead of implying
+    a limit.
 
     What runs is read from the scopes T3 Code starts its agents in. A terminal
     a person opened and a preview browser get such a scope too and are no
@@ -110,6 +114,59 @@ Feature: A worker's disk and memory lines scale with the machine
         | agentpeakmaxmb    | 7000 |
       Then the check "worker:agent-sessions" passes
       And the summary of the check "worker:agent-sessions" mentions "the estimate is 1392 MiB below that median, at which this worker would support 2."
+
+    Scenario: More sessions than the estimate supports do not warn while what they took fits
+      Twelve sessions on a worker the estimate gives eleven: they took 9540
+      MiB between them at their peaks, of the 52838 MiB agents may use.
+      When a worker with 60416 MiB of memory and no declared limit measures:
+        | agentsessions     | 12   |
+        | agentshared       | 0    |
+        | agentpeaks        | 12   |
+        | agentpeakmedianmb | 795  |
+        | agentpeakmaxmb    | 1200 |
+        | agentpeaksummb    | 9540 |
+      Then the check "worker:agent-sessions" passes
+      And the summary of the check "worker:agent-sessions" mentions "12 agent sessions running; the memory policy supports 11 at once on 60416 MiB (an estimated 4608 MiB each). Measured: the 12 running now peaked at a median of 795 MiB and at most 1200 MiB each, 9540 MiB added up, of the 52838 MiB the memory policy leaves agents;"
+      And the summary of the check "worker:agent-sessions" mentions "More run than the estimate supports, and that does not warn: what they took fits."
+      And the summary of the check "worker:agent-sessions" does not mention "AGENTS_OVER_CAPACITY"
+
+    Scenario: Fewer sessions than the estimate supports warn once what they took does not fit
+      Three sessions on a worker the estimate gives eleven, each with a
+      large build: the estimate would have passed them.
+      When a worker with 60416 MiB of memory and no declared limit measures:
+        | agentsessions     | 3     |
+        | agentshared       | 0     |
+        | agentpeaks        | 3     |
+        | agentpeakmedianmb | 18000 |
+        | agentpeakmaxmb    | 19000 |
+        | agentpeaksummb    | 54000 |
+      Then the check "worker:agent-sessions" warns
+      And the summary of the check "worker:agent-sessions" mentions "AGENTS_OVER_CAPACITY: 3 agent sessions running; the memory policy supports 11 at once on 60416 MiB (an estimated 4608 MiB each). Nothing refuses a session above that number. Measured: the 3 running now peaked at a median of 18000 MiB and at most 19000 MiB each, 54000 MiB added up, of the 52838 MiB the memory policy leaves agents;"
+      And the remedy of the check "worker:agent-sessions" mentions "took more memory at their peaks, added up, than the memory policy leaves agents"
+
+    Scenario: What they took exactly fits
+      When a worker with 60416 MiB of memory and no declared limit measures:
+        | agentsessions     | 2     |
+        | agentshared       | 0     |
+        | agentpeaks        | 2     |
+        | agentpeakmedianmb | 26419 |
+        | agentpeakmaxmb    | 26419 |
+        | agentpeaksummb    | 52838 |
+      Then the check "worker:agent-sessions" passes
+
+    Scenario: The check says what everything T3 Code started took at one moment, ended sessions among it
+      The kernel keeps that for the slice, so it is the one number that
+      holds the sessions that ended.
+      When a worker with 60416 MiB of memory and no declared limit measures:
+        | agentsessions     | 2     |
+        | agentshared       | 0     |
+        | agentpeaks        | 2     |
+        | agentpeakmedianmb | 185   |
+        | agentpeakmaxmb    | 2030  |
+        | agentpeaksummb    | 2215  |
+        | agentsreachedmb   | 15253 |
+      Then the check "worker:agent-sessions" passes
+      And the summary of the check "worker:agent-sessions" mentions "Everything T3 Code started on this worker, sessions that ended among it, took at most 15253 MiB at one moment."
 
     Scenario: A worker that runs no agent has nothing to hold the estimate against
       When a worker with 16384 MiB of memory and no declared limit measures:
@@ -185,6 +242,7 @@ Feature: A worker's disk and memory lines scale with the machine
         | owned  | t3code-pi-9a6350f2.scope               | 500      |
         | owned  | t3code-codex-1b2c3d4e.scope            | 1200     |
         | owned  | t3code-preview-browser-5f6a7b8c.scope  | 9000     |
+      And everything T3 Code started there took at most 11800 MiB at one moment
       When the capacity probe reads that worker
       Then the capacity probe prints these lines:
         | agentsessions=5       |
@@ -193,6 +251,8 @@ Feature: A worker's disk and memory lines scale with the machine
         | agentpeaks=5          |
         | agentpeakmedianmb=700 |
         | agentpeakmaxmb=1200   |
+        | agentpeaksummb=3600   |
+        | agentsreachedmb=11800 |
 
     @linux
     Scenario: A worker where T3 Code has started nothing runs no agent
