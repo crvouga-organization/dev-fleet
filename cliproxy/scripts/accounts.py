@@ -71,10 +71,41 @@ def iso(seconds):
     return datetime.datetime.fromtimestamp(seconds, datetime.timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
 
 
+# Why the proxy holds requests back: its own fixed vocabulary, never what a
+# provider answered (sdk/cliproxy/auth/cooldown_view.go of the pinned release).
+REASONS = ('quota', 'credential_quota', 'transient_rate_limit', 'transient_error', 'model_not_supported',
+           'not_found', 'payment_required', 'unauthorized', 'invalid_grant', 'cloudflare_challenge')
+MODEL = re.compile(r'[A-Za-z0-9][A-Za-z0-9._:/-]{0,127}')
+
+
+def cooldowns(entry, now):
+    """(credential, models) from the `cooldowns` the management API lists for
+    one credential: until when the whole credential is held back (epoch
+    seconds, or None), and one {'model', 'reason', 'until'} per model that is
+    held back while the credential still serves its other models."""
+    listed = (entry or {}).get('cooldowns')
+    credential, models = None, {}
+    for view in listed if isinstance(listed, list) else ():
+        until = _instant(view.get('retry_at')) if isinstance(view, dict) else None
+        if until is None or until <= now:
+            continue
+        if view.get('scope') == 'credential':
+            credential = max(credential or 0, until)
+        model = view.get('model_key')
+        if view.get('scope') != 'model' or not isinstance(model, str) or not MODEL.fullmatch(model):
+            continue
+        reason = view.get('reason')
+        if model not in models or until > models[model]['until']:
+            models[model] = {'model': model, 'reason': reason if reason in REASONS else 'unknown', 'until': until}
+    return credential, [{**models[model], 'until': iso(models[model]['until'])} for model in sorted(models)]
+
+
 def classify(credential, entry, now):
     """(state, until): `credential` is the auth file, `entry` what the
     management API says about it (None when it does not list it). `until` is
-    when a cooldown clears, as epoch seconds, or None."""
+    when a cooldown of the whole credential clears, as epoch seconds, or
+    None. A cooldown of one model leaves the account usable: `cooldowns`
+    lists those."""
     entry = entry or {}
     if entry.get('disabled') is True or credential.get('disabled') is True:
         return 'removed', None
@@ -89,7 +120,8 @@ def classify(credential, entry, now):
     quota = entry.get('quota') if isinstance(entry.get('quota'), dict) else {}
     until = max(
         [t for t in (_instant(entry.get('next_retry_after')),
-                     _instant(quota.get('next_recover_at'))) if t is not None and t > now]
+                     _instant(quota.get('next_recover_at')),
+                     cooldowns(entry, now)[0]) if t is not None and t > now]
         or [0]
     )
     if until or entry.get('unavailable') is True or quota.get('exceeded') is True:
@@ -117,8 +149,9 @@ def credentials(auths):
 
 def roster(auths, entries=(), now=None):
     """Every provider account: provider, opaque index (1, 2, … per provider),
-    label, state and, while cooling down, when it clears. `entries` is the
-    management API's list of auth files. Never a token."""
+    label, state and, while cooling down, when it clears; `cooldowns` names
+    each model the proxy holds back on that account alone, and until when.
+    `entries` is the management API's list of auth files. Never a token."""
     import time
     now = time.time() if now is None else now
     by_name = {e.get('name'): e for e in entries if isinstance(e, dict)}
@@ -136,6 +169,7 @@ def roster(auths, entries=(), now=None):
             'prefix': prefix(provider, email),
             'state': state,
             'until': iso(until) if until else None,
+            'cooldowns': cooldowns(by_name.get(name), now)[1],
             'file': name,
         })
     return result

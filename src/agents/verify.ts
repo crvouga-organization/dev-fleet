@@ -94,7 +94,9 @@ async function validateOutput(
  * Output uses the same ceiling as the round trip: reasoning models (Muse) spend
  * dozens of tokens before any text, so a tiny cap returns an empty output.
  */
-export function inferenceRequest(selection: Selection): {
+export function inferenceRequest(
+  selection: Pick<Selection, 'tool' | 'model'>
+): {
   path: string;
   body: object;
 } {
