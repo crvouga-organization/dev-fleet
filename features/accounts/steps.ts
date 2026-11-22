@@ -716,6 +716,12 @@ Then('the checks are:', (world, table: DataTable) => {
   );
 });
 
+Then('every check says how long its session took', (world) => {
+  expect(world.checks.length).toBeGreaterThan(0);
+  for (const check of world.checks)
+    expect(check.durationMs).toBeGreaterThanOrEqual(0);
+});
+
 Then('only the account {string} was run', (world, account: string) => {
   expect(world.sessionsRun).toEqual([account]);
 });

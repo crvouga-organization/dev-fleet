@@ -211,6 +211,8 @@ export function checkFrom(row: Record<string, string>): Check {
     status: (row['status'] ?? 'pass') as Check['status'],
     summary: row['summary'] ?? '',
     ...(row['remedy'] ? { remedy: { action: row['remedy'] } } : {}),
+    ...(row['step ms'] ? { phaseDurationMs: Number(row['step ms']) } : {}),
+    ...(row['own ms'] ? { durationMs: Number(row['own ms']) } : {}),
   };
 }
 

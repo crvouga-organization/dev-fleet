@@ -322,6 +322,17 @@ only). The first run on a bare worker takes several minutes: it installs the
 operating system packages, mise, the pinned toolchain, T3 and the monitoring
 agent.
 
+A sync says where its time went. While it runs, the progress line names the
+step the manager is in. In the report, each check carries `phaseDurationMs`,
+the time of the step that produced it, and `durationMs` where the check was
+measured on its own (a provider request, an agent session). `reused` says
+that nothing was run for it: `verify-cache` for a remembered pass, `receipt`
+for a playbook skipped because nothing changed. A machine that took a minute
+or more gets a `slowest` line under the table with its three slowest steps.
+`devfleet fleet-report` says "Slower:" when the last run took at least twice
+the median of the runs before it. A worker reports its steps when it is done,
+not while it runs.
+
 Then the human signs in, once, to what only they can sign in to:
 
 ```sh

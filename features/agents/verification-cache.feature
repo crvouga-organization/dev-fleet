@@ -13,6 +13,14 @@ Feature: A verified check is reused while nothing changed
     Then it has been verified 1 time in all
     And the result passes
     And the summary of the result contains "verified 1m ago"
+    And the result says it was reused from the verify cache
+
+  Scenario: A check that was run says how long it took, and not that it was reused
+    Given the check "x" passed with the key "k1" at 0 ms
+    When it is verified again with the key "k2" at 1 ms
+    Then the result passes
+    And the result says how long it took
+    And the result does not say it was reused
 
   Scenario Outline: A check is verified again when <reason>
     Given the check "<check>" <outcome> with the key "<key>" at <at> ms

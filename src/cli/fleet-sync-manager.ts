@@ -40,104 +40,77 @@ export async function convergeManager(
     revision: string;
     apply: boolean;
     workspace: string;
+    /** Told the step that starts now, in words a progress line shows. */
+    progress?: (step: string) => void;
   },
   run: Runner
 ): Promise<ManagerNode> {
   const started = Date.now();
   const id = definition.manager.id;
   const host = managerHost(definition.manager.os);
-  const identity = await managerIdentity(id, run, host);
-  const checks: Check[] = [identity];
-  if (identity.status === 'pass') {
+  const checks: Check[] = [];
+  /** One step: named while it runs, and its checks say how long it took. */
+  const step = async (
+    label: string,
+    work: () => Promise<Check | Check[]>
+  ): Promise<Check[]> => {
+    input.progress?.(label);
+    const began = Date.now();
+    const found = [await work()].flat();
+    const phaseDurationMs = Date.now() - began;
+    const timed = found.map((check) => ({ phaseDurationMs, ...check }));
+    checks.push(...timed);
+    return timed;
+  };
+  const [identity] = await step('Checking that this is the manager', () =>
+    managerIdentity(id, run, host)
+  );
+  if (identity!.status === 'pass') {
     // Launchers and scheduled jobs on the manager read the installed copy.
     if (input.apply) installConfig();
-    checks.push(
-      input.apply
-        ? await convergeManagerPolicy(run, definition, host)
-        : await managerPower(run, input.workspace, host)
-    );
     if (input.apply)
-      checks.push(await managerPower(run, input.workspace, host));
-    checks.push(await managerBootRecovery(run, input.workspace, host));
-    checks.push(await managerDocker(run));
+      await step('Applying the manager playbook', () =>
+        convergeManagerPolicy(run, definition, host)
+      );
+    await step('Measuring power settings', () =>
+      managerPower(run, input.workspace, host)
+    );
+    await step('Measuring boot recovery', () =>
+      managerBootRecovery(run, input.workspace, host)
+    );
+    await step('Checking Docker', () => managerDocker(run));
     // The renewal job is a launch agent: macOS managers only.
     if (host.platform === 'macOS')
-      checks.push(
-        ...(await attempt('manager:vault-renewal', () =>
+      await step('Holding the Vault session', () =>
+        attempt('manager:vault-renewal', () =>
           holdManagerVault(run, { apply: input.apply, root: PACKAGE_ROOT })
-        ))
+        )
       );
     // Each enabled IDE: its settings, pinned version and policy.
-    checks.push(
-      ...(await managerChecks(enabled(idesOf(definition), IDES), {
+    await step('Checking IDEs', () =>
+      managerChecks(enabled(idesOf(definition), IDES), {
         id,
         workspace: input.workspace,
         apply: input.apply,
         run,
-      }))
+      })
     );
-    checks.push(...(await managerHealth(run)));
-    if (input.apply) {
-      // Same provider profiles and the same Vault gateway credential as every
-      // worker: the instances above launch from these profiles, and the check
-      // proves the credential works end to end through the shared proxy.
-      checks.push(
-        ...(await attempt('configuration:apply', () =>
-          managerAgentProfiles(id, input.workspace, run)
-        ))
-      );
-      // The same Git identity and GitHub credentials as every worker.
-      checks.push(
-        ...(await attempt('git:configuration', () =>
-          convergeGitIdentity(input.workspace, definition.git, run)
-        ))
-      );
-      if (definition.git)
-        checks.push(...(await gitChecks(definition.git, run)));
-      // The same GitHub sign-in as every worker, or only a check of a
-      // person's own login when the configuration names one. git asks gh
-      // for the token through the helper git.yml declared above.
-      checks.push(
-        ...(await attempt('github:sync', async () => [
-          await convergeGithub(input.workspace, run, undefined, {
-            secrets: secretVia(run),
-            role: 'manager',
-          }),
-        ]))
-      );
-      const providers = await attempt('provider:verification', () =>
-        verifyFleetProviders(id)
-      );
-      checks.push(...providers);
-      // Same agents, versions and shared accounts as every worker.
-      const accounts = await accountContext();
-      checks.push(
-        ...(await attempt('accounts:verification', () =>
-          nodeAccountChecks(accounts)
-        ))
-      );
-      checks.push(
-        ...(await attempt('agent:verification', () =>
-          verifyNativeAgents(id, input.workspace, run, {
-            outOfQuota: quotaLimited(providers),
-            ...(accounts ? { accounts } : {}),
-          })
-        ))
-      );
-    }
-    checks.push(
-      ...(await convergeProxy(id, input.revision, run, {
+    await step('Measuring health', () => managerHealth(run));
+    if (input.apply) await managerAgents(definition, input, run, step);
+    await step('Converging the CLI proxy', () =>
+      convergeProxy(id, input.revision, run, {
         apply: input.apply,
         cwd: input.workspace,
-      }))
+      })
     );
     if (input.apply) {
-      const hub = await convergeManagerHub(input.workspace, definition, run);
-      checks.push(...hub);
+      const hub = await step('Converging the monitoring hub', () =>
+        convergeManagerHub(input.workspace, definition, run)
+      );
       // The manager is always a monitored system on its own hub.
       if (!hub.some(blocking))
-        checks.push(
-          ...(await enrollManagerMonitoring(definition, input.workspace, run))
+        await step('Enrolling the manager in monitoring', () =>
+          enrollManagerMonitoring(definition, input.workspace, run)
         );
     }
   }
@@ -151,6 +124,79 @@ export async function convergeManager(
       input.apply && !checks.some(blocking) ? input.revision : null,
     durationMs: Date.now() - started,
   };
+}
+
+type Step = (
+  label: string,
+  work: () => Promise<Check | Check[]>
+) => Promise<Check[]>;
+
+/** The same provider profiles, Git identity, GitHub sign-in, agents,
+ * versions and shared accounts as every worker: the instances launch from
+ * these profiles, and the checks prove the credential works end to end
+ * through the shared proxy.
+ */
+async function managerAgents(
+  definition: FleetDefinition,
+  input: { workspace: string },
+  run: Runner,
+  step: Step
+): Promise<void> {
+  const id = definition.manager.id;
+  await step('Rendering agent profiles', () =>
+    attempt('configuration:apply', () =>
+      managerAgentProfiles(id, input.workspace, run)
+    )
+  );
+  await step('Converging the Git identity', () =>
+    attempt('git:configuration', () =>
+      convergeGitIdentity(input.workspace, definition.git, run)
+    )
+  );
+  const { git } = definition;
+  if (git) await step('Checking Git', () => gitChecks(git, run));
+  // The same GitHub sign-in as every worker, or only a check of a person's
+  // own login when the configuration names one. git asks gh for the token
+  // through the helper git.yml declared above.
+  await step('Converging the GitHub sign-in', () =>
+    attempt('github:sync', async () => [
+      await convergeGithub(input.workspace, run, undefined, {
+        secrets: secretVia(run),
+        role: 'manager',
+      }),
+    ])
+  );
+  const providers = await step('Verifying providers through the proxy', () =>
+    attempt('provider:verification', () => verifyFleetProviders(id))
+  );
+  const accounts = await accountContext();
+  await step('Checking accounts', () =>
+    attempt('accounts:verification', () => nodeAccountChecks(accounts))
+  );
+  await step('Verifying agent sessions', () =>
+    attempt('agent:verification', () =>
+      verifyNativeAgents(id, input.workspace, run, {
+        outOfQuota: quotaLimited(providers),
+        ...(accounts ? { accounts } : {}),
+      })
+    )
+  );
+}
+
+function playbookPassed(cached: boolean): Check {
+  return cached
+    ? {
+        id: 'manager:playbook',
+        status: 'pass',
+        summary:
+          'The manager playbook is unchanged since it was last applied, and its postconditions hold.',
+        reused: 'receipt',
+      }
+    : {
+        id: 'manager:playbook',
+        status: 'pass',
+        summary: 'The manager playbook was checked, then applied.',
+      };
 }
 
 const PROFILE_TOOLS = [
@@ -368,14 +414,7 @@ export async function convergeManagerPolicy(
       ...(now === undefined ? {} : { now }),
     }
   );
-  if (result.ok)
-    return {
-      id: 'manager:playbook',
-      status: 'pass',
-      summary: result.cached
-        ? 'The manager playbook is unchanged since it was last applied, and its postconditions hold.'
-        : 'The manager playbook was checked, then applied.',
-    };
+  if (result.ok) return playbookPassed(result.cached);
   return {
     id: 'manager:playbook',
     status: 'fail',

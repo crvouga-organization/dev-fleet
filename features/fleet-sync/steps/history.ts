@@ -198,6 +198,21 @@ When(
   }
 );
 
+Then(
+  /^the fleet report (says|does not say) the last run was slower$/,
+  (world, says: string) => {
+    const data = world.outcome?.data as { slowdown: object | null };
+    expect(data.slowdown !== null).toBe(says === 'says');
+    expect((world.outcome?.text ?? '').includes('Slower:')).toBe(
+      says === 'says'
+    );
+  }
+);
+
+Then('the fleet report prints {string}', (world, text: string) => {
+  expect(world.outcome?.text).toContain(text);
+});
+
 Then('the fleet report lists {int} runs', (world, count: number) => {
   const data = world.outcome?.data as { entries: unknown[]; runs: number };
   expect(data.entries).toHaveLength(count);

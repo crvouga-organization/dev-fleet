@@ -24,6 +24,7 @@ Feature: Every per-account instance runs a real session, and account changes re-
       | agent:claude:account-1:session   | pass   |
       | agent:claude:account-2:session   | warn   |
     And no check names "example.com"
+    And every check says how long its session took
 
   Scenario: Removing an account on the proxy makes that instance's check fail on the next status
     Given this node offers these account instances:

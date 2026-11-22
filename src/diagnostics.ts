@@ -11,6 +11,8 @@ export interface Diagnostic {
   observed: string;
   scope: 'manager' | 'node' | 'unverified';
   durationMs: number | null;
+  /** Set when nothing was run for the check (see `Check.reused`). */
+  reused?: NonNullable<Check['reused']>;
   retryable: boolean;
   actionRequired: boolean;
   remedy: { owner: string; action: string };
@@ -59,7 +61,8 @@ export function diagnostic(node: string, check: Check): Diagnostic {
       'The named required check has independent verification evidence.',
     observed: check.summary,
     scope: scope(check.id),
-    durationMs: check.phaseDurationMs ?? null,
+    durationMs: check.durationMs ?? check.phaseDurationMs ?? null,
+    ...(check.reused ? { reused: check.reused } : {}),
     retryable:
       failed &&
       /OFFLINE|UNREACHABLE|METRICS_STALE|TIMEOUT|FIRST_BOOT_PENDING/.test(code),

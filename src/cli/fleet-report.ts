@@ -30,6 +30,41 @@ export interface Reliability {
   meanDurationMs: number | null;
   failingChecks: { id: string; runs: number }[];
   notReady: { node: string; ms: number }[];
+  /** The last run against the ones before it, once there are enough. */
+  slowdown: Slowdown | null;
+}
+
+/** The last run took at least twice the median of the runs before it, and
+ * at least a minute more.
+ */
+export interface Slowdown {
+  lastDurationMs: number;
+  medianDurationMs: number;
+  /** How many earlier runs the median is of. */
+  earlier: number;
+}
+
+/** A median needs this many earlier runs to mean something. */
+const SLOWDOWN_EARLIER_RUNS = 5;
+
+/** Whether the last run was much slower than the ones before it: a
+ * regression in sync time shows here before anyone times a sync by hand.
+ */
+export function slowdown(runs: SyncRun[]): Slowdown | null {
+  const last = runs.at(-1);
+  const earlier = runs
+    .slice(0, -1)
+    .map((run) => run.durationMs)
+    .sort((a, b) => a - b);
+  if (!last || earlier.length < SLOWDOWN_EARLIER_RUNS) return null;
+  const median = earlier[Math.floor((earlier.length - 1) / 2)]!;
+  return last.durationMs >= 2 * median && last.durationMs - median >= 60_000
+    ? {
+        lastDurationMs: last.durationMs,
+        medianDurationMs: median,
+        earlier: earlier.length,
+      }
+    : null;
 }
 
 /** How long each machine was not ready: from the end of a run that left it
@@ -73,6 +108,7 @@ export function reliability(runs: SyncRun[], now: Date): Reliability {
     notReady: [...notReadyTime(runs, now)]
       .map(([node, ms]) => ({ node, ms }))
       .sort((a, b) => b.ms - a.ms || a.node.localeCompare(b.node)),
+    slowdown: slowdown(runs),
   };
 }
 
@@ -110,6 +146,10 @@ function render(since: string, summary: Reliability): string {
   const lines = [
     `fleet-sync over the last ${since}: ${summary.runs} runs, ${summary.succeeded} succeeded (${Math.round((summary.successRate ?? 0) * 100)}%), ${Math.round((summary.meanDurationMs ?? 0) / 1000)} s on average.`,
   ];
+  if (summary.slowdown)
+    lines.push(
+      `Slower: the last run took ${Math.round(summary.slowdown.lastDurationMs / 1000)} s; the median of the ${summary.slowdown.earlier} before it is ${Math.round(summary.slowdown.medianDurationMs / 1000)} s. Its report lists the slowest steps of each machine.`
+    );
   if (summary.failingChecks.length)
     lines.push(
       'Most frequent failing checks:',

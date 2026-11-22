@@ -11,6 +11,8 @@
     "summary": { "type": "string" },
     "required": { "type": "boolean" },
     "phaseDurationMs": { "type": "number" },
+    "durationMs": { "type": "number" },
+    "reused": { "enum": ["verify-cache", "receipt"] },
     "remedy": {
       "type": "object",
       "required": ["action"],

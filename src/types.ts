@@ -32,6 +32,12 @@ export interface Check {
   required?: boolean;
   /** Measured enclosing phase duration; omitted when not observed. */
   phaseDurationMs?: number;
+  /** How long this check itself took, where it was measured apart from its
+   * phase. */
+  durationMs?: number;
+  /** Set when nothing was run for this check: its result was taken from the
+   * verify cache, or its playbook was skipped on an unchanged receipt. */
+  reused?: 'verify-cache' | 'receipt';
   id: string;
   status: Status;
   summary: string;
