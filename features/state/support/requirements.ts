@@ -22,6 +22,9 @@ export const requirements = {
 /** Whether a scenario carrying these tags is skipped here. */
 export function skipped(tags: string[]): boolean {
   const { installed, required, s3 } = requirements;
+  // `@linux`: the scenario runs a worker's own script, which uses what
+  // Ubuntu has (sha256sum). No requirement can make another system run it.
+  if (tags.includes('@linux') && process.platform !== 'linux') return true;
   if (tags.includes('@required')) return !required;
   if (required) return false;
   return (
