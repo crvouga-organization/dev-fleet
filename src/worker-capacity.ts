@@ -54,7 +54,11 @@ const SESSIONS_EXHAUSTED = 'AGENTS_OVER_CAPACITY';
 
 /** How many agent sessions this worker's memory policy supports, and how
  * many run. The size of a session is an estimate (`sizing.agentSessionMiB`),
- * so more sessions than that only warns.
+ * so more sessions than that only warns. It is a recommendation and the
+ * check says so: T3 starts a session whenever it is asked for one and its
+ * administrator policy has no limit on them, so nothing the fleet declares
+ * refuses the next one. What is enforced is memory (docs/ubuntu-sync.md,
+ * Memory safety), which stops the largest agent once the others are squeezed.
  */
 export function sessionsCheck(memoryMiB: number, running?: number): Check {
   const supported = supportedSessions(memoryMiB);
@@ -64,12 +68,12 @@ export function sessionsCheck(memoryMiB: number, running?: number): Check {
   return {
     id: 'worker:agent-sessions',
     status: over ? 'warn' : 'pass',
-    summary: `${over ? `${SESSIONS_EXHAUSTED}: ` : ''}${now} agent sessions running; the memory policy supports ${supported} at once on ${memoryMiB} MiB (an estimated ${each} MiB each).`,
+    summary: `${over ? `${SESSIONS_EXHAUSTED}: ` : ''}${now} agent sessions running; the memory policy supports ${supported} at once on ${memoryMiB} MiB (an estimated ${each} MiB each).${over ? ' Nothing refuses a session above that number.' : ''}`,
     ...(over
       ? {
           remedy: {
             action:
-              'More agent sessions run than the memory policy supports: each is still capped, so the largest may be stopped under pressure. Finish some, or move work to a worker with more memory.',
+              'More agent sessions run than the memory policy supports. The number is a recommendation, not an admission limit: T3 Code has no limit on the sessions it starts, so the worker accepts the next one too. Each session is still capped, so the largest may be stopped under pressure. Finish some, or move work to a worker with more memory.',
           },
         }
       : {}),

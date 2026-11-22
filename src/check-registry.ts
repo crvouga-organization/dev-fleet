@@ -461,7 +461,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'worker:account':
     "The declared worker account was created over a root login, with the manager's key and the fleet's sudo rule.",
   'worker:agent-sessions':
-    'How many agent sessions this worker runs, and how many its memory policy supports at the estimated size of a session; warns when more run.',
+    'How many agent sessions this worker runs, and how many its memory policy supports at the estimated size of a session; warns when more run. Nothing refuses a session above that number: T3 Code has no limit on the sessions it starts.',
   'worker:auto-park':
     'fleet-watch parked a worker idle longer than declared (only with parking.autoPark).',
   'worker:browser':
@@ -522,7 +522,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'worker:t3-renderers':
     'Desktop renderer memory is within its declared budget.',
   'worker:t3-protection':
-    'The T3 listener has its CPU, I/O and memory reserve.',
+    'The T3 listener has its CPU, I/O and memory reserve; fails naming the reserve it lacks, or as unobserved while nothing listens on the T3 port.',
   'worker:t3-recovery':
     "The worker's T3 service is active, enabled for boot and restarts after a failure.",
   'worker:ubuntu': 'Required Ubuntu release and architecture.',

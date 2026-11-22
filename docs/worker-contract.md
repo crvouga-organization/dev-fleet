@@ -139,6 +139,11 @@ memory policy supports while each runs a build. The estimate deducts the
 system and T3 reserves, then budgets 512 MiB per session and 4096 MiB per
 build. Both T3 worker units set the Node old-space limit to the build budget.
 More active sessions than the recommendation warn with `AGENTS_OVER_CAPACITY`.
+The number is a recommendation, not an admission limit: T3 Code starts a
+session whenever it is asked for one and its administrator policy has no limit
+on them, so nothing refuses the next session and the check says so. What is
+enforced is memory: each agent and the agents together are capped, and the
+largest is stopped under sustained pressure.
 Projects can serialize heavy builds across their worktrees by running them
 under the same user-owned lock, for example
 `flock "$XDG_RUNTIME_DIR/project-build.lock" npm run build`.
