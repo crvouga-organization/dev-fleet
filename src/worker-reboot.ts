@@ -1,5 +1,6 @@
 import { playbookConnection } from './ssh';
 import type { PackagePlaybook } from './platform/ansible';
+import { protectionWaitsForReboot } from './platform/resource-verify';
 import { blocking, type Check, type FleetNode } from './types';
 
 /** Why fleet-sync reboots a worker: its first converge, which nothing can be
@@ -26,7 +27,8 @@ export function rebootNeeded(checks: Check[]): boolean {
     (check) =>
       (check.id === 'ubuntu:boot-policy' &&
         SETTLED_BY_REBOOT.includes(check.summary)) ||
-      (check.id === 'worker:reboot-pending' && check.status !== 'pass')
+      (check.id === 'worker:reboot-pending' && check.status !== 'pass') ||
+      protectionWaitsForReboot(check)
   );
 }
 
@@ -51,10 +53,13 @@ export function maintenanceStopsRollout(node: { checks: Check[] }): boolean {
   );
 }
 
-/** Installed updates wait for a reboot: what --maintenance-reboot applies. */
+/** Installed updates, or the io reserve of T3 the user manager takes on its
+ * next start, wait for a reboot: what --maintenance-reboot applies. */
 export function updatesPending(checks: Check[]): boolean {
   return checks.some(
-    (check) => check.id === 'worker:reboot-pending' && check.status !== 'pass'
+    (check) =>
+      (check.id === 'worker:reboot-pending' && check.status !== 'pass') ||
+      protectionWaitsForReboot(check)
   );
 }
 

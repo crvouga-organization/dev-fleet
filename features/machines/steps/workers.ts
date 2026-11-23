@@ -17,7 +17,7 @@ import ubuntu from '../../../ansible/ubuntu/policy.json';
 import type { DataTable } from '../../support/gherkin';
 import { ANSWER, answer, commandLine } from '../../support/answers';
 import { succeeded } from '../../support/commands';
-import { machines } from './world';
+import { machines, type MachinesWorld } from './world';
 
 const { Given, When, Then } = machines;
 
@@ -183,18 +183,47 @@ Given(
   }
 );
 
+/** What a user manager's cgroup lists in one of its controller files. */
+const managerControllers = (
+  world: MachinesWorld,
+  uid: number,
+  file: string,
+  written: string
+): void => {
+  world.commands.answer(
+    commandLine(`cat /sys/fs/cgroup${userManager(uid)}/${file}`),
+    answer(written)
+  );
+};
+
+Given(
+  'the user manager of user {int} was delegated {}',
+  (world, uid: number, controllers: string) =>
+    managerControllers(
+      world,
+      uid,
+      'cgroup.controllers',
+      `prints ${controllers}`
+    )
+);
+
+Given(
+  'the user manager of user {int} hands down {}',
+  (world, uid: number, controllers: string) =>
+    managerControllers(
+      world,
+      uid,
+      'cgroup.subtree_control',
+      `prints ${controllers}`
+    )
+);
+
 Given(
   new RegExp(
-    `^reading the controllers of the user manager of user (\\d+) ${ANSWER}$`
+    `^reading what the user manager of user (\\d+) hands down ${ANSWER}$`
   ),
-  (world, uid: string, written: string) => {
-    world.commands.answer(
-      commandLine(
-        `cat /sys/fs/cgroup${userManager(Number(uid))}/cgroup.controllers`
-      ),
-      answer(written)
-    );
-  }
+  (world, uid: string, written: string) =>
+    managerControllers(world, Number(uid), 'cgroup.subtree_control', written)
 );
 
 When(

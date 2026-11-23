@@ -102,12 +102,15 @@ Feature: A worker's memory and disk guards are measured where they run
     And the remedy of the check contains "applies it to the running T3 without a restart"
     And the remedy of the check does not contain "--maintenance-reboot"
 
-  Rule: An io reserve that waits for the user manager says so
-    Ubuntu hands the user manager cpu, memory and pids only. It takes the io
-    controller fleet-sync declares when it next starts, which in practice is
-    the worker's next reboot: until then the listener's cgroup has no
+  Rule: An io reserve that waits for the user manager says so, and only warns
+    Ubuntu hands the user manager cpu, memory and pids only. fleet-sync
+    declares io for it, and the manager's own controllers list io as soon as
+    that is loaded; but the running manager hands down only what it found
+    when it started, so it takes io on its next start, which in practice is
+    the worker's next reboot. Until then the listener's cgroup has no
     io.weight, although T3 never left its unit and has its CPU and memory
-    reserve. Restarting T3 does not change that.
+    reserve. Restarting T3 does not change that, and the reboot that is
+    pending settles it, so it warns.
 
     Background:
       Given the T3 listener on port 3773 runs in "app.slice/app-com.t3tools.T3Code-41.scope" under the user manager of user 1000, where:
@@ -116,24 +119,27 @@ Feature: A worker's memory and disk guards are measured where they run
         | io.weight  | fails             |
         | memory.low | prints 1610612736 |
 
-    Scenario: A user manager without the io controller names the reserve it lacks and asks for a reboot
-      Given reading the controllers of the user manager of user 1000 prints cpu memory pids
+    Scenario: A user manager that was delegated io but does not hand it down names the reserve it lacks and asks for a reboot
+      Given the user manager of user 1000 was delegated cpu io memory pids
+      And the user manager of user 1000 hands down cpu memory pids
       When the protection of the T3 listener on port 3773 is measured
-      Then the check fails
+      Then the check warns
       And the summary of the check is "T3_PROTECTION_ESCAPED io"
       And the remedy of the check contains "--maintenance-reboot"
       And the remedy of the check contains "Restarting T3 does not change it"
+      And the remedy of the check does not contain "without a restart"
 
-    Scenario: A user manager whose controllers cannot be read is taken to lack it
-      Given reading the controllers of the user manager of user 1000 fails
+    Scenario: A user manager whose handed-down controllers cannot be read is taken to lack io
+      Given reading what the user manager of user 1000 hands down fails
       When the protection of the T3 listener on port 3773 is measured
-      Then the summary of the check is "T3_PROTECTION_ESCAPED io"
+      Then the check warns
+      And the summary of the check is "T3_PROTECTION_ESCAPED io"
       And the remedy of the check contains "--maintenance-reboot"
 
-    Scenario: With the io controller in the user manager, a missing io reserve is for fleet-sync to declare
-      A reboot would change nothing: the user manager has the controller and
-      the unit T3 serves from was not given its weight.
-      Given reading the controllers of the user manager of user 1000 prints cpu io memory pids
+    Scenario: With io handed down by the user manager, a missing io reserve is for fleet-sync to declare
+      A reboot would change nothing: the user manager hands io down and the
+      unit T3 serves from was not given its weight.
+      Given the user manager of user 1000 hands down cpu io memory pids
       When the protection of the T3 listener on port 3773 is measured
       Then the check fails
       And the summary of the check is "T3_PROTECTION_ESCAPED io"

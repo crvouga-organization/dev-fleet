@@ -298,24 +298,27 @@ async function missingReserves(group: string, run: Runner): Promise<string[]> {
   ];
 }
 
-/** Whether the user manager the listener runs under was handed the io
- * controller. Ubuntu hands it cpu, memory and pids only, and it takes the io
- * controller fleet-sync declares (`Delegate=` on `user@<uid>.service`) when
- * it next starts: until then no unit under it has an `io.weight`, whatever
- * its drop-ins say. Undefined when the listener runs under no user manager
- * or its controllers cannot be read. */
-async function managerHasIo(
+/** Whether the user manager the listener runs under hands the io controller
+ * down to its units. Ubuntu delegates it cpu, memory and pids only, and
+ * fleet-sync declares io for it (`Delegate=` on `user@<uid>.service`). The
+ * manager's `cgroup.controllers` lists io as soon as that is loaded, but the
+ * running manager enables only the controllers it found when it started:
+ * what it hands down is its `cgroup.subtree_control`, which gains io on its
+ * next start. Until then no unit under it has an `io.weight`, whatever its
+ * drop-ins say. Undefined when the listener runs under no user manager or
+ * what it hands down cannot be read. */
+async function managerHandsDownIo(
   group: string,
   run: Runner
 ): Promise<boolean | undefined> {
   const manager = /^((?:\/[^/]+)*\/user@\d+\.service)(?:\/|$)/.exec(group)?.[1];
   if (!manager) return undefined;
-  const controllers = await run([
+  const enabled = await run([
     'cat',
-    '/sys/fs/cgroup' + manager + '/cgroup.controllers',
+    '/sys/fs/cgroup' + manager + '/cgroup.subtree_control',
   ]);
-  return controllers.ok
-    ? controllers.stdout.trim().split(/\s+/).includes('io')
+  return enabled.ok
+    ? enabled.stdout.trim().split(/\s+/).includes('io')
     : undefined;
 }
 
@@ -323,7 +326,7 @@ const PROTECTION_REMEDY = {
   unobserved:
     'No process of the worker user was found listening on the T3 port, so there is no reserve to measure: T3 is stopped or restarting. Check worker:t3-recovery and worker:t3-health, then rerun devfleet fleet-status --workers.',
   manager:
-    'The user manager has no io controller: fleet-sync declares it for the user manager, which takes it on its next start. Reboot the worker while it runs no agent turn (devfleet fleet-sync --maintenance-reboot). Restarting T3 does not change it, and the CPU and memory reserve are already in place.',
+    'The user manager does not hand the io controller down: fleet-sync declares it for the user manager, which takes it on its next start. Reboot the worker while it runs no agent turn (devfleet fleet-sync --maintenance-reboot). Restarting T3 does not change it, and the CPU and memory reserve are already in place.',
   undeclared:
     'Run devfleet fleet-sync on this worker: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. If the check still fails, the listener runs outside the units fleet-sync declares; inspect its cgroup.',
 };
@@ -347,7 +350,8 @@ async function listenerGroup(
 /** Measure the listener itself: Electron can leave the service's cgroup.
  * A reserve the listener lacks is named, with why it is missing where that
  * can be measured: a listener that is not there has nothing to measure, and
- * an io reserve that waits for the user manager is no fault of T3's unit.
+ * an io reserve that waits for the user manager is no fault of T3's unit: it
+ * warns, and the reboot `--maintenance-reboot` gives the worker settles it.
  */
 export async function t3Protection(port: number, run: Runner): Promise<Check> {
   const id = 'worker:t3-protection';
@@ -366,11 +370,16 @@ export async function t3Protection(port: number, run: Runner): Promise<Check> {
       status: 'pass',
       summary: 'The T3 listener has its CPU, I/O and memory reserve.',
     };
-  const ioOnly = missing.length === 1 && missing[0] === 'io';
-  const waitsForManager = ioOnly && (await managerHasIo(group, run)) !== true;
+  // Only the io reserve, under a user manager that does not hand io down
+  // yet: T3 kept its CPU and memory reserve and the next reboot settles the
+  // rest, so it warns like the reboot that is pending rather than fails.
+  const waitsForManager =
+    missing.length === 1 &&
+    missing[0] === 'io' &&
+    (await managerHandsDownIo(group, run)) !== true;
   return {
     id,
-    status: 'fail',
+    status: waitsForManager ? 'warn' : 'fail',
     summary: `${PROTECTION_ESCAPED} ${missing.join(' ')}`,
     remedy: {
       action: waitsForManager
@@ -378,6 +387,12 @@ export async function t3Protection(port: number, run: Runner): Promise<Check> {
         : PROTECTION_REMEDY.undeclared,
     },
   };
+}
+
+/** The io reserve of the T3 listener waits for the user manager's next
+ * start, which a reboot gives it: the only case `t3Protection` warns. */
+export function protectionWaitsForReboot(check: Check): boolean {
+  return check.id === 'worker:t3-protection' && check.status === 'warn';
 }
 
 export async function pressureEvents(run: Runner): Promise<Check> {
