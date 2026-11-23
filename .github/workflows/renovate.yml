@@ -1,7 +1,18 @@
 name: Renovate
+# Renovate opens at most two pull requests an hour (config:recommended), so it
+# runs every hour: a daily run let a backlog grow by more than it cleared, and
+# a pull request that conflicts after another merges is rebased an hour later
+# rather than a day.
+#
+# Renovate commits through GitHub's API. The workflow's own token may not
+# change a file under .github/workflows, so an update to an action or image
+# there is refused and Renovate says so only in its debug log; the dashboard
+# lists the branch under "Other Branches" for ever. PINS_TOKEN (a fine-grained
+# token for this repository with contents, issues, pull requests and workflows
+# write) lets those updates through; without it the run warns.
 on:
   schedule:
-    - cron: '33 4 * * *'
+    - cron: '33 * * * *'
   workflow_dispatch: {}
 concurrency:
   group: renovate
@@ -24,6 +35,13 @@ jobs:
           REPOSITORY: ${{ github.repository }}
           RENOVATE_ONBOARDING: 'false'
         run: renovate "$REPOSITORY"
+      - name: Warn that updates to workflow files cannot be pushed
+        env:
+          OWN_TOKEN: ${{ secrets.PINS_TOKEN == '' }}
+        run: |
+          if [ "$OWN_TOKEN" = true ]; then
+            echo "::warning::Renovate runs with the workflow's own token, which may not change .github/workflows; set PINS_TOKEN (contents, issues, pull requests and workflows write) to let those updates through."
+          fi
 
   checks:
     needs: update
