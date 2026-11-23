@@ -60,7 +60,11 @@ import {
   forwardToManager,
   type ForwardSpawn,
 } from './fleet-sync-forward';
-import { defaultBranchHolds, prepareSource } from '../machine/source';
+import {
+  defaultBranchHolds,
+  prepareSource,
+  sourceMismatchRemedy,
+} from '../machine/source';
 import {
   allowsMiseDowngrade,
   miseDowngrade,
@@ -491,6 +495,12 @@ async function unmergedRefusal(
   const ancestry = await defaultBranchHolds(root, revision, run);
   if (ancestry === 'merged') return null;
   const { repository } = canonicalDefinition.source;
+  if (ancestry === 'mismatched')
+    return actionRequired(
+      'FLEET_SOURCE_MISMATCH',
+      sourceMismatchRemedy(repository),
+      revision
+    );
   const selected = `selected by ${selectionText(selection)}`;
   return ancestry === 'unmerged'
     ? actionRequired(

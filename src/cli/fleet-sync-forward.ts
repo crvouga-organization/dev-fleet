@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
 import type { FleetDefinition } from '../definition';
+import { sourceMismatchRemedy } from '../machine/source';
 import {
   encodeSelection,
   SELECTED_BY_ENV,
@@ -48,7 +49,25 @@ const GUARD_EXIT = {
   unverified: 66,
   miseDowngrade: 67,
   miseUnmeasured: 68,
+  sourceMismatch: 69,
 } as const;
+
+/** Run on the manager first, before every other guard and the revision's
+ * own run script, all of which read the manager's own copy of the source
+ * repository: a copy whose origin is another repository (made before the
+ * fleet's source moved) can never hold the revision, so it is replaced with
+ * a clone of the declared one, made beside it so that a failed clone leaves
+ * it as it was. A manager with no copy is left to the guards after this.
+ * `$1` is the revision, `$2` the declared repository.
+ */
+export const SOURCE_GUARD = [
+  'source="$HOME/.local/share/personal/fleet/manager/source"',
+  'origin=$(git -C "$source" remote get-url origin 2>/dev/null) || exit 0',
+  '[ "$origin" != "$2" ] || exit 0',
+  'rm -rf -- "$source.new"',
+  `git clone --quiet --no-checkout --origin origin "$2" "$source.new" >/dev/null 2>&1 || { rm -rf -- "$source.new"; exit ${GUARD_EXIT.sourceMismatch}; }`,
+  `rm -rf -- "$source" && mv -- "$source.new" "$source" || exit ${GUARD_EXIT.sourceMismatch}`,
+].join('\n');
 
 /** Run on the manager after the ancestry guard and before a handed-off
  * revision's own run script: a revision whose bootstrap is from before the
@@ -141,6 +160,10 @@ function handOffFailure(
       `The revision is not on the default branch of ${repository}, so the manager changed nothing. Merge it first, or pass --allow-unmerged to converge the fleet to an unmerged revision on purpose: every machine, the manager included, then gets that revision's toolchain and policy.`,
       { revision: revision ?? null }
     );
+  if (exitCode === GUARD_EXIT.sourceMismatch)
+    return failed('FLEET_SOURCE_MISMATCH', sourceMismatchRemedy(repository), {
+      revision: revision ?? null,
+    });
   if (exitCode === GUARD_EXIT.unverified)
     return failed(
       'FLEET_REVISION_UNVERIFIED',
@@ -219,7 +242,7 @@ export function managerCommand(
   const color = process.stdout.isTTY && !process.env['NO_COLOR'];
   // A login shell gives the manager's normal PATH (mise, Docker, Tailscale).
   const { told, guard } = revision
-    ? aboutRevision(options, revision, selection)
+    ? aboutRevision(options, revision, selection, definition.source.repository)
     : { told: '', guard: '' };
   const script = `export ${NO_FORWARD_ENV}=1${color ? ' FORCE_COLOR=1' : ''}${told}; ${guard}exec ${args.map(shellQuote).join(' ')}`;
   return [...sshArgs(target), `exec /bin/zsh -lc ${shellQuote(script)}`];
@@ -232,7 +255,8 @@ export function managerCommand(
 function aboutRevision(
   options: FleetSyncOptions,
   revision: string,
-  selection: RevisionSelection | undefined
+  selection: RevisionSelection | undefined,
+  repository: string
 ): { told: string; guard: string } {
   const guard = (script: string, name: string, more: string[] = []) =>
     `${['sh', '-c', script, name, revision, ...more].map(shellQuote).join(' ')} || exit $?; `;
@@ -251,6 +275,7 @@ function aboutRevision(
         ? ` ${ALLOW_MISE_DOWNGRADE_ENV}=${revision}`
         : ''),
     guard:
+      guard(SOURCE_GUARD, 'fleet-source-guard', [repository]) +
       (asksAncestry(options)
         ? guard(ANCESTRY_GUARD, 'fleet-revision-guard')
         : '') +

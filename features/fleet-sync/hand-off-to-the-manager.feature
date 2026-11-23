@@ -137,6 +137,21 @@ Feature: fleet-sync started on a worker is handed to the manager
         | refs/remotes/origin/HEAD                         |
       And what the manager is asked to run names "fleet-revision-guard" before "fleet-manager-run"
 
+    Scenario Outline: Before any other guard, a copy of another repository is replaced with one of the declared repository
+      The other guards and the run script all read the manager's own copy, so
+      it is checked first, whether or not ancestry is asked.
+      When a worker prepares to hand "<command>" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      Then what the manager is asked to run names "fleet-source-guard" before "<next>"
+      And what the manager is asked to run names "fleet-source-guard" directly followed by "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      And what the manager is asked to run contains:
+        | remote get-url origin                    |
+        | https://github.com/crvouga/dev-fleet.git |
+
+      Examples:
+        | command                            | next                 |
+        | fleet-sync --json                  | fleet-revision-guard |
+        | fleet-sync --allow-unmerged --json | fleet-manager-run    |
+
     Scenario: --allow-unmerged skips the guard, and the manager is told rather than given a flag
       The run on the manager is the revision's own code, which may be older
       than the flag: it is told what selected its revision instead.
@@ -263,6 +278,16 @@ Feature: fleet-sync started on a worker is handed to the manager
         | exit | code                      |
         | 65   | FLEET_REVISION_UNMERGED   |
         | 66   | FLEET_REVISION_UNVERIFIED |
+
+    Scenario: A copy of another repository the manager could not replace is reported as such, not as an unmerged revision
+      Given the manager answers the hand-off with exit code 69 and nothing
+      When "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
+      Then the command exits with 1
+      And the report has:
+        | code     | FLEET_SOURCE_MISMATCH                    |
+        | revision | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
+      And the report mentions "is a clone of another repository"
+      And the report mentions "source.repository in fleet.json"
 
   Rule: A worker reports what the manager answered and runs nothing itself
 
