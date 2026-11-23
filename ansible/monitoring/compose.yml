@@ -51,7 +51,7 @@ services:
   # per-user file by hub-darwin.yml.
   cloudflared:
     profiles: [public-endpoint]
-    image: cloudflare/cloudflared:2026.9.3@sha256:072c067d25ccbe61d46e18f0d0723255f2bb5304f7317caa95b27031520ff92c
+    image: cloudflare/cloudflared:2026.11.1@sha256:e613aadbc2d9511785d2e67a86b0c8ac18dd63a3f9af0d06faf04cbfdcb35f2d
     user: '1000:1000'
     restart: unless-stopped
     command:
