@@ -117,10 +117,7 @@ export class StandInGithub {
         };
       return succeeded('HTTP/2.0 200 OK\n\n{"state":"active"}');
     }
-    if (
-      line ===
-      'git config --global --get-all credential.https://github.com.helper'
-    ) {
+    if (line === 'git config --get-all credential.https://github.com.helper') {
       const lines = this.helpers.get(node);
       return lines ? succeeded(lines.join('\n') + '\n') : failed();
     }

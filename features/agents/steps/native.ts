@@ -61,6 +61,8 @@ const machine = part(() => ({
   before: 0,
   /** The proxy's account roster, when a step names one. */
   accounts: undefined as AccountContext | undefined,
+  /** The environment the sync was started in, when a step names one. */
+  inherited: undefined as Record<string, string> | undefined,
 }));
 
 // ── Pins ─────────────────────────────────────────────────────────────────
@@ -170,7 +172,8 @@ When(
 );
 
 async function verify(world: AgentsWorld, id: string): Promise<Check[]> {
-  const { accounts, cache, commands, outOfQuota, profiles } = machine(world);
+  const { accounts, cache, commands, inherited, outOfQuota, profiles } =
+    machine(world);
   if (!cache)
     throw new Error('Say what is remembered of earlier verification.');
   return verifyNativeAgents(id, checkout, commands.run, {
@@ -179,6 +182,7 @@ async function verify(world: AgentsWorld, id: string): Promise<Check[]> {
     t3Service: machine(world).service,
     profiles,
     ...(accounts ? { accounts } : {}),
+    ...(inherited ? { inherited } : {}),
   });
 }
 
@@ -306,6 +310,37 @@ Then(
     );
     expect(launched.length).toBeGreaterThan(0);
     for (const call of launched) {
+      expect(call.options?.isolatedEnv).toBe(true);
+      expect(call.options?.env).toEqual(table.rowsHash());
+    }
+  }
+);
+
+Given(
+  'the sync was started in an environment holding:',
+  (world, table: DataTable) => {
+    machine(world).inherited = table.rowsHash();
+  }
+);
+
+Given(
+  /^that environment also holds (?:nothing else|"(.*)")$/,
+  (world, assignments: string | undefined) => {
+    for (const assignment of assignments?.split(' ') ?? []) {
+      const [name, ...value] = assignment.split('=');
+      machine(world).inherited![name!] = value.join('=');
+    }
+  }
+);
+
+Then(
+  "every agent's version was read with exactly this environment:",
+  (world, table: DataTable) => {
+    const read = machine(world).commands.calls.filter((call) =>
+      isVersion(call.command)
+    );
+    expect(read.length).toBeGreaterThan(0);
+    for (const call of read) {
       expect(call.options?.isolatedEnv).toBe(true);
       expect(call.options?.env).toEqual(table.rowsHash());
     }

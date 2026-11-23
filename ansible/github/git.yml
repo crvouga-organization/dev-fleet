@@ -14,6 +14,18 @@
     # gh answers for GitHub through the pinned toolchain's shim, so any
     # session's PATH works.
     git_credential_helper: "!'{{ git_home }}/.local/share/mise/shims/gh' auth git-credential"
+    # A helper that asks gh by any path is the same credential source: the
+    # one `gh auth setup-git` writes in ~/.gitconfig may stay. The same
+    # pattern as GH_CREDENTIAL_HELPER in src/git-identity.ts.
+    git_gh_helper_pattern: "^!(\\S*/|'[^']*/)?gh'? auth git-credential$"
+    # Git's configuration as a session outside any repository sees it:
+    # ~/.config/git/config, then ~/.gitconfig, the later winning. Not
+    # --global, which some Git builds read from ~/.gitconfig alone when it
+    # exists.
+    git_read_environment:
+      HOME: '{{ git_home }}'
+      XDG_CONFIG_HOME: '{{ git_home }}/.config'
+      GIT_CONFIG_NOSYSTEM: '1'
     # Optional commit signing (git.signing in fleet.json): each node signs
     # with an SSH key of its own, made on the node. The private key never
     # leaves it and is never in fleet.json, a variable or argv.
@@ -50,9 +62,9 @@
           	helper = {{ git_credential_helper }}
     - name: Read the effective identity and GitHub credential helper
       ansible.builtin.command:
-        argv: [git, config, --global, --get-all, '{{ item }}']
-      environment:
-        HOME: '{{ git_home }}'
+        argv: [git, config, --get-all, '{{ item }}']
+        chdir: /
+      environment: '{{ git_read_environment }}'
       loop:
         - user.name
         - user.email
@@ -61,13 +73,23 @@
       check_mode: false
       changed_when: false
       failed_when: false
+    - name: Keep the GitHub credential helpers Git asks, those after the last reset
+      ansible.builtin.set_fact:
+        git_helpers_in_effect: >-
+          {%- set kept = namespace(helpers=[]) -%}
+          {%- for helper in git_effective.results[2].stdout_lines | default([]) -%}
+          {%- set kept.helpers = [] if helper | trim == '' else kept.helpers + [helper | trim] -%}
+          {%- endfor -%}
+          {{ kept.helpers }}
+      when: not ansible_check_mode
     - name: Require the declared identity and helper to be the effective ones (worker:git-identity)
       ansible.builtin.assert:
         that:
           - git_effective.results[0].stdout_lines | default([]) | last | default('') == git_name
           - git_effective.results[1].stdout_lines | default([]) | last | default('') == git_email
-          - git_effective.results[2].stdout_lines | default([]) | last | default('') == git_credential_helper
-        fail_msg: GIT_IDENTITY_OVERRIDDEN; another Git configuration (often ~/.gitconfig) sets user.name, user.email or the GitHub credential helper after dev-fleet's. Remove those lines.
+          - git_helpers_in_effect | length > 0
+          - git_helpers_in_effect | reject('match', git_gh_helper_pattern) | list | length == 0
+        fail_msg: GIT_IDENTITY_OVERRIDDEN; another Git configuration (often ~/.gitconfig) sets user.name, user.email or a GitHub credential helper other than gh auth git-credential after dev-fleet's. Remove those lines.
       when: not ansible_check_mode
     - name: Create the per-user SSH directory for the signing key
       ansible.builtin.file:
@@ -126,9 +148,9 @@
           	gpgsign = true
     - name: Read the effective signing configuration
       ansible.builtin.command:
-        argv: [git, config, --global, --get-all, '{{ item }}']
-      environment:
-        HOME: '{{ git_home }}'
+        argv: [git, config, --get-all, '{{ item }}']
+        chdir: /
+      environment: '{{ git_read_environment }}'
       loop:
         - gpg.format
         - user.signingkey

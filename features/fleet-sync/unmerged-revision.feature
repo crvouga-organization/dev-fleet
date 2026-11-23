@@ -77,6 +77,54 @@ Feature: The fleet moves only to a revision on the default branch of the source 
       When the guard of a hand-off runs on the manager for the commit "pins"
       Then the guard exits with 66
 
+  Rule: A copy of another repository is replaced before it is asked
+    A manager whose copy was made before the fleet's source moved has an
+    origin that can never hold the revision: asked as it is, it would call a
+    merged revision unmerged. The declared repository is cloned beside it, and
+    only a complete clone takes its place.
+
+    Scenario: Asked by fleet-sync, the copy of another repository is replaced and answers
+      Given the manager's copy of the source repository is a clone of another repository
+      When the manager's copy of the source repository is asked whether the default branch holds the commit "released"
+      Then the answer is "merged"
+      And the origin of the manager's copy of the source repository is the fleet's source repository
+
+    Scenario: A copy of another repository that cannot be replaced is reported as such, not as unmerged
+      Given the manager's copy of the source repository is a clone of another repository
+      And the fleet's source repository can no longer be reached
+      When the manager's copy of the source repository is asked whether the default branch holds the commit "released"
+      Then the answer is "mismatched"
+      And the origin of the manager's copy of the source repository is the other repository
+
+    Scenario: In a hand-off, the source guard replaces the copy of another repository
+      Given the manager's copy of the source repository is a clone of another repository
+      When the source guard of a hand-off runs on the manager
+      Then the guard exits with 0
+      And the origin of the manager's copy of the source repository is the fleet's source repository
+
+    Scenario: Once the source guard replaced the copy, the ancestry guard finds the revision merged
+      Given the manager's copy of the source repository is a clone of another repository
+      And the source guard of a hand-off has run on the manager
+      When the guard of a hand-off runs on the manager for the commit "released"
+      Then the guard exits with 0
+
+    Scenario: In a hand-off, a copy of another repository that cannot be replaced stops it with 69
+      Given the manager's copy of the source repository is a clone of another repository
+      And the fleet's source repository can no longer be reached
+      When the source guard of a hand-off runs on the manager
+      Then the guard exits with 69
+      And the origin of the manager's copy of the source repository is the other repository
+
+    Scenario: The source guard leaves a copy of the fleet's source repository as it is
+      Given the manager has its own copy of the source repository
+      When the source guard of a hand-off runs on the manager
+      Then the guard exits with 0
+      And the origin of the manager's copy of the source repository is the fleet's source repository
+
+    Scenario: The source guard leaves a manager without a copy to the guards after it
+      When the source guard of a hand-off runs on the manager
+      Then the guard exits with 0
+
   Rule: A branch revision that pins an older mise does not downgrade the manager's
 
     @bash

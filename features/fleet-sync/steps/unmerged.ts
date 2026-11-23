@@ -2,6 +2,7 @@ import { expect } from 'bun:test';
 import {
   chmodSync,
   copyFileSync,
+  existsSync,
   mkdirSync,
   readFileSync,
   renameSync,
@@ -9,7 +10,10 @@ import {
   writeFileSync,
 } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { ANCESTRY_GUARD } from '../../../src/cli/fleet-sync-forward';
+import {
+  ANCESTRY_GUARD,
+  SOURCE_GUARD,
+} from '../../../src/cli/fleet-sync-forward';
 import { defaultBranchHolds } from '../../../src/machine/source';
 import type { Runner } from '../../../src/types';
 import { ROOT, fleetSync } from '../support/world';
@@ -94,6 +98,64 @@ Given(
     git(node, node.origin, 'merge', '--quiet', '--ff-only', sha(node, message));
   }
 );
+
+Given(
+  "the manager's copy of the source repository is a clone of another repository",
+  (world) => {
+    // The repository that held the fleet's code before it moved.
+    const node = manager(world);
+    const other = join(node.home, 'other');
+    mkdirSync(other);
+    git(node, other, 'init', '--quiet', '--initial-branch', 'main');
+    writeFileSync(join(other, 'file'), 'other');
+    git(node, other, 'add', 'file');
+    git(node, other, 'commit', '--quiet', '--message', 'other');
+    git(
+      node,
+      node.home,
+      'clone',
+      '--quiet',
+      '--no-checkout',
+      other,
+      node.cache
+    );
+  }
+);
+
+Then(
+  /^the origin of the manager's copy of the source repository is (the fleet's source repository|the other repository)$/,
+  (world, which: string) => {
+    const node = manager(world);
+    expect(git(node, node.cache, 'remote', 'get-url', 'origin')).toBe(
+      which === 'the other repository' ? join(node.home, 'other') : node.origin
+    );
+    expect(existsSync(`${node.cache}.new`)).toBe(false);
+  }
+);
+
+/** The source guard of a hand-off, given a revision and the fleet's source
+ * repository as the hand-off gives them.
+ */
+const sourceGuard = (node: Manager): number =>
+  Bun.spawnSync(
+    [
+      '/bin/sh',
+      '-c',
+      SOURCE_GUARD,
+      'fleet-source-guard',
+      'a'.repeat(40),
+      node.origin,
+    ],
+    { env: node.env }
+  ).exitCode;
+
+When('the source guard of a hand-off runs on the manager', (world) => {
+  world.answer = sourceGuard(manager(world));
+});
+
+Given('the source guard of a hand-off has run on the manager', (world) => {
+  expect(sourceGuard(manager(world))).toBe(0);
+});
 
 Given("the fleet's source repository can no longer be reached", (world) => {
   const node = manager(world);
