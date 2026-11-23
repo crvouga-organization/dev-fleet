@@ -220,6 +220,15 @@ const SAID: [RegExp, SessionResult][] = [
 const said = (text: string): SessionResult | undefined =>
   SAID.find(([pattern]) => pattern.test(text))?.[1];
 
+/** Whether the lines a session printed so far already name a condition of
+ * its account. Nothing it prints afterwards changes the result: OpenCode
+ * only retries a refused request quietly until the deadline. So a session is
+ * ended as soon as this holds. Only whole lines are read, so a line cut
+ * between two reads keeps the instant a cooldown clears.
+ */
+export const namesCondition = (output: string): boolean =>
+  said(output.slice(0, output.lastIndexOf('\n') + 1)) !== undefined;
+
 /** What a session's output says about its account. A session ended at its
  * deadline (`timedOut`) that printed nothing telling is `timed-out`: the
  * caller asks the proxy what holds the account back (`proxyVerdict`).

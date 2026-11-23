@@ -30,15 +30,25 @@ export function rebootNeeded(checks: Check[]): boolean {
   );
 }
 
-/** A maintenance run goes on to the next worker only once this one is back
- * and ready: a reboot that failed, or one after which the worker is not
- * ready, stops the rest.
+/** What a maintenance run did to a worker before converging it again, and
+ * the summary each reports when it did not complete.
  */
-export function rebootStopsRollout(node: { checks: Check[] }): boolean {
-  const reboot = node.checks.find((check) => check.id === 'worker:reboot');
-  if (!reboot) return false;
-  if (reboot.summary === 'WORKER_REBOOT_FAILED') return true;
-  return reboot.status === 'pass' && node.checks.some(blocking);
+const MAINTENANCE: Record<string, string> = {
+  'worker:reboot': 'WORKER_REBOOT_FAILED',
+  'worker:tailscale-upgrade': 'WORKER_TAILSCALE_UPGRADE_FAILED',
+};
+
+/** A maintenance run goes on to the next worker only once this one is back
+ * and ready: a reboot or a Tailscale upgrade that failed, or one after which
+ * the worker is not ready, stops the rest.
+ */
+export function maintenanceStopsRollout(node: { checks: Check[] }): boolean {
+  const done = node.checks.filter((check) => check.id in MAINTENANCE);
+  if (done.some((check) => check.summary === MAINTENANCE[check.id]))
+    return true;
+  return (
+    done.some((check) => check.status === 'pass') && node.checks.some(blocking)
+  );
 }
 
 /** Installed updates wait for a reboot: what --maintenance-reboot applies. */
@@ -56,6 +66,31 @@ export function workerHome(node: FleetNode): string | null {
     : null;
 }
 
+/** How a playbook the manager applies reaches a worker: `user@alias` only
+ * for a worker whose account this run created; a worker reached from
+ * declared data logs in as its declared account. Null without an account
+ * home in the roster.
+ */
+export function playbookAddress(node: FleetNode): {
+  target: string;
+  login: string;
+  home: string;
+  ssh_options: string;
+} | null {
+  const home = workerHome(node);
+  if (!home) return null;
+  const connection = playbookConnection(node);
+  const [login, target] = node.ssh.includes('@')
+    ? node.ssh.split('@', 2)
+    : [connection.user ?? '', node.ssh];
+  return {
+    target: target!,
+    login: login!,
+    home,
+    ssh_options: connection.options,
+  };
+}
+
 /** Reboots one worker through ansible/ubuntu/reboot.yml, run from the
  * manager: only while its T3 runs no agent turn (unless `force`), waiting
  * until it answers again. The play's output is read for its own codes only.
@@ -65,8 +100,8 @@ export async function rebootWorker(
   request: { revision: string; reason: RebootReason; force?: boolean },
   playbook: PackagePlaybook
 ): Promise<Check> {
-  const home = workerHome(node);
-  if (!home)
+  const address = playbookAddress(node);
+  if (!address)
     return {
       id: 'worker:reboot',
       status: 'fail',
@@ -76,22 +111,13 @@ export async function rebootWorker(
           'The roster names no workspace under the account home, so the worker was not rebooted. Rerun fleet-sync once it is enrolled.',
       },
     };
-  // `user@alias` only for a worker whose account this run created.
-  // A worker reached from declared data logs in as its declared account.
-  const connection = playbookConnection(node);
-  const [login, target] = node.ssh.includes('@')
-    ? node.ssh.split('@', 2)
-    : [connection.user ?? '', node.ssh];
   const result = await playbook(
     'ubuntu/reboot.yml',
     {
-      target,
-      login,
-      home,
+      ...address,
       revision: request.revision,
       reason: request.reason,
       force: Boolean(request.force),
-      ssh_options: connection.options,
     },
     // The play waits up to 900 seconds for the worker to answer again.
     1_200_000

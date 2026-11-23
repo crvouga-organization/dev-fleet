@@ -254,7 +254,7 @@ function registerSync({ program, defaults, complete }: Registration) {
     .option('--yes', 'Accepted for compatibility with --apply')
     .option(
       '--maintenance-reboot',
-      'Reboot each worker whose installed updates wait for a reboot: one at a time, canary first, only while it runs no agent turn, verified ready before the next'
+      'Reboot each worker whose installed updates wait for a reboot (only while it runs no agent turn) and upgrade a Tailscale older than its pin: one at a time, canary first, verified ready before the next'
     )
     .option(
       '--force',

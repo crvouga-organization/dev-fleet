@@ -92,13 +92,18 @@ export interface CommandOptions {
    * for a launch that must see only what a service would.
    */
   isolatedEnv?: boolean;
+  /** Ends the command as soon as what it printed so far (stdout, then
+   * stderr) satisfies this: for a session whose result is decided by a line
+   * it prints long before it would exit. It ends `stopped`, not ok.
+   */
+  stopWhen?: (output: string) => boolean;
 }
 
 export interface CommandResult {
   ok: boolean;
   stdout: string;
   stderr: string;
-  reason: 'exit' | 'missing' | 'timeout' | 'overflow';
+  reason: 'exit' | 'missing' | 'timeout' | 'overflow' | 'stopped';
 }
 
 export type Runner = (

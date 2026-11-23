@@ -2464,6 +2464,14 @@
       }
     },
     {
+      "id": "worker:tailscale-upgrade",
+      "meaning": "A maintenance run upgraded Tailscale to its pin in a detached unit; the worker answered again and was converged once more.",
+      "severity": "required",
+      "repair": {
+        "manual": "Upgrading Tailscale can drop the SSH session, so it waits for a maintenance run: rerun fleet-sync --maintenance-reboot once the remedy is followed."
+      }
+    },
+    {
       "id": "worker:ubuntu",
       "meaning": "Required Ubuntu release and architecture.",
       "severity": "required",

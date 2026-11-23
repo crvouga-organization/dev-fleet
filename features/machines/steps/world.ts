@@ -47,6 +47,11 @@ export class MachinesWorld extends CommandWorld {
   verified = true;
   applied: ReceiptResult | undefined;
 
+  // Tailscale on a worker: how its play ended, and whether it is logged in.
+  tailscalePlay = { ok: true, stdout: '' };
+  tailscaleRunning = true;
+  tailscaleAsked = false;
+
   // What was measured about a machine.
   audit: UbuntuAudit | undefined;
   adapter: Platform | undefined;

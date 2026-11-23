@@ -41,6 +41,7 @@ import {
   configureWorkstation,
 } from './node-converge-shared';
 import { loginServer } from './tailnet-control';
+import { tailscaleConfiguration } from './tailscale-configuration';
 import type { Check, Runner } from './types';
 
 /** Ubuntu worker convergence: Ansible owns OS policy, services and recovery; the
@@ -254,7 +255,7 @@ async function baselineServicesActive(
 
 /** A worker that was never logged in joins under its declared ID when the
  * seed or the bootstrap left it a single-use key; the key carries the fleet's
- * tag.
+ * tag. A failed play is reported by the code it stopped on.
  */
 async function applyTailscale(
   root: string,
@@ -262,6 +263,14 @@ async function applyTailscale(
   run: Runner
 ): Promise<Check> {
   const ubuntu = resolve(root, 'ansible/ubuntu');
+  const running = async () => {
+    const status = await run(['tailscale', 'status', '--json']);
+    return (
+      status.ok &&
+      (JSON.parse(status.stdout) as { BackendState?: unknown }).BackendState ===
+        'Running'
+    );
+  };
   const tailscale = await runAnsibleWithReceipt(
     run,
     'tailscale.yml',
@@ -273,26 +282,9 @@ async function applyTailscale(
         tailnet_login_server: loginServer(fleet.tailnet) ?? '',
       }),
     },
-    {
-      name: 'ubuntu-tailscale',
-      sources: [ubuntu],
-      verify: async () => {
-        const status = await run(['tailscale', 'status', '--json']);
-        return (
-          status.ok &&
-          (JSON.parse(status.stdout) as { BackendState?: unknown })
-            .BackendState === 'Running'
-        );
-      },
-    }
+    { name: 'ubuntu-tailscale', sources: [ubuntu], verify: running }
   );
-  return {
-    id: 'tailscale:configuration',
-    status: tailscale.ok ? 'pass' : 'fail',
-    summary: tailscale.ok
-      ? 'Pinned native Tailscale service is enabled, running and authenticated; manager reachability remains separate.'
-      : 'TAILSCALE_SETUP_OR_LOGIN_REQUIRED',
-  };
+  return tailscaleConfiguration(tailscale, running);
 }
 
 async function convergeT3(
