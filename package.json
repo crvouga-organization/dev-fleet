@@ -46,7 +46,7 @@
     "check": "bun run format && bun run tc && bun run lint && bun test && bun run lint:cliproxy && bun run test:cliproxy"
   },
   "dependencies": {
-    "@inquirer/prompts": "8.7.5",
+    "@inquirer/prompts": "8.8.1",
     "boxen": "9.0.0",
     "bun": "1.4.5",
     "chalk": "6.0.1",
