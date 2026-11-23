@@ -14,6 +14,10 @@ import {
   updatesPending,
   type RebootReason,
 } from '../worker-reboot';
+import {
+  tailscaleUpgradePending,
+  upgradeTailscale,
+} from '../worker-tailscale-upgrade';
 
 /** What one worker's deployment needs around its converge: the converge
  * itself (bootstrap, verification, monitoring), the tailnet control plane
@@ -46,7 +50,8 @@ export interface WorkerDeployment {
  * on the tailnet a single-use key, keeps an enrolled worker's node key from
  * expiring, creates the declared account on an image that lets only root
  * in, and reboots the worker once when its first converge needs it (or for
- * maintenance, when asked), converging it again to verify it.
+ * maintenance, when asked), converging it again to verify it. A maintenance
+ * run first upgrades a Tailscale older than its pin, then converges again.
  */
 export async function deployWorker(
   node: FleetNode,
@@ -66,6 +71,17 @@ export async function deployWorker(
       result = await deployment.converge(target, revision, key);
     }
   }
+  const maintenance: Check[] = [];
+  if (deployment.maintenanceReboot && tailscaleUpgradePending(result.checks)) {
+    const upgrade = await upgradeTailscale(
+      target,
+      revision,
+      deployment.playbook
+    );
+    if (upgrade.status === 'pass')
+      result = await deployment.converge(target, revision);
+    maintenance.push(upgrade);
+  }
   const reason = rebootReason(node.id, result.checks, deployment);
   if (reason) {
     const reboot = await rebootWorker(
@@ -81,9 +97,9 @@ export async function deployWorker(
     );
     if (reboot.status === 'pass')
       result = await deployment.converge(target, revision);
-    result.checks.unshift(reboot);
+    maintenance.push(reboot);
   }
-  result.checks.unshift(...before);
+  result.checks.unshift(...before, ...maintenance);
   return result;
 }
 

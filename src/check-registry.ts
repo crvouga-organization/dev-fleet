@@ -510,6 +510,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'worker:reboot':
     'The worker was rebooted while it ran no agent turn (after its first converge, or for maintenance), answered again and was converged once more.',
   'worker:reboot-pending': 'The worker needs no reboot to finish an update.',
+  'worker:tailscale-upgrade':
+    'A maintenance run upgraded Tailscale to its pin in a detached unit; the worker answered again and was converged once more.',
   'worker:service:*':
     'A service every worker runs is active, enabled for boot and restarts unconditionally.',
   'worker:service-recovery': 'Worker services recover after failure.',

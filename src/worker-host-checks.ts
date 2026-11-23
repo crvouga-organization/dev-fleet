@@ -48,6 +48,16 @@ export function pinnedPackage(
 ): Check {
   const order =
     installed === undefined ? -1 : compareDebianVersions(installed, pinned);
+  if (order < 0 && name === 'tailscale' && installed !== undefined)
+    return {
+      id: `worker:package:${name}`,
+      status: 'fail',
+      summary: `PACKAGE_BELOW_PIN ${name} ${installed}, pinned ${pinned}`,
+      remedy: {
+        action:
+          'A converge never upgrades an active VPN. Run devfleet fleet-sync --maintenance-reboot: it upgrades Tailscale to the pin in a detached unit on the worker and waits for the worker to answer again.',
+      },
+    };
   if (order <= 0)
     return check(
       `worker:package:${name}`,

@@ -5,7 +5,7 @@ Feature: A new worker reaches ready in one fleet-sync, with no hands on it
   declared account on an image that lets only root in, and reboots a worker
   once when its first converge needs it, converging it again to verify it.
   A worker that was ready before is never rebooted by that path; only an
-  explicit maintenance run reboots it.
+  explicit maintenance run reboots it, or upgrades its Tailscale to the pin.
 
   Background:
     Given the secrets provider holds a tailnet-admin credential generated for this scenario
@@ -209,3 +209,52 @@ Feature: A new worker reaches ready in one fleet-sync, with no hands on it
         | worker:reboot-pending | warn   | REBOOT_PENDING: installed updates apply only after a reboot. |
       When the worker is deployed
       Then the manager applied no playbook to the worker
+
+  Rule: A maintenance run takes a worker's Tailscale to its pin
+
+    A converge never upgrades Tailscale that is older than its pin: a restart
+    of tailscaled can drop the SSH session it runs in. A maintenance run
+    upgrades it from the manager, in a detached unit on the worker, waits for
+    the worker to answer again and converges it once more.
+
+    Background:
+      Given the roster entry "worker-one", with the workspace "/home/dev/.local/share/personal/fleet" and the Tailscale ID "nWorkerOne"
+      And the tailnet shows "nWorkerOne" with a node key that never expires
+      And "worker-one" converged in an earlier run
+
+    Scenario: --maintenance-reboot upgrades a Tailscale older than its pin and converges again
+      Given the first converge reports:
+        | check                   | status | summary                   |
+        | tailscale:configuration | fail   | TAILSCALE_UPGRADE_PENDING |
+      And each converge after it reports:
+        | check                   | status | summary |
+        | tailscale:configuration | pass   | Running |
+      And the playbook "ubuntu/tailscale-upgrade.yml" succeeds
+      When the worker is deployed with --maintenance-reboot
+      Then the playbook "ubuntu/tailscale-upgrade.yml" was applied with:
+        | variable | value                                    |
+        | target   | worker-one                               |
+        | home     | /home/dev                                |
+        | revision | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
+      And the worker was converged 2 times
+      And the deployment reports "worker:tailscale-upgrade" as "pass"
+      And the deployment reports "tailscale:configuration" as "pass"
+
+    Scenario: An upgrade that did not complete is reported, and the worker is not converged again
+      Given each converge reports:
+        | check                   | status | summary                   |
+        | tailscale:configuration | fail   | TAILSCALE_UPGRADE_PENDING |
+      And the playbook "ubuntu/tailscale-upgrade.yml" fails, printing "PRIVATE_SENTINEL"
+      When the worker is deployed with --maintenance-reboot
+      Then the worker was converged 1 time
+      And the deployment reports "worker:tailscale-upgrade" as "fail", saying "WORKER_TAILSCALE_UPGRADE_FAILED"
+      And the remedy of "worker:tailscale-upgrade" names "journalctl -u devfleet-tailscale-upgrade"
+      And "PRIVATE_SENTINEL" appears nowhere in what the deployment reports
+
+    Scenario: Without --maintenance-reboot, Tailscale below its pin is left alone
+      Given each converge reports:
+        | check                   | status | summary                   |
+        | tailscale:configuration | fail   | TAILSCALE_UPGRADE_PENDING |
+      When the worker is deployed
+      Then the manager applied no playbook to the worker
+      And the deployment reports "tailscale:configuration" as "fail", saying "TAILSCALE_UPGRADE_PENDING"

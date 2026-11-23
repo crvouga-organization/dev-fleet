@@ -113,7 +113,11 @@ Tailscale's pin is a minimum that workers pass by themselves: a worker takes a
 newer Tailscale through its own updates and keeps it, and `worker:package:tailscale`
 warns with `PACKAGE_NEWER_THAN_PIN` until the pin is raised. Renovate raises it
 only to a release that is 14 days old, because a worker still older than the
-pin stops with `TAILSCALE_UPGRADE_PENDING` and needs a person.
+pin stops with `TAILSCALE_UPGRADE_PENDING` until a person runs
+`devfleet fleet-sync --maintenance-reboot`, which upgrades it to the pin. A
+person who raises the pin by hand follows the same rule: never past the
+version every enrolled worker reports (`worker:package:tailscale`) unless a
+maintenance run follows the approval.
 
 The workflows never name the mise release: they install it through
 [`.github/actions/mise`](../.github/actions/mise/action.yml), which reads
