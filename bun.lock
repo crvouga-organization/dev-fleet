@@ -16,7 +16,7 @@
         "yaml": "^2.8.0",
       },
       "devDependencies": {
-        "@cucumber/cucumber-expressions": "20.1.0",
+        "@cucumber/cucumber-expressions": "20.2.0",
         "@cucumber/gherkin": "42.0.1",
         "@cucumber/messages": "34.2.1",
         "@eslint/js": "^9.25.0",
@@ -32,7 +32,7 @@
   "packages": {
     "@colors/colors": ["@colors/colors@1.5.0", "", {}, "sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ=="],
 
-    "@cucumber/cucumber-expressions": ["@cucumber/cucumber-expressions@20.1.0", "", { "dependencies": { "regexp-match-indices": "1.0.2" } }, "sha512-KXQJChHTyHdg6HI7fHy3zpjfoS205vV1B/aJQKB82VFgMGbdVdiaSy7sTtap/5Q787anLmZt25Tg0FqQ2n4fqw=="],
+    "@cucumber/cucumber-expressions": ["@cucumber/cucumber-expressions@20.2.0", "", { "dependencies": { "regexp-match-indices": "1.0.2" } }, "sha512-qzQYovDERDTf4iFvnJwhWxU2J0Yj25cVFoxr78WJqNt+Lvt9xZWobEG9bu3rQ35HTmlbmreoCGZcTKPwskH33Q=="],
 
     "@cucumber/gherkin": ["@cucumber/gherkin@42.0.1", "", { "dependencies": { "@cucumber/messages": ">=34.0.0 <35" } }, "sha512-Kqg0ULhWqbXp/a1c04ND4sS4KTlIL831tQ0NhZLXWdEhT6LiNsZ5LFRzy/lBy7QQpcKhroKp/i3C2WdEnRBKNg=="],
 
