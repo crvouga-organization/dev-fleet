@@ -6,6 +6,7 @@ import './steps/manager';
 import './steps/platforms';
 import './steps/session-limit';
 import './steps/t3';
+import './steps/tailscale';
 import './steps/workers';
 
 runFeatures({

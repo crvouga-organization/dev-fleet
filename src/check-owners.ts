@@ -82,6 +82,11 @@ export const CHECK_OWNERS: CheckOwner[] = [
       'A reboot ends running agent turns, so it waits for them: rerun fleet-sync --maintenance-reboot once they end, or with --force.',
   },
   {
+    pattern: 'worker:tailscale-upgrade',
+    manual:
+      'Upgrading Tailscale can drop the SSH session, so it waits for a maintenance run: rerun fleet-sync --maintenance-reboot once the remedy is followed.',
+  },
+  {
     pattern: 'worker:t3-deadline-restarts',
     manual:
       'It reports a restart that already happened and ended agent turns: nothing is left to repair, the threads continue with their next message.',

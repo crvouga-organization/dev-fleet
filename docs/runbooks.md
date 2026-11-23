@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 431 codes; 90 need a person.
+There are 433 codes; 90 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -261,9 +261,10 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `TAILSCALE_LOGIN_REQUIRED`: tailscale login required. **Needs a person.**
 - `TAILSCALE_NODE_MISSING`: tailscale node missing.
 - `TAILSCALE_NODE_OFFLINE`: tailscale node offline.
-- `TAILSCALE_SETUP_OR_LOGIN_REQUIRED`: tailscale setup or login required. **Needs a person.**
+- `TAILSCALE_SETUP_OR_LOGIN_REQUIRED`: the Tailscale play stopped on no code of its own and the worker is not logged in to the tailnet. Declare `tailnet` in `fleet.json` so `devfleet fleet-sync` enrols it with a single-use key, or sign it in (`sudo tailscale up`). **Needs a person.**
+- `TAILSCALE_CONFIGURATION_INCOMPLETE`: the Tailscale play stopped on no code of its own while the worker is logged in and running: a package source or the daemon failed. Run `devfleet fleet-sync` again; when it repeats, apply `ansible/ubuntu/tailscale.yml` of the approved revision on the worker to see the task that stops.
 - `TAILSCALE_SOURCE_OWNER_CONFLICT`: tailscale source owner conflict. **Needs a person.**
-- `TAILSCALE_UPGRADE_PENDING`: tailscale upgrade pending. **Needs a person.**
+- `TAILSCALE_UPGRADE_PENDING`: Tailscale on the worker is older than its pin, and a converge never upgrades an active VPN because a restart of tailscaled can drop the SSH session. Run `devfleet fleet-sync --maintenance-reboot`: it upgrades Tailscale to the pin in a detached unit on the worker (`ansible/ubuntu/tailscale-upgrade.yml`), waits for the worker to answer again and converges it once more. **Needs a person.**
 - `TAILSCALE_KEY_EXPIRES_SOON`: the node key of the machine expires in the days the check names, and the machine leaves the tailnet when it does. Disable key expiry for a worker in the Tailscale admin console or tag it; renew the manager's with `tailscale up --force-reauth`. **Needs a person.**
 - `TAILSCALE_KEY_EXPIRED`: the node key of the machine has expired and the machine has left the tailnet. Renew the manager's with `tailscale up --force-reauth`; re-join a worker as [Tailscale key expiry](operations.md#tailscale-key-expiry) describes, then disable key expiry for it or tag it. **Needs a person.**
 
@@ -288,6 +289,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `WORKER_ACCOUNT_UNDECLARED`: worker account undeclared in workers[].network.user. **Needs a person.**
 - `WORKER_REBOOT_BUSY`: worker reboot busy: an agent turn runs.
 - `WORKER_REBOOT_FAILED`: worker reboot failed.
+- `WORKER_TAILSCALE_UPGRADE_FAILED`: the Tailscale upgrade of a maintenance run did not complete, or the worker did not answer again within 10 minutes; the workers after it wait. Read `journalctl -u devfleet-tailscale-upgrade` on the worker, then run `devfleet fleet-sync --maintenance-reboot` again.
 
 ## T3 Code
 

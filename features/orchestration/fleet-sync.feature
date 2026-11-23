@@ -241,6 +241,18 @@ Feature: fleet-sync converges every worker on one approved revision
         | first |
       And the last check of "second" says "FLEET_PROMOTION_BLOCKED"
 
+    Scenario: A Tailscale upgrade that did not complete stops the workers after it
+      Given deploying "first" reports these checks:
+        | id                       | status | summary                         |
+        | worker:tailscale-upgrade | fail   | WORKER_TAILSCALE_UPGRADE_FAILED |
+      And deploying "second" reports these checks:
+        | id   | status | summary |
+        | done | pass   | fixture |
+      When fleet-sync applies the approved revision with "first" as its canary, one worker at a time
+      Then the revision was deployed to these workers, in order:
+        | first |
+      And the last check of "second" says "FLEET_PROMOTION_BLOCKED"
+
     Scenario: A worker that came back ready lets the next one go
       Given deploying "first" reports these checks:
         | id            | status | summary                  |

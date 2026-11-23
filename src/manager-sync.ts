@@ -12,7 +12,7 @@ import {
   type TailnetComputer,
 } from './tailscale';
 import { matchComputers } from './tailnet-matching';
-import { rebootStopsRollout } from './worker-reboot';
+import { maintenanceStopsRollout } from './worker-reboot';
 import { sshArgs, sshFailure } from './ssh';
 import type { FleetDefinition, MachineDefinition } from './definition';
 import { publicHubUrl } from './monitoring/beszel';
@@ -276,10 +276,10 @@ async function applyNodes(
     await Promise.all(rest.map(step));
     return;
   }
-  if (canary && rebootStopsRollout(canary)) blocked = true;
+  if (canary && maintenanceStopsRollout(canary)) blocked = true;
   for (const node of rest) {
     await step(node);
-    if (rebootStopsRollout(node)) blocked = true;
+    if (maintenanceStopsRollout(node)) blocked = true;
   }
 }
 

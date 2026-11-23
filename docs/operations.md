@@ -155,6 +155,15 @@ the ones after it. A new worker that was never ready is rebooted once after its
 first converge in any `fleet-sync`, so it reaches ready in one run; a worker
 that was ready before is rebooted only by `--maintenance-reboot`.
 
+A converge never upgrades Tailscale on a worker that is older than its pin
+(`TAILSCALE_UPGRADE_PENDING`): restarting tailscaled can drop the SSH session
+the converge runs in. `--maintenance-reboot` takes it to the pin first, through
+`ansible/ubuntu/tailscale-upgrade.yml`: the worker's own Tailscale play runs in
+a detached unit (`devfleet-tailscale-upgrade.service`), the manager waits for
+the worker to answer again and for the unit to end, then converges it once
+more. An upgrade that did not complete (`WORKER_TAILSCALE_UPGRADE_FAILED`)
+stops the workers after it.
+
 To re-join a worker whose key expired, a person signs it in again, because
 only a person's identity can authorise a device:
 

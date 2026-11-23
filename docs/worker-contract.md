@@ -240,7 +240,8 @@ one:
   readiness; it says the pin can be raised when the snapshot moves.
 - Tailscale follows the same rule: a newer Tailscale is kept; an older one
   stops with `TAILSCALE_UPGRADE_PENDING`, because upgrading an active VPN can
-  drop SSH.
+  drop SSH. `fleet-sync --maintenance-reboot` upgrades it to the pin in a
+  detached unit and waits for the worker to answer again.
 
 A package run cut off by a power loss is finished by the next sync: the
 baseline waits for the APT lock, runs `dpkg --configure -a` once (bounded to
