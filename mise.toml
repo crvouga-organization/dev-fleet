@@ -3,7 +3,7 @@
 # min_version is also the mise bootstrap/bootstrap.sh installs on a machine
 # that has none or an older one (a newer one is kept); the mise_*_sha256
 # digests under [vars] move with it (bun bootstrap/pins.ts mise).
-min_version = "2026.11.11"
+min_version = "2026.11.12"
 
 [settings]
 lockfile = true
@@ -96,10 +96,10 @@ BUN_INSTALL_CACHE_DIR = "{{env.HOME}}/.bun/install/cache"
 # mise itself, installed by bootstrap/bootstrap.sh before mise can read this
 # file: the version is min_version above, these are its release archives
 # (SHASUMS256.txt of that release).
-mise_linux_x64_sha256 = "8366f07309794f93cfdd7343e3de3d5294c185165a0ec418426508cf0733e3d7"
-mise_linux_arm64_sha256 = "638faf3b6eb49228557876ebf3826b08011f8359599df377406b3d648a5a1d9b"
-mise_macos_x64_sha256 = "7784da9fd85c77a0f0df6e6e39a6908089afc2a3f2c7ade78d362147fc4ef222"
-mise_macos_arm64_sha256 = "3a0b7a727d86bd15a64c6df9ef6531111a4741b07e6f1e2bb6f6bb5b09e2663f"
+mise_linux_x64_sha256 = "4b029e19afc575875a4962dfe5d5e31cc93ab0317242768d0234adec219d3e14"
+mise_linux_arm64_sha256 = "9a125763f8445ea28d2da0e943fe5ad7d81b397d78f173cc07c1cc18ee2bee47"
+mise_macos_x64_sha256 = "19c0e3dff9eddaab7a3519e9556be35580ade53b2bffb550f307343cb6b678ef"
+mise_macos_arm64_sha256 = "f7bd19aa4e6b7a58d7296f98e2c6af68b2e2643dfd608b0bc46c2b5fdbc8749b"
 # Official native server distribution (Ubuntu workers, and the manager's
 # pinned CLI); bootstrap/native-t3.ts owns installation. From the release's SHA256SUMS.
 t3_version = "0.1.12-nightly.20261123.5124"
