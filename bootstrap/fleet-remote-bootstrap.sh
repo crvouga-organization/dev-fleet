@@ -361,19 +361,21 @@ if [ -n "$toolchain_warm" ] && [ ! -d node_modules ]; then
 fi
 [ -n "$toolchain_warm" ] || printf '%s' "$toolchain_key" >"$ready_file"
 # Every synced revision is a full checkout with its own dependencies (about
-# 1 GB). Keep this one, the one T3's providers launch from and the two most
-# recently used others; the rest would slowly fill the disk.
+# 1 GB). Keep two, the current and the previous: this one and the one T3's
+# providers launch from, or the most recently used other when they are the
+# same. The disk GC keeps the same two (resourceSafety.diskGcCheckoutsKept).
 phase=cleanup
 touch "$deployment"
 applied=$(basename "$(readlink "$root/current" 2>/dev/null || true)")
 kept=0
+if [ -n "$applied" ] && [ "$applied" != "$revision" ] && [ -d "$root/revisions/$applied" ]; then kept=1; fi
 # shellcheck disable=SC2012
 for old in $(ls -1t "$root/revisions"); do
   case "$old" in *[!a-f0-9]*) continue;; esac
   [ "${#old}" = 40 ] || continue
   [ "$old" != "$revision" ] && [ "$old" != "$applied" ] || continue
   kept=$((kept + 1))
-  [ "$kept" -gt 2 ] || continue
+  [ "$kept" -gt 1 ] || continue
   rm -rf -- "${root:?}/revisions/$old" || true
 done
 phase=tailnet-key

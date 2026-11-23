@@ -80,8 +80,8 @@ Feature: Every fleet-sync on the manager runs through the manager run script
 
     Scenario: Older run checkouts are pruned, also the ones an earlier clone made
       The four older ones were left behind by runs from a clone that is gone:
-      they are not worktrees of this repository. What remains is this run and
-      the two most recent others.
+      they are not worktrees of this repository. What remains is two: this
+      run and the most recent other.
       Given the manager has its own copy of the source repository
       And these run checkouts, each with its "node_modules", were left behind by an earlier clone:
         | name                                     | last used  |
@@ -92,5 +92,4 @@ Feature: Every fleet-sync on the manager runs through the manager run script
       When the run script is started for the commit "first" with "--json"
       Then the run script exits with 0
       And the run checkouts that remain are that of the commit "first" and:
-        | 3333333333333333333333333333333333333333 |
         | 4444444444444444444444444444444444444444 |

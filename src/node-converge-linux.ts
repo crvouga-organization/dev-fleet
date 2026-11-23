@@ -10,6 +10,7 @@ import { IDES } from './ide';
 import { enabled, settingsChecks } from './ide/orchestrate';
 import { idesOf } from './ide/definition';
 import { fleet } from './fleet-config';
+import { disposableStorage } from './definition';
 import { quotaLimited, verifyFleetProviders } from './agents/fleet-verify';
 import { verifyNativeAgents } from './agents/native-verify';
 import { accountContext, nodeAccountChecks } from './accounts/context';
@@ -198,6 +199,8 @@ async function applyBaseline(
         // 0: no limit declared, so its unit is removed
         // (tasks/agent-session-limit.yml).
         worker_agent_session_limit: agentSessionLimit(fleet, node) ?? 0,
+        // The disk GC's policy (tasks/resources.yml, storage.disposable).
+        fleet_storage_disposable: disposableStorage(fleet),
       }),
     },
     {

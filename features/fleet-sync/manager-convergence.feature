@@ -140,7 +140,14 @@ Feature: The manager converges itself before any worker
         | check mode |
         | applied    |
       And manager.yml was never run with a password prompt
-      And manager.yml was given the watch interval of 15 minutes
+      And manager.yml was given the watch interval of 15 minutes and the default storage
+
+    Scenario: A fleet whose storage is disposable gives the manager's disk GC that policy
+      Given the manager playbook passes its check and passes when applied
+      And fleet.json says storage is disposable
+      When an applying sync converges the manager's policy
+      Then the check's status is "pass"
+      And manager.yml was given the watch interval of 15 minutes and disposable storage
 
     Scenario: A playbook whose check fails is not applied
       Given the manager playbook fails its check

@@ -2,6 +2,7 @@ import { statSync } from 'node:fs';
 import { homedir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import macos from '../ansible/macos/policy.json';
+import { diskGcReportCheck, readDiskGcReport } from './disk-gc-report';
 import type { Check, Runner } from './types';
 
 /** Read-only measurements of the manager's operating system and disk, from
@@ -23,6 +24,7 @@ export async function managerHealth(
     await containerWatchdog(run, home),
     await managerClock(run),
     await managerWatch(run, uid),
+    await managerDiskGc(run, uid, home),
     await managerJobLogs(run, home, user),
   ];
 }
@@ -101,6 +103,65 @@ export async function managerWatch(run: Runner, uid: number): Promise<Check> {
     status: 'pass',
     summary: `fleet-watch runs on a schedule (${label}).`,
   };
+}
+
+/** A report older than this says the job stopped running: it runs at least
+ * hourly. */
+const DISK_GC_STALE_SECONDS = 3 * 3600;
+
+/** The manager's disk GC runs on a schedule as the launchd job manager.yml
+ * installs, like a worker's timer: without it worktrees, tool installs and
+ * dev-fleet checkouts grow until the disk is full. Its report says what the
+ * last run reclaimed and what the worktrees and package stores hold.
+ */
+export async function managerDiskGc(
+  run: Runner,
+  uid: number,
+  home: string,
+  now = Date.now() / 1000
+): Promise<Check> {
+  const id = 'manager:disk-gc';
+  const label = macos.diskGc.label;
+  const result = await run(['/bin/launchctl', 'print', `gui/${uid}/${label}`], {
+    timeoutMs: 10_000,
+  });
+  if (!result.ok)
+    return {
+      id,
+      status: 'fail',
+      summary: 'MANAGER_DISK_GC_NOT_LOADED',
+      remedy: {
+        action: `Run devfleet fleet-sync on the manager: it installs and loads ${label} with ansible/macos/manager.yml. Until then nothing removes idle worktrees, unused tool versions or old dev-fleet checkouts on the manager.`,
+      },
+    };
+  const log = `~/${macos.jobLogs.directory}/${label}.err.log`;
+  const exit = /last exit code = (\d+)/.exec(result.stdout)?.[1];
+  if (exit !== undefined && exit !== '0')
+    return {
+      id,
+      status: 'warn',
+      summary: `MANAGER_DISK_GC_FAILING exit ${exit}`,
+      remedy: {
+        action: `Its last run failed. Read ${log}, and run it once by hand with launchctl kickstart gui/$(id -u)/${label} to see the same failure.`,
+      },
+    };
+  const report = await readDiskGcReport(run, `${home}/${macos.diskGc.report}`);
+  if (!report)
+    return {
+      id,
+      status: 'pass',
+      summary: `The disk GC runs on a schedule (${label}); it has not reported a run yet.`,
+    };
+  if (now - report.finished > DISK_GC_STALE_SECONDS)
+    return {
+      id,
+      status: 'warn',
+      summary: `MANAGER_DISK_GC_STALE last run ${Math.round((now - report.finished) / 3600)} hours ago`,
+      remedy: {
+        action: `The job is loaded but has not finished a run for hours: launchd does not start it while the manager sleeps, or a run hangs. Read ${log}, and check that the manager never sleeps on AC power (manager:power).`,
+      },
+    };
+  return diskGcReportCheck(id, report, now);
 }
 
 /** The logs of the manager's scheduled jobs, the size newsyslog keeps them

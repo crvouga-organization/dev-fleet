@@ -189,7 +189,7 @@ verification and the CLIProxy singleton.
 | Always-on services          | drop-ins `Restart=always`, `StartLimitIntervalSec=0` for ssh, tailscaled, docker, beszel-agent                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | singleton services under launchd and Docker Desktop (see the last row)                                                                                                                                                                                                                                                                                                                                    |
 | T3 health and connection    | `fleet-sync` and `fleet-status --workers` require `worker:t3-health` (local API answers), `t3:manager-endpoint` (manager HTTPS over Tailscale) and `t3:paired-access` (manager T3 link reachable)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | the human's T3 desktop holds the links to every worker (`t3:paired-access`)                                                                                                                                                                                                                                                                                                                               |
 | Memory safety               | `systemd-oomd` (swap 90%, pressure 60%); `user.slice` `MemoryMax=90%`; T3 reserves memory and CPU/I/O weight in its service and the desktop application scope that hosts the listener; each `t3code-*.scope` agent `MemoryMax=30%`, `OOMPolicy=continue`; zram at priority 100 (25% of memory up to 8 GiB), with disk swap retained for overflow; the agent pressure guard sheds one agent on sustained memory or I/O pressure                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | not managed                                                                                                                                                                                                                                                                                                                                                                                               |
-| Disk safety                 | `personal-fleet-disk-guard` kills only the top user-cgroup writer below 3 GiB free, never deletes files; hourly `personal-fleet-disk-gc.timer` deletes git-ignored build output (`node_modules`, `.cache`, `dist`, ...) in checkouts idle 7d (12h under 15 GiB free) with no process inside, plus unused Docker images and build cache, never source, worktrees or volumes; journal 1G; `/tmp` 25% of RAM, aged 2d hourly, a measured write probe (`TMP_QUOTA_EXHAUSTED`), and T3 agents use disk-backed `/var/tmp` (`TMPDIR`, aged 14d); Docker log rotation                                                                                                                                                                                                                                                                                                                                        | not managed                                                                                                                                                                                                                                                                                                                                                                                               |
+| Disk safety                 | `personal-fleet-disk-guard` kills only the top user-cgroup writer below 3 GiB free, never deletes files; hourly (every 15 minutes with `storage.disposable`) `personal-fleet-disk-gc.timer` deletes git-ignored build output (`node_modules`, `.cache`, `dist`, ...) in checkouts idle 7d (12h under 15 GiB free) with no process inside, plus unused Docker images and build cache, never source, worktrees or volumes; journal 1G; `/tmp` 25% of RAM, aged 2d hourly, a measured write probe (`TMP_QUOTA_EXHAUSTED`), and T3 agents use disk-backed `/var/tmp` (`TMPDIR`, aged 14d); Docker log rotation                                                                                                                                                                                                                                                                                           | not managed                                                                                                                                                                                                                                                                                                                                                                                               |
 | Tailscale                   | pinned APT package, `tailscaled` enabled, native login required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Tailscale app, human login                                                                                                                                                                                                                                                                                                                                                                                |
 | Dashboard agent             | pinned native binary, hardened `beszel-agent` systemd unit as user `beszel`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | not installed                                                                                                                                                                                                                                                                                                                                                                                             |
 | Credential renewal          | user timer `personal-worker-auth` renews the node's own Vault token every 10min; `personal-worker-github` signs it in to GitHub from the stored token ([GitHub](github.md))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | the human's own Vault and GitHub sessions                                                                                                                                                                                                                                                                                                                                                                 |
@@ -400,8 +400,8 @@ a running T3 that has not loaded it once it runs no agent turn, `t3-desktop.yml`
 the former headless server and starts it, and `t3-route.yml` publishes the
 private tailnet route when port 443 has no owner. The TypeScript around them
 only refuses conflicts and reports what it observes afterwards. Each sync also
-prunes old revision checkouts on the worker, keeping the new one, the one T3
-launches from and the two most recent others.
+prunes old revision checkouts on the worker, keeping two: the new one and the
+one T3 launches from, or the most recent other when they are the same.
 
 **Every sync applies everything, except a T3 restart that would end a turn.**
 A worker whose T3 has not loaded the staged provider policy, or runs an older
@@ -463,10 +463,62 @@ third-party engine ownership conflicts and existing running workloads. Workstati
 launcher/link convergence is part of the node apply, with credentials still checked
 separately. A dependency receipt proves frozen installation inputs only.
 
-The hourly disk GC limits Docker build cache to a share of the root disk.
-Under pressure it also prunes unused images, build cache and anonymous dangling
-volumes. It trims older children of the development user's cache directory,
-excluding the fleet, mise and package stores. pnpm, npm, Bun and uv prune
-their own stores when over budget or under pressure. Idle worktrees qualify
-sooner under pressure and Git still verifies that their work is saved.
-The final journal event reports reclaimed MiB by category.
+### Disk GC
+
+Every node runs the same collector, `ansible/ubuntu/disk-gc.py`, with the
+values of `resourceSafety` in `ansible/ubuntu/policy.json`: a worker as
+`personal-fleet-disk-gc.timer` (as root, acting as the development user where
+it touches the user's files), the manager as the launchd job
+`dev.devfleet.disk-gc` that `ansible/macos/manager.yml` installs (as the user,
+from a copy outside every revision; macOS has no `/proc`, so `lsof` names the
+directories processes run in, and a run that cannot list them removes nothing
+a process could be using). On the manager it also trims `~/Library/Caches`,
+and its pressure mode starts where `manager:disk` warns
+(`disk.warnFreeMiB` in `ansible/macos/policy.json`).
+
+It limits Docker build cache to a share of the root disk. Under pressure it
+also prunes unused images, build cache and anonymous dangling volumes. It
+trims older children of the development user's cache directories, excluding
+the fleet, mise and package stores. pnpm, npm, Bun and uv prune their own
+stores when over budget or under pressure, and `mise prune` removes tool
+versions no configuration names. It keeps two dev-fleet checkouts under
+`revisions/` and `manager-runs/` (`diskGcCheckoutsKept`): the one
+`fleet/current` points at and the most recently used other, never one a
+process runs in. Entries of `~/.t3/scratch` nothing was written in for 24
+hours go (`diskGcExpireHours`). Idle worktrees qualify sooner under pressure
+and Git still verifies that their work is saved. The final journal event
+reports reclaimed MiB by category, and the run leaves a report
+(`diskGcReport` on a worker, `diskGc.report` on the manager) that
+`ubuntu:disk-gc` and `manager:disk-gc` read: the last run, what it reclaimed
+by category, and what the worktrees, the package stores and the tool installs
+hold, with the share that is hardlinked.
+
+`storage.disposable` in `fleet.json` chooses the policy of every node, workers
+and manager:
+
+| What                                     | Default (`false`)                                    | Disposable (`true`, `diskGcDisposable`)                                                                                        |
+| ---------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Runs                                     | hourly                                               | every 15 minutes                                                                                                               |
+| Agent worktree removed after             | 30 days idle (`diskGcWorktreeIdleDays`)              | 6 hours idle                                                                                                                   |
+| Uncommitted, untracked or unpushed work  | keeps the worktree                                   | keeps it only until the WIP guard saved it to a recovery ref after the worktree's last change                                  |
+| Branch deleted on its remote, or merged  | no effect                                            | the worktree goes at once, whatever its age (deleted: every commit was on the remote branch; merged: work was committed on it) |
+| Ignored build output of an idle checkout | after 7 days (`diskGcIdleDays`)                      | after 6 hours                                                                                                                  |
+| Unused Docker images and build cache     | older than 168 hours; build cache kept to 5% of disk | all of it, every run                                                                                                           |
+| Pressure mode                            | below the `diskGcPressure` threshold of the disk     | also below 25% of the disk free                                                                                                |
+
+A worktree a process runs in is kept by both, and so is its branch: only the
+worktree goes. A pull request closed without its branch being deleted is not
+detected; the worktree goes once it is idle and its work is saved.
+
+### Shared package stores
+
+Installs link packages from one store per machine instead of copying them:
+the global mise configuration (`[env]` in `mise.toml`) sets pnpm's
+`store-dir` to `~/.local/share/pnpm/store` with `package-import-method=auto`
+(hardlinks on ext4, clones on APFS) and `prefer-offline`, so installing into
+a new worktree takes what the store holds without a download; Bun keeps one
+cache at `~/.bun/install/cache` and links from it by default (hardlinks on
+Linux, clonefile on macOS). npm cannot link, so it is left alone. Hardlinks
+cannot cross filesystems: `ubuntu:disk-gc` and `manager:disk-gc` warn
+`PACKAGE_STORE_OTHER_FILESYSTEM` when a store and the worktrees are on
+different ones.

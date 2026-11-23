@@ -3,9 +3,9 @@
 # handed off from a worker over strict SSH. Runs fleet-sync from a clean,
 # fleet-owned checkout of the exact approved revision, so the result never
 # depends on the working tree it was started in (uncommitted edits, another
-# branch, a removed worktree). Checkouts are reused when warm and pruned to the
-# three most recent plus the one T3's providers launch from. Never touches the
-# human's working tree.
+# branch, a removed worktree). Checkouts are reused when warm and pruned to two:
+# this one and the one T3's providers launch from, or the most recent other
+# when they are the same. Never touches the human's working tree.
 set -eu
 revision=$1
 shift
@@ -90,14 +90,21 @@ fi
 if [ ! -d node_modules ]; then
   mise exec --locked bun -- bun install --frozen-lockfile --silent >>"$log" 2>&1 || failed
 fi
-# Keep the three most recent run checkouts (names are commit SHAs) and the
-# applied one: fleet/current points at it and T3's providers launch from there.
-# A preview leaves them for the next apply to prune.
+# Keep two run checkouts (names are commit SHAs), the current and the
+# previous: this one and the applied one (fleet/current points at it and T3's
+# providers launch from there), or the most recent other when this one is the
+# applied one. The disk GC keeps the same two (resourceSafety.diskGcCheckoutsKept
+# in ansible/ubuntu/policy.json). A preview leaves them for the next apply to
+# prune.
 if [ "$preview" = false ]; then
   applied=$(basename "$(readlink "$(dirname "$runs")/current" 2>/dev/null || true)")
+  kept=0
+  if [ -n "$applied" ] && [ "$applied" != "$revision" ] && [ -d "$runs/$applied" ]; then kept=1; fi
   # shellcheck disable=SC2012
-  for old in $(ls -1td "$runs"/*/ | tail -n +4); do
-    [ "$(basename "$old")" != "$applied" ] || continue
+  for old in $(ls -1td "$runs"/*/); do
+    [ "$(basename "$old")" != "$revision" ] && [ "$(basename "$old")" != "$applied" ] || continue
+    kept=$((kept + 1))
+    [ "$kept" -gt 1 ] || continue
     # A checkout made from another repository (an earlier clone) is not this
     # repository's worktree: remove the directory itself.
     git -C "$repo" worktree remove --force "$old" 2>/dev/null || rm -rf -- "$old"

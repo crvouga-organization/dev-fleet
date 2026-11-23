@@ -1,6 +1,6 @@
-Feature: The disk GC removes only what a worker can rebuild
-  Every hour a worker removes ignored build output and caches from checkouts
-  nobody has used for a while. It never removes a tracked file, and it leaves
+Feature: The disk GC removes only what a node can rebuild
+  Every hour each worker and the manager remove ignored build output and
+  caches from checkouts nobody has used for a while. It never removes a tracked file, and it leaves
   alone a checkout that was used recently, holds a recent uncommitted edit or
   has a process running in it. These scenarios run the collector on a
   temporary home directory only, never on the machine's own Docker or apt
@@ -171,3 +171,147 @@ Feature: The disk GC removes only what a worker can rebuild
         | cap | result      |
         | 1   | ran         |
         | 8   | was skipped |
+
+    Scenario Outline: A disposable fleet's Docker prune <what>
+      storage.disposable in fleet.json makes every node disk a cache: what no
+      container uses goes on every run.
+      Given a disk with 102400 MiB and 50% of its inodes free
+      When the disk GC <how> on the whole machine, with a docker command on its path and a floor of 15360 MiB free
+      Then the run would prune <what>
+
+      Examples:
+        | how                                | what                                                                       |
+        | dry-runs                           | Docker images and build cache older than 168 hours                         |
+        | of a disposable fleet dry-runs     | every Docker image and all build cache no container uses, whatever their age |
+
+  Rule: The manager has no /proc, so lsof names the directories processes run in
+
+    Scenario Outline: An idle checkout on the manager, where lsof answers <answer>, <verdict> its build output
+      Where processes cannot be listed, nothing a process could be using is
+      removed.
+      Given the checkout was last used 30 days ago
+      And lsof answers <answer>
+      When the disk GC runs
+      Then the checkout's "node_modules" is <state>
+
+      Examples:
+        | answer                                    | verdict | state |
+        | with a process in "src" of the checkout   | keeps   | kept  |
+        | with processes elsewhere only             | loses   | gone  |
+        | with an error                             | keeps   | kept  |
+
+  Rule: A node keeps two dev-fleet checkouts: the current one and the previous one
+
+    Background:
+      Given the directory ".local/share/personal/fleet/revisions" holds these dev-fleet checkouts, oldest first:
+        | 1111111111111111111111111111111111111111 |
+        | 2222222222222222222222222222222222222222 |
+        | 3333333333333333333333333333333333333333 |
+        | 4444444444444444444444444444444444444444 |
+
+    Scenario: The checkout the current link points at and the most recent other are kept
+      T3's providers launch from the checkout fleet/current points at, so it
+      stays however old it is.
+      Given the link ".local/share/personal/fleet/current" points at the checkout "1111111111111111111111111111111111111111" of ".local/share/personal/fleet/revisions"
+      When the disk GC runs with these limits:
+        | --keep-checkouts | .local/share/personal/fleet/revisions=2 |
+        | --current        | .local/share/personal/fleet/current     |
+      Then the directory ".local/share/personal/fleet/revisions" holds exactly:
+        | 1111111111111111111111111111111111111111 |
+        | 4444444444444444444444444444444444444444 |
+
+    Scenario: A checkout a process runs in is kept beyond the two
+      Given a process is running in the checkout "2222222222222222222222222222222222222222" of ".local/share/personal/fleet/revisions"
+      When the disk GC runs with these limits:
+        | --keep-checkouts | .local/share/personal/fleet/revisions=2 |
+      Then the directory ".local/share/personal/fleet/revisions" holds exactly:
+        | 2222222222222222222222222222222222222222 |
+        | 3333333333333333333333333333333333333333 |
+        | 4444444444444444444444444444444444444444 |
+
+  Rule: Agents' scratch space is kept for a number of hours
+
+    Scenario: A scratch entry nothing was written in for a day goes, a recent one stays
+      Given the directory ".t3/scratch" holds these entries:
+        | entry    | last written |
+        | old-task | 30 hours ago |
+        | new-task | 1 hour ago   |
+      When the disk GC runs with these limits:
+        | --expire | .t3/scratch=24 |
+      Then the directory ".t3/scratch" holds exactly:
+        | new-task |
+
+  Rule: A disposable fleet keeps only what is not saved elsewhere
+
+    storage.disposable in fleet.json: work lives on remotes and in the WIP
+    guard's recovery refs, so a node disk is a cache. The idle limit is
+    hours, not days, and a worktree whose branch is done with on its remote
+    goes at once. A process running in a worktree still keeps it.
+
+    Background:
+      Given the checkout has a remote that holds its commits
+
+    Scenario Outline: A worktree last used <days> days ago with <work> is <verdict>
+      Given an agent worktree "fix-login" of the checkout under ".t3/worktrees/project" with <work>
+      And the worktree was last used <days> days ago
+      When the disk GC of a disposable fleet runs with these limits:
+        | --worktree-root      | .t3/worktrees |
+        | --worktree-idle-days | 0.25          |
+      Then the worktree is <verdict>
+
+      Examples:
+        | days | work                                                    | verdict |
+        | 1    | an uncommitted edit the WIP guard saved                 | removed |
+        | 1    | a commit no remote holds, which the WIP guard saved     | removed |
+        | 1    | an uncommitted edit                                     | kept    |
+        | 1    | an uncommitted edit the WIP guard saved 40 days ago     | kept    |
+        | 1    | a process running in it                                 | kept    |
+        | 1    | nothing unsaved                                         | removed |
+        | 0    | nothing unsaved                                         | kept    |
+        | 0    | a pushed commit whose branch was deleted on the remote  | removed |
+        | 0    | a commit merged into the remote's main branch           | removed |
+        | 0    | a branch pushed with no commit of its own               | kept    |
+
+    Scenario: Without the disposable setting, a save in a recovery ref keeps nothing from staying
+      Given an agent worktree "fix-login" of the checkout under ".t3/worktrees/project" with an uncommitted edit the WIP guard saved
+      And the worktree was last used 40 days ago
+      When the disk GC runs with these limits:
+        | --worktree-root      | .t3/worktrees |
+        | --worktree-idle-days | 30            |
+      Then the worktree is kept
+
+    Scenario Outline: A disk of 144000 MiB with <free> MiB free is <state> under a 25% floor
+      Given the checkout was last used 1 day ago
+      And a disk of 144000 MiB with <free> MiB free
+      When the disk GC runs with these limits:
+        | --pressure-mib        | 15360 |
+        | --pressure-percent    | 25    |
+        | --pressure-idle-hours | 6     |
+        | --idle-days           | 7     |
+      Then the checkout's "node_modules" is <verdict>
+
+      Examples:
+        | free  | state           | verdict |
+        | 30000 | under pressure  | gone    |
+        | 40000 | not under it    | kept    |
+
+  Rule: Each run leaves a report fleet-status reads
+
+    Scenario: The report says what was reclaimed and what the worktrees and package stores hold
+      Given the checkout has a remote that holds its commits
+      And an agent worktree "fix-login" of the checkout under ".t3/worktrees/project" with nothing unsaved
+      And the package store ".local/share/pnpm/store" holds a file of 2 MiB, linked into the worktree as "node_modules/pkg/index.js"
+      When the disk GC runs with these limits:
+        | --worktree-root | .t3/worktrees   |
+        | --report        | disk-gc.json    |
+      Then the report "disk-gc.json" says:
+        | version           | 1          |
+        | sameFilesystem    | true       |
+        | hardlinkedPercent | at least 90 |
+        | storesMiB         | at least 1 |
+        | worktreesMiB      | at least 1 |
+      And the report "disk-gc.json" names how much each of these reclaimed:
+        | checkouts       |
+        | worktrees       |
+        | fleet_checkouts |
+        | expired         |

@@ -1,5 +1,5 @@
 import { blocking, type Check, type Runner } from '../types';
-import type { FleetDefinition } from '../definition';
+import { disposableStorage, type FleetDefinition } from '../definition';
 import type { ManagerNode } from '../manager-sync';
 import { convergeProxy } from '../proxy-converge';
 import { attempt } from '../node-converge-shared';
@@ -450,7 +450,7 @@ export const MANAGER_RECEIPT = 'macos-manager';
  */
 export async function convergeManagerPolicy(
   run: Runner,
-  definition: Pick<FleetDefinition, 'manager'>,
+  definition: Pick<FleetDefinition, 'manager' | 'storage'>,
   host: ManagerHost = MACOS_MANAGER,
   {
     root = PACKAGE_ROOT,
@@ -480,15 +480,23 @@ export async function convergeManagerPolicy(
       timeoutMs: 300_000,
       input: JSON.stringify({
         fleet_watch_minutes: scheduleIntervals(definition.manager).watchMinutes,
+        // The disk GC's policy (storage.disposable in fleet.json).
+        fleet_storage_disposable: disposableStorage(definition),
       }),
     },
     {
       name: MANAGER_RECEIPT,
-      sources: [join(root, 'ansible/macos')],
+      // The disk GC job runs the workers' collector with their policy.
+      sources: [
+        join(root, 'ansible/macos'),
+        join(root, 'ansible/ubuntu/disk-gc.py'),
+        join(root, 'ansible/ubuntu/policy.json'),
+      ],
       checkFirst: true,
       verify: async () =>
         (await host.powerDrift(run)).drifted.length === 0 &&
-        (await watchLoaded(run, uid)),
+        (await watchLoaded(run, uid)) &&
+        (await jobLoaded(run, uid, macos.diskGc.label)),
       ...(receipts ? { directory: receipts } : {}),
       ...(scratch ? { scratch } : {}),
       ...(now === undefined ? {} : { now }),
@@ -510,13 +518,19 @@ export async function convergeManagerPolicy(
 
 /** Whether launchd holds the fleet-watch job manager.yml installs. Reads only. */
 export async function watchLoaded(run: Runner, uid: number): Promise<boolean> {
+  return jobLoaded(run, uid, macos.fleetWatch.label);
+}
+
+/** Whether launchd holds a job of the user. Reads only. */
+async function jobLoaded(
+  run: Runner,
+  uid: number,
+  label: string
+): Promise<boolean> {
   return (
-    await run(
-      ['/bin/launchctl', 'print', `gui/${uid}/${macos.fleetWatch.label}`],
-      {
-        timeoutMs: 10_000,
-      }
-    )
+    await run(['/bin/launchctl', 'print', `gui/${uid}/${label}`], {
+      timeoutMs: 10_000,
+    })
   ).ok;
 }
 

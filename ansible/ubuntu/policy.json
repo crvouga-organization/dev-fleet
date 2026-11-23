@@ -205,6 +205,21 @@
     "diskGcWorktreeIdleDays": 30,
     "diskGcCacheCapsMiB": { ".cache/pip": 1024 },
     "diskGcPackagesKept": 2,
+    "diskGcCheckoutsKept": 2,
+    "diskGcCheckoutRoots": [
+      ".local/share/personal/fleet/revisions",
+      ".local/share/personal/fleet/manager-runs"
+    ],
+    "diskGcCurrentCheckout": ".local/share/personal/fleet/current",
+    "diskGcExpireHours": { ".t3/scratch": 24 },
+    "diskGcReport": "/var/lib/personal-fleet-disk-gc/report.json",
+    "diskGcIntervalMinutes": 60,
+    "diskGcDisposable": {
+      "idleHours": 6,
+      "worktreeIdleHours": 6,
+      "pressureFreePercent": 25,
+      "intervalMinutes": 15
+    },
     "dockerLogMaxSize": "50m",
     "dockerLogMaxFiles": "3",
     "inodeWarnFreePercent": 10,

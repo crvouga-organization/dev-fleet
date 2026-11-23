@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 430 codes; 90 need a person.
+There are 435 codes; 91 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -98,6 +98,8 @@ There are 430 codes; 90 need a person.
 - `DISK_GUARD_INACTIVE`: the disk guard has stopped.
 - `DISK_GC_TIMER_MISSING`: the disk GC timer is missing, stopped or disabled.
 - `DISK_GC_RUN_STALE`: the disk GC failed or its timer has not fired for two hours.
+- `DISK_GC_NOT_REPORTED`: the disk GC has left no report (`resourceSafety.diskGcReport` in `ansible/ubuntu/policy.json`) since fleet-sync installed it, so `ubuntu:disk-gc` is skipped. It reports after its next run, within the hour; one that never does fails `DISK_GC_RUN_STALE`.
+- `PACKAGE_STORE_OTHER_FILESYSTEM`: a package store (`~/.local/share/pnpm/store`, `~/.bun/install/cache`) is on another filesystem than the agent worktrees (`~/.t3/worktrees`), so every install copies its packages instead of linking them, and the disk fills faster. `ubuntu:disk-gc` and `manager:disk-gc` warn. Put the store and the worktrees on one filesystem, or unset an override of `pnpm_config_store_dir` or `BUN_INSTALL_CACHE_DIR`. **Needs a person.**
 - `SERVICE_NOT_ENABLED`: service not enabled.
 - `SERVICE_NOT_INSTALLED`: service not installed.
 - `SERVICE_NOT_RUNNING`: service not running.
@@ -605,6 +607,9 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `MANAGER_WATCH_FAILING`: the last run of the fleet-watch job failed; the check names its exit code. Read the job's error log the remedy names and run `devfleet fleet-watch` on the manager to see the same failure.
 - `MANAGER_CLOCK_NOT_SYNCHRONISED`: network time is off on the manager, and every worker's clock is measured against it. `manager:clock` fails and `ansible/macos/manager.yml` asserts the same. Turn on Set time and date automatically in System Settings > General > Date & Time. **Needs a person.**
 - `MANAGER_WATCH_NOT_LOADED`: the launchd job that runs fleet-watch on a schedule is not loaded, so no heartbeat reaches the bucket and no notification is sent. Run `devfleet fleet-sync` on the manager, which installs and loads it.
+- `MANAGER_DISK_GC_NOT_LOADED`: the launchd job that runs the manager's disk GC (`dev.devfleet.disk-gc`) is not loaded, so nothing removes idle worktrees, unused tool versions or old dev-fleet checkouts on the manager. Run `devfleet fleet-sync` on the manager, which installs and loads it with `ansible/macos/manager.yml`.
+- `MANAGER_DISK_GC_FAILING`: the last run of the manager's disk GC failed; the check names its exit code. Read `~/.local/share/personal/fleet/manager/logs/dev.devfleet.disk-gc.err.log`, and start it by hand with `launchctl kickstart gui/$(id -u)/dev.devfleet.disk-gc` to see the same failure.
+- `MANAGER_DISK_GC_STALE`: the manager's disk GC is loaded but its last report (`~/Library/Caches/dev-fleet/disk-gc.json`) is more than three hours old: launchd does not start it while the manager sleeps, or a run hangs. Read its error log and `manager:power`.
 
 ## Notifications (fleet-watch)
 

@@ -1,6 +1,7 @@
 import { expect } from 'bun:test';
 import {
   existsSync,
+  linkSync,
   mkdirSync,
   readFileSync,
   readdirSync,
@@ -21,6 +22,8 @@ const DAY = 24 * 3600;
 interface Disk {
   freeMib: number;
   inodesFreePercent: number;
+  /** The size of the filesystem; twice what is free unless a scenario says. */
+  sizeMib?: number;
 }
 
 interface Event {
@@ -28,6 +31,7 @@ interface Event {
   step?: string;
   dry_run?: boolean;
   reclaimed_mib?: number;
+  until_hours?: number | null;
 }
 
 const collector = part((world) => {
@@ -50,6 +54,8 @@ const collector = part((world) => {
     cache: '',
     mise: '',
     disk: undefined as Disk | undefined,
+    /** Where a stand-in for lsof is, when the scenario has one. */
+    bin: '',
   };
 });
 
@@ -63,13 +69,14 @@ function collectorOn(world: BootstrapWorld): string {
   const { disk } = collector(world);
   if (!disk) throw new Error('The scenario does not say what the disk holds.');
   const blocks = disk.freeMib * 256;
+  const size = (disk.sizeMib ?? disk.freeMib * 2) * 256;
   const script = join(world.directory('disk-gc-disk-'), 'disk-gc.py');
   writeFileSync(
     script,
     [
       'import os, types',
       'DISK = types.SimpleNamespace(',
-      `    f_frsize=4096, f_blocks=${blocks * 2}, f_bavail=${blocks},`,
+      `    f_frsize=4096, f_blocks=${size}, f_bavail=${blocks},`,
       `    f_files=1000000, f_favail=${Math.round(disk.inodesFreePercent * 10000)})`,
       'os.statvfs = lambda path: DISK',
       `exec(compile(open(${JSON.stringify(gc)}).read(), ${JSON.stringify(gc)}, 'exec'))`,
@@ -189,22 +196,31 @@ When('the disk GC runs with these limits:', (world, table: DataTable) => {
 
 function runCollector(world: BootstrapWorld, dry: boolean): void {
   const state = collector(world);
-  const out = Bun.spawnSync([
-    'python3',
-    '-I',
-    '-B',
-    collectorOn(world),
-    '--home',
-    state.home,
-    '--path',
-    state.home,
-    '--proc',
-    state.proc,
-    // Never prune the machine's own Docker or apt cache.
-    '--home-only',
-    ...state.options,
-    ...(dry ? ['--dry-run'] : []),
-  ]);
+  const out = Bun.spawnSync(
+    [
+      'python3',
+      '-I',
+      '-B',
+      collectorOn(world),
+      '--home',
+      state.home,
+      '--path',
+      state.home,
+      '--proc',
+      state.proc,
+      // Never prune the machine's own Docker or apt cache.
+      '--home-only',
+      ...state.options,
+      ...(dry ? ['--dry-run'] : []),
+    ],
+    {
+      env: {
+        ...process.env,
+        PATH: [state.bin, process.env['PATH'] ?? ''].filter(Boolean).join(':'),
+      },
+    }
+  );
+  expect(out.stderr.toString()).toBe('');
   expect(out.exitCode).toBe(0);
   state.events = eventsOf(out.stdout);
 }
@@ -245,24 +261,103 @@ Given('the checkout has a remote that holds its commits', (world) => {
 });
 
 Given(
-  /^an agent worktree "([^"]+)" of the checkout under "([^"]+)" with (nothing unsaved|a commit no remote holds|an uncommitted edit|an untracked file|a process running in it)$/,
+  /^an agent worktree "([^"]+)" of the checkout under "([^"]+)" with (.+)$/,
   (world, name: string, under: string, work: string) => {
     const state = collector(world);
     const worktree = join(state.home, under, name);
     mkdirSync(dirname(worktree), { recursive: true });
     git(state.repo, 'worktree', 'add', '--quiet', '-b', name, worktree);
     state.worktree = worktree;
-    if (work === 'a commit no remote holds') {
+    const commit = () => {
       writeFileSync(join(worktree, 'src/main.ts'), 'fixed');
       git(worktree, 'commit', '--quiet', '-am', 'fix');
-    } else if (work === 'an uncommitted edit')
-      writeFileSync(join(worktree, 'src/main.ts'), 'half done');
-    else if (work === 'an untracked file')
-      writeFileSync(join(worktree, 'notes.md'), 'ideas');
-    else if (work === 'a process running in it') {
-      mkdirSync(join(state.proc, '4343'));
-      symlinkSync(worktree, join(state.proc, '4343', 'cwd'));
+    };
+    const origin = join(state.home, 'origin.git');
+    switch (work) {
+      case 'nothing unsaved':
+        break;
+      case 'a commit no remote holds':
+        commit();
+        break;
+      case 'an uncommitted edit':
+        writeFileSync(join(worktree, 'src/main.ts'), 'half done');
+        break;
+      case 'an untracked file':
+        writeFileSync(join(worktree, 'notes.md'), 'ideas');
+        break;
+      case 'a process running in it':
+        mkdirSync(join(state.proc, '4343'));
+        symlinkSync(worktree, join(state.proc, '4343', 'cwd'));
+        break;
+      // The WIP guard itself saves it, as it does every 15 minutes on a
+      // worker; the GC is told the same node name.
+      case 'an uncommitted edit the WIP guard saved':
+        writeFileSync(join(worktree, 'src/main.ts'), 'half done');
+        wipGuard(state.home, under);
+        break;
+      case 'a commit no remote holds, which the WIP guard saved':
+        commit();
+        wipGuard(state.home, under);
+        break;
+      case 'an uncommitted edit the WIP guard saved 40 days ago':
+        writeFileSync(join(worktree, 'src/main.ts'), 'half done');
+        wipGuard(state.home, under, Date.now() / 1000 - 40 * DAY);
+        break;
+      // A pull request merged with a merge commit, or fast-forward.
+      case "a commit merged into the remote's main branch":
+        commit();
+        git(worktree, 'push', '--quiet', 'origin', 'HEAD:refs/heads/main');
+        break;
+      // A pull request squashed and its branch deleted on the remote.
+      case 'a pushed commit whose branch was deleted on the remote':
+        commit();
+        git(worktree, 'push', '--quiet', '-u', 'origin', name);
+        git(origin, 'branch', '--quiet', '-D', name);
+        break;
+      case 'a branch pushed with no commit of its own':
+        git(worktree, 'push', '--quiet', '-u', 'origin', name);
+        break;
+      default:
+        throw new Error(`Unknown work in a worktree: ${work}`);
     }
+  }
+);
+
+/** The node name the WIP guard and the disk GC are given in a scenario. */
+const NODE = 'scenario-node';
+
+/** Runs the deployed WIP guard over the worktrees under `under`, its
+ * snapshot dated `when` (seconds) when given. */
+function wipGuard(home: string, under: string, when?: number): void {
+  const guard = resolve(
+    import.meta.dir,
+    '../../../ansible/ubuntu/wip-guard.py'
+  );
+  const out = Bun.spawnSync(
+    ['python3', '-I', '-B', guard, '--root', join(home, under), '--node', NODE],
+    {
+      env: {
+        ...process.env,
+        ...(when === undefined
+          ? {}
+          : { GIT_COMMITTER_DATE: `@${Math.floor(when)} +0000` }),
+      },
+    }
+  );
+  expect(out.exitCode).toBe(0);
+  expect(out.stdout.toString()).toContain('"pushed"');
+}
+
+When(
+  'the disk GC of a disposable fleet runs with these limits:',
+  (world, table: DataTable) => {
+    collector(world).options.push(
+      '--disposable',
+      '--recovery-node',
+      NODE,
+      ...table.raw().flat()
+    );
+    runCollector(world, false);
   }
 );
 
@@ -367,37 +462,45 @@ Then(
 
 When(
   /^the disk GC dry-runs on the whole machine( without containers)?, with a docker command on its path and a floor of (\d+) MiB free$/,
-  (world, without: string | undefined, floor: string) => {
-    const state = collector(world);
-    // A docker that would only record a call: in a dry run none is made.
-    const bin = join(state.home, 'bin');
-    mkdirSync(bin, { recursive: true });
-    writeFileSync(join(bin, 'docker'), '#!/bin/sh\nexit 0\n', {
-      mode: 0o755,
-    });
-    const out = Bun.spawnSync(
-      [
-        'python3',
-        '-I',
-        '-B',
-        collectorOn(world),
-        '--home',
-        state.home,
-        '--path',
-        state.home,
-        '--proc',
-        state.proc,
-        '--pressure-mib',
-        floor,
-        '--dry-run',
-        ...(without ? ['--no-docker'] : []),
-      ],
-      { env: { ...process.env, PATH: `${bin}:${process.env['PATH'] ?? ''}` } }
-    );
-    expect(out.exitCode).toBe(0);
-    state.events = eventsOf(out.stdout);
-  }
+  (world, without: string | undefined, floor: string) =>
+    dockerDryRun(world, Boolean(without), floor)
 );
+
+function dockerDryRun(
+  world: BootstrapWorld,
+  without: boolean,
+  floor: string
+): void {
+  const state = collector(world);
+  // A docker that would only record a call: in a dry run none is made.
+  const bin = join(state.home, 'bin');
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(join(bin, 'docker'), '#!/bin/sh\nexit 0\n', {
+    mode: 0o755,
+  });
+  const out = Bun.spawnSync(
+    [
+      'python3',
+      '-I',
+      '-B',
+      collectorOn(world),
+      '--home',
+      state.home,
+      '--path',
+      state.home,
+      '--proc',
+      state.proc,
+      '--pressure-mib',
+      floor,
+      '--dry-run',
+      ...(without ? ['--no-docker'] : []),
+      ...state.options,
+    ],
+    { env: { ...process.env, PATH: `${bin}:${process.env['PATH'] ?? ''}` } }
+  );
+  expect(out.exitCode).toBe(0);
+  state.events = eventsOf(out.stdout);
+}
 
 Then(
   /^the run would prune these Docker steps: (.+)$/,
@@ -470,5 +573,169 @@ Then(
       .trim()
       .split('\n');
     expect(lines.includes('exec -- ' + args)).toBe(verdict === 'ran');
+  }
+);
+
+// ── The manager: no /proc ───────────────────────────────────────────────
+
+Given(
+  /^lsof answers (with a process in "[^"]+" of the checkout|with processes elsewhere only|with an error)$/,
+  (world, answer: string) => {
+    const directory = /"([^"]+)"/.exec(answer)?.[1];
+    const state = collector(world);
+    state.bin = join(state.home, 'bin');
+    mkdirSync(state.bin, { recursive: true });
+    // What `lsof -F n` prints: p<pid>, f<descriptor>, n<name> on lines.
+    const lines = answer.startsWith('with an error')
+      ? null
+      : [
+          'p100',
+          'fcwd',
+          `n${state.home}/elsewhere`,
+          ...(directory
+            ? ['p4242', 'fcwd', `n${join(state.repo, directory)}`]
+            : []),
+        ];
+    writeFileSync(
+      join(state.bin, 'lsof'),
+      lines
+        ? `#!/bin/sh\nprintf '%s\\n' ${lines.map((line) => `'${line}'`).join(' ')}\n`
+        : '#!/bin/sh\necho "lsof: cannot list processes" >&2\nexit 2\n',
+      { mode: 0o755 }
+    );
+    // /proc is no help: there is none.
+    state.options.push('--proc', join(state.home, 'no-proc'), '--lsof');
+  }
+);
+
+// ── dev-fleet's own checkouts ───────────────────────────────────────────
+
+Given(
+  'the directory {string} holds these dev-fleet checkouts, oldest first:',
+  (world, directory: string, table: DataTable) => {
+    const target = join(collector(world).home, directory);
+    const now = Date.now() / 1000;
+    table.list().forEach((name, index, names) => {
+      mkdirSync(join(target, name, 'node_modules'), { recursive: true });
+      writeFileSync(join(target, name, 'node_modules', 'blob'), name);
+      const when = now - (names.length - index) * 3600;
+      utimesSync(join(target, name), when, when);
+    });
+  }
+);
+
+Given(
+  'the link {string} points at the checkout {string} of {string}',
+  (world, link: string, name: string, directory: string) => {
+    const { home } = collector(world);
+    mkdirSync(dirname(join(home, link)), { recursive: true });
+    symlinkSync(join(home, directory, name), join(home, link));
+  }
+);
+
+Given(
+  'a process is running in the checkout {string} of {string}',
+  (world, name: string, directory: string) => {
+    const { home, proc } = collector(world);
+    mkdirSync(join(proc, '4444'));
+    symlinkSync(join(home, directory, name), join(proc, '4444', 'cwd'));
+  }
+);
+
+// ── Scratch space ───────────────────────────────────────────────────────
+
+Given(
+  'the directory {string} holds these entries:',
+  (world, directory: string, table: DataTable) => {
+    const target = join(collector(world).home, directory);
+    const now = Date.now() / 1000;
+    for (const { entry, 'last written': written } of table.hashes()) {
+      const hours = Number(/^(\d+) hours? ago$/.exec(written!)?.[1]);
+      const when = now - hours * 3600;
+      mkdirSync(join(target, entry!), { recursive: true });
+      writeFileSync(join(target, entry!, 'output.log'), entry!);
+      utimesSync(join(target, entry!, 'output.log'), when, when);
+      utimesSync(join(target, entry!), when, when);
+    }
+  }
+);
+
+// ── Pressure as a share of the disk ─────────────────────────────────────
+
+Given(
+  /^a disk of (\d+) MiB with (\d+) MiB free$/,
+  (world, size: string, free: string) => {
+    collector(world).disk = {
+      freeMib: Number(free),
+      sizeMib: Number(size),
+      inodesFreePercent: 50,
+    };
+  }
+);
+
+// ── What fleet-status reads ─────────────────────────────────────────────
+
+Given(
+  'the package store {string} holds a file of {int} MiB, linked into the worktree as {string}',
+  (world, store: string, mib: number, path: string) => {
+    const { home, worktree } = collector(world);
+    const stored = join(home, store, 'files', 'blob');
+    mkdirSync(dirname(stored), { recursive: true });
+    writeFileSync(stored, Buffer.alloc(mib * MIB, 1));
+    mkdirSync(dirname(join(worktree, path)), { recursive: true });
+    linkSync(stored, join(worktree, path));
+  }
+);
+
+Then('the report {string} says:', (world, file: string, table: DataTable) => {
+  const report = JSON.parse(
+    readFileSync(join(collector(world).home, file), 'utf8')
+  ) as Record<string, unknown>;
+  for (const [field, expected] of table.raw()) {
+    const value = report[field!];
+    if (expected!.startsWith('at least '))
+      expect(`${field}: ${Number(value) >= Number(expected!.slice(9))}`).toBe(
+        `${field}: true`
+      );
+    else
+      expect(`${field}: ${JSON.stringify(value)}`).toBe(
+        `${field}: ${expected}`
+      );
+  }
+});
+
+Then(
+  'the report {string} names how much each of these reclaimed:',
+  (world, file: string, table: DataTable) => {
+    const report = JSON.parse(
+      readFileSync(join(collector(world).home, file), 'utf8')
+    ) as { categoriesMiB: Record<string, number> };
+    for (const category of table.list())
+      expect(typeof report.categoriesMiB[category]).toBe('number');
+  }
+);
+
+When(
+  'the disk GC of a disposable fleet dry-runs on the whole machine, with a docker command on its path and a floor of {int} MiB free',
+  (world, floor: number) => {
+    collector(world).options.push('--disposable');
+    dockerDryRun(world, false, String(floor));
+  }
+);
+
+Then(
+  /^the run would prune (?:Docker images and build cache older than (\d+) hours|every Docker image and all build cache no container uses, whatever their age)$/,
+  (world, hours: string | undefined) => {
+    const steps = collector(world).events.filter(
+      (event) =>
+        event.event === 'would_run' &&
+        ['docker_images', 'docker_build_cache'].includes(String(event.step))
+    );
+    expect(steps.map((event) => event.step)).toEqual([
+      'docker_images',
+      'docker_build_cache',
+    ]);
+    for (const event of steps)
+      expect(event.until_hours ?? null).toBe(hours ? Number(hours) : null);
   }
 );

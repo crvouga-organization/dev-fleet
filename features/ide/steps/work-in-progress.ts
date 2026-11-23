@@ -128,6 +128,15 @@ Then('the branch {string} did not move', (world, branch: string) => {
 });
 
 Then(
+  'the repository of the worktree holds the same {string}, for the disk GC',
+  (world, ref: string) => {
+    expect(git(place(world).worktree, 'rev-parse', ref)).toBe(
+      git(place(world).remote, 'rev-parse', ref)
+    );
+  }
+);
+
+Then(
   'the remote holds {string} at the branch {string}',
   (world, ref: string, branch: string) => {
     expect(recovery(world)).toEqual([ref]);

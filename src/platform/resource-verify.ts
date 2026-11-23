@@ -1,5 +1,6 @@
 import policy from '../../ansible/ubuntu/policy.json';
 import { threshold } from '../worker-sizing';
+import { diskGcReportCheck, readDiskGcReport } from '../disk-gc-report';
 import type { Check, Runner } from '../types';
 
 const AGENT_DROP_IN =
@@ -240,8 +241,32 @@ const tmpWritable: Probe = async (run) =>
  */
 export async function verifyResourceSafety(
   home: string,
-  run: Runner
+  run: Runner,
+  now = Date.now() / 1000
 ): Promise<Check[]> {
+  return [await resourceSafety(home, run), await diskGcReported(run, now)];
+}
+
+/** What the worker's last disk GC run reclaimed, and what its worktrees,
+ * package stores and tool installs hold. A worker whose GC has not run yet
+ * has nothing to report; one that stopped running fails DISK_GC_RUN_STALE in
+ * ubuntu:resource-safety.
+ */
+export async function diskGcReported(run: Runner, now: number): Promise<Check> {
+  const report = await readDiskGcReport(
+    run,
+    policy.resourceSafety.diskGcReport
+  );
+  return report
+    ? diskGcReportCheck('ubuntu:disk-gc', report, now)
+    : {
+        id: 'ubuntu:disk-gc',
+        status: 'skip',
+        summary: 'DISK_GC_NOT_REPORTED',
+      };
+}
+
+async function resourceSafety(home: string, run: Runner): Promise<Check> {
   const probes = [
     guardsRunning,
     memoryReserved,
@@ -255,23 +280,19 @@ export async function verifyResourceSafety(
   for (const probe of probes) {
     const failure = await probe(run);
     if (failure)
-      return [
-        {
-          id: 'ubuntu:resource-safety',
-          status: 'fail',
-          summary: failure[0],
-          remedy: { action: failure[1] },
-        },
-      ];
+      return {
+        id: 'ubuntu:resource-safety',
+        status: 'fail',
+        summary: failure[0],
+        remedy: { action: failure[1] },
+      };
   }
-  return [
-    {
-      id: 'ubuntu:resource-safety',
-      status: 'pass',
-      summary:
-        'systemd-oomd, the disk guard and the disk GC timer are running, user workloads are capped below physical memory, T3 agents have per-agent limits, swap is active, free disk is above the guard floor and /tmp is writable.',
-    },
-  ];
+  return {
+    id: 'ubuntu:resource-safety',
+    status: 'pass',
+    summary:
+      'systemd-oomd, the disk guard and the disk GC timer are running, user workloads are capped below physical memory, T3 agents have per-agent limits, swap is active, free disk is above the guard floor and /tmp is writable.',
+  };
 }
 
 const PROTECTION_ESCAPED = 'T3_PROTECTION_ESCAPED';

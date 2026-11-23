@@ -24,7 +24,8 @@ your project's `fleet.json` (version 3, checked by [the schema](../schema/fleet.
   `FLEET_NOT_MANAGER` or `FLEET_MANAGER_UNREACHABLE`. The manager runs that
   request from a clean, fleet-owned checkout of the exact revision
   (`bootstrap/fleet-manager-run.sh`, under
-  `~/.local/share/personal/fleet/manager-runs`, three most recent kept), so
+  `~/.local/share/personal/fleet/manager-runs`, two kept: the current and the
+  previous), so
   fixes in the revision reach the manager without touching the human's
   checkout. The revision must be on the manager or on `origin`.
 - It hosts every singleton service. Today that is the CLI proxy

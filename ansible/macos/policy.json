@@ -35,6 +35,12 @@
     "incrementHours": 48,
     "expiryWarnHours": 24
   },
+  "diskGc": {
+    "label": "dev.devfleet.disk-gc",
+    "script": ".local/share/personal/fleet/manager/disk-gc.py",
+    "report": "Library/Caches/dev-fleet/disk-gc.json",
+    "cacheRoots": [".cache", "Library/Caches"]
+  },
   "jobLogs": {
     "directory": ".local/share/personal/fleet/manager/logs",
     "maxKiB": 1024,

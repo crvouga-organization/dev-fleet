@@ -177,7 +177,19 @@ export interface FleetDefinition {
   tailnet?: TailnetConfig;
   /** Parking and idle reporting (docs/topology.md). */
   parking?: ParkingPolicy;
+  /** How the disk GC of every node treats what is on its disk. */
+  storage?: StoragePolicy;
 }
+/** disposable: every node disk is a cache (work lives on remotes and in the
+ * WIP guard's recovery refs), so the disk GC keeps far less, far sooner
+ * (docs/ubuntu-sync.md). Absent or false, the default policy. */
+export interface StoragePolicy {
+  disposable?: boolean;
+}
+/** Whether the fleet treats every node disk as a cache. */
+export const disposableStorage = (
+  definition: Pick<FleetDefinition, 'storage'>
+): boolean => definition.storage?.disposable === true;
 /** How provider accounts are watched and chosen (src/accounts/). */
 export interface AccountPolicy {
   /** Fewer usable accounts of a provider than this is a warning; none fails. */
@@ -411,6 +423,16 @@ function idleHours(
     );
   return hours as number | undefined;
 }
+function storage(value: unknown): StoragePolicy {
+  const path = '$.storage';
+  const fields = object(value, path);
+  keys(fields, ['disposable'], path);
+  const disposable = fields['disposable'];
+  if (disposable === undefined) return {};
+  if (typeof disposable !== 'boolean')
+    fail(`${path}.disposable`, 'true or false', disposable);
+  return { disposable: disposable as boolean };
+}
 function parking(value: unknown): ParkingPolicy {
   const path = '$.parking';
   const fields = object(value, path);
@@ -626,6 +648,7 @@ export function parseDefinition(value: unknown): FleetDefinition {
       'github',
       'tailnet',
       'parking',
+      'storage',
     ],
     '$'
   );
@@ -705,7 +728,7 @@ export function parseDefinition(value: unknown): FleetDefinition {
  * tailnet control plane they are enrolled with. */
 function operations(
   fields: Record<string, unknown>
-): Pick<FleetDefinition, 'github' | 'parking' | 'tailnet'> {
+): Pick<FleetDefinition, 'github' | 'parking' | 'tailnet' | 'storage'> {
   return {
     ...(fields['github'] === undefined
       ? {}
@@ -715,6 +738,9 @@ function operations(
     ...(fields['parking'] === undefined
       ? {}
       : { parking: parking(fields['parking']) }),
+    ...(fields['storage'] === undefined
+      ? {}
+      : { storage: storage(fields['storage']) }),
     ...tailnet(fields['tailnet']),
   };
 }

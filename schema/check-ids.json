@@ -596,7 +596,7 @@
     },
     {
       "id": "bootstrap:cleanup",
-      "meaning": "Revision checkouts beyond the current, the applied and the two most recent were removed.",
+      "meaning": "Revision checkouts beyond two, the current and the previous, were removed.",
       "severity": "required",
       "repair": {
         "manual": "It reports how a command or a run went, not the state of a machine: repeat the command once its remedy is followed."
@@ -918,6 +918,14 @@
     {
       "id": "manager:disk",
       "meaning": "The manager's data volume has the free space the macOS policy asks for.",
+      "severity": "required",
+      "repair": {
+        "manual": "The manager converges itself in fleet-sync; what needs an administrator is granted once with ansible-playbook -e user=$(id -un) -K ansible/macos/manager-privilege.yml."
+      }
+    },
+    {
+      "id": "manager:disk-gc",
+      "meaning": "The manager's disk GC runs on a schedule; its last report names what it reclaimed and what the worktrees, package stores and tool installs hold.",
       "severity": "required",
       "repair": {
         "manual": "The manager converges itself in fleet-sync; what needs an administrator is granted once with ansible-playbook -e user=$(id -un) -K ansible/macos/manager-privilege.yml."
@@ -1885,6 +1893,14 @@
       "id": "ubuntu:boot-policy",
       "meaning": "The no-sleep and session boot policy is active.",
       "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the Ubuntu baseline."
+      }
+    },
+    {
+      "id": "ubuntu:disk-gc",
+      "meaning": "The worker's last disk GC run: what it reclaimed and what the worktrees, package stores and tool installs hold, with the package stores on the worktrees' filesystem.",
+      "severity": "advisory",
       "repair": {
         "manual": "Re-converge the worker with fleet-sync: it applies the Ubuntu baseline."
       }
