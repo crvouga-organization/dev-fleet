@@ -19,7 +19,7 @@ node = "26.13.0"
 atlas = { version = "1.4.0", os = ["linux", "macos"], lazy = true }
 azure-cli = { version = "2.91.0", lazy = true }
 # CLI proxy backups on the manager (cliproxy/scripts/install-dependencies).
-restic = { version = "0.19.1", os = ["linux", "macos"], lazy = true }
+restic = { version = "0.20.0", os = ["linux", "macos"], lazy = true }
 # Replicates the fleet state database to the storage bucket (src/state).
 litestream = { version = "0.5.18", os = ["linux", "macos"], lazy = true }
 pnpm = "12.23.0"
