@@ -149,25 +149,45 @@ checksum = "sha256:11f2ffbc3bb088ee8dc894b53695964f3464df5b7f693c476749599ee0be5
 url = "https://release.ariga.io/atlas/atlas-darwin-amd64-v1.4.0"
 
 [[tools.aws]]
-version = "2.39.2"
+version = "2.42.1"
 backend = "aqua:aws/aws-cli"
-specifiers = ["2.39.2"]
+specifiers = ["2.42.1"]
 
 [tools.aws."platforms.linux-arm64"]
-checksum = "sha256:53e639d3160ecfe7a5c50ad2a922ce8e96fb21f732193001251760d33cd7fd64"
-url = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.39.2.zip"
+checksum = "sha256:98f5f03bb6508a06ce9d9d6d2db97932dce735f3b7ad85616324a95edf4b815f"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.42.1.zip"
+
+[tools.aws."platforms.linux-arm64-musl"]
+checksum = "sha256:98f5f03bb6508a06ce9d9d6d2db97932dce735f3b7ad85616324a95edf4b815f"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-aarch64-2.42.1.zip"
 
 [tools.aws."platforms.linux-x64"]
-checksum = "sha256:bb3e675d5c9a915121f3f90b380ec041ba52517067d017e4a4ceba40e0213247"
-url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.39.2.zip"
+checksum = "sha256:ff2631c32c5db291b099600f404bc493454ec66c125ff4604625da90480c1f47"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.42.1.zip"
+
+[tools.aws."platforms.linux-x64-baseline"]
+checksum = "sha256:ff2631c32c5db291b099600f404bc493454ec66c125ff4604625da90480c1f47"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.42.1.zip"
+
+[tools.aws."platforms.linux-x64-musl"]
+checksum = "sha256:ff2631c32c5db291b099600f404bc493454ec66c125ff4604625da90480c1f47"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.42.1.zip"
+
+[tools.aws."platforms.linux-x64-musl-baseline"]
+checksum = "sha256:ff2631c32c5db291b099600f404bc493454ec66c125ff4604625da90480c1f47"
+url = "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-2.42.1.zip"
 
 [tools.aws."platforms.macos-arm64"]
-checksum = "sha256:74153a9818dd70efe0503253f6e9c994ca93205d87fda06bde491aee9b91df5b"
-url = "https://awscli.amazonaws.com/AWSCLIV2-2.39.2.pkg"
+checksum = "sha256:74e38ab8a592b635d7b0ae85e6f33cb1ceba79ce19c112d425cbbf535e607b23"
+url = "https://awscli.amazonaws.com/AWSCLIV2-2.42.1.pkg"
 
 [tools.aws."platforms.macos-x64"]
-checksum = "sha256:74153a9818dd70efe0503253f6e9c994ca93205d87fda06bde491aee9b91df5b"
-url = "https://awscli.amazonaws.com/AWSCLIV2-2.39.2.pkg"
+checksum = "sha256:74e38ab8a592b635d7b0ae85e6f33cb1ceba79ce19c112d425cbbf535e607b23"
+url = "https://awscli.amazonaws.com/AWSCLIV2-2.42.1.pkg"
+
+[tools.aws."platforms.macos-x64-baseline"]
+checksum = "sha256:74e38ab8a592b635d7b0ae85e6f33cb1ceba79ce19c112d425cbbf535e607b23"
+url = "https://awscli.amazonaws.com/AWSCLIV2-2.42.1.pkg"
 
 [[tools.aws-cdk]]
 version = "2.1146.1"
