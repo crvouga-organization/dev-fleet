@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 445 codes; 94 need a person.
+There are 449 codes; 95 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -371,6 +371,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `SUPER_SSH_UNREACHABLE`: a warning of `super:ssh`: the app connects with the manager's own SSH configuration, never with the options `fleet-sync` uses, and that plain `ssh` does not reach the worker without a prompt. A worker `fleet.json` declares without an `ssh` alias is the usual cause: its host key is pinned in the fleet state, which the operator's SSH does not read. Add an alias to `~/.ssh/config` on the manager, accept the host key once, name the alias as the worker's `ssh`, then run `devfleet fleet-sync`. No workspace is created until then. **Needs a person.**
 - `SUPER_HOST_INCOMPLETE`: a warning of `super:ssh`: an SSH session without a terminal finds no `git` or no `flock` on the worker; the remedy names which. The app's helper cannot be installed without them. Run `devfleet fleet-sync --node ID`: the baseline installs both.
 - `SUPER_AGENTS_NOT_FOUND`: a warning of `super:ssh`: an SSH session without a terminal finds none of the fleet's coding agents on the worker's `PATH`, so the app can start no agent there. Run `devfleet fleet-sync --node ID`, which installs the pinned agents and puts their shims on that session's `PATH`; confirm with the SSH command above.
+- `SUPER_AGENTS_NOT_PROXIED`: a warning of `super:ssh`: on the worker an SSH session without a terminal starts the agents the remedy names as the plain pinned CLI, with a sign-in of its own or none, and not as the fleet's launcher through the CLI proxy. The worker has not been converged since its agent commands became launchers, or its shell profile no longer puts `~/.local/share/personal/fleet/agent-commands` first. Run `devfleet fleet-sync --node ID`; confirm with `ssh ALIAS 'command -v claude'`, which names that directory.
 
 ## Monitoring (Beszel)
 
@@ -451,6 +452,9 @@ write `1` to that agent scope’s `cgroup.kill`.
 - **Fix:** Run `devfleet fleet-sync`; a rate limit or upstream outage clears on its own.
 - **Escalate:** PROVIDER_AUTH_REJECTED needs a person to sign the account in again on the proxy. AGENT_PROFILE_RENDER_MISMATCH is a defect of the release (a template of `ansible/agents/agents.yml` no longer renders what `src/agents/render.ts` specifies): report it to dev-fleet. No receipt vouches for what that play wrote, so later applies refuse the file until a person reviews it.
 
+- `AGENT_COMMANDS_CONFLICT`: `agent:commands` on a worker: `~/.local/share/personal/fleet/agent-commands` exists and is not the link `fleet-sync` makes to the applied revision's launchers, so it was left untouched and the worker's `claude`, `codex` and the others are not the fleet's launchers. On the worker look at what is there, move it away, then run `devfleet fleet-sync --node ID`. **Needs a person.**
+- `AGENT_COMMANDS_NOT_LINKED`: `agent:commands` on a worker: the play that makes that link (`ansible/agents/commands.yml`) failed, or the link is not there after it ran; its output is not reported. Run `devfleet fleet-sync --node ID` again; when it repeats, raise an issue.
+- `AGENT_COMMANDS_REQUEST_INVALID`: the same play refused its variables: dev-fleet passes the link beside the applied revision and its fixed target, so this is a defect of the release. Raise an issue.
 - `AGENT_SLICE_MISSING`: the user manager cannot load the T3 agent slice. Check the T3 release and run fleet-sync.
 - `AGENT_LIMIT_OVERRIDDEN`: a higher-priority setting overrides an agent slice limit. Run fleet-sync and inspect the effective properties.
 - `AGENT_MEMORY_LIMIT_MISSING`: agent memory limit missing.

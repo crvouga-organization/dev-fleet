@@ -13,7 +13,8 @@ import { NATIVE_AGENTS } from '../agents/native-verify';
  * manager's own SSH, where the app installs and updates its helper itself.
  * dev-fleet installs nothing of it. On the manager it asks the app, through
  * the app's CLI, for one remote workspace per worker; of a worker it measures
- * what such a workspace needs.
+ * what such a workspace needs. The app starts an agent by its plain command,
+ * which on a worker is the fleet's launcher: the sign-in is the CLI proxy's.
  */
 
 /** Where the app keeps its data, and its CLI, under the home directory. */
@@ -23,10 +24,16 @@ const APP_HOME = '.super.engineering';
 const HOST_COMMANDS = ['git', 'flock'];
 const AGENT_COMMANDS = NATIVE_AGENTS.map((agent) => agent.binary);
 
-/** Prints each command the session finds, one a line. The app starts agents
- * from a session like this one: no terminal, no login shell.
+/** Prints each command the session finds and where, one a line. The app
+ * starts agents from a session like this one: no terminal, no login shell.
  */
-const PROBE = `for c in ${[...HOST_COMMANDS, ...AGENT_COMMANDS].join(' ')}; do command -v "$c" >/dev/null 2>&1 && printf '%s\\n' "$c"; done; true`;
+const PROBE = `for c in ${[...HOST_COMMANDS, ...AGENT_COMMANDS].join(' ')}; do p=$(command -v "$c" 2>/dev/null) && printf '%s=%s\\n' "$c" "$p"; done; true`;
+
+/** A worker's agent commands are the fleet's launchers, which sign in
+ * through the CLI proxy (src/agents/commands.ts): the directory they are
+ * found in, under any home directory.
+ */
+const LAUNCHERS = '/.local/share/personal/fleet/agent-commands/';
 
 const INSTALL =
   'Install super.engineering on the manager (https://super.engineering/download) and start it once, then run fleet-sync.';
@@ -181,7 +188,11 @@ export function superIde(inputs: SuperInputs = {}): Ide {
           action: `super.engineering connects with the manager's own SSH configuration, and "ssh ${target}" does not reach worker ${node.id} without a prompt. Add an alias for it to ~/.ssh/config on the manager (HostName, User, Port, IdentityFile), accept its host key once, and name the alias as the worker's ssh in fleet.json.`,
         },
       };
-    const found = new Set(result.stdout.split('\n').map((line) => line.trim()));
+    const found = new Map<string, string>();
+    for (const line of result.stdout.split('\n')) {
+      const [, command, path] = /^([a-z-]+)=(\/.*)$/.exec(line.trim()) ?? [];
+      if (command && path) found.set(command, path);
+    }
     const missing = HOST_COMMANDS.filter((command) => !found.has(command));
     if (missing.length)
       return {
@@ -202,10 +213,22 @@ export function superIde(inputs: SuperInputs = {}): Ide {
           action: `An SSH session without a terminal finds none of ${AGENT_COMMANDS.join(', ')} on worker ${node.id}, so super.engineering can start no agent there. Run fleet-sync for that worker: it installs the pinned agents and puts them on that session's PATH.`,
         },
       };
+    const own = agents.filter(
+      (command) => !found.get(command)!.includes(LAUNCHERS)
+    );
+    if (own.length)
+      return {
+        id,
+        status: 'warn',
+        summary: 'SUPER_AGENTS_NOT_PROXIED',
+        remedy: {
+          action: `On worker ${node.id} an SSH session without a terminal starts ${own.join(', ')} as the plain CLI, with a sign-in of its own, not through the CLI proxy. Run fleet-sync for that worker: it puts the fleet's launchers first on that session's PATH.`,
+        },
+      };
     return {
       id,
       status: 'pass',
-      summary: `super.engineering's SSH session reaches worker ${node.id} and finds ${agents.join(', ')}.`,
+      summary: `super.engineering's SSH session reaches worker ${node.id} and starts ${agents.join(', ')} through the CLI proxy.`,
     };
   };
 

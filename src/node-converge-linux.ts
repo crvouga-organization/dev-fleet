@@ -13,6 +13,7 @@ import { fleet } from './fleet-config';
 import { disposableStorage } from './definition';
 import { quotaLimited, verifyFleetProviders } from './agents/fleet-verify';
 import { verifyNativeAgents } from './agents/native-verify';
+import { commandsPlay, linkAgentCommands } from './agents/commands';
 import { accountContext, nodeAccountChecks } from './accounts/context';
 import { managedT3, managedT3Desktop } from '../bootstrap/native-t3';
 import {
@@ -103,6 +104,11 @@ export async function convergeLinux(
     ...(await attempt('configuration:apply', () =>
       applyAgentProfiles(root, node, revision, run)
     ))
+  );
+  checks.push(
+    ...(await attempt('agent:commands', async () => [
+      await linkAgentCommands(root, commandsPlay(run)),
+    ]))
   );
   checks.push(
     ...(await attempt('proxy:configuration', () =>

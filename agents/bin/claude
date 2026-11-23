@@ -1,0 +1,10 @@
+#!/bin/sh
+# The `claude` command of a worker: the fleet's launcher, which signs in through
+# the CLI proxy. ~/.local/share/personal/fleet/agent-commands links to this
+# directory and every shell of a worker has it first on its PATH, so an app
+# that starts `claude` over SSH uses the proxy's accounts. Nothing is copied.
+set -eu
+self=$(readlink -f "$0")
+# The launcher starts the pinned claude, never this file again.
+export PATH="$HOME/.local/share/mise/shims:$PATH"
+exec bun "${self%/*}/../claude-proxy.ts" "$@"

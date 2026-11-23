@@ -71,6 +71,62 @@ Feature: The pinned tools are first on the PATH of every shell
       And a noninteractive Bash with the PATH "/usr/bin:/bin" that reads ".bashrc" on startup can run "fleet-tool"
       And it prints "managed"
 
+  Rule: On a worker the agent commands come before the pinned shims
+    A worker's `claude`, `codex` and the others are the fleet's launchers,
+    which sign in through the CLI proxy; the pinned CLI is behind each. They
+    are in "agent-commands" beside the applied revision, a directory only a
+    worker has, so the same startup files leave every other machine as it is.
+
+    Background:
+      Given a home directory with the tool directory "tool's bin" and the shims directory "tool shims"
+      And "fleet-tool" in the shims directory prints "managed"
+
+    @bash
+    Scenario: A shell of a worker runs the agent command, not the pinned shim
+      Given "fleet-tool" in the directory ".local/share/personal/fleet/agent-commands" of the home directory prints "launcher"
+      When the shell PATH is set up
+      Then a noninteractive Bash with the PATH "/usr/bin:/bin" that reads ".bashrc" on startup can run "fleet-tool"
+      And it prints "launcher"
+      And it prints nothing to standard error
+
+    @bash
+    Scenario: A shell that is not interactive reaches them before a startup file returns early
+      An app that starts an agent over SSH runs it in such a shell.
+      Given "fleet-tool" in the directory ".local/share/personal/fleet/agent-commands" of the home directory prints "launcher"
+      And ".bashrc" in the home directory reads:
+        """
+        case $- in *i*) ;; *) return ;; esac
+        """
+      When the shell PATH is set up
+      Then a noninteractive Bash with the PATH "/usr/bin:/bin" that reads ".bashrc" on startup can run "fleet-tool"
+      And it prints "launcher"
+
+    @bash
+    Scenario: A shell started from a shell of a worker does not grow its PATH
+      Given "fleet-tool" in the directory ".local/share/personal/fleet/agent-commands" of the home directory prints "launcher"
+      When the shell PATH is set up
+      Then a noninteractive Bash with the PATH "/usr/bin:/bin" that reads ".bashrc" on startup can run "export BASH_ENV; bash -c 'fleet-tool; echo $PATH'"
+      And it prints the line "launcher{home}/.local/share/personal/fleet/agent-commands:{shims}:{tools}:/usr/bin:/bin"
+
+    @bash
+    Scenario: The block of an earlier release is replaced by the new one
+      Given ".bashrc" in the home directory reads:
+        """
+        # user config
+        # pinned tool shims first (dev-fleet, keep this last)
+        case "$PATH" in
+          '{shims}':*) ;;
+          *) export PATH='{shims}':"$PATH" ;;
+        esac
+        """
+      When the shell PATH is set up
+      Then ".bashrc" in the home directory contains "# pinned tool shims first (dev-fleet, keep this last)" 1 time
+      And ".bashrc" in the home directory contains "# a worker's agent commands (dev-fleet)" 1 time
+      And ".bashrc" in the home directory contains "# a worker's agent commands before them (dev-fleet, keep this last)" 1 time
+      And ".bashrc" in the home directory contains "# user config"
+      And a noninteractive Bash with the PATH "/usr/bin:/bin" that reads ".bashrc" on startup can run "fleet-tool"
+      And it prints "managed"
+
   Rule: A block is added to a startup file once, after what is there
 
     Scenario: Appending a block again preserves the file and does not duplicate the block

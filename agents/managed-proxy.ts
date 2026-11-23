@@ -5,6 +5,7 @@ import { agentRoot } from '../src/agents/render';
 import { select } from '../src/agents/registry';
 import { plan } from '../src/agents/converge';
 import { launchProfile } from '../src/agents/launch';
+import { renderedNode } from '../src/agents/commands';
 import { AgentConfigurationError } from '../src/agents/errors';
 import { pinnedPath } from '../src/agents/toolchain';
 import { REFUSED_EXIT_CODE, admission, refusal } from '../src/agents/admission';
@@ -58,8 +59,14 @@ async function startManaged(
   args: string[]
 ): Promise<void> {
   try {
-    const selection = select(process.env['WS_AGENT_NODE'] ?? '', tool, 'proxy');
     const root = agentRoot(homedir(), currentPlatform().name);
+    // T3 names the node; an agent command of a worker (agents/bin) is
+    // started from a shell and runs as the node this machine is.
+    const selection = select(
+      process.env['WS_AGENT_NODE'] || renderedNode(root),
+      tool,
+      'proxy'
+    );
     const result = await plan({ root, selection, revision: 'unverified' });
     if (result.files.some((file) => file.state === 'conflict')) {
       process.stderr.write(

@@ -105,10 +105,20 @@ const session =
   (command: string[]): boolean =>
     command[0] === 'ssh' && command.at(-2) === target;
 
-function finds(world: IdeWorld, target: string, commands: string[]): void {
+const LAUNCHERS = '/home/dev/.local/share/personal/fleet/agent-commands';
+const SHIMS = '/home/dev/.local/share/mise/shims';
+const place = (text: string): string =>
+  text.replaceAll('{launchers}', LAUNCHERS).replaceAll('{shims}', SHIMS);
+
+/** What the session prints: each command it finds and where. */
+function finds(
+  world: IdeWorld,
+  target: string,
+  commands: [string, string][]
+): void {
   world.commands.answer(
     session(target),
-    succeeded(commands.map((command) => `${command}\n`).join(''))
+    succeeded(commands.map(([name, where]) => `${name}=${where}\n`).join(''))
   );
 }
 
@@ -118,15 +128,27 @@ Given(
     finds(
       world,
       target,
-      table.hashes().map((row) => row['command']!)
+      table.hashes().map((row) => [row['command']!, place(row['where']!)])
     );
   }
 );
 
+/** Commands named alone are found where a converged worker has them. */
 Given(
   /^the manager's own SSH finds on "([^"]+)" only (.+)$/,
   (world, target: string, commands: string) => {
-    finds(world, target, commands.split(', '));
+    finds(
+      world,
+      target,
+      commands
+        .split(', ')
+        .map((name) => [
+          name,
+          ['git', 'flock', 'vim'].includes(name)
+            ? `/usr/bin/${name}`
+            : `${LAUNCHERS}/${name}`,
+        ])
+    );
   }
 );
 

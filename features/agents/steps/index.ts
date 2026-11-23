@@ -1,4 +1,5 @@
 import { accounts } from './accounts';
+import { commands } from './commands';
 import { native } from './native';
 import { profiles } from './profiles';
 import { providers } from './providers';
@@ -10,6 +11,7 @@ export { AgentsWorld };
 export const agents = [
   common,
   accounts,
+  commands,
   profiles,
   native,
   providers,

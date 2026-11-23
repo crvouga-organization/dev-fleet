@@ -1,0 +1,32 @@
+---
+# The agent commands of a worker (src/agents/commands.ts). On a worker
+# `claude`, `codex` and the others are the fleet's launchers, tracked under
+# agents/bin, which sign in through the CLI proxy: one link beside the applied
+# revision points at that revision's launchers through `current`, and every
+# shell of the worker has the link first on its PATH (bootstrap/shell-path.ts).
+# Written as the developer: no become.
+#
+# TypeScript decides beforehand: it refuses anything in the link's place that
+# is not a link, plays this only when the link is missing or points elsewhere,
+# and measures the link afterwards. The path and its target are an interface:
+# every shell profile of every worker names the path.
+- name: Link a worker's agent commands to the applied revision's launchers
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  tasks:
+    - name: Require the link dev-fleet names
+      ansible.builtin.assert:
+        that:
+          - agent_commands_link is match('^/.+/agent-commands$')
+          - agent_commands_target == 'current/agents/bin'
+        fail_msg: AGENT_COMMANDS_REQUEST_INVALID; dev-fleet passes the link beside the applied revision and its fixed target.
+    - name: Link the agent commands
+      ansible.builtin.file:
+        src: '{{ agent_commands_target }}'
+        dest: '{{ agent_commands_link }}'
+        state: link
+        # The target is relative to the link and follows `current`.
+        follow: false
+        force: true

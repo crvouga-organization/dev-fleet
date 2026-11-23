@@ -192,6 +192,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'agent:*:session':
     'The shared account of a coding agent is signed in and usable.',
   'agent:*:version': 'A coding agent runs the version the fleet pins.',
+  'agent:commands':
+    "A worker's agent commands (claude, codex and the others) are the fleet's launchers, which sign in through the CLI proxy.",
   'agent:profiles': "The fleet's agent profiles are written on this machine.",
   'agent:service-environment':
     'The environment agent services start with is complete.',
@@ -399,7 +401,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'state:retired': 'The fleet state records that a retired worker was retired.',
   'super:app': 'super.engineering on the manager answers its CLI.',
   'super:ssh':
-    "The manager's own SSH reaches the worker without a prompt and finds Git, flock and a coding agent there, as a super.engineering remote workspace needs.",
+    "The manager's own SSH reaches the worker without a prompt and finds Git, flock and a coding agent there, started through the CLI proxy, as a super.engineering remote workspace needs.",
   'super:workspace':
     'super.engineering on the manager holds a remote workspace whose SSH target is this worker.',
   'sync:*':

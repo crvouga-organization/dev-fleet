@@ -6,6 +6,12 @@ Feature: Every worker is an SSH workspace of super.engineering on the manager
   installed, started and updated by a person, so nothing here ever fails a
   sync: what is missing is a warning that says what to do.
 
+  The app starts an agent by its plain command. On a worker that command is
+  the fleet's launcher, so the sign-in is the CLI proxy's and a worker holds
+  none of its own. In these scenarios {launchers} stands for the directory of
+  those launchers, "/home/dev/.local/share/personal/fleet/agent-commands", and
+  {shims} for the pinned CLIs, "/home/dev/.local/share/mise/shims".
+
   Background:
     Given the app's CLI on the manager is "/Users/dev/.super.engineering/bin/se"
 
@@ -47,11 +53,11 @@ Feature: Every worker is an SSH workspace of super.engineering on the manager
 
     Background:
       Given the manager's own SSH finds these commands on "worker-one":
-        | command |
-        | git     |
-        | flock   |
-        | claude  |
-        | codex   |
+        | command | where              |
+        | git     | /usr/bin/git       |
+        | flock   | /usr/bin/flock     |
+        | claude  | {launchers}/claude |
+        | codex   | {launchers}/codex  |
 
     Scenario: A worker the app does not know yet is given a workspace
       The workspace is named after the worker and keeps the app's consent to
@@ -82,15 +88,15 @@ Feature: Every worker is an SSH workspace of super.engineering on the manager
       Then the app was asked to "workspace create worker-one --type remote --ssh-target worker-one --json"
 
     Scenario: A worker without an SSH alias is addressed by its declared user and tailnet name
-      Given the worker "worker-three" is declared without an alias, as "dev" at "worker-three.tail0a1b2c.ts.net"
-      And the manager's own SSH finds these commands on "dev@worker-three.tail0a1b2c.ts.net":
-        | command |
-        | git     |
-        | flock   |
-        | claude  |
+      Given the worker "worker-three" is declared without an alias, as "dev" at "home.ts.net"
+      And the manager's own SSH finds these commands on "dev@home.ts.net":
+        | command | where              |
+        | git     | /usr/bin/git       |
+        | flock   | /usr/bin/flock     |
+        | claude  | {launchers}/claude |
       And the app holds no workspace
       When the worker "worker-three" is converged for super.engineering
-      Then the app was asked to "workspace create worker-three --type remote --ssh-target dev@worker-three.tail0a1b2c.ts.net --json"
+      Then the app was asked to "workspace create worker-three --type remote --ssh-target dev@home.ts.net --json"
 
     Scenario Outline: An app that <state> leaves the workspace for the next sync
       Given the app answers "workspace list" with <answer>
@@ -123,10 +129,10 @@ Feature: Every worker is an SSH workspace of super.engineering on the manager
       The app connects with the operator's SSH configuration and never asks
       for a password in the background.
       Given the manager's own SSH finds these commands on "worker-one":
-        | command |
-        | git     |
-        | flock   |
-        | claude  |
+        | command | where              |
+        | git     | /usr/bin/git       |
+        | flock   | /usr/bin/flock     |
+        | claude  | {launchers}/claude |
       And the app holds no workspace
       When the worker "worker-one" is converged for super.engineering
       Then the worker was reached with "ssh -T -o BatchMode=yes -o ConnectTimeout=10 worker-one"
@@ -154,3 +160,33 @@ Feature: Every worker is an SSH workspace of super.engineering on the manager
         | flock, claude          | warns with "SUPER_HOST_INCOMPLETE"   |
         | git, flock             | warns with "SUPER_AGENTS_NOT_FOUND"  |
         | git, flock, vim        | warns with "SUPER_AGENTS_NOT_FOUND"  |
+
+  Rule: An agent the app starts on a worker signs in through the CLI proxy
+
+    Scenario: A worker whose agent commands are the plain CLIs is a warning that names them
+      A worker that has not been converged since its agent commands became
+      the fleet's launchers still starts the pinned CLI, which has a sign-in
+      of its own or none. The workspace is created all the same.
+      Given the manager's own SSH finds these commands on "worker-one":
+        | command | where              |
+        | git     | /usr/bin/git       |
+        | flock   | /usr/bin/flock     |
+        | claude  | {shims}/claude     |
+        | codex   | {launchers}/codex  |
+      And the app holds no workspace
+      When the worker "worker-one" is converged for super.engineering
+      Then the check "super:ssh" warns with "SUPER_AGENTS_NOT_PROXIED"
+      And the remedy of the check "super:ssh" mentions "starts claude as the plain CLI"
+      And the check "super:workspace" passes
+      And nothing reported contains "/home/dev"
+
+    Scenario: A worker whose agent commands are all the fleet's launchers passes
+      Given the manager's own SSH finds these commands on "worker-one":
+        | command | where               |
+        | git     | /usr/bin/git        |
+        | flock   | /usr/bin/flock      |
+        | claude  | {launchers}/claude  |
+        | grok    | {launchers}/grok    |
+      And the app holds no workspace
+      When the worker "worker-one" is converged for super.engineering
+      Then the check "super:ssh" passes
