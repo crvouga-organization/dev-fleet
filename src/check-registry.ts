@@ -240,7 +240,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'bootstrap:bootstrap':
     'The worker is a supported Ubuntu release and architecture, not a container or WSL2, reached as a non-root account, and its fleet state directory is safe.',
   'bootstrap:cleanup':
-    'Revision checkouts beyond the current, the applied and the two most recent were removed.',
+    'Revision checkouts beyond two, the current and the previous, were removed.',
   'bootstrap:configuration':
     'The node converged at the revision: its configuration, services and evidence.',
   'bootstrap:configuration-install':
@@ -308,6 +308,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
     "The manager's data volume has the free space the macOS policy asks for.",
   'manager:docker': 'The manager runs the pinned Docker Desktop.',
   'manager:identity': 'This machine is the declared fleet manager.',
+  'manager:disk-gc':
+    "The manager's disk GC runs on a schedule; its last report names what it reclaimed and what the worktrees, package stores and tool installs hold.",
   'manager:job-logs':
     "newsyslog keeps the logs of the manager's scheduled jobs under the size the macOS policy names.",
   'manager:playbook':
@@ -452,6 +454,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
     'Not applicable on a virtual machine, which has no lid; on a physical machine the lid policy is part of ubuntu:boot-policy.',
   'ubuntu:prerequisites': 'The Ubuntu prerequisites are installed.',
   'ubuntu:release': 'The worker runs the supported Ubuntu release.',
+  'ubuntu:disk-gc':
+    "The worker's last disk GC run: what it reclaimed and what the worktrees, package stores and tool installs hold, with the package stores on the worktrees' filesystem.",
   'ubuntu:resource-safety':
     'The OOM killer, disk guard and resource caps are active.',
   'vscode:forwarding':
@@ -555,6 +559,7 @@ export const ADVISORY_CHECKS = [
   't3:updates',
   'tailscale:device',
   'tailscale:leftover',
+  'ubuntu:disk-gc',
   'worker:auto-park',
   'worker:idle',
   'worker:parked-online',

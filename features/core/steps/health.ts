@@ -153,6 +153,24 @@ core.Then(
 );
 
 core.Given(
+  "the manager's disk GC reported {string}, where NOW is the time now",
+  (world, report: string) => {
+    const now = Math.floor(Date.now() / 1000);
+    world.commands.answer(
+      (argv) => argv[0] === 'cat' && String(argv[1]).endsWith('/disk-gc.json'),
+      () =>
+        succeeded(
+          report
+            .replace(/NOW-(\d+)/g, (_, ago: string) =>
+              String(now - Number(ago))
+            )
+            .replaceAll('NOW', String(now))
+        )
+    );
+  }
+);
+
+core.Given(
   'the container watchdog remembers {string}, where NOW is the time now',
   (world, memory: string) => {
     world.commands.answer(

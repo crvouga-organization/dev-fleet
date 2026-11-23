@@ -31,10 +31,11 @@ jobs:
       # The Python, restic and Vault every machine runs, from the same lock:
       # never the runner's own or the distribution's. Vault runs the worker
       # credential scenarios against a development server; uv runs the
-      # agents play with the locked Ansible (features/agents, @ansible).
+      # agents play with the locked Ansible (features/agents, @ansible). pnpm
+      # installs from the shared package store (features/bootstrap, @pnpm).
       - uses: ./.github/actions/mise
         with:
-          install_args: python restic vault uv
+          install_args: python restic vault uv pnpm
       - name: Install dependencies
         run: |
           bun install --frozen-lockfile
@@ -45,9 +46,10 @@ jobs:
       # The runner's own PowerShell runs bootstrap/bootstrap.ps1 (@pwsh in
       # features/bootstrap): Windows PowerShell is the machine's there too,
       # never a pinned tool. A runner without it fails instead of skipping.
-      - run: mise exec python restic vault uv -- bun test
+      - run: mise exec python restic vault uv pnpm -- bun test
         env:
           DEVFLEET_TEST_VAULT: required
+          DEVFLEET_TEST_PNPM: required
           DEVFLEET_TEST_ANSIBLE: required
           DEVFLEET_TEST_PWSH: required
       - run: mise exec python restic -- bun run lint:cliproxy

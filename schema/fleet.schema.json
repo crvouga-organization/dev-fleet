@@ -653,6 +653,18 @@
         }
       }
     },
+    "storage": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "How the disk GC of every node, workers and manager, treats what is on its disk (docs/ubuntu-sync.md, Disk GC).",
+      "properties": {
+        "disposable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Every node disk is a cache: work lives on remotes and in the WIP guard's recovery refs. The disk GC then runs every 15 minutes; removes an agent worktree idle for hours, also with uncommitted or unpushed work once the WIP guard saved it to a recovery ref after its last change; removes one whose branch was deleted on its remote or merged into the remote's default branch at once; removes build output of a checkout idle for hours; prunes every Docker image and all build cache no container uses on every run; and starts its pressure mode at a share of the disk instead of a fixed size. The values are in the policy files (ansible/ubuntu/policy.json, ansible/macos/policy.json). Default false: the default policy."
+        }
+      }
+    },
     "ides": {
       "type": "array",
       "minItems": 1,

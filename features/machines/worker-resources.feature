@@ -28,6 +28,7 @@ Feature: A worker's memory and disk guards are measured where they run
       | df --output=avail,size -B1 /                                     | prints Avail Size\n107374182400 536870912000\n                         |
       | df --output=avail,size -B1 /home/fixture                         | prints Avail Size\n107374182400 536870912000\n                         |
       | sh -c …mktemp /tmp/personal-fleet-probe.XXXXXX…                  | succeeds                                                               |
+      | cat /var/lib/personal-fleet-disk-gc/report.json                  | fails                                                                  |
 
   Scenario: A guarded worker with headroom passes
     When the resource safety of the worker whose home is "/home/fixture" is measured
@@ -178,3 +179,17 @@ Feature: A worker's memory and disk guards are measured where they run
       | used       | verdict |
       | 4000000000 | passes  |
       | 7000000000 | warns   |
+
+  Rule: The worker reports what its last disk GC run reclaimed and what its disks hold
+
+    Scenario Outline: A worker whose disk GC report <says> <verdict>
+      The collector leaves the report after each run (resourceSafety.diskGcReport).
+      Given the command "cat /var/lib/personal-fleet-disk-gc/report.json" <answer>
+      When what the last disk GC run of the worker reported is read at 100900
+      Then the summary of the check is "<summary>"
+
+      Examples:
+        | says                                       | verdict           | answer | summary |
+        | names its last run                         | passes            | prints {"version":1,"finished":100000,"disposable":true,"reclaimedMiB":2048,"categoriesMiB":{"worktrees":2048},"worktreesMiB":10240,"storesMiB":5120,"toolsMiB":11264,"hardlinkedPercent":40,"sameFilesystem":true} | The disk GC (disposable storage) last ran 15 min ago and reclaimed 2048 MiB (worktrees 2048); worktrees hold 10.0 GiB, package stores 5.0 GiB, tool installs 11.0 GiB; 40% of the worktrees' and stores' bytes are hardlinked. |
+        | finds a store on another filesystem        | warns             | prints {"version":1,"finished":100000,"disposable":false,"reclaimedMiB":0,"categoriesMiB":{},"worktreesMiB":0,"storesMiB":0,"toolsMiB":0,"hardlinkedPercent":0,"sameFilesystem":false} | PACKAGE_STORE_OTHER_FILESYSTEM The disk GC last ran 15 min ago and reclaimed 0 MiB; worktrees hold 0.0 GiB, package stores 0.0 GiB, tool installs 0.0 GiB; 0% of the worktrees' and stores' bytes are hardlinked. |
+        | is missing, before its first run           | is skipped        | fails  | DISK_GC_NOT_REPORTED |

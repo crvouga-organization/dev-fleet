@@ -1,8 +1,11 @@
 #!/usr/bin/python3
 """Recover disk space by deleting only what a build or install can recreate.
 
-Managed by personal fleet-sync (tasks/resources.yml) as
-personal-fleet-disk-gc.service, started hourly by personal-fleet-disk-gc.timer.
+Managed by personal fleet-sync: on an Ubuntu worker (tasks/resources.yml) as
+personal-fleet-disk-gc.service, started by personal-fleet-disk-gc.timer; on
+the macOS manager (ansible/macos/manager.yml) as the launchd job
+dev.devfleet.disk-gc. Both run it hourly, or every 15 minutes when fleet.json
+says storage is disposable.
 
 What it deletes:
   * dependency and build directories (node_modules, .turbo, dist, Rust target,
@@ -11,7 +14,7 @@ What it deletes:
     process is running inside it;
   * Docker images and build cache that no container uses and that are older
     than --docker-age-hours, plus unused anonymous volumes under pressure;
-  * the apt package cache;
+  * the apt package cache (where there is apt);
   * agent worktrees under each --worktree-root that nobody has used for
     --worktree-idle-days, only when Git says they hold no uncommitted,
     untracked or unpushed work and no process runs in them (the branch is
@@ -19,31 +22,58 @@ What it deletes:
   * the oldest files of each --cache-cap DIR=MIB cache beyond its size;
   * all but the newest N files of each --keep-newest DIR=N directory (the
     downloaded T3 packages: the current one and the previous one);
+  * all but N dev-fleet checkouts of each --keep-checkouts DIR=N directory
+    (fleet-owned checkouts named by their commit): the one each --current
+    link points at and the most recently used others, never one a process
+    runs in;
+  * entries of each --expire DIR=HOURS directory nothing was written in for
+    that long, never one a process runs in (agents' scratch space);
+  * whole children of each --cache-root directory (~/.cache, and
+    ~/Library/Caches on macOS) beyond --home-cache-mib, oldest first;
   * tool versions no mise configuration uses (--mise, run as --user).
-When a watched filesystem has less than --pressure-mib free, or less than
---pressure-inode-percent of its inodes free, idle checkouts
-qualify after --pressure-idle-hours, Docker leftovers after
---pressure-docker-age-hours, and aged entries of each --pressure-cache
-directory are removed too.
+When a watched filesystem has less than --pressure-mib free, less than
+--pressure-percent of its size free, or less than --pressure-inode-percent of
+its inodes free, idle checkouts qualify after --pressure-idle-hours, Docker
+leftovers after --pressure-docker-age-hours, and aged entries of each
+--pressure-cache directory are removed too.
+
+--disposable is the policy of a fleet whose node disks are a cache
+(storage.disposable in fleet.json). Work in a worktree that is not on a remote
+no longer keeps it once the WIP guard (wip-guard.py) has saved that work to a
+recovery ref after the worktree last changed; a worktree whose branch was
+deleted on its remote, or merged into the remote's default branch after work
+on it, goes whatever its age; and Docker images and build cache no container
+uses are pruned on every run, whatever their age.
+
+Running processes are found in --proc (Linux), or with lsof (--lsof, macOS,
+which has no /proc). When they cannot be listed, nothing that a process could
+be using is removed.
 
 It never deletes a main checkout, a tracked file, uncommitted or unpushed
-work, a container or a named volume. Every decision is one JSON line on stdout, and
-the last one says how many MiB were reclaimed.
+work that is not saved elsewhere, a container or a named volume. Every
+decision is one JSON line on stdout, and the last one says how many MiB were
+reclaimed. --report FILE (under --home when relative) also keeps that summary,
+with what the worktrees, package stores and tool installs hold, for
+fleet-status.
 
 Usage: disk-gc.py --home H [--path P ...] [--idle-days N] [--pressure-mib N]
-                  [--pressure-inode-percent N] [--pressure-idle-hours N] [--docker-age-hours N]
+                  [--pressure-percent N] [--pressure-inode-percent N]
+                  [--pressure-idle-hours N] [--docker-age-hours N]
                   [--pressure-docker-age-hours N] [--no-docker] [--pressure-cache DIR ...]
-                  [--worktree-root DIR ...] [--worktree-idle-days N]
-                  [--cache-cap DIR=MIB ...] [--keep-newest DIR=N ...]
-                  [--mise PATH] [--user NAME]
-                  [--max-depth N] [--proc DIR] [--home-only] [--dry-run]
+                  [--worktree-root DIR ...] [--worktree-idle-days N] [--disposable]
+                  [--recovery-node NAME] [--cache-cap DIR=MIB ...] [--keep-newest DIR=N ...]
+                  [--keep-checkouts DIR=N ...] [--current LINK ...] [--expire DIR=HOURS ...]
+                  [--cache-root DIR ...] [--mise PATH] [--user NAME] [--report FILE]
+                  [--max-depth N] [--proc DIR | --lsof] [--home-only] [--dry-run]
 
 --home-only skips the machine-wide Docker and apt steps.
 """
 import argparse
 import json
 import os
+import re
 import shutil
+import socket
 import stat
 import subprocess
 import sys
@@ -82,10 +112,14 @@ def free_inodes_percent(path):
     return st.f_favail * 100 / st.f_files
 
 
-def under_pressure(paths, pressure_bytes, inode_percent):
-    """Any watched filesystem short of free bytes or of free inodes."""
+def under_pressure(paths, pressure_bytes, inode_percent, free_percent=0):
+    """Any watched filesystem short of free bytes, of a free share of its
+    size, or of free inodes."""
     for path in paths:
         if free_bytes(path) < pressure_bytes:
+            return True
+        st = os.statvfs(path)
+        if st.f_blocks > 0 and st.f_bavail * 100 / st.f_blocks < free_percent:
             return True
         inodes = free_inodes_percent(path)
         if inodes is not None and inodes < inode_percent:
@@ -213,8 +247,11 @@ def last_activity(checkout, gdir, dirs):
     return latest
 
 
-def busy_roots(proc):
-    """Working directories of every running process."""
+def busy_roots(proc, lsof=False):
+    """Working directories of every running process, or None when they cannot
+    be listed: then nothing a process could be using may go."""
+    if lsof:
+        return lsof_roots()
     roots = set()
     try:
         pids = [p for p in os.listdir(proc) if p.isdigit()]
@@ -226,6 +263,21 @@ def busy_roots(proc):
         except OSError:
             continue
     return roots
+
+
+def lsof_roots():
+    """macOS has no /proc: lsof names each process's working directory."""
+    try:
+        out = subprocess.run(['lsof', '-n', '-w', '-a', '-d', 'cwd', '-F', 'n'],
+                             capture_output=True, timeout=300)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if out.returncode not in (0, 1):
+        return None
+    roots = {line[1:] for line in out.stdout.decode(errors='replace').splitlines()
+             if line.startswith('n/')}
+    # This process has a working directory too: an empty list is a failure.
+    return roots or None
 
 
 def in_use(checkout, roots):
@@ -256,8 +308,11 @@ def remove(path, dry_run):
     return size
 
 
-def collect_checkouts(home, idle_seconds, max_depth, proc, now, dry_run):
-    roots = busy_roots(proc)
+def collect_checkouts(home, idle_seconds, max_depth, busy, now, dry_run):
+    roots = busy()
+    if roots is None:
+        log(event='checkouts_skipped', reason='processes_unlisted')
+        return 0
     freed = 0
     for checkout in find_checkouts(home, max_depth):
         gdir = git_dir(checkout)
@@ -349,19 +404,143 @@ def unsaved_work(worktree):
     return None
 
 
-def collect_worktrees(root, idle_seconds, proc, now, dry_run):
-    roots = busy_roots(proc)
+def ref_part(value):
+    """A branch or node name as wip-guard.py writes it into a recovery ref."""
+    part = re.sub(r'[^A-Za-z0-9._/-]+', '-', value).strip('./-')
+    part = re.sub(r'/+', '/', part).replace('..', '.')
+    return part or 'unnamed'
+
+
+def git_line(worktree, args):
+    out = run_git(worktree, args)
+    if out is None or out.returncode != 0:
+        return ''
+    return out.stdout.decode(errors='replace').strip()
+
+
+def saved_in_recovery_ref(worktree, node, latest):
+    """Whether the WIP guard saved this worktree's work after it last changed.
+
+    wip-guard.py pushes the worktree's files as one commit on HEAD (or HEAD
+    itself when only commits are unpushed) to refs/recovery/<node>/<branch>
+    of the remote, and keeps the same ref locally once the push succeeded.
+    The save counts when it is of this HEAD and no older than the worktree's
+    last change.
+    """
+    head = git_line(worktree, ['rev-parse', '--verify', '--quiet', 'HEAD'])
+    if not head:
+        return False
+    branch = git_line(worktree, ['symbolic-ref', '--quiet', '--short', 'HEAD'])
+    ref = 'refs/recovery/%s/%s' % (ref_part(node), ref_part(branch or 'detached-' + head[:12]))
+    saved = git_line(worktree, ['rev-parse', '--verify', '--quiet', ref + '^{commit}'])
+    if not saved:
+        return False
+    if saved != head and git_line(worktree, ['rev-parse', '--verify', '--quiet', saved + '^']) != head:
+        return False
+    when = git_line(worktree, ['show', '-s', '--format=%ct', saved])
+    return when.isdigit() and int(when) >= int(latest)
+
+
+def as_user(argv, user, home):
+    if user:
+        return ['runuser', '-u', user, '--', 'env', f'HOME={home}'] + argv
+    return argv
+
+
+def refresh_remotes(worktrees, user, home):
+    """Fetches each repository's remotes once, pruning deleted branches.
+
+    Run as the development user: the objects it writes belong to that user,
+    and so do the credentials of a private remote. A failed fetch leaves the
+    remote-tracking refs as they were.
+    """
+    done = set()
+    for worktree in worktrees:
+        common = git_line(worktree, ['rev-parse', '--path-format=absolute', '--git-common-dir'])
+        if not common or common in done:
+            continue
+        done.add(common)
+        try:
+            out = subprocess.run(
+                as_user(GIT + ['--git-dir', common, 'fetch', '--all', '--prune', '--quiet'], user, home),
+                capture_output=True, timeout=300,
+                env={**os.environ, 'GIT_TERMINAL_PROMPT': '0'})
+            ok = out.returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            ok = False
+        if not ok:
+            log(event='fetch_failed', repository=common)
+
+
+def retired(worktree):
+    """Why the worktree's branch is done with on its remote, or None.
+
+    deleted: the branch was pushed and its remote branch is gone (a merged
+    pull request whose branch was deleted, or one closed with its branch
+    deleted). merged: commits were made on the branch and its HEAD is in the
+    remote's default branch. A branch that was never pushed and never had a
+    commit of its own is neither: that is a task that has just started.
+    """
+    branch = git_line(worktree, ['symbolic-ref', '--quiet', 'HEAD'])
+    if not branch:
+        return None
+    upstream = git_line(worktree, ['for-each-ref', '--format=%(upstream:track)', branch])
+    if upstream == '[gone]':
+        return 'deleted'
+    remote = git_line(worktree, ['config', '--get', 'branch.%s.remote' % branch[len('refs/heads/'):]]) or 'origin'
+    default = git_line(worktree, ['symbolic-ref', '--quiet', 'refs/remotes/%s/HEAD' % remote])
+    candidates = [default] if default else ['refs/remotes/%s/main' % remote, 'refs/remotes/%s/master' % remote]
+    target = next((ref for ref in candidates
+                   if git_line(worktree, ['rev-parse', '--verify', '--quiet', ref])), None)
+    if not target:
+        return None
+    merged = run_git(worktree, ['merge-base', '--is-ancestor', 'HEAD', target])
+    if merged is None or merged.returncode != 0:
+        return None
+    reflog = git_line(worktree, ['reflog', 'show', '--format=%gs', branch])
+    worked = any(not entry.startswith('branch: Created from')
+                 for entry in reflog.splitlines() if entry)
+    return 'merged' if worked else None
+
+
+def collect_worktrees(root, idle_seconds, busy, now, dry_run, disposable=False,
+                      node=None, user=None, home=None):
+    worktrees = linked_worktrees(root)
+    # What each branch's remote branch held before the fetch: once it is
+    # deleted, that is the only proof every commit of the worktree was pushed.
+    pushed = {}
+    if disposable and worktrees:
+        pushed = {w: git_line(w, ['rev-parse', '--verify', '--quiet', '@{upstream}'])
+                  for w in worktrees}
+        refresh_remotes(worktrees, user, home)
+    roots = busy()
+    if roots is None:
+        if worktrees:
+            log(event='worktrees_skipped', root=root, reason='processes_unlisted')
+        return 0
     freed = 0
-    for worktree in linked_worktrees(root):
+    for worktree in worktrees:
         gdir = git_dir(worktree)
         if gdir is None or in_use(worktree, roots):
             continue
-        if now - git_activity(worktree, gdir) < idle_seconds:
-            continue
+        done = retired(worktree) if disposable else None
+        if not done:
+            if now - git_activity(worktree, gdir) < idle_seconds:
+                continue
         latest = last_activity(worktree, gdir, [])
-        if latest is None or now - latest < idle_seconds:
+        if latest is None or (not done and now - latest < idle_seconds):
             continue
         reason = unsaved_work(worktree)
+        if reason == 'unpushed' and done == 'deleted' and pushed.get(worktree) and \
+                pushed[worktree] == git_line(worktree, ['rev-parse', 'HEAD']):
+            # Its commits were on the remote branch until it was deleted.
+            reason = None
+        if reason in ('uncommitted', 'unpushed') and disposable:
+            if saved_in_recovery_ref(worktree, node, latest):
+                log(event='worktree_saved', worktree=worktree, reason=reason)
+                reason = None
+            else:
+                reason += '_not_in_recovery_ref'
         if reason:
             log(event='worktree_kept', worktree=worktree, reason=reason)
             continue
@@ -377,7 +556,8 @@ def collect_worktrees(root, idle_seconds, proc, now, dry_run):
                 log(event='worktree_kept', worktree=worktree, reason='git_worktree_remove_failed')
                 continue
         freed += size
-        log(event='worktree_removed', worktree=worktree, mib=size // MIB, dry_run=dry_run)
+        log(event='worktree_removed', worktree=worktree, mib=size // MIB, dry_run=dry_run,
+            **({'branch': done} if done else {}))
     return freed
 
 
@@ -446,6 +626,156 @@ def keep_newest(directory, count, dry_run):
     return freed
 
 
+COMMIT = re.compile(r'^[0-9a-f]{40}$')
+
+
+def keep_checkouts(directory, count, protected, busy, dry_run):
+    """Keeps count fleet-owned checkouts of dev-fleet in directory.
+
+    Each is named by its commit. The ones a --current link points at are kept
+    first, then the most recently used others; a checkout a process runs in
+    is never removed. A checkout made with `git worktree add` leaves an entry
+    its repository prunes (`git worktree prune`) on the next sync.
+    """
+    try:
+        entries = [e.path for e in os.scandir(directory)
+                   if COMMIT.match(e.name) and e.is_dir(follow_symlinks=False)]
+    except OSError:
+        return 0
+    if len(entries) <= count:
+        return 0
+    roots = busy()
+    if roots is None:
+        log(event='checkouts_kept', directory=directory, reason='processes_unlisted')
+        return 0
+    entries.sort(key=mtime, reverse=True)
+    kept = [e for e in entries if os.path.realpath(e) in protected]
+    freed = 0
+    for path in entries:
+        if path in kept:
+            continue
+        if len(kept) < count or in_use(path, roots):
+            kept.append(path)
+            continue
+        got = remove(path, dry_run)
+        log_file = path + '.setup.log'
+        if os.path.isfile(log_file) and not os.path.islink(log_file):
+            got += os.lstat(log_file).st_blocks * 512
+            unlink(log_file, dry_run)
+        freed += got
+        log(event='checkout_removed', path=path, mib=got // MIB, dry_run=dry_run)
+    return freed
+
+
+def latest_write(path):
+    """The newest modification time of path and of everything under it."""
+    if not is_real_dir(path):
+        return mtime(path)
+    return max([mtime(path)] + [stamp for stamp, _, _ in files_under(path)]
+               + [mtime(current) for current, _, _ in os.walk(path)])
+
+
+def expire_entries(directory, hours, busy, now, dry_run):
+    """Removes entries of directory nothing was written in for hours."""
+    try:
+        entries = list(os.scandir(directory))
+    except OSError:
+        return 0
+    if not entries:
+        return 0
+    roots = busy()
+    if roots is None:
+        log(event='expiry_skipped', directory=directory, reason='processes_unlisted')
+        return 0
+    freed = 0
+    for entry in entries:
+        if now - latest_write(entry.path) < hours * HOUR or in_use(entry.path, roots):
+            continue
+        if entry.is_dir(follow_symlinks=False):
+            got = remove(entry.path, dry_run)
+        else:
+            got = entry.stat(follow_symlinks=False).st_blocks * 512
+            if not unlink(entry.path, dry_run):
+                got = 0
+        freed += got
+    if freed:
+        log(event='expired', directory=directory, mib=freed // MIB, dry_run=dry_run)
+    return freed
+
+
+def footprint(paths):
+    """What the files under paths hold: their bytes, the bytes of the ones
+    that have more than one link, and their share of the disk, where a file
+    with N links is charged a 1/N share to each of them. Nothing is
+    remembered per file: a node may hold millions."""
+    total = linked = charged = 0
+    for top in paths:
+        if not is_real_dir(top):
+            continue
+        for current, dirs, files in os.walk(top):
+            dirs[:] = [d for d in dirs if not os.path.islink(os.path.join(current, d))]
+            for name in files:
+                try:
+                    st = os.lstat(os.path.join(current, name))
+                except OSError:
+                    continue
+                if not stat.S_ISREG(st.st_mode):
+                    continue
+                size = st.st_blocks * 512
+                total += size
+                charged += size / max(1, st.st_nlink)
+                if st.st_nlink > 1:
+                    linked += size
+    return total, linked, int(charged)
+
+
+# Package stores installs link from instead of copying (mise.toml [env]).
+LINKED_STORES = ('pnpm', 'bun')
+
+
+def measure(home, worktree_roots):
+    """What the worktrees, the package stores and the tool installs take on
+    disk, the share of the worktrees' and stores' bytes that is hardlinked,
+    and whether every store is on the filesystem of every worktree root:
+    hardlinks cannot cross filesystems."""
+    worktrees = [os.path.join(home, root) for root in worktree_roots]
+    stores = [os.path.join(home, STORES[name][0]) for name in LINKED_STORES]
+    tools = [os.path.join(home, '.local', 'share', 'mise', 'installs')]
+    worktree_total, worktree_linked, worktree_bytes = footprint(worktrees)
+    store_total, store_linked, store_bytes = footprint(stores)
+    _, _, tool_bytes = footprint(tools)
+    total = worktree_total + store_total
+    devices = {}
+    for path in worktrees + stores:
+        try:
+            devices[path] = os.stat(path).st_dev
+        except OSError:
+            continue
+    present_roots = [devices[p] for p in worktrees if p in devices]
+    present_stores = [devices[p] for p in stores if p in devices]
+    same = None
+    if present_roots and present_stores:
+        same = len(set(present_roots + present_stores)) == 1
+    return {
+        'worktreesMiB': worktree_bytes // MIB,
+        'storesMiB': store_bytes // MIB,
+        'toolsMiB': tool_bytes // MIB,
+        'hardlinkedPercent': round((worktree_linked + store_linked) * 100 / total) if total else 0,
+        'sameFilesystem': same,
+    }
+
+
+def write_report(path, report):
+    """Replaces the report in one step: a reader never sees half of it."""
+    directory = os.path.dirname(path) or '.'
+    os.makedirs(directory, exist_ok=True)
+    temporary = path + '.tmp'
+    with open(temporary, 'w') as out:
+        json.dump(report, out, sort_keys=True)
+    os.chmod(temporary, 0o644)
+    os.replace(temporary, path)
+
+
 def pair(text, kind):
     name, _, value = text.rpartition('=')
     if not name:
@@ -453,22 +783,21 @@ def pair(text, kind):
     return name, int(value)
 
 
-def command(argv, dry_run, name):
+def command(argv, dry_run, name, **detail):
     if shutil.which(argv[0]) is None:
         return
     if dry_run:
-        log(event='would_run', step=name)
+        log(event='would_run', step=name, **detail)
         return
     try:
         out = subprocess.run(argv, capture_output=True, timeout=1800)
-        log(event='ran', step=name, ok=out.returncode == 0)
+        log(event='ran', step=name, ok=out.returncode == 0, **detail)
     except (OSError, subprocess.TimeoutExpired) as exc:
-        log(event='ran', step=name, ok=False, error=type(exc).__name__)
+        log(event='ran', step=name, ok=False, error=type(exc).__name__, **detail)
 
 
-def cache_children(home, cap, excluded, pressure, idle, now, dry_run):
+def cache_children(directory, cap, excluded, pressure, idle, now, dry_run):
     """Remove whole cache entries; keep protected stores for their own managers."""
-    directory = os.path.join(home, '.cache')
     if not is_real_dir(directory):
         return 0
     entries = []
@@ -515,6 +844,7 @@ def main(argv):
     parser.add_argument('--path', action='append', default=[])
     parser.add_argument('--idle-days', type=float, default=7)
     parser.add_argument('--pressure-mib', type=int, default=15360)
+    parser.add_argument('--pressure-percent', type=float, default=0)
     parser.add_argument('--pressure-inode-percent', type=float, default=0)
     parser.add_argument('--pressure-idle-hours', type=float, default=12)
     parser.add_argument('--docker-age-hours', type=int, default=168)
@@ -523,6 +853,7 @@ def main(argv):
     # Docker to prune.
     parser.add_argument('--docker-cap-percent', type=float)
     parser.add_argument('--home-cache-mib', type=int)
+    parser.add_argument('--cache-root', action='append', default=[])
     parser.add_argument('--exclude-cache', action='append', default=[])
     parser.add_argument('--store-cap', action='append', default=[], type=lambda text: pair(text, 'MIB'))
     parser.add_argument('--user-caches-only', action='store_true')
@@ -530,14 +861,23 @@ def main(argv):
     parser.add_argument('--pressure-cache', action='append', default=[])
     parser.add_argument('--worktree-root', action='append', default=[])
     parser.add_argument('--worktree-idle-days', type=float, default=30)
+    parser.add_argument('--disposable', action='store_true')
+    parser.add_argument('--recovery-node', default=socket.gethostname().split('.')[0])
     parser.add_argument('--cache-cap', action='append', default=[],
                         type=lambda text: pair(text, 'MIB'))
     parser.add_argument('--keep-newest', action='append', default=[],
                         type=lambda text: pair(text, 'N'))
+    parser.add_argument('--keep-checkouts', action='append', default=[],
+                        type=lambda text: pair(text, 'N'))
+    parser.add_argument('--current', action='append', default=[])
+    parser.add_argument('--expire', action='append', default=[],
+                        type=lambda text: pair(text, 'HOURS'))
     parser.add_argument('--mise')
     parser.add_argument('--user')
+    parser.add_argument('--report')
     parser.add_argument('--max-depth', type=int, default=4)
     parser.add_argument('--proc', default='/proc')
+    parser.add_argument('--lsof', action='store_true')
     parser.add_argument('--home-only', action='store_true')
     parser.add_argument('--dry-run', action='store_true')
     args = parser.parse_args(argv)
@@ -546,16 +886,25 @@ def main(argv):
     now = time.time()
     before = {p: free_bytes(p) for p in paths}
     pressure = under_pressure(paths, args.pressure_mib * MIB,
-                              args.pressure_inode_percent)
-    idle = args.pressure_idle_hours * HOUR if pressure else args.idle_days * 24 * HOUR
+                              args.pressure_inode_percent, args.pressure_percent)
+    # Pressure only ever shortens a limit: a disposable fleet's is shorter
+    # than the pressure one already.
+    idle = args.idle_days * 24 * HOUR
+    if pressure:
+        idle = min(idle, args.pressure_idle_hours * HOUR)
     docker_age = args.pressure_docker_age_hours if pressure else args.docker_age_hours
     log(event='started', pressure=pressure, idle_hours=idle / HOUR,
-        docker_age_hours=docker_age, dry_run=args.dry_run,
+        docker_age_hours=docker_age, dry_run=args.dry_run, disposable=args.disposable,
         free_mib={p: v // MIB for p, v in before.items()})
+    cache_roots = args.cache_root or ['.cache']
+
+    def busy():
+        return busy_roots(args.proc, args.lsof)
 
     if args.user_caches_only:
-        caches = cache_children(home, args.home_cache_mib * MIB, args.exclude_cache,
-                                pressure, idle, now, args.dry_run)
+        caches = sum(cache_children(os.path.join(home, root), args.home_cache_mib * MIB,
+                                    args.exclude_cache, pressure, idle, now, args.dry_run)
+                     for root in cache_roots)
         stores = prune_stores(args, home, pressure)
         log(cache_bytes=caches, store_bytes=stores)
         return
@@ -571,7 +920,7 @@ def main(argv):
             categories.update(cache=evidence['cache_bytes'], stores=evidence['store_bytes'])
         else:
             log(event='user_cache_cleanup_failed')
-    freed = collect_checkouts(home, idle, args.max_depth, args.proc, now, args.dry_run)
+    freed = collect_checkouts(home, idle, args.max_depth, busy, now, args.dry_run)
     categories['checkouts'] = freed
     reclaimed = 0
     if pressure:
@@ -581,9 +930,22 @@ def main(argv):
     reclaimed = 0
     for root in args.worktree_root:
         reclaimed += collect_worktrees(os.path.join(home, root),
-                                       idle if pressure else args.worktree_idle_days * 24 * HOUR,
-                                       args.proc, now, args.dry_run)
+                                       min(idle, args.worktree_idle_days * 24 * HOUR)
+                                       if pressure else args.worktree_idle_days * 24 * HOUR,
+                                       busy, now, args.dry_run, args.disposable,
+                                       args.recovery_node, args.user, home)
     categories['worktrees'] = reclaimed
+    reclaimed = 0
+    protected = {os.path.realpath(os.path.join(home, link)) for link in args.current}
+    for directory, count in args.keep_checkouts:
+        reclaimed += keep_checkouts(os.path.join(home, directory), count, protected,
+                                    busy, args.dry_run)
+    categories['fleet_checkouts'] = reclaimed
+    reclaimed = 0
+    for directory, hours in args.expire:
+        reclaimed += expire_entries(os.path.join(home, directory), hours, busy, now,
+                                    args.dry_run)
+    categories['expired'] = reclaimed
     reclaimed = 0
     for cache, cap_mib in args.cache_cap:
         reclaimed += cap_cache(os.path.join(home, cache), cap_mib * MIB, args.dry_run)
@@ -600,17 +962,21 @@ def main(argv):
         categories['mise'] = max(0, before_mise - size_of(installs))
     if not args.home_only and not args.no_docker:
         before_docker = free_bytes('/')
-        age_filter = [] if pressure else ['--filter', f'until={docker_age}h']
+        # A disposable node prunes everything no container uses on every run.
+        unaged = pressure or args.disposable
+        age_filter = [] if unaged else ['--filter', f'until={docker_age}h']
+        until = None if unaged else docker_age
         command(['docker', 'image', 'prune', '--all', '--force', *age_filter],
-                args.dry_run, 'docker_images')
-        if pressure or args.docker_cap_percent is None:
+                args.dry_run, 'docker_images', until_hours=until)
+        if unaged or args.docker_cap_percent is None:
             build_limit = age_filter
         else:
             disk = os.statvfs('/')
             cap_mib = max(1, int(disk.f_blocks * disk.f_frsize * args.docker_cap_percent / 100 / MIB))
             build_limit = ['--keep-storage', f'{cap_mib}MB']
         command(['docker', 'builder', 'prune', '--all', '--force', *build_limit],
-                args.dry_run, 'docker_build_cache')
+                args.dry_run, 'docker_build_cache',
+                until_hours=until if build_limit == age_filter else None)
         if pressure:
             command(['docker', 'volume', 'prune', '--force'], args.dry_run, 'docker_anonymous_volumes')
         categories['docker'] = max(0, free_bytes('/') - before_docker)
@@ -620,10 +986,21 @@ def main(argv):
         categories['apt'] = max(0, free_bytes('/') - before_apt)
 
     after = {p: free_bytes(p) for p in paths}
-    log(event='finished', checkout_mib=freed // MIB,
-        categories_mib={k: v // MIB for k, v in categories.items()},
-        reclaimed_mib=sum(categories.values()) // MIB, dry_run=args.dry_run,
+    categories_mib = {k: v // MIB for k, v in categories.items()}
+    reclaimed_mib = sum(categories.values()) // MIB
+    log(event='finished', checkout_mib=freed // MIB, categories_mib=categories_mib,
+        reclaimed_mib=reclaimed_mib, dry_run=args.dry_run,
         free_mib={p: v // MIB for p, v in after.items()})
+    if args.report and not args.dry_run:
+        write_report(os.path.join(home, args.report), {
+            'version': 1,
+            'finished': int(time.time()),
+            'pressure': pressure,
+            'disposable': args.disposable,
+            'reclaimedMiB': reclaimed_mib,
+            'categoriesMiB': categories_mib,
+            **measure(home, args.worktree_root),
+        })
 
 
 if __name__ == '__main__':

@@ -24,7 +24,18 @@ const { Given, When, Then } = machines;
 When(
   'the resource safety of the worker whose home is {string} is measured',
   async (world, home: string) => {
-    world.checks = await verifyResourceSafety(home, world.run);
+    world.checks = (await verifyResourceSafety(home, world.run)).filter(
+      (check) => check.id === 'ubuntu:resource-safety'
+    );
+  }
+);
+
+When(
+  'what the last disk GC run of the worker reported is read at {int}',
+  async (world, now: number) => {
+    world.checks = (
+      await verifyResourceSafety('/home/fixture', world.run, now)
+    ).filter((check) => check.id === 'ubuntu:disk-gc');
   }
 );
 

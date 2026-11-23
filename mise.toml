@@ -82,6 +82,15 @@ COPILOT_AUTO_UPDATE = "false"
 GROK_DISABLE_AUTOUPDATER = "1"
 # Antigravity ignores "1"; only "true" stops its in-place self-updater.
 AGY_CLI_DISABLE_AUTO_UPDATE = "true"
+# One package store per machine that every checkout links from instead of
+# copying (docs/ubuntu-sync.md, Shared package stores). pnpm: one store-dir,
+# auto import (hardlinks on ext4, clones on APFS), offline first. Bun keeps one
+# cache and links from it by default (hardlink on Linux, clonefile on macOS).
+# The disk GC measures both stores (disk-gc.py STORES).
+pnpm_config_store_dir = "{{env.HOME}}/.local/share/pnpm/store"
+pnpm_config_package_import_method = "auto"
+pnpm_config_prefer_offline = "true"
+BUN_INSTALL_CACHE_DIR = "{{env.HOME}}/.bun/install/cache"
 
 [vars]
 # mise itself, installed by bootstrap/bootstrap.sh before mise can read this

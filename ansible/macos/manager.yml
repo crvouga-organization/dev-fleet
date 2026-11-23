@@ -199,6 +199,145 @@
       when: watch_agent.changed or watch_loaded.rc != 0
       changed_when: true
 
+# The manager's disk GC: the collector every worker runs
+# (ansible/ubuntu/disk-gc.py) with the workers' policy (resourceSafety in
+# ansible/ubuntu/policy.json), as the launchd job diskGc.label, hourly, or
+# every 15 minutes when fleet.json says storage is disposable
+# (fleet_storage_disposable). It runs as the user from a copy outside every
+# revision, since it prunes the manager's dev-fleet checkouts. macOS has no
+# /proc: lsof names the directories processes run in. Its pressure mode
+# starts where manager:disk warns. manager:disk-gc measures the job and reads
+# the report it leaves.
+- name: Collect the manager's disk garbage on a schedule
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: true
+  gather_subset: ['!all']
+  vars_files:
+    - policy.json
+  vars:
+    gc_home: '{{ ansible_facts.env.HOME }}'
+    gc_label: '{{ diskGc.label }}'
+    gc_logs: '{{ gc_home }}/{{ jobLogs.directory }}'
+    gc_script: '{{ gc_home }}/{{ diskGc.script }}'
+    gc_plist: '{{ gc_home }}/Library/LaunchAgents/{{ gc_label }}.plist'
+    gc_domain: 'gui/{{ ansible_facts.user_uid }}'
+    gc_on_disposable: '{{ fleet_storage_disposable | default(false) | bool }}'
+  tasks:
+    - name: Read the workers' disk GC policy
+      ansible.builtin.include_vars:
+        file: '{{ playbook_dir }}/../ubuntu/policy.json'
+        name: ubuntu_policy
+    - name: Create the directories of the disk GC job
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: directory
+        mode: '0700'
+      loop:
+        - '{{ gc_script | dirname }}'
+        - '{{ gc_logs }}'
+        - '{{ gc_home }}/{{ diskGc.report | dirname }}'
+        - '{{ gc_home }}/Library/LaunchAgents'
+    - name: Install the disk GC outside every revision
+      ansible.builtin.copy:
+        src: '{{ playbook_dir }}/../ubuntu/disk-gc.py'
+        dest: '{{ gc_script }}'
+        mode: '0644'
+    - name: Install the disk GC launch agent
+      ansible.builtin.copy:
+        dest: '{{ gc_plist }}'
+        mode: '0644'
+        content: |
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <!-- Managed by dev-fleet: disk GC -->
+          <plist version="1.0"><dict>
+            <key>Label</key><string>{{ gc_label }}</string>
+            <key>ProgramArguments</key><array>
+              <string>/usr/bin/python3</string>
+              <string>-I</string>
+              <string>-B</string>
+              <string>{{ gc_script }}</string>
+              <string>--home</string><string>{{ gc_home }}</string>
+              <string>--path</string><string>{{ gc_home }}</string>
+              <string>--lsof</string>
+              <string>--idle-days</string><string>{{ gc_idle_days }}</string>
+              <string>--pressure-mib</string><string>{{ disk.warnFreeMiB }}</string>
+          {% if gc_on_disposable %}
+              <string>--pressure-percent</string><string>{{ gc_policy.diskGcDisposable.pressureFreePercent }}</string>
+              <string>--disposable</string>
+          {% endif %}
+              <string>--pressure-inode-percent</string><string>{{ gc_policy.inodeWarnFreePercent }}</string>
+              <string>--pressure-idle-hours</string><string>{{ gc_policy.diskGcPressureIdleHours }}</string>
+              <string>--docker-age-hours</string><string>{{ gc_policy.diskGcDockerAgeHours }}</string>
+              <string>--pressure-docker-age-hours</string><string>{{ gc_policy.diskGcPressureDockerAgeHours }}</string>
+              <string>--docker-cap-percent</string><string>{{ gc_policy.diskGcBuildCachePercent }}</string>
+              <string>--home-cache-mib</string><string>{{ gc_policy.diskGcHomeCacheMiB }}</string>
+          {% for root in diskGc.cacheRoots %}
+              <string>--cache-root</string><string>{{ root }}</string>
+          {% endfor %}
+          {% for cache in gc_policy.diskGcExcludedCaches %}
+              <string>--exclude-cache</string><string>{{ cache }}</string>
+          {% endfor %}
+          {% for store, mib in gc_policy.diskGcStoreCapsMiB.items() %}
+              <string>--store-cap</string><string>{{ store }}={{ mib }}</string>
+          {% endfor %}
+          {% for root in gc_policy.diskGcWorktreeRoots %}
+              <string>--worktree-root</string><string>{{ root }}</string>
+          {% endfor %}
+              <string>--worktree-idle-days</string><string>{{ gc_worktree_idle_days }}</string>
+          {% for cache, mib in gc_policy.diskGcCacheCapsMiB.items() %}
+              <string>--cache-cap</string><string>{{ cache }}={{ mib }}</string>
+          {% endfor %}
+          {% for root in gc_policy.diskGcCheckoutRoots %}
+              <string>--keep-checkouts</string><string>{{ root }}={{ gc_policy.diskGcCheckoutsKept }}</string>
+          {% endfor %}
+              <string>--current</string><string>{{ gc_policy.diskGcCurrentCheckout }}</string>
+          {% for directory, hours in gc_policy.diskGcExpireHours.items() %}
+              <string>--expire</string><string>{{ directory }}={{ hours }}</string>
+          {% endfor %}
+              <string>--report</string><string>{{ gc_home }}/{{ diskGc.report }}</string>
+              <string>--mise</string><string>{{ gc_home }}/.local/bin/mise</string>
+            </array>
+            <key>WorkingDirectory</key><string>{{ gc_home }}</string>
+            <key>EnvironmentVariables</key><dict>
+              <key>PATH</key><string>{{ gc_home }}/.local/share/mise/shims:{{ gc_home }}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+            </dict>
+            <key>StartInterval</key><integer>{{ gc_minutes | int * 60 }}</integer>
+            <key>ProcessType</key><string>Background</string>
+            <key>LowPriorityIO</key><true/>
+            <key>Nice</key><integer>19</integer>
+            <key>Umask</key><integer>63</integer>
+            <key>StandardOutPath</key><string>/dev/null</string>
+            <key>StandardErrorPath</key><string>{{ gc_logs }}/{{ gc_label }}.err.log</string>
+          </dict></plist>
+      vars:
+        gc_policy: '{{ ubuntu_policy.resourceSafety }}'
+        gc_idle_days: '{{ (gc_policy.diskGcDisposable.idleHours / 24) if gc_on_disposable else gc_policy.diskGcIdleDays }}'
+        gc_worktree_idle_days: '{{ (gc_policy.diskGcDisposable.worktreeIdleHours / 24) if gc_on_disposable else gc_policy.diskGcWorktreeIdleDays }}'
+        gc_minutes: '{{ gc_policy.diskGcDisposable.intervalMinutes if gc_on_disposable else gc_policy.diskGcIntervalMinutes }}'
+      register: gc_agent
+    - name: Inspect whether the disk GC job is loaded
+      ansible.builtin.command:
+        argv: [/bin/launchctl, print, '{{ gc_domain }}/{{ gc_label }}']
+      changed_when: false
+      check_mode: false
+      failed_when: false
+      register: gc_loaded
+    # launchd caches a loaded definition: a changed plist needs a reload.
+    - name: Unload a stale disk GC job definition
+      ansible.builtin.command:
+        argv: [/bin/launchctl, bootout, '{{ gc_domain }}/{{ gc_label }}']
+      when: gc_agent.changed and gc_loaded.rc == 0
+      failed_when: false
+      changed_when: true
+    - name: Load the disk GC job
+      ansible.builtin.command:
+        argv: [/bin/launchctl, bootstrap, '{{ gc_domain }}', '{{ gc_plist }}']
+      when: gc_agent.changed or gc_loaded.rc != 0
+      changed_when: true
+
 # A skewed clock breaks TLS, token validation and Vault logins with errors
 # that never mention time, and every worker's offset is measured against the
 # manager's. macOS keeps its own time service; this asserts it is on.

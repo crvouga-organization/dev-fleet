@@ -343,13 +343,26 @@
     checksum_algorithm: sha256
   register: disk_gc_source
   when: development_source is defined
-- name: Declare the disk GC service and its hourly timer
+# storage.disposable in fleet.json (fleet_storage_disposable) switches every
+# node to the disposable policy (docs/ubuntu-sync.md, Disk GC): hours instead
+# of days, worktrees saved in a recovery ref or done with on their remote,
+# Docker pruned whatever its age, pressure at a share of the disk, and a run
+# every 15 minutes.
+- name: Declare the disk GC service and its timer
   ansible.builtin.copy:
     dest: '{{ item.dest }}'
     owner: root
     group: root
     mode: '0644'
     content: '{{ item.content }}'
+  vars:
+    disposable: '{{ fleet_storage_disposable | default(false) | bool }}'
+    gc_disposable: '{{ resourceSafety.diskGcDisposable }}'
+    gc_idle_days: '{{ (gc_disposable.idleHours / 24) if disposable else resourceSafety.diskGcIdleDays }}'
+    gc_worktree_idle_days: '{{ (gc_disposable.worktreeIdleHours / 24) if disposable else resourceSafety.diskGcWorktreeIdleDays }}'
+    gc_minutes: '{{ gc_disposable.intervalMinutes if disposable else resourceSafety.diskGcIntervalMinutes }}'
+    # hourly, or every 15 minutes (*:0/15) for a disposable fleet.
+    gc_calendar: "{{ 'hourly' if gc_minutes | int == 60 else '*:0/' ~ gc_minutes }}"
   loop:
     - dest: /etc/systemd/system/personal-fleet-disk-gc.service
       content: |
@@ -360,8 +373,10 @@
         After=docker.service
         [Service]
         Type=oneshot
-        ExecStart=/usr/bin/python3 -I -B {{ disk_gc_source.stat.path }} --home {{ development_home }} --path / --path {{ development_home }} --idle-days {{ resourceSafety.diskGcIdleDays }} --pressure-mib {{ worker_disk_gc_pressure_mib }} --pressure-inode-percent {{ resourceSafety.inodeWarnFreePercent }} --pressure-idle-hours {{ resourceSafety.diskGcPressureIdleHours }} --docker-age-hours {{ resourceSafety.diskGcDockerAgeHours }} --pressure-docker-age-hours {{ resourceSafety.diskGcPressureDockerAgeHours }} --docker-cap-percent {{ resourceSafety.diskGcBuildCachePercent }} --home-cache-mib {{ resourceSafety.diskGcHomeCacheMiB }}{% for cache in resourceSafety.diskGcExcludedCaches %} --exclude-cache {{ cache }}{% endfor %}{% for store, mib in resourceSafety.diskGcStoreCapsMiB.items() %} --store-cap {{ store }}={{ mib }}{% endfor %}{% for root in resourceSafety.diskGcWorktreeRoots %} --worktree-root {{ root }}{% endfor %} --worktree-idle-days {{ resourceSafety.diskGcWorktreeIdleDays }}{% for cache, mib in resourceSafety.diskGcCacheCapsMiB.items() %} --cache-cap {{ cache }}={{ mib }}{% endfor %} --keep-newest /var/cache/personal-fleet={{ resourceSafety.diskGcPackagesKept }} --mise {{ development_home }}/.local/bin/mise --user {{ development_user }}{{ '' if worker_containers_on | default(true) | bool else ' --no-docker' }}
+        ExecStart=/usr/bin/python3 -I -B {{ disk_gc_source.stat.path }} --home {{ development_home }} --path / --path {{ development_home }} --idle-days {{ gc_idle_days }} --pressure-mib {{ worker_disk_gc_pressure_mib }}{{ (' --pressure-percent ' ~ gc_disposable.pressureFreePercent) if disposable else '' }} --pressure-inode-percent {{ resourceSafety.inodeWarnFreePercent }} --pressure-idle-hours {{ resourceSafety.diskGcPressureIdleHours }} --docker-age-hours {{ resourceSafety.diskGcDockerAgeHours }} --pressure-docker-age-hours {{ resourceSafety.diskGcPressureDockerAgeHours }} --docker-cap-percent {{ resourceSafety.diskGcBuildCachePercent }} --home-cache-mib {{ resourceSafety.diskGcHomeCacheMiB }}{% for cache in resourceSafety.diskGcExcludedCaches %} --exclude-cache {{ cache }}{% endfor %}{% for store, mib in resourceSafety.diskGcStoreCapsMiB.items() %} --store-cap {{ store }}={{ mib }}{% endfor %}{% for root in resourceSafety.diskGcWorktreeRoots %} --worktree-root {{ root }}{% endfor %} --worktree-idle-days {{ gc_worktree_idle_days }}{{ ' --disposable' if disposable else '' }}{% for cache, mib in resourceSafety.diskGcCacheCapsMiB.items() %} --cache-cap {{ cache }}={{ mib }}{% endfor %} --keep-newest /var/cache/personal-fleet={{ resourceSafety.diskGcPackagesKept }}{% for root in resourceSafety.diskGcCheckoutRoots %} --keep-checkouts {{ root }}={{ resourceSafety.diskGcCheckoutsKept }}{% endfor %} --current {{ resourceSafety.diskGcCurrentCheckout }}{% for directory, hours in resourceSafety.diskGcExpireHours.items() %} --expire {{ directory }}={{ hours }}{% endfor %} --report {{ resourceSafety.diskGcReport }} --mise {{ development_home }}/.local/bin/mise --user {{ development_user }}{{ '' if worker_containers_on | default(true) | bool else ' --no-docker' }}
 
+        StateDirectory=personal-fleet-disk-gc
+        StateDirectoryMode=0755
         TimeoutStartSec=2h
         Nice=19
         IOSchedulingClass=idle
@@ -375,11 +390,11 @@
       content: |
         # Managed by personal fleet-sync: ansible/ubuntu/disk-gc.py
         [Unit]
-        Description=Run the Personal Fleet disk GC hourly
+        Description=Run the Personal Fleet disk GC every {{ gc_minutes }} minutes
         [Timer]
         OnBootSec=10min
-        OnCalendar=hourly
-        RandomizedDelaySec=5min
+        OnCalendar={{ gc_calendar }}
+        RandomizedDelaySec={{ [gc_minutes | int // 12, 1] | max }}min
         Persistent=true
         [Install]
         WantedBy=timers.target

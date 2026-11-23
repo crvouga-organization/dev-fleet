@@ -188,7 +188,7 @@ Feature: The health of a machine itself
       When the Tailscale key of the computer "manager" is checked on "2026-11-11T00:00:00Z"
       Then the check "tailscale:key-expiry" passes
 
-  Rule: The manager runs a supported macOS with its updates installed, room on its disk, network time and its watch job
+  Rule: The manager runs a supported macOS with its updates installed, room on its disk, network time, its watch job and its disk GC
 
     Background:
       Given these commands print:
@@ -200,6 +200,7 @@ Feature: The health of a machine itself
         | cat            | {}                                                                                      |
         | sudo -n /usr/sbin/systemsetup | Network Time: On |
         | /bin/launchctl print gui/501/dev.devfleet.fleet-watch | state = not running |
+        | /bin/launchctl print gui/501/dev.devfleet.disk-gc | state = not running |
         | cat /etc/newsyslog.d/dev-fleet-dev.conf | # Managed by dev-fleet: manager job logs␊/Users/dev/.local/share/personal/fleet/manager/logs/personal-fleet-sync.out.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/personal-fleet-sync.err.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/dev.devfleet.fleet-watch.out.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/dev.devfleet.fleet-watch.err.log dev:staff 600 3 1024 * NZ |
 
     Scenario: A manager with nothing to do passes every check
@@ -252,6 +253,34 @@ Feature: The health of a machine itself
       Then the check "manager:watch" warns
       And the summary of the check "manager:watch" mentions "MANAGER_WATCH_FAILING exit 1"
       And the remedy of the check "manager:watch" mentions "dev.devfleet.fleet-watch.err.log"
+
+    Scenario: A manager whose disk GC job is not loaded fails: nothing reclaims its disk
+      Given the command "/bin/launchctl print gui/501/dev.devfleet.disk-gc" fails
+      When the health of the manager is checked
+      Then the check "manager:disk-gc" fails
+      And the summary of the check "manager:disk-gc" mentions "MANAGER_DISK_GC_NOT_LOADED"
+      And the remedy of the check "manager:disk-gc" mentions "devfleet fleet-sync"
+
+    Scenario: A disk GC job whose last run failed warns, and points at its log
+      Given the command "/bin/launchctl print gui/501/dev.devfleet.disk-gc" prints "state = not running␊last exit code = 1"
+      When the health of the manager is checked
+      Then the check "manager:disk-gc" warns
+      And the summary of the check "manager:disk-gc" mentions "MANAGER_DISK_GC_FAILING exit 1"
+      And the remedy of the check "manager:disk-gc" mentions "dev.devfleet.disk-gc.err.log"
+
+    Scenario Outline: The manager's disk GC <did> and the check <verdict>
+      The report is the one the collector leaves in
+      ~/Library/Caches/dev-fleet/disk-gc.json after each run.
+      Given the manager's disk GC reported '<report>', where NOW is the time now
+      When the health of the manager is checked
+      Then the check "manager:disk-gc" <verdict>
+      And the summary of the check "manager:disk-gc" mentions "<summary>"
+
+      Examples:
+        | did                                    | report | verdict | summary |
+        | ran just now                           | {"version":1,"finished":NOW,"disposable":false,"reclaimedMiB":340,"categoriesMiB":{"worktrees":300,"fleet_checkouts":40,"mise":0},"worktreesMiB":41984,"storesMiB":15360,"toolsMiB":29696,"hardlinkedPercent":62,"sameFilesystem":true} | passes | reclaimed 340 MiB (worktrees 300, fleet checkouts 40); worktrees hold 41.0 GiB, package stores 15.0 GiB, tool installs 29.0 GiB; 62% |
+        | found a store on another filesystem    | {"version":1,"finished":NOW,"disposable":true,"reclaimedMiB":0,"categoriesMiB":{},"worktreesMiB":1024,"storesMiB":1024,"toolsMiB":1024,"hardlinkedPercent":0,"sameFilesystem":false} | warns | PACKAGE_STORE_OTHER_FILESYSTEM |
+        | last ran four hours ago                | {"version":1,"finished":NOW-14400,"disposable":false,"reclaimedMiB":0,"categoriesMiB":{},"worktreesMiB":0,"storesMiB":0,"toolsMiB":0,"hardlinkedPercent":0,"sameFilesystem":null} | warns | MANAGER_DISK_GC_STALE last run 4 hours ago |
 
     Scenario: A rotation that misses a log of a scheduled job is not in place
       Given the command "cat /etc/newsyslog.d/dev-fleet-dev.conf" prints "# Managed by dev-fleet: manager job logs␊/Users/dev/.local/share/personal/fleet/manager/logs/personal-fleet-sync.out.log dev:staff 600 3 1024 * NZ"

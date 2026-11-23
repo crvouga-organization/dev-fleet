@@ -13,7 +13,9 @@ and its branches are never touched, and pushed to
     refs/recovery/<node>/<branch>
 
 of the worktree's own remote. A clean worktree whose HEAD is already on a
-remote branch has nothing to recover and pushes nothing. Recover with
+remote branch has nothing to recover and pushes nothing. Once the remote
+holds the ref, the same ref is set in the repository itself, so the disk GC
+can tell that the work is saved without asking the remote. Recover with
 `git fetch origin 'refs/recovery/*:refs/recovery/*'`.
 
 Every decision is one JSON line on stdout.
@@ -98,6 +100,11 @@ def guard(path, node, remote, dry_run):
     if dry_run:
         return log(worktree=str(path), action='would-push', ref=ref)
     pushed = git(path, 'push', '--force', '--no-verify', '--quiet', remote, '%s:%s' % (commit, ref))
+    if pushed.returncode == 0:
+        # The same ref, kept locally once the remote holds it: the disk GC of
+        # a disposable fleet removes a worktree whose work it holds
+        # (disk-gc.py, saved_in_recovery_ref).
+        git(path, 'update-ref', ref, commit)
     log(worktree=str(path), action='pushed' if pushed.returncode == 0 else 'failed', ref=ref)
 
 

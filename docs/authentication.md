@@ -138,12 +138,15 @@ Every failure code is in [the runbooks](runbooks.md).
 
 <!-- generated: timers -->
 
-| Timer                            | Declared in                            | Schedule                              |
-| -------------------------------- | -------------------------------------- | ------------------------------------- |
-| `personal-fleet-disk-gc.timer`   | `ansible/ubuntu/tasks/resources.yml`   | OnBootSec=10min, OnCalendar=hourly    |
-| `personal-worker-auth.timer`     | `ansible/ubuntu/tasks/credentials.yml` | OnBootSec=2min, OnUnitActiveSec=10min |
-| `personal-worker-github.timer`   | `ansible/ubuntu/tasks/github.yml`      | OnBootSec=2min, OnUnitActiveSec=10min |
-| `personal-worker-recovery.timer` | `ansible/ubuntu/tasks/recovery.yml`    | OnBootSec=1min, OnUnitActiveSec=1min  |
-| `personal-worker-recovery.timer` | `ansible/ubuntu/tasks/recovery.yml`    | OnBootSec=5min, OnUnitActiveSec=15min |
+| Timer                            | Declared in                            | Schedule                                      |
+| -------------------------------- | -------------------------------------- | --------------------------------------------- |
+| `personal-fleet-disk-gc.timer`   | `ansible/ubuntu/tasks/resources.yml`   | OnBootSec=10min, OnCalendar={{ gc_calendar }} |
+| `personal-worker-auth.timer`     | `ansible/ubuntu/tasks/credentials.yml` | OnBootSec=2min, OnUnitActiveSec=10min         |
+| `personal-worker-github.timer`   | `ansible/ubuntu/tasks/github.yml`      | OnBootSec=2min, OnUnitActiveSec=10min         |
+| `personal-worker-recovery.timer` | `ansible/ubuntu/tasks/recovery.yml`    | OnBootSec=1min, OnUnitActiveSec=1min          |
+| `personal-worker-recovery.timer` | `ansible/ubuntu/tasks/recovery.yml`    | OnBootSec=5min, OnUnitActiveSec=15min         |
 
 <!-- end: timers -->
+
+`gc_calendar` is `hourly`, or `*:0/15` when `storage.disposable` in `fleet.json`
+is true (docs/ubuntu-sync.md, Disk GC).

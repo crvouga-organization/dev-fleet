@@ -12,6 +12,7 @@ Feature: A lost worker loses at most one interval of work in progress
     When the work-in-progress guard runs for the worker "worker-one"
     Then the remote holds "refs/recovery/worker-one/feature"
     And that ref holds "README.md" as changed and "notes.txt"
+    And the repository of the worktree holds the same "refs/recovery/worker-one/feature", for the disk GC
     And the worktree still shows "README.md" as changed and "notes.txt" as new
     And the branch "feature" did not move
 

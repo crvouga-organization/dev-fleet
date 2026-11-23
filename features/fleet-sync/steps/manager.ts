@@ -244,6 +244,8 @@ interface Playbook {
   apply: 'passes' | 'fails';
   /** Whether launchd holds the fleet-watch job. */
   watching: boolean;
+  /** Whether fleet.json says storage is disposable. */
+  disposable?: boolean;
   /** Where the receipts and variables of the scenario are kept. */
   receipts?: string;
   scratch?: string;
@@ -278,6 +280,10 @@ Given("launchd does not hold the manager's watch job", (world) => {
   playbook(world).watching = false;
 });
 
+Given('fleet.json says storage is disposable', (world) => {
+  playbook(world).disposable = true;
+});
+
 /** One applying sync of the manager's policy, `hours` after the first. */
 async function convergePolicy(world: FleetSyncWorld, hours: number) {
   const kept = playbook(world);
@@ -306,7 +312,10 @@ async function convergePolicy(world: FleetSyncWorld, hours: number) {
   world.checks = [
     await convergeManagerPolicy(
       world.commands.run,
-      { manager: { ...fleet.manager } },
+      {
+        manager: { ...fleet.manager },
+        ...(kept.disposable ? { storage: { disposable: true } } : {}),
+      },
       MACOS_MANAGER,
       {
         root: ROOT,
@@ -352,9 +361,12 @@ Then('manager.yml was never run with a password prompt', (world) => {
 });
 
 Then(
-  'manager.yml was given the watch interval of {int} minutes',
-  (world, minutes: number) => {
-    expect(playbook(world).variables).toEqual({ fleet_watch_minutes: minutes });
+  /^manager\.yml was given the watch interval of (\d+) minutes and (disposable|the default) storage$/,
+  (world, minutes: string, storage: string) => {
+    expect(playbook(world).variables).toEqual({
+      fleet_watch_minutes: Number(minutes),
+      fleet_storage_disposable: storage === 'disposable',
+    });
   }
 );
 
