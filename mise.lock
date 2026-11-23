@@ -190,10 +190,10 @@ checksum = "sha256:74e38ab8a592b635d7b0ae85e6f33cb1ceba79ce19c112d425cbbf535e607
 url = "https://awscli.amazonaws.com/AWSCLIV2-2.42.1.pkg"
 
 [[tools.aws-cdk]]
-version = "2.1146.1"
-aube = { path = ".mise/locks/aws-cdk/2.1146.1", digest = "sha256:efa04e24aa95df71fc6507b7546ab544cf5a4dc024c7c0c3599c43523ba895b8" }
+version = "2.1149.0"
+aube = { path = ".mise/locks/aws-cdk/2.1149.0", digest = "sha256:d835fd92c00f201a3e4c8b2dc41fd31e52e53a4b62b3fb3d148891ba2ad0c02c" }
 backend = "npm:aws-cdk"
-specifiers = ["2.1146.1"]
+specifiers = ["2.1149.0"]
 
 [[tools.aws-sam]]
 version = "1.171.0"
