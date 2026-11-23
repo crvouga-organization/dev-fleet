@@ -123,8 +123,8 @@ Feature: A worker proves it can do what agents do on it
     Scenario: The declared identity and a credential for github.com pass both checks
       Given these commands print:
         | command                                    | prints                                                    |
-        | git config --global --get-all user.name    | Example User                                              |
-        | git config --global --get-all user.email   | example-user@users.noreply.github.com                     |
+        | git config --get-all user.name             | Example User                                              |
+        | git config --get-all user.email            | example-user@users.noreply.github.com                     |
         | git credential fill                        | protocol=https␊host=github.com␊username=x␊password=PRIVATE_SENTINEL␊ |
       When the worker's Git is checked
       Then the check "worker:git-identity" passes
@@ -132,13 +132,14 @@ Feature: A worker proves it can do what agents do on it
       And the command "git credential fill" was given "protocol=https␊host=github.com␊␊" on standard input
       And no "gh" command was run
       And nothing reported contains "PRIVATE_SENTINEL"
+      And every "git config" command read Git's configuration as a session outside any repository sees it
 
     Scenario: Removing the credential helper fails worker:git-push-auth
       Git with prompts off fails at once when no helper answers.
       Given these commands print:
         | command                                    | prints                                |
-        | git config --global --get-all user.name    | Example User                          |
-        | git config --global --get-all user.email   | example-user@users.noreply.github.com |
+        | git config --get-all user.name             | Example User                          |
+        | git config --get-all user.email            | example-user@users.noreply.github.com |
       And the command "git credential fill" fails with the error "fatal: could not read Username for 'https://github.com': terminal prompts disabled"
       When the worker's Git is checked
       Then the check "worker:git-push-auth" fails
@@ -149,8 +150,8 @@ Feature: A worker proves it can do what agents do on it
     Scenario Outline: An identity that is <how> fails worker:git-identity with <code>
       Given these commands print:
         | command                                    | prints   |
-        | git config --global --get-all user.name    | <name>   |
-        | git config --global --get-all user.email   | <email>  |
+        | git config --get-all user.name             | <name>   |
+        | git config --get-all user.email            | <email>  |
         | git credential fill                        | password=PRIVATE_SENTINEL |
       When the worker's Git is checked
       Then the check "worker:git-identity" fails
@@ -166,22 +167,22 @@ Feature: A worker proves it can do what agents do on it
       Given the fleet declares that pushes are proven against "https://github.com/example-user/private-check"
       And these commands print:
         | command                                    | prints                                |
-        | git config --global --get-all user.name    | Example User                          |
-        | git config --global --get-all user.email   | example-user@users.noreply.github.com |
+        | git config --get-all user.name             | Example User                          |
+        | git config --get-all user.email            | example-user@users.noreply.github.com |
         | git credential fill                        | password=PRIVATE_SENTINEL             |
       And the command "git ls-remote" fails with the error "remote: Repository not found. PRIVATE_SENTINEL"
       When the worker's Git is checked
       Then the check "worker:git-push-auth" fails
       And the summary of the check "worker:git-push-auth" mentions "GIT_REMOTE_REFUSED"
       And the first "git" command run was:
-        | git | config | --global | --get-all | user.name |
+        | git | config | --get-all | user.name |
       And nothing reported contains "PRIVATE_SENTINEL"
 
     Scenario: Without signing declared, there is no signing check
       Given these commands print:
         | command                                    | prints                                |
-        | git config --global --get-all user.name    | Example User                          |
-        | git config --global --get-all user.email   | example-user@users.noreply.github.com |
+        | git config --get-all user.name             | Example User                          |
+        | git config --get-all user.email            | example-user@users.noreply.github.com |
         | git credential fill                        | password=PRIVATE_SENTINEL             |
       When the worker's Git is checked
       Then there is no check "worker:git-signing"
@@ -198,12 +199,12 @@ Feature: A worker proves it can do what agents do on it
       is signed, and the signature is not reported.
       Given these commands print:
         | command                                    | prints                                                        |
-        | git config --global --get-all user.name    | Example User                                                  |
-        | git config --global --get-all user.email   | example-user@users.noreply.github.com                         |
+        | git config --get-all user.name             | Example User                                                  |
+        | git config --get-all user.email            | example-user@users.noreply.github.com                         |
         | git credential fill                        | password=PRIVATE_SENTINEL                                     |
-        | git config --global --get-all gpg.format   | ssh                                                           |
-        | git config --global --get-all user.signingkey | /home/dev/.ssh/dev-fleet-git-signing.pub                   |
-        | git config --global --get-all commit.gpgsign  | true                                                       |
+        | git config --get-all gpg.format            | ssh                                                           |
+        | git config --get-all user.signingkey          | /home/dev/.ssh/dev-fleet-git-signing.pub                   |
+        | git config --get-all commit.gpgsign           | true                                                       |
         | ssh-keygen -Y sign -n git -f /home/dev/.ssh/dev-fleet-git-signing | -----BEGIN SSH SIGNATURE-----␊PRIVATE_SENTINEL␊-----END SSH SIGNATURE----- |
       When the worker's Git is checked
       Then the check "worker:git-signing" passes
@@ -214,12 +215,12 @@ Feature: A worker proves it can do what agents do on it
     Scenario Outline: Signing that is <how> fails worker:git-signing with <code>
       Given these commands print:
         | command                                       | prints     |
-        | git config --global --get-all user.name       | Example User |
-        | git config --global --get-all user.email      | example-user@users.noreply.github.com |
+        | git config --get-all user.name                | Example User |
+        | git config --get-all user.email               | example-user@users.noreply.github.com |
         | git credential fill                           | password=PRIVATE_SENTINEL |
-        | git config --global --get-all gpg.format      | <format>   |
-        | git config --global --get-all user.signingkey | <key>      |
-        | git config --global --get-all commit.gpgsign  | <always>   |
+        | git config --get-all gpg.format               | <format>   |
+        | git config --get-all user.signingkey          | <key>      |
+        | git config --get-all commit.gpgsign           | <always>   |
       And the command "ssh-keygen -Y sign" fails with the error "Load key: No such file or directory PRIVATE_SENTINEL"
       When the worker's Git is checked
       Then the check "worker:git-signing" fails
@@ -243,3 +244,5 @@ Feature: A worker proves it can do what agents do on it
       Then the check "worker:git-identity" warns
       And the summary of the check "worker:git-identity" mentions "GIT_IDENTITY_UNDECLARED"
       And the remedy of the check "worker:git-identity" names the fleet.json this process reads, by its path
+      And the remedy of the check "worker:git-identity" mentions "remove from ~/.gitconfig on every node any user.name, user.email or GitHub credential helper other than gh auth git-credential"
+      And the remedy of the check "worker:git-identity" mentions "the canary stops the rollout"
