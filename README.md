@@ -260,8 +260,9 @@ there `claude`, `codex`, `opencode`, `grok` and `antigravity` are the fleet's
 launchers (`agents/bin`), ahead of the pinned CLIs on the `PATH` of every
 shell. A person in a terminal on a worker, or an app that starts an agent over
 SSH, therefore uses the proxy's accounts, picked by the fleet's selection
-policy. The manager is your own machine: its commands stay the pinned CLIs
-with whatever sign-in you gave them.
+policy. The pinned CLI itself is still there, behind the launcher, as
+`~/.local/share/mise/shims/claude`. The manager is your own machine: its
+commands stay the pinned CLIs with whatever sign-in you gave them.
 
 ## Add or remove a machine
 
