@@ -22,7 +22,7 @@ azure-cli = { version = "2.91.0", lazy = true }
 restic = { version = "0.19.1", os = ["linux", "macos"], lazy = true }
 # Replicates the fleet state database to the storage bucket (src/state).
 litestream = { version = "0.5.18", os = ["linux", "macos"], lazy = true }
-pnpm = "12.16.1"
+pnpm = "12.23.0"
 "npm:@yarnpkg/cli-dist" = "4.19.0"
 deno = "2.9.8"
 python = "3.15.2"
