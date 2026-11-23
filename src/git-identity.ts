@@ -1,6 +1,6 @@
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
-import { runAnsible } from './platform/ansible';
+import { runAnsible, variablesDirectory } from './platform/ansible';
 import type { GitIdentity } from './definition';
 import type { Check, Runner } from './types';
 import { fleetJson } from './fleet-config';
@@ -28,7 +28,8 @@ export async function convergeGitIdentity(
         git_home: home,
         git_signing: git.signing ?? '',
       }),
-    }
+    },
+    variablesDirectory(home)
   );
   return [
     {
@@ -44,7 +45,7 @@ export async function convergeGitIdentity(
         : {
             remedy: {
               action:
-                'Inspect ~/.config/git/config and ~/.gitconfig on this node: a ~/.gitconfig that sets user.name, user.email or a GitHub credential helper wins over the fleet. Remove those lines and rerun fleet-sync.',
+                'Inspect ~/.config/git/config and ~/.gitconfig on this node: a ~/.gitconfig that sets user.name or user.email, or a GitHub credential helper other than gh auth git-credential, wins over the fleet. Remove those lines and rerun fleet-sync; the helper gh auth setup-git writes may stay.',
             },
           }),
     },
@@ -59,11 +60,44 @@ const QUIET = {
   SSH_ASKPASS: '',
 };
 
-async function effective(run: Runner, key: string): Promise<string> {
-  const result = await run(['git', 'config', '--global', '--get-all', key], {
-    timeoutMs: 10_000,
+/** Git's configuration as a session outside any repository sees it:
+ * ~/.config/git/config, then ~/.gitconfig, the later winning. Not `--global`,
+ * which some Git builds read from ~/.gitconfig alone when it exists; not the
+ * system file, which comes first and cannot override either. The same read
+ * as `ansible/github/git.yml`.
+ */
+export async function effectiveGitConfig(
+  run: Runner,
+  key: string,
+  timeoutMs = 10_000
+): Promise<string[] | null> {
+  const result = await run(['git', 'config', '--get-all', key], {
+    cwd: '/',
+    env: { GIT_CONFIG_NOSYSTEM: '1' },
+    timeoutMs,
   });
-  return result.ok ? (result.stdout.trim().split('\n').pop() ?? '') : '';
+  return result.ok ? result.stdout.replace(/\n$/, '').split('\n') : null;
+}
+
+async function effective(run: Runner, key: string): Promise<string> {
+  return (await effectiveGitConfig(run, key))?.pop()?.trim() ?? '';
+}
+
+/** A GitHub credential helper that asks gh, by any path: the one dev-fleet
+ * declares and the one `gh auth setup-git` writes are the same source. The
+ * same pattern as `git_gh_helper_pattern` in `ansible/github/git.yml`.
+ */
+export const GH_CREDENTIAL_HELPER =
+  /^!(\S*\/|'[^']*\/)?gh'? auth git-credential$/;
+
+/** Git asks every helper after the last empty one, in order: each must be gh. */
+export function asksOnlyGh(helpers: string[]): boolean {
+  const trimmed = helpers.map((helper) => helper.trim());
+  const asked = trimmed.slice(trimmed.lastIndexOf('') + 1);
+  return (
+    asked.length > 0 &&
+    asked.every((helper) => GH_CREDENTIAL_HELPER.test(helper))
+  );
 }
 
 /** Commits carry the declared author: the effective `user.name` and
@@ -80,7 +114,7 @@ export async function gitIdentityCheck(
       status: 'warn',
       summary: 'GIT_IDENTITY_UNDECLARED',
       remedy: {
-        action: `Declare git.name and git.email in ${fleetJson()} and rerun fleet-sync; until then commits on this node carry whatever author it happens to have.`,
+        action: `Declare git.name and git.email in ${fleetJson()} and rerun fleet-sync; until then commits on this node carry whatever author it happens to have. First remove from ~/.gitconfig on every node any user.name, user.email or GitHub credential helper other than gh auth git-credential (the one gh auth setup-git writes may stay): it wins over the declared block, so git:configuration fails and the canary stops the rollout.`,
       },
     };
   const name = await effective(run, 'user.name');

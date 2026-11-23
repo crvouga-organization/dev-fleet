@@ -185,7 +185,10 @@ railway login
 Only sign into providers the task actually needs. On fleet machines the Git
 identity and the GitHub credential helper come from the `git` block of
 `fleet.json`: `fleet-sync` writes them in `~/.config/git/config` and checks
-them as `worker:git-identity` and `worker:git-push-auth`. With
+them as `worker:git-identity` and `worker:git-push-auth`. The helper
+`gh auth setup-git` writes in `~/.gitconfig` may stay; a `user.name`,
+`user.email` or other GitHub helper there wins over the block and fails
+`git:configuration`, so remove it before declaring the block. With
 `"signing": "ssh"` in that block every node also makes an SSH key of its own
 (`~/.ssh/dev-fleet-git-signing`, never copied off the node) and signs every
 commit and tag with it, checked as `worker:git-signing`; GitHub shows those

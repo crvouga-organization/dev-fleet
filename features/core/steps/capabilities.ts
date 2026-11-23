@@ -129,6 +129,23 @@ Then(
   }
 );
 
+/** Both per-user files as Git applies them, `~/.gitconfig` last: never
+ * `--global`, which some Git builds read from `~/.gitconfig` alone.
+ */
+Then(
+  "every {string} command read Git's configuration as a session outside any repository sees it",
+  (world, line: string) => {
+    const matches = startsWith(line);
+    const calls = world.commands.calls.filter((call) => matches(call.command));
+    expect(calls.length).toBeGreaterThan(0);
+    for (const call of calls) {
+      expect(call.command).not.toContain('--global');
+      expect(call.options?.cwd).toBe('/');
+      expect(call.options?.env?.['GIT_CONFIG_NOSYSTEM']).toBe('1');
+    }
+  }
+);
+
 Then(
   "every {string} command ran with git's prompts turned off",
   (world, name: string) => {

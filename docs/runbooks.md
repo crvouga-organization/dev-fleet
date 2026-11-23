@@ -202,8 +202,8 @@ write `1` to that agent scope’s `cgroup.kill`.
 ## Git identity and pushing
 
 - **Meaning:** Commits on the node would carry the wrong author, would not be signed although `git.signing` is declared, or git cannot authenticate to GitHub on its own.
-- **Confirm:** On the node: `git config --global --get user.name`, and `printf "protocol=https\nhost=github.com\n\n" | GIT_TERMINAL_PROMPT=0 git credential fill >/dev/null`.
-- **Fix:** Declare the `git` block in `fleet.json` and run `devfleet fleet-sync` (`ansible/github/git.yml`). Remove lines in `~/.gitconfig` that override it.
+- **Confirm:** On the node, from `/`: `git config --show-origin --get-all user.name` (both per-user files, `~/.gitconfig` winning), and `printf "protocol=https\nhost=github.com\n\n" | GIT_TERMINAL_PROMPT=0 git credential fill >/dev/null`.
+- **Fix:** Declare the `git` block in `fleet.json` and run `devfleet fleet-sync` (`ansible/github/git.yml`). Remove lines in `~/.gitconfig` that override it: `user.name`, `user.email`, or a GitHub credential helper other than `gh auth git-credential` (the one `gh auth setup-git` writes may stay). Do this before declaring the block: an override fails `git:configuration`, which stops the rollout at the canary.
 - **Escalate:** GIT_REMOTE_REFUSED means the fleet account lost access to the declared repository: a person grants it. GitHub shows signed commits as verified only once a person adds each node's `~/.ssh/dev-fleet-git-signing.pub` to the account as a signing key.
 
 - `GIT_CONFIGURATION_INCOMPLETE`: git configuration incomplete.
