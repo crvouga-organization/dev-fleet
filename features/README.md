@@ -78,8 +78,8 @@ Then('the report lists these checks:', (world, table: DataTable) => { … });
   `@agent-box` and `@tailnet-box` (disposable systemd machines, the second
   on a private tailnet with a self-hosted control plane), `@proxy-box` (the
   pinned CLI proxy in a container, with a stand-in provider), the Litestream
-  scenarios in `state/`, and the `@ansible` scenarios in `agents/`, which run
-  the agents play against a directory of their own.
+  scenarios in `state/`, and the `@ansible` scenarios in `agents/` and
+  `github/`, which run a play against a directory of their own.
 - Keep a step short and reusable. When two steps differ by a value, capture
   the value.
 

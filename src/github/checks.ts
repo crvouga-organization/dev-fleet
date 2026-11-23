@@ -5,6 +5,7 @@ import { githubCredential } from './credential';
 import { githubNode, githubPolicy, type GithubNode } from './policy';
 import { activeToken, GITHUB_STEP_TIMEOUT_MS } from './sync';
 import { fleetJson } from '../fleet-config';
+import { asksOnlyGh, effectiveGitConfig } from '../git-identity';
 import { secretsLoginOwner, unreadSecret } from '../secrets-blocked';
 
 export interface GithubCheckInput {
@@ -383,21 +384,12 @@ async function organizationAccess(
  * change in git; no second copy of it is written.
  */
 async function gitCredential(run: Runner): Promise<Check> {
-  const helpers = await run(
-    [
-      'git',
-      'config',
-      '--global',
-      '--get-all',
-      'credential.https://github.com.helper',
-    ],
-    { timeoutMs: 5_000 }
+  const helpers = await effectiveGitConfig(
+    run,
+    'credential.https://github.com.helper',
+    5_000
   );
-  const ok =
-    helpers.ok &&
-    helpers.stdout
-      .split('\n')
-      .some((line) => /(^|[/!\s])gh'? auth git-credential$/.test(line.trim()));
+  const ok = helpers !== null && asksOnlyGh(helpers);
   return {
     id: 'github:git-credential',
     status: ok ? 'pass' : 'fail',
