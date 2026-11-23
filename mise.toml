@@ -13,7 +13,7 @@ lockfile_platforms = ["linux-x64", "linux-arm64", "macos-x64", "macos-arm64", "w
 gh = "2.105.0"
 shellcheck = "0.11.0"
 actionlint = "1.7.12"
-opentofu = "1.13.9"
+opentofu = "1.13.10"
 bun = "1.4.5"
 node = "26.13.0"
 atlas = { version = "1.4.0", os = ["linux", "macos"], lazy = true }
