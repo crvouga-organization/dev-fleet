@@ -1553,6 +1553,30 @@
       }
     },
     {
+      "id": "super:app",
+      "meaning": "super.engineering on the manager answers its CLI.",
+      "severity": "advisory",
+      "repair": {
+        "manual": "super.engineering is installed, started and updated by a person on the manager, and reaches a worker with the manager’s own SSH configuration; fleet-sync creates each worker’s workspace once the app answers."
+      }
+    },
+    {
+      "id": "super:ssh",
+      "meaning": "The manager's own SSH reaches the worker without a prompt and finds Git, flock and a coding agent there, as a super.engineering remote workspace needs.",
+      "severity": "advisory",
+      "repair": {
+        "manual": "super.engineering is installed, started and updated by a person on the manager, and reaches a worker with the manager’s own SSH configuration; fleet-sync creates each worker’s workspace once the app answers."
+      }
+    },
+    {
+      "id": "super:workspace",
+      "meaning": "super.engineering on the manager holds a remote workspace whose SSH target is this worker.",
+      "severity": "advisory",
+      "repair": {
+        "manual": "super.engineering is installed, started and updated by a person on the manager, and reaches a worker with the manager’s own SSH configuration; fleet-sync creates each worker’s workspace once the app answers."
+      }
+    },
+    {
       "id": "sync:bun.lock",
       "meaning": "An input of the computer's checkout (a lockfile, a tool pin, a manifest) matches the manager's.",
       "severity": "required",

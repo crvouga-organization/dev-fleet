@@ -156,7 +156,7 @@ export interface FleetDefinition {
     };
   };
   worker?: WorkerPolicy;
-  /** The IDEs every machine runs; `["t3"]` when not named (idesOf). */
+  /** The IDEs the fleet runs; `["t3"]` when not named (idesOf). */
   ides?: IdeId[];
   /** What every machine's T3 holds beyond its provider instances. */
   t3?: T3Definition;

@@ -670,9 +670,9 @@
       "minItems": 1,
       "uniqueItems": true,
       "items": {
-        "enum": ["t3"]
+        "enum": ["t3", "super"]
       },
-      "description": "The IDEs every machine runs. Defaults to [\"t3\"]; the README's support matrix lists the supported ones."
+      "description": "The IDEs the fleet runs. Defaults to [\"t3\"]; the README's support matrix lists the supported ones. \"super\" is super.engineering on the manager, with every worker as one of its remote SSH workspaces."
     },
     "t3": {
       "type": "object",

@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 438 codes; 91 need a person.
+There are 445 codes; 94 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -356,6 +356,21 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_NO_GRAPHICAL_SESSION`: logged by `personal-worker-recovery` on a desktop worker with a count: no graphical session is running, so the desktop app cannot run and the run fails. After three checks in a row the display manager is restarted so that auto-login starts a session, three times at most; after that the log says a person must log in at the worker.
 - `T3_RESTART_DEADLINE`: not a failure. `personal-worker-recovery` logs it when a restart of T3 has waited `t3RestartMaxDeferralHours` (`ansible/ubuntu/policy.json`) and is applied although agent turns run: they end. `worker:t3-deadline-restarts` counts these of the last 24 hours as a warning. Nothing is left to repair: send the threads whose turn ended their next message.
 - `T3_IDLE_UNKNOWN`: not a failure of its own. The idle check of `personal-worker-recovery` could not read the runs T3 records in its state database, and what it cannot read counts as busy: a pending restart keeps waiting (`T3_RESTART_PENDING`) until its deadline. Read `worker:t3-health` when it repeats.
+
+## super.engineering
+
+- **Meaning:** A fleet that lists `super` under `ides` runs super.engineering on the manager with every worker as one of its remote SSH workspaces. The app did not answer, or a worker is not ready to be one of its workspaces. These are warnings: they never fail a sync.
+- **Confirm:** The `super:*` checks of `devfleet fleet-sync`. On the manager, `~/.super.engineering/bin/se status --json` and `~/.super.engineering/bin/se workspace list --json`; for a worker, `ssh -o BatchMode=yes ALIAS 'command -v git flock claude'` with the alias `fleet.json` names.
+- **Fix:** Follow the remedy of the check, then run `devfleet fleet-sync`: it creates the workspace of every worker that has none.
+- **Escalate:** When the app runs, remote workspaces are on, the worker answers that SSH command and the workspace is still not created.
+
+- `SUPER_NOT_INSTALLED`: a warning of `super:app` or `super:workspace`: the app's CLI (`~/.super.engineering/bin/se`) is not on the manager. dev-fleet does not install the app: install it from <https://super.engineering/download>, start it once, then run `devfleet fleet-sync`. **Needs a person.**
+- `SUPER_NOT_RUNNING`: a warning of `super:app` or `super:workspace`: the CLI is there and no running app answers it, as during a scheduled sync on a manager nobody is logged in to. Start super.engineering on the manager; the next `devfleet fleet-sync` creates the workspaces that are missing.
+- `SUPER_REMOTE_WORKSPACES_OFF`: a warning of `super:workspace`: the app refused to create a remote workspace because the feature is off. In the app open Settings → Experimental and enable Remote workspaces, then run `devfleet fleet-sync`. **Needs a person.**
+- `SUPER_REFUSED`: a warning of `super:app` or `super:workspace`: the app answered with an error dev-fleet does not know, or with something that is not its JSON; the remedy names the app's error code and nothing else of what it said. Update the app and start it again, then run `devfleet fleet-sync`; when it repeats, raise an issue with that code.
+- `SUPER_SSH_UNREACHABLE`: a warning of `super:ssh`: the app connects with the manager's own SSH configuration, never with the options `fleet-sync` uses, and that plain `ssh` does not reach the worker without a prompt. A worker `fleet.json` declares without an `ssh` alias is the usual cause: its host key is pinned in the fleet state, which the operator's SSH does not read. Add an alias to `~/.ssh/config` on the manager, accept the host key once, name the alias as the worker's `ssh`, then run `devfleet fleet-sync`. No workspace is created until then. **Needs a person.**
+- `SUPER_HOST_INCOMPLETE`: a warning of `super:ssh`: an SSH session without a terminal finds no `git` or no `flock` on the worker; the remedy names which. The app's helper cannot be installed without them. Run `devfleet fleet-sync --node ID`: the baseline installs both.
+- `SUPER_AGENTS_NOT_FOUND`: a warning of `super:ssh`: an SSH session without a terminal finds none of the fleet's coding agents on the worker's `PATH`, so the app can start no agent there. Run `devfleet fleet-sync --node ID`, which installs the pinned agents and puts their shims on that session's `PATH`; confirm with the SSH command above.
 
 ## Monitoring (Beszel)
 

@@ -6,6 +6,7 @@ import './steps/models';
 import './steps/manager';
 import './steps/pairing';
 import './steps/work-in-progress';
+import './steps/super';
 
 runFeatures({
   directory: import.meta.dir,

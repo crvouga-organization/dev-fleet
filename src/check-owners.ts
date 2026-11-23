@@ -153,6 +153,11 @@ export const CHECK_OWNERS: CheckOwner[] = [
     manual:
       'A worker’s first T3 pairing and its private route are approved by a person; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest.',
   },
+  {
+    pattern: 'super:*',
+    manual:
+      'super.engineering is installed, started and updated by a person on the manager, and reaches a worker with the manager’s own SSH configuration; fleet-sync creates each worker’s workspace once the app answers.',
+  },
   { pattern: 'vscode:*', manual: IDENTITY },
   {
     pattern: 'git:*',
