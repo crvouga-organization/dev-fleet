@@ -494,7 +494,7 @@
         "messages": [
           {
             "role": "user",
-            "content": "What is the weather in [[Berlin]]? Use the tool with celsius, then report the temperature."
+            "content": "What is the weather in [[Berlin]]? Use the tool with celsius, then report the temperature and quote the station reading id exactly as the tool gives it."
           }
         ],
         "tools": ["get_weather"],
@@ -515,7 +515,7 @@
         }
       },
       "results": {
-        "get_weather": "Berlin is {marker} degrees celsius and clear."
+        "get_weather": "Berlin: 14 degrees celsius, clear. Station reading id: {marker}"
       },
       "followup": {
         "tool_choice": "none",
@@ -561,7 +561,7 @@
         }
       },
       "results": {
-        "get_weather": "Reading for the requested city: {marker} degrees."
+        "get_weather": "Requested city: 18 degrees celsius, clear. Station reading id: {marker}"
       },
       "followup": {
         "tool_choice": "none",

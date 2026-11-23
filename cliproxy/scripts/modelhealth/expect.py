@@ -10,6 +10,27 @@ def _lower(text):
     return text.lower()
 
 
+def _squash(text):
+    return re.sub(r"[^0-9a-z]", "", text.casefold())
+
+
+def _missing_token_hint(needle, content):
+    """Say how content relates to a token it lacks, without quoting either."""
+    letters, digits = re.findall(r"[A-Za-z]+", needle), re.findall(r"[0-9]+", needle)
+    if _squash(needle) and _squash(needle) in _squash(content):
+        return "content has the token with different separators or formatting"
+    haystack = _lower(content)
+    has_letters = bool(letters) and all(_lower(part) in haystack for part in letters)
+    has_digits = bool(digits) and all(part in content for part in digits)
+    if has_digits and has_letters:
+        return "content has the token's letters and digits apart"
+    if has_digits:
+        return "content has the token's digits but not its letters"
+    if has_letters:
+        return "content has the token's letters but not its digits"
+    return "content has no part of the token"
+
+
 def _matches(actual, wanted):
     if isinstance(wanted, dict):
         if "regex" in wanted:
@@ -35,7 +56,8 @@ def evaluate(expect, norm, tool_schemas=None, max_gap=None):
             found.append(("assertion", "assistant content is empty"))
         needle = content.get("contains")
         if needle and _lower(needle) not in _lower(norm.content):
-            found.append(("assertion", "assistant content does not contain the expected token"))
+            found.append(("assertion", "assistant content does not contain the expected token (%s)"
+                          % _missing_token_hint(needle, norm.content)))
         if content.get("max_chars") and len(norm.content) > content["max_chars"]:
             found.append(("assertion", "assistant content exceeds max_chars"))
     if expect.get("usage") and norm.usage is None:

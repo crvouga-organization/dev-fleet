@@ -54,7 +54,11 @@ models.json  ──►  config.py (validate, resolve capability states)
   framing, `[DONE]`, terminal Responses event, sequence numbers, streamed vs final consistency).
   `expect.py` then checks the declared invariants. Exact natural-language output is never asserted;
   text checks use random per-run tokens (`{codeword}`, `{marker}`, `{nonce}`) and tool checks use
-  forced tool choice with JSON-Schema-validated arguments.
+  forced tool choice with JSON-Schema-validated arguments. A token is only ever placed where the
+  prompt asks for it verbatim (a code word, a marker, a labelled id), never where the model is asked
+  to interpret it: a tool result carries a plausible value plus the token as an explicit id field
+  that the prompt asks to quote exactly. When content lacks a token, the failure says only whether
+  it held the token reformatted, its digits alone or its letters alone, never the content.
 - **Independence.** Each model gets its own context, request budget share and consecutive-failure
   counter. An exception in one check becomes a `harness` failure for that check only.
 
