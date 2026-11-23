@@ -5,6 +5,10 @@
   "lockFileMaintenance": {
     "enabled": true
   },
+  "vulnerabilityAlerts": {
+    "enabled": false
+  },
+  "osvVulnerabilityAlerts": true,
   "customManagers": [
     {
       "customType": "regex",

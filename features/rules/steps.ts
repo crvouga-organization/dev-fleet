@@ -939,6 +939,20 @@ Then(
   }
 );
 
+Then('Renovate does not ask GitHub for Dependabot alerts', () => {
+  const { vulnerabilityAlerts } = JSON.parse(read('renovate.json')) as {
+    vulnerabilityAlerts?: { enabled?: boolean };
+  };
+  expect(vulnerabilityAlerts?.enabled).toBe(false);
+});
+
+Then('Renovate reads security advisories from OSV', () => {
+  const { osvVulnerabilityAlerts } = JSON.parse(read('renovate.json')) as {
+    osvVulnerabilityAlerts?: boolean;
+  };
+  expect(osvVulnerabilityAlerts).toBe(true);
+});
+
 Then(
   'Renovate moves {string} only to a release at least {string} old',
   (_world, dependency: string, age: string) => {
