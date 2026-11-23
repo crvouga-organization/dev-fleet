@@ -203,6 +203,25 @@ Feature: A new worker reaches ready in one fleet-sync, with no hands on it
         | --maintenance-reboot         | false |
         | --maintenance-reboot --force | true  |
 
+    Scenario: --maintenance-reboot reboots a ready worker whose T3 io reserve waits for the user manager
+      The user manager takes the io controller fleet-sync declares on its
+      next start, and nothing but a reboot starts it again: the remedy of the
+      warning sends the operator here, with or without pending updates.
+      Given the first converge reports:
+        | check                | status | summary                  |
+        | worker:t3-protection | warn   | T3_PROTECTION_ESCAPED io |
+      And each converge after it reports:
+        | check                | status | summary                                                  |
+        | worker:t3-protection | pass   | The T3 listener has its CPU, I/O and memory reserve. |
+      And the playbook "ubuntu/reboot.yml" succeeds
+      When the worker is deployed with --maintenance-reboot
+      Then the playbook "ubuntu/reboot.yml" was applied with:
+        | variable | value       |
+        | reason   | maintenance |
+        | force    | false       |
+      And the worker was converged 2 times
+      And the deployment reports "worker:reboot" as "pass"
+
     Scenario: Without --maintenance-reboot, pending updates only warn
       Given each converge reports:
         | check                 | status | summary                                                   |
