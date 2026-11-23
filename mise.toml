@@ -34,7 +34,7 @@ ripgrep = "15.2.0"
 # Terminal multiplexer for long agent and build sessions on a worker.
 tmux = { version = "3.8", os = ["linux", "macos"] }
 fd = "10.5.2"
-fzf = "0.74.5"
+fzf = "0.75.0"
 bat = "0.26.1"
 delta = "0.18.2"
 git-lfs = "3.8.1"
