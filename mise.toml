@@ -10,7 +10,7 @@ lockfile = true
 lockfile_platforms = ["linux-x64", "linux-arm64", "macos-x64", "macos-arm64", "windows-x64"]
 
 [tools]
-gh = "2.103.3"
+gh = "2.105.0"
 shellcheck = "0.11.0"
 actionlint = "1.7.12"
 opentofu = "1.13.9"
