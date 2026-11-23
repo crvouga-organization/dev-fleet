@@ -96,9 +96,52 @@ export const T3_SERVICE = 't3code-desktop.service';
  * and nothing of the sync's.
  */
 type Launch =
-  | { kind: 'sync' }
+  | { kind: 'sync'; env: Record<string, string> }
   | { kind: 'service'; env: Record<string, string> }
   | { kind: 'incomplete' };
+
+/** Variables an agent session or a launcher sets for the tool it starts:
+ * the account and node it is pinned to, the proxy key and base URL, the
+ * tool's own home and configuration. A sync started inside an agent session
+ * inherits them; none of them may reach a launch, or every session would be
+ * pinned to the calling session's account and tool.
+ */
+const LAUNCHER_PREFIXES = [
+  'WS_AGENT_',
+  'CLIPROXY_',
+  'ANTHROPIC_',
+  'CLAUDE_CODE_',
+  'CODEX_',
+  'OPENCODE_',
+  'GROK_',
+  'GEMINI_',
+  'GOOGLE_GEMINI_',
+  'GOOGLE_GENAI_',
+  'AGY_',
+  'OPENAI_',
+  'XAI_',
+];
+const LAUNCHER_NAMES = new Set(['CLAUDECODE', 'DISABLE_AUTOUPDATER']);
+
+/** What the sync launches an agent tool with, wherever the sync was started:
+ * the environment it inherited without any launcher variable, and the pinned
+ * tools first on PATH. Launched with this alone (`isolatedEnv`), never on top
+ * of the sync's own environment.
+ */
+export function syncLaunchEnvironment(
+  inherited: NodeJS.ProcessEnv = process.env
+): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const [name, value] of Object.entries(inherited))
+    if (
+      value !== undefined &&
+      !LAUNCHER_NAMES.has(name) &&
+      !LAUNCHER_PREFIXES.some((prefix) => name.startsWith(prefix))
+    )
+      env[name] = value;
+  env['PATH'] = pinnedPath(inherited);
+  return env;
+}
 
 /** Same versions everywhere (from the shared mise.lock) and a working signed-in
  * session through each T3 launcher. Agents run concurrently and are bounded.
@@ -121,21 +164,24 @@ export async function verifyNativeAgents(
     accounts?: AccountContext;
     /** Where the agent profiles are rendered; this user's by default. */
     profiles?: string;
+    /** The environment the sync was started in; its own by default. */
+    inherited?: NodeJS.ProcessEnv;
   } = {}
 ): Promise<Check[]> {
   const { outOfQuota = new Set<string>(), cache = {} } = options;
   const profiles =
     options.profiles ?? agentRoot(homedir(), currentPlatform().name);
   const pins = parsePins(await readFile(join(workspace, 'mise.toml'), 'utf8'));
+  const sync = syncLaunchEnvironment(options.inherited);
   const environment = options.t3Service
-    ? await serviceLaunch(run)
-    : { launch: { kind: 'sync' } as Launch, checks: [] };
+    ? await serviceLaunch(run, sync)
+    : { launch: { kind: 'sync', env: sync } as Launch, checks: [] };
   const { launch } = environment;
   const cwd = await mkdtemp(join(tmpdir(), 'fleet-agents-'));
   try {
     const results = await Promise.all(
       NATIVE_AGENTS.map(async (agent) => [
-        await versionCheck(agent, pins[agent.pin], run),
+        await versionCheck(agent, pins[agent.pin], run, sync),
         outOfQuota.has(agent.name)
           ? quotaPass(agent)
           : launch.kind === 'incomplete'
@@ -177,7 +223,12 @@ export async function verifyNativeAgents(
         : [];
     const extraVersions = await Promise.all(
       ADDITIONAL_PROVIDER_CLIS.map((binary) =>
-        versionCheck({ name: binary, binary, pin: binary }, pins[binary], run)
+        versionCheck(
+          { name: binary, binary, pin: binary },
+          pins[binary],
+          run,
+          sync
+        )
       )
     );
     return [
@@ -246,7 +297,7 @@ interface SessionContext {
   node: string;
   workspace: string;
   cwd: string;
-  launch: Launch;
+  launch: Exclude<Launch, { kind: 'incomplete' }>;
   cache: VerifyCache;
   run: Runner;
   profiles: string;
@@ -345,13 +396,11 @@ async function runSession(
     {
       cwd: context.cwd,
       env: {
-        ...(context.launch.kind === 'service'
-          ? context.launch.env
-          : { PATH: pinnedPath() }),
+        ...context.launch.env,
         WS_AGENT_NODE: context.node,
         WS_AGENT_ACCOUNT: instance.account,
       },
-      ...(service ? { isolatedEnv: true } : {}),
+      isolatedEnv: true,
       input: '',
       timeoutMs: context.timeoutMs,
     }
@@ -385,11 +434,13 @@ export function parsePins(source: string): Record<string, string> {
 async function versionCheck(
   agent: { name: string; binary: string; pin: string },
   pin: string | undefined,
-  run: Runner
+  run: Runner,
+  env: Record<string, string>
 ): Promise<Check> {
   const observe = async () => {
     const result = await run([agent.binary, '--version'], {
-      env: { PATH: pinnedPath() },
+      env,
+      isolatedEnv: true,
       timeoutMs: 30_000,
     });
     return result.ok
@@ -436,7 +487,12 @@ function quotaPass(agent: Agent): Check {
 
 async function sessionCheck(
   agent: Agent,
-  context: { node: string; workspace: string; cwd: string; launch: Launch },
+  context: {
+    node: string;
+    workspace: string;
+    cwd: string;
+    launch: Exclude<Launch, { kind: 'incomplete' }>;
+  },
   run: Runner
 ): Promise<Check> {
   const agents = join(context.workspace, 'agents');
@@ -444,15 +500,12 @@ async function sessionCheck(
     context.launch.kind === 'service'
       ? [join(agents, agent.launcher), ...agent.args]
       : ['bun', join(agents, agent.wrapper), ...agent.args];
-  const env =
-    context.launch.kind === 'service'
-      ? { ...context.launch.env, WS_AGENT_NODE: context.node }
-      : { WS_AGENT_NODE: context.node, PATH: pinnedPath() };
+  const env = { ...context.launch.env, WS_AGENT_NODE: context.node };
   const launch = () =>
     run(command, {
       cwd: context.cwd,
       env,
-      ...(context.launch.kind === 'service' ? { isolatedEnv: true } : {}),
+      isolatedEnv: true,
       input: '',
       timeoutMs: 150_000,
     });
@@ -476,7 +529,8 @@ async function sessionCheck(
  * `#!/usr/bin/env bun` or runs `bun`, so that PATH must find Bun.
  */
 async function serviceLaunch(
-  run: Runner
+  run: Runner,
+  sync: Record<string, string>
 ): Promise<{ launch: Launch; checks: Check[] }> {
   const manager = await run(['systemctl', '--user', 'show-environment'], {
     timeoutMs: 15_000,
@@ -494,7 +548,7 @@ async function serviceLaunch(
   );
   if (!manager.ok || !unit.ok)
     return {
-      launch: { kind: 'sync' },
+      launch: { kind: 'sync', env: sync },
       checks: [
         environmentCheck(
           'warn',
