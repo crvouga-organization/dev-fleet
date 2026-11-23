@@ -127,6 +127,44 @@ Feature: Native agents are verified on every machine
       Then every launcher was run again
       And every check passes
 
+  Rule: A sync gives the same result wherever it is started
+
+    A sync may be started from a shell inside an agent session, whose
+    environment pins that session's own tool, account and proxy. The sync
+    builds each launch environment itself from what it inherited, without
+    any variable an agent session or a launcher sets.
+
+    Background:
+      Given nothing verified earlier is remembered
+      And every agent reports the version mise.toml pins
+      And every launcher answers "OK"
+
+    Scenario Outline: A sync started <where> launches every session the same way
+      Given the sync was started in an environment holding:
+        | PATH          | /usr/bin:/bin |
+        | HOME          | /home/dev     |
+        | MISE_DATA_DIR | /opt/mise     |
+      And that environment also holds <inherited>
+      When the agents of the machine "node-a" are verified
+      Then every check passes
+      And every launcher ran with exactly this environment:
+        | PATH          | /opt/mise/shims:/usr/bin:/bin |
+        | HOME          | /home/dev                     |
+        | MISE_DATA_DIR | /opt/mise                     |
+        | WS_AGENT_NODE | node-a                        |
+      And every agent's version was read with exactly this environment:
+        | PATH          | /opt/mise/shims:/usr/bin:/bin |
+        | HOME          | /home/dev                     |
+        | MISE_DATA_DIR | /opt/mise                     |
+
+      Examples:
+        | where                         | inherited                                                                         |
+        | from a plain terminal         | nothing else                                                                      |
+        | inside a Codex session        | "WS_AGENT_NODE=node-b WS_AGENT_ACCOUNT=someone@example.com CODEX_HOME=/elsewhere" |
+        | inside a launcher's session   | "CLIPROXY_API_KEY=inherited-key OPENCODE_CONFIG=/shared.json GROK_HOME=/elsewhere" |
+        | inside a Claude Code session  | "CLAUDECODE=1 ANTHROPIC_BASE_URL=http://127.0.0.1:9 ANTHROPIC_AUTH_TOKEN=inherited" |
+        | inside an Antigravity session | "GEMINI_API_KEY=inherited GOOGLE_GEMINI_BASE_URL=http://127.0.0.1:9 AGY_CLI_DISABLE_AUTO_UPDATE=true" |
+
   Rule: On a worker, a session runs in the environment T3 starts it in
 
     The sync runs over SSH with the pinned tools on its PATH; T3 runs as a
