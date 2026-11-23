@@ -57,7 +57,10 @@ Unix PATH blocks cover `.profile`, existing `.bash_profile`/`.bash_login`,
 `.bashrc`, `.zshenv`, `.zshrc` and fish's config. Zsh uses `ZDOTDIR` when set.
 POSIX blocks are quiet, idempotent
 and placed before interactive-only early returns, so noninteractive SSH/agent
-commands can find the same shims without loading an interactive UI;
+commands can find the same shims without loading an interactive UI. On a worker
+the same blocks put `~/.local/share/personal/fleet/agent-commands` ahead of the
+shims: the agent commands there are the fleet's launchers, through the CLI
+proxy. A machine without that directory, the manager included, skips it;
 Windows updates only the user's PATH; AWS CLI v2 additionally uses the official
 versioned MSI (a UAC prompt may appear) because mise's AWS recipe supports only
 macOS/Linux. Its version comes from the same manifest and its Windows SHA-256 is

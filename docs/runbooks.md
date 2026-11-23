@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 438 codes; 91 need a person.
+There are 449 codes; 95 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -357,6 +357,22 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_RESTART_DEADLINE`: not a failure. `personal-worker-recovery` logs it when a restart of T3 has waited `t3RestartMaxDeferralHours` (`ansible/ubuntu/policy.json`) and is applied although agent turns run: they end. `worker:t3-deadline-restarts` counts these of the last 24 hours as a warning. Nothing is left to repair: send the threads whose turn ended their next message.
 - `T3_IDLE_UNKNOWN`: not a failure of its own. The idle check of `personal-worker-recovery` could not read the runs T3 records in its state database, and what it cannot read counts as busy: a pending restart keeps waiting (`T3_RESTART_PENDING`) until its deadline. Read `worker:t3-health` when it repeats.
 
+## super.engineering
+
+- **Meaning:** A fleet that lists `super` under `ides` runs super.engineering on the manager with every worker as one of its remote SSH workspaces. The app did not answer, or a worker is not ready to be one of its workspaces. These are warnings: they never fail a sync.
+- **Confirm:** The `super:*` checks of `devfleet fleet-sync`. On the manager, `~/.super.engineering/bin/se status --json` and `~/.super.engineering/bin/se workspace list --json`; for a worker, `ssh -o BatchMode=yes ALIAS 'command -v git flock claude'` with the alias `fleet.json` names.
+- **Fix:** Follow the remedy of the check, then run `devfleet fleet-sync`: it creates the workspace of every worker that has none.
+- **Escalate:** When the app runs, remote workspaces are on, the worker answers that SSH command and the workspace is still not created.
+
+- `SUPER_NOT_INSTALLED`: a warning of `super:app` or `super:workspace`: the app's CLI (`~/.super.engineering/bin/se`) is not on the manager. dev-fleet does not install the app: install it from <https://super.engineering/download>, start it once, then run `devfleet fleet-sync`. **Needs a person.**
+- `SUPER_NOT_RUNNING`: a warning of `super:app` or `super:workspace`: the CLI is there and no running app answers it, as during a scheduled sync on a manager nobody is logged in to. Start super.engineering on the manager; the next `devfleet fleet-sync` creates the workspaces that are missing.
+- `SUPER_REMOTE_WORKSPACES_OFF`: a warning of `super:workspace`: the app refused to create a remote workspace because the feature is off. In the app open Settings → Experimental and enable Remote workspaces, then run `devfleet fleet-sync`. **Needs a person.**
+- `SUPER_REFUSED`: a warning of `super:app` or `super:workspace`: the app answered with an error dev-fleet does not know, or with something that is not its JSON; the remedy names the app's error code and nothing else of what it said. Update the app and start it again, then run `devfleet fleet-sync`; when it repeats, raise an issue with that code.
+- `SUPER_SSH_UNREACHABLE`: a warning of `super:ssh`: the app connects with the manager's own SSH configuration, never with the options `fleet-sync` uses, and that plain `ssh` does not reach the worker without a prompt. A worker `fleet.json` declares without an `ssh` alias is the usual cause: its host key is pinned in the fleet state, which the operator's SSH does not read. Add an alias to `~/.ssh/config` on the manager, accept the host key once, name the alias as the worker's `ssh`, then run `devfleet fleet-sync`. No workspace is created until then. **Needs a person.**
+- `SUPER_HOST_INCOMPLETE`: a warning of `super:ssh`: an SSH session without a terminal finds no `git` or no `flock` on the worker; the remedy names which. The app's helper cannot be installed without them. Run `devfleet fleet-sync --node ID`: the baseline installs both.
+- `SUPER_AGENTS_NOT_FOUND`: a warning of `super:ssh`: an SSH session without a terminal finds none of the fleet's coding agents on the worker's `PATH`, so the app can start no agent there. Run `devfleet fleet-sync --node ID`, which installs the pinned agents and puts their shims on that session's `PATH`; confirm with the SSH command above.
+- `SUPER_AGENTS_NOT_PROXIED`: a warning of `super:ssh`: on the worker an SSH session without a terminal starts the agents the remedy names as the plain pinned CLI, with a sign-in of its own or none, and not as the fleet's launcher through the CLI proxy. The worker has not been converged since its agent commands became launchers, or its shell profile no longer puts `~/.local/share/personal/fleet/agent-commands` first. Run `devfleet fleet-sync --node ID`; confirm with `ssh ALIAS 'command -v claude'`, which names that directory.
+
 ## Monitoring (Beszel)
 
 - **Meaning:** The hub on the manager, an agent on a machine, an enrollment or the hub backups do not match what the fleet declares.
@@ -436,6 +452,9 @@ write `1` to that agent scope’s `cgroup.kill`.
 - **Fix:** Run `devfleet fleet-sync`; a rate limit or upstream outage clears on its own.
 - **Escalate:** PROVIDER_AUTH_REJECTED needs a person to sign the account in again on the proxy. AGENT_PROFILE_RENDER_MISMATCH is a defect of the release (a template of `ansible/agents/agents.yml` no longer renders what `src/agents/render.ts` specifies): report it to dev-fleet. No receipt vouches for what that play wrote, so later applies refuse the file until a person reviews it.
 
+- `AGENT_COMMANDS_CONFLICT`: `agent:commands` on a worker: `~/.local/share/personal/fleet/agent-commands` exists and is not the link `fleet-sync` makes to the applied revision's launchers, so it was left untouched and the worker's `claude`, `codex` and the others are not the fleet's launchers. On the worker look at what is there, move it away, then run `devfleet fleet-sync --node ID`. **Needs a person.**
+- `AGENT_COMMANDS_NOT_LINKED`: `agent:commands` on a worker: the play that makes that link (`ansible/agents/commands.yml`) failed, or the link is not there after it ran; its output is not reported. Run `devfleet fleet-sync --node ID` again; when it repeats, raise an issue.
+- `AGENT_COMMANDS_REQUEST_INVALID`: the same play refused its variables: dev-fleet passes the link beside the applied revision and its fixed target, so this is a defect of the release. Raise an issue.
 - `AGENT_SLICE_MISSING`: the user manager cannot load the T3 agent slice. Check the T3 release and run fleet-sync.
 - `AGENT_LIMIT_OVERRIDDEN`: a higher-priority setting overrides an agent slice limit. Run fleet-sync and inspect the effective properties.
 - `AGENT_MEMORY_LIMIT_MISSING`: agent memory limit missing.

@@ -254,6 +254,16 @@ and propagate the result to every node, and `fleet-sync --only accounts`
 propagates them without a full sync.
 [docs/accounts.md](docs/accounts.md) explains how.
 
+A worker holds no provider sign-in of its own. T3 starts each agent through a
+launcher that signs in on the proxy, and so does everything else on a worker:
+there `claude`, `codex`, `opencode`, `grok` and `antigravity` are the fleet's
+launchers (`agents/bin`), ahead of the pinned CLIs on the `PATH` of every
+shell. A person in a terminal on a worker, or an app that starts an agent over
+SSH, therefore uses the proxy's accounts, picked by the fleet's selection
+policy. The pinned CLI itself is still there, behind the launcher, as
+`~/.local/share/mise/shims/claude`. The manager is your own machine: its
+commands stay the pinned CLIs with whatever sign-in you gave them.
+
 ## Add or remove a machine
 
 1. Set up SSH from the manager to the new Ubuntu box (a non-root user with
@@ -341,7 +351,7 @@ one.
 | `workers`  | The Ubuntu workers                                                  |
 | `services` | The proxy's public origin and the monitoring dashboard and accounts |
 | `worker`   | Policy every worker must meet                                       |
-| `ides`     | The IDEs every machine runs; `["t3"]` when absent                   |
+| `ides`     | The IDEs the fleet runs; `["t3"]` when absent                       |
 | `t3`       | T3 settings every machine holds (`profile`) and `requiredModels`    |
 
 ### Supported IDEs
@@ -351,9 +361,37 @@ settings on each machine, the manager's own copy (pinned version and policy)
 and what the manager measures of each worker. Enabling one is `ides` in
 `fleet.json`.
 
-| IDE     | `ides` | Manager                                               | Workers                                    |
-| ------- | ------ | ----------------------------------------------------- | ------------------------------------------ |
-| T3 Code | `t3`   | Pinned CLI, policy with updates off, version measured | Pinned desktop app, locked policy, pairing |
+| IDE               | `ides`  | Manager                                               | Workers                                          |
+| ----------------- | ------- | ----------------------------------------------------- | ------------------------------------------------ |
+| T3 Code           | `t3`    | Pinned CLI, policy with updates off, version measured | Pinned desktop app, locked policy, pairing       |
+| super.engineering | `super` | Your own install; one SSH workspace per worker        | Reached over SSH; nothing installed by dev-fleet |
+
+`"ides": ["t3", "super"]` adds [super.engineering](https://super.engineering)
+beside T3 Code. It is a desktop app on the manager that works on another
+machine through a
+[remote SSH workspace](https://super.engineering/docs/remote-workspaces/):
+the checkout, Git, terminals and coding agents stay on the worker. You install
+and start the app on the manager and enable Remote workspaces under Settings →
+Experimental; it updates itself. Every `fleet-sync` then asks the app, through
+its own CLI, for a remote workspace for each worker that has none, named after
+the worker and pointed at the SSH alias `fleet.json` gives it, and measures
+that the manager's own SSH finds Git, `flock` and the fleet's coding agents
+there (`super:ssh`, `super:workspace`). The app connects with your SSH
+configuration, so a worker needs an `ssh` alias that works from a terminal on
+the manager. The `super:*` checks only warn, so an app that is closed never
+fails a sync.
+
+An agent the app starts on a worker signs in through the CLI proxy, with no
+sign-in on the worker: the app starts an agent by its plain command, and on a
+worker that command is the fleet's launcher (see
+[Provider accounts](#provider-accounts)). `super:ssh` warns
+(`SUPER_AGENTS_NOT_PROXIED`) about a worker where it is still the plain CLI,
+until the next `fleet-sync` of that worker. Workspaces on the manager itself
+start the manager's own CLIs, which dev-fleet leaves as they are.
+
+What it does not do yet: dev-fleet never removes a workspace, so delete a
+retired worker's in the app. Projects are yours to add to a workspace, and the
+app installs and updates its helper on the worker itself.
 
 Under `t3.profile`, `fleet.json` names top-level T3 settings every machine
 holds the same, such as tool servers. A setting not named there stays the

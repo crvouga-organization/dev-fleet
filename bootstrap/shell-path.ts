@@ -44,12 +44,21 @@ function persistWindowsPath(bin: string, shims: string): void {
     );
 }
 
+/** Where a worker's agent commands are, when it has them: a link to
+ * `agents/bin` of the applied revision, made by the worker's own converge
+ * (src/agents/commands.ts). A machine without the link (the manager, a
+ * development machine) has no such directory and its shells skip it.
+ */
+export const agentCommands = (home = homedir()): string =>
+  join(home, '.local', 'share', 'personal', 'fleet', 'agent-commands');
+
 export function configurePosixShellPath(
   bin: string,
   shims: string,
   home = homedir(),
   zdotdir = process.env['ZDOTDIR'] || home
 ): void {
+  const agents = agentCommands(home);
   const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
   const paths = quote(`${shims}:${bin}`);
   const legacy = `# dev-fleet toolchain\nexport PATH=${paths}:"$PATH"`;
@@ -69,17 +78,28 @@ export function configurePosixShellPath(
   // apps that inherit its PATH (T3) run the locked tool versions.
   // Guarded like the block above so nested shells do not grow PATH.
   const unguarded = `${TAIL_MARKER}\nexport PATH=${quote(shims)}:"$PATH"\n`;
-  const tail = `${TAIL_MARKER}\ncase "$PATH" in\n  ${quote(shims)}:*) ;;\n  *) export PATH=${quote(shims)}:"$PATH" ;;\nesac\n`;
+  // On a worker the agent commands come before the shims: `claude` is then
+  // the fleet's launcher, through the CLI proxy, and the pinned CLI behind
+  // it. Like the shims they are set twice: at the top, which a shell that is
+  // not interactive reaches before a startup file returns early, and last.
+  const agentsFirst = (marker: string) =>
+    `${marker}\nif [ -d ${quote(agents)} ]; then\n  case "$PATH" in\n    ${quote(agents)}:*) ;;\n    *) export PATH=${quote(agents)}:"$PATH" ;;\n  esac\nfi\n`;
+  const head = `${block}\n${agentsFirst(AGENTS_MARKER)}`;
+  const shimsOnly = `${TAIL_MARKER}\ncase "$PATH" in\n  ${quote(shims)}:*) ;;\n  *) export PATH=${quote(shims)}:"$PATH" ;;\nesac\n`;
+  // The shims count as first when only the agent commands precede them.
+  const tail = `${TAIL_MARKER}\ncase "$PATH" in\n  ${quote(shims)}:*|${quote(agents)}:${quote(shims)}:*) ;;\n  *) export PATH=${quote(shims)}:"$PATH" ;;\nesac\n${agentsFirst(AGENTS_TAIL_MARKER)}`;
   for (const path of targets) {
     const current = existsSync(path) ? readFileSync(path, 'utf8') : '';
-    const body = current
-      .replace(`${block}\n`, '')
-      .replace(legacy, '')
-      .split(tail)
-      .join('')
-      .split(unguarded)
-      .join('');
-    const next = `${block}\n${body.replace(/\n*$/, '\n')}${tail}`;
+    // What this and every earlier release wrote, wherever it stands.
+    const body = [
+      head,
+      `${block}\n`,
+      legacy,
+      tail,
+      shimsOnly,
+      unguarded,
+    ].reduce((text, earlier) => text.split(earlier).join(''), current);
+    const next = `${head}${body.replace(/\n*$/, '\n')}${tail}`;
     if (next === current) continue;
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, next);
@@ -87,6 +107,9 @@ export function configurePosixShellPath(
 }
 
 const TAIL_MARKER = '# pinned tool shims first (dev-fleet, keep this last)';
+const AGENTS_MARKER = "# a worker's agent commands (dev-fleet)";
+const AGENTS_TAIL_MARKER =
+  "# a worker's agent commands before them (dev-fleet, keep this last)";
 
 export function configureShellPath(): void {
   const bin = join(homedir(), '.local', 'bin');
