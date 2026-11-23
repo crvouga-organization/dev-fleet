@@ -3,12 +3,13 @@
 import copy
 import json
 import random
+import re
 import socketserver
 import threading
 import unittest
 
 import modelhealth_support as support
-from modelhealth import protocol, redact, scenario, transport
+from modelhealth import checks, expect, protocol, redact, scenario, transport
 
 CHAT = {
     "id": "chatcmpl-1", "object": "chat.completion", "created": 1, "model": "m",
@@ -252,6 +253,78 @@ class RequestBuilding(unittest.TestCase):
         items = scenario.build("responses", "a", turn, support.RAW, {})["input"]
         self.assertEqual([i["type"] for i in items], ["function_call", "function_call_output"])
         self.assertEqual(items[1]["call_id"], "c1")
+
+
+def _answer(text):
+    return protocol.chat_response(mutate(mutate(CHAT, ["choices", 0, "message"], {"role": "assistant", "content": text}),
+                                         ["choices", 0, "finish_reason"], "stop"))
+
+
+class TokenFixtures(unittest.TestCase):
+    """A per-run token sits where the prompt asks for it verbatim, never where it must be interpreted (#277)."""
+
+    PLACEHOLDER = re.compile(r"\{(codeword|marker|nonce)\}")
+
+    def roundtrips(self):
+        return [c for c in support.RAW["checks"] if c["kind"] == "roundtrip"]
+
+    def test_tool_results_carry_a_plausible_value_and_the_token_as_a_labelled_id(self):
+        for check in self.roundtrips():
+            for tool, text in check["results"].items():
+                with self.subTest(check=check["id"], tool=tool):
+                    for placeholder in self.PLACEHOLDER.findall(text):
+                        self.assertRegex(text, r"reading id: \{%s\}" % placeholder)
+                    self.assertRegex(self.PLACEHOLDER.sub("", text), r"\b\d+ degrees celsius\b")
+
+    def test_a_followup_that_asserts_a_token_asks_for_it_exactly(self):
+        for check in self.roundtrips():
+            needle = check["followup"]["expect"].get("content", {}).get("contains")
+            if not needle:
+                continue
+            with self.subTest(check=check["id"]):
+                prompt = " ".join(m["content"] for m in check["turn"]["messages"] if m["role"] == "user")
+                self.assertIn("quote the station reading id exactly", prompt)
+                self.assertTrue(any(needle in text for text in check["results"].values()))
+
+    def test_tool_roundtrip_still_requires_the_quoted_id(self):
+        check = next(c for c in support.RAW["checks"] if c["id"] == "tool_roundtrip")
+        rng = random.Random(277)
+        context = checks.Context.__new__(checks.Context)
+        context.rng = rng
+        variables = {"marker": context.token()}
+        wanted = scenario.substitute(check["followup"]["expect"], variables)
+        marker = variables["marker"]
+        self.assertEqual(wanted["content"]["contains"], marker)
+        good = "Berlin is 14 degrees celsius and clear (station reading id %s)." % marker
+        self.assertEqual(expect.evaluate(wanted, _answer(good)), [])
+        for reply in ("Berlin is 14 degrees celsius and clear.", "Berlin is %s degrees celsius." % marker.split("-")[1]):
+            with self.subTest(reply=reply):
+                self.assertTrue(expect.evaluate(wanted, _answer(reply)))
+
+
+class MissingTokenHint(unittest.TestCase):
+    """A missing token says how the content relates to it, never what either says."""
+
+    def test_each_near_miss_is_named(self):
+        wanted = {"content": {"contains": "QXZ-4821"}}
+        for reply, hint in {
+            "It is 4821 degrees.": "digits but not its letters",
+            "Code QXZ only.": "letters but not its digits",
+            "Reading id QXZ 4821.": "different separators",
+            "Reading id qxz\u20114821.": "different separators",
+            "QXZ station, 4821 reading": "letters and digits apart",
+            "It is warm.": "no part of the token",
+        }.items():
+            with self.subTest(reply=reply):
+                (category, message), = expect.evaluate(wanted, _answer(reply))
+                self.assertEqual(category, "assertion")
+                self.assertIn("does not contain the expected token", message)
+                self.assertIn(hint, message)
+                for leaked in ("QXZ", "4821", "station", "warm"):
+                    self.assertNotIn(leaked, message)
+
+    def test_a_present_token_passes_in_any_case(self):
+        self.assertEqual(expect.evaluate({"content": {"contains": "QXZ-4821"}}, _answer("id qxz-4821")), [])
 
 
 if __name__ == "__main__":
