@@ -248,6 +248,52 @@ Feature: Every per-account instance runs a real session, and account changes re-
     And the last session was given 150 seconds to end
     And the proxy was asked 2 times
 
+  Scenario: A session that printed a rate limit is ended at once, not at its deadline
+    OpenCode prints the provider's refusal within a second, then retries
+    quietly until the deadline. A small request the proxy answers says
+    nothing of the session's quota, so the session's own words decide.
+    Given the proxy lists these models:
+      | antigravity-a@example.com/gemini-3.8-flash |
+    And the session of the account "a@example.com" prints "level=ERROR AI_APICallError: Resource has been exhausted (e.g. check quota).\n" and then hangs
+    And the proxy answers a request for that account's model with the status 200 saying "PRIVATE_SENTINEL"
+    When this node's account sessions are verified
+    Then the check "agent:opencode:account-1:session" warns saying "AGENT_ACCOUNT_COOLING_DOWN"
+    And the last session was ended as soon as it said so
+    And the proxy was asked 1 time
+
+  Scenario: A session the relay refused keeps the instant it named, ended at once
+    Given the proxy lists these models:
+      | claude-a@example.com/claude-sonnet-5-5 |
+    And the time is "2027-01-15T09:00:00Z"
+    And the session of the account "a@example.com" prints "This account is cooling down until 2027-01-15T09:30:00.000Z.\n" and then hangs
+    When this node's account sessions are verified
+    Then the summary of the check "agent:claude:account-1:session" is "AGENT_ACCOUNT_COOLING_DOWN: claude account 1 is rate limited until 2027-01-15T09:30:00Z; checked again on the next status."
+    And the last session was ended as soon as it said so
+
+  Scenario Outline: What a session printed so far ends it: <case>
+    Only whole lines are read, so a line cut between two reads is read once
+    it is complete, with the instant a cooldown clears.
+    When a session has printed "<output>" so far
+    Then it is <verdict>
+
+    Examples:
+      | case                         | output                                              | verdict      |
+      | it printed a limit           | level=ERROR AI_APICallError: 429 RESOURCE_EXHAUSTED\n | ended        |
+      | it printed a demand to verify | Verify your account to continue.\n                 | ended        |
+      | its credentials were refused | unexpected status 401 Unauthorized\n               | ended        |
+      | the line is not complete yet | This account is cooling down until 2027-01          | left running |
+      | it printed nothing telling   | > build · gemini-3.8-flash\n                       | left running |
+
+  Scenario: A session that found its account cooling down is run again after ten minutes, with a short deadline
+    Given the proxy lists these models:
+      | antigravity-a@example.com/gemini-3.8-flash |
+    And this node remembers what its account sessions found
+    And the session of the account "a@example.com" fails printing "429 Too Many Requests"
+    And this node's account sessions were verified 11 minutes ago
+    When this node's account sessions are verified
+    Then 1 session was launched
+    And the last session was given 30 seconds to end
+
   Scenario: A session that did not pass is not run again within ten minutes, and its check says when that was found
     Back-to-back syncs do not pay for the same dead session twice.
     Given the proxy lists these models:

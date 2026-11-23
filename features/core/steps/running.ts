@@ -30,6 +30,19 @@ When(
   }
 );
 
+When(
+  'this script is run until it prints {string}:',
+  async (world, text: string, script: string) => {
+    world.result = await runCommand([process.execPath, '-e', script], {
+      stopWhen: (output) => output.includes(text),
+    });
+  }
+);
+
+Then('it printed {string} on its error output', (world, text: string) => {
+  expect(result(world).stderr).toContain(text);
+});
+
 When('the command {string} is run', async (world, command: string) => {
   world.result = await runCommand([command]);
 });

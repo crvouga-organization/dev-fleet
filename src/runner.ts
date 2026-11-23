@@ -64,6 +64,7 @@ export function runCommand(
       }
       if (stream === 'stdout') stdout += chunk;
       else stderr += chunk;
+      if (options.stopWhen?.(stdout + stderr)) abort('stopped');
     };
     child.stdout
       .setEncoding('utf8')

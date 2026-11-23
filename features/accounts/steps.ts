@@ -32,6 +32,7 @@ import { AccountSelector } from '../../src/accounts/selection';
 import {
   accountSessionChecks,
   proxyVerdict,
+  namesCondition,
   sessionResult,
   type Instance,
   type SessionOutcome,
@@ -81,6 +82,8 @@ export class AccountsWorld extends World {
   /** The clock a cooldown is read against; the real one when unset. */
   clock?: number;
   sessionsRun: string[] = [];
+  /** Whether a session's output so far ends it. */
+  ends?: boolean;
   result?: SessionResult;
   /** How the launcher of each account's session ends. */
   launched: Record<string, CommandResult> = {};
@@ -90,6 +93,10 @@ export class AccountsWorld extends World {
   asked: string[] = [];
   /** The deadline of each account session a launcher was started for. */
   launches: number[] = [];
+  /** What a session prints before it hangs until its deadline, by account. */
+  hangs: Record<string, string> = {};
+  /** How each account session a launcher was started for ended. */
+  ended: CommandResult['reason'][] = [];
   /** Where this node remembers what its sessions found; nowhere when unset. */
   remembers?: string;
   /** The pinned proxy in a container, where a scenario runs one
@@ -754,6 +761,26 @@ Given(
 );
 
 Given(
+  /^the session of the account "([^"]+)" prints "(.*)" and then hangs$/,
+  (world, account: string, output: string) => {
+    world.hangs[account] = output.replaceAll('\\n', '\n');
+  }
+);
+
+// A table cell reads `\n` as a line break already.
+When(/^a session has printed "([^]*)" so far$/, (world, output: string) => {
+  world.ends = namesCondition(output);
+});
+
+Then(/^it is (ended|left running)$/, (world, verdict: string) => {
+  expect(world.ends).toBe(verdict === 'ended');
+});
+
+Then('the last session was ended as soon as it said so', (world) => {
+  expect(world.ended.at(-1)).toBe('stopped');
+});
+
+Given(
   /^the session of the account "([^"]+)" fails printing "(.*)"$/,
   (world, account: string, output: string) => {
     world.launched[account] = failed(output);
@@ -776,11 +803,22 @@ async function verifySessions(world: AccountsWorld): Promise<void> {
   world.commands.answer(
     (command) => command.some((word) => word.includes('/agents/')),
     (_command, options) => {
-      if (options?.env?.['WS_AGENT_ACCOUNT'])
-        world.launches.push(options.timeoutMs ?? 0);
-      return (
-        world.launched[options?.env?.['WS_AGENT_ACCOUNT'] ?? ''] ?? failed()
-      );
+      const account = options?.env?.['WS_AGENT_ACCOUNT'] ?? '';
+      if (account) world.launches.push(options?.timeoutMs ?? 0);
+      const hangs = world.hangs[account];
+      // A session that prints and then hangs ends when the runner is told
+      // what it printed says enough, else at its deadline.
+      const result: CommandResult =
+        hangs === undefined
+          ? (world.launched[account] ?? failed())
+          : {
+              ok: false,
+              stdout: '',
+              stderr: hangs,
+              reason: options?.stopWhen?.(hangs) ? 'stopped' : 'timeout',
+            };
+      if (account) world.ended.push(result.reason);
+      return result;
     }
   );
   const now = () => world.clock ?? Date.now();
@@ -855,6 +893,7 @@ Given(
     world.clock = now;
     world.asked = [];
     world.launches = [];
+    world.ended = [];
   }
 );
 

@@ -11,6 +11,7 @@ import type { Account } from './accounts';
 import { accountSlug } from './accounts';
 import {
   accountSessionChecks,
+  namesCondition,
   printedClears,
   sessionResult,
   type Instance,
@@ -236,8 +237,9 @@ export const ACCOUNT_LAUNCH: Record<
  */
 export const SESSION_FAILURE_REUSE_MS = 10 * 60 * 1000;
 
-/** A session's deadline, and the one of a session that ran into it the last
- * time: long enough to answer, short enough not to hold a sync up again.
+/** A session's deadline, and the one of a session that ran into it or found
+ * its account cooling down the last time: long enough to answer, short
+ * enough not to hold a sync up again.
  */
 export const SESSION_DEADLINE_MS = 150_000;
 export const SESSION_RETRY_DEADLINE_MS = 30_000;
@@ -270,7 +272,11 @@ function outcomeOf(summary: string): SessionOutcome {
  *   an account it holds back, wants verified or refuses is reported at once,
  *   with no session. OpenCode would retry such an account quietly until the
  *   deadline.
- * - A session that ran into its deadline the last time gets a short one.
+ * - A session ends as soon as what it printed names a condition of its
+ *   account: OpenCode prints a refused request within a second, then retries
+ *   it quietly until the deadline.
+ * - A session that ran into its deadline or found its account cooling down
+ *   the last time gets a short one.
  */
 async function accountSession(
   instance: Instance,
@@ -295,7 +301,10 @@ async function accountSession(
       foundMinutesAgo: Math.round(last.ageMs / 60_000),
     };
   const hung =
-    last !== null && outcomeOf(last.check.summary).result === 'timed-out';
+    last !== null &&
+    ['timed-out', 'cooling-down'].includes(
+      outcomeOf(last.check.summary).result
+    );
   let found: SessionOutcome | undefined;
   const check = await cachedCheck(
     name,
@@ -354,6 +363,9 @@ async function runSession(
       ...(service ? { isolatedEnv: true } : {}),
       input: '',
       timeoutMs: context.timeoutMs,
+      // A refusal, a limit or a demand to verify is printed long before the
+      // session would end; nothing after it changes what it says.
+      stopWhen: namesCondition,
     }
   );
   const output = result.stdout + result.stderr;
