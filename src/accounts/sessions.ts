@@ -8,7 +8,7 @@ import type { Check } from '../types';
 const DRIVERS: Record<string, string> = {
   claudeAgent: 'claude',
   codex: 'codex',
-  opencode: 'opencode',
+  antigravity: 'antigravity',
 };
 
 /** One per-account instance a node offers: its tool and account. */

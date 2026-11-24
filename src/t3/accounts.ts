@@ -37,11 +37,11 @@ const TOOLS: Record<
       homePath: '${agents}/${node}/codex/account-${account}',
     },
   },
-  opencode: {
-    driver: 'opencode',
+  antigravity: {
+    driver: 'antigravity',
     label: 'AntiGravity',
     config: {
-      binaryPath: '${workspace}/agents/opencode-proxy.ts',
+      binaryPath: '${workspace}/agents/antigravity-proxy.ts',
     },
   },
 };

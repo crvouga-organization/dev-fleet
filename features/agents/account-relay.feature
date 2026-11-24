@@ -32,6 +32,25 @@ Feature: The account relay
       And the agent receives the event "data: ok"
       And the answer carries no "content-encoding" header
 
+    Scenario: A Gemini request is pinned in its path, where it names its model
+      Given the proxy at "https://proxy.example" streams the event "data: ok"
+      When an agent pinned to "antigravity-a@b.c" posts {"contents":[]} to "/v1beta/models/gemini-3.8-flash:streamGenerateContent?alt=sse" with these headers:
+        | authorization | Bearer k |
+      Then the proxy received exactly this request:
+        | url           | https://proxy.example/v1beta/models/antigravity-a%40b.c%2Fgemini-3.8-flash:streamGenerateContent?alt=sse |
+        | body          | {"contents":[]}                                                                                         |
+        | authorization | Bearer k                                                                                                |
+
+    Scenario Outline: <rule>
+      When the request path "<path>" is pinned to the account prefix "<prefix>"
+      Then the path sent on is "<sent>"
+
+      Examples:
+        | rule                                                    | path                                     | prefix  | sent                                     |
+        | A Gemini model is given the prefix of the account       | /v1beta/models/m:generateContent         | p-a@b.c | /v1beta/models/p-a%40b.c%2Fm:generateContent |
+        | A Gemini model that already carries the prefix is alone | /v1beta/models/p-a%40b.c%2Fm:countTokens | p-a@b.c | /v1beta/models/p-a%40b.c%2Fm:countTokens |
+        | A path that names no model is left alone                | /v1/messages                             | p-a@b.c | /v1/messages                             |
+
     Scenario: A compressed request is refused and never reaches the proxy
       A body the relay cannot read could not be pinned; it is never forwarded
       to the pool of accounts.

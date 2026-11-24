@@ -90,8 +90,8 @@ async function spawnAgent(
 
 /** Routes every request of this launch to one account's proxy credential.
  * Claude and Codex send whichever model was picked, so they talk to a loopback
- * relay that adds the account's model prefix. OpenCode lists exactly the
- * account's prefixed models, so it needs no relay.
+ * relay that adds the account's model prefix. Antigravity names its model in
+ * the request path, which the relay prefixes the same way.
  */
 export async function pinAccount(
   env: NodeJS.ProcessEnv,
@@ -113,14 +113,13 @@ export async function pinAccount(
     throw new AgentConfigurationError(
       'This account is not signed in on the CLI proxy.'
     );
-  if (selection.tool === 'opencode') {
-    delete env['OPENCODE_CONFIG'];
-    env['OPENCODE_CONFIG_CONTENT'] = JSON.stringify(accountOpenCode(served));
-    return { args: [], stop: () => {} };
-  }
   const { url, stop } = relay(registry.proxy.endpoint, prefix, {
     alternatives,
   });
+  if (selection.tool === 'antigravity') {
+    env['GOOGLE_GEMINI_BASE_URL'] = url;
+    return { args: [], stop };
+  }
   if (selection.tool === 'claude') {
     env['ANTHROPIC_BASE_URL'] = url;
     // Aliases and the default must name models a Claude account serves.
@@ -224,28 +223,6 @@ async function policySelector(
 
 const selectionPolicy = (provider: string): AccountSelection | undefined =>
   fleet.services.proxy.accounts?.selection?.[provider];
-
-/** OpenCode configuration that offers only one account's models. */
-function accountOpenCode(route: { prefix: string; models: string[] }) {
-  const models = route.models.map((model) => `${route.prefix}/${model}`);
-  return {
-    $schema: 'https://opencode.ai/config.json',
-    model: `personal_proxy/${models[0]}`,
-    enabled_providers: ['personal_proxy'],
-    provider: {
-      personal_proxy: {
-        npm: '@ai-sdk/openai',
-        options: {
-          baseURL: registry.proxy.endpoint + '/v1',
-          apiKey: '{env:CLIPROXY_API_KEY}',
-        },
-        models: Object.fromEntries(
-          models.map((id) => [id, { name: id.slice(route.prefix.length + 1) }])
-        ),
-      },
-    },
-  };
-}
 
 /** Per-tool profile selection and self-updater switches. */
 function toolEnvironment(

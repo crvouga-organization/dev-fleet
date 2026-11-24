@@ -36,7 +36,7 @@ Feature: The T3 providers a machine gets
       And these accounts are signed in on the CLI proxy:
         | tool     | email         | prefix                    | models |
         | claude   | a@example.com | claude-a@example.com      | m      |
-        | opencode | a@example.com | antigravity-a@example.com | g      |
+        | antigravity | a@example.com | antigravity-a@example.com | g      |
       When the providers are worked out for the machine "node" with dev-fleet at "/repo"
       Then the provider "personal_claude_a_example_com" is declared exactly as:
         """
@@ -60,7 +60,7 @@ Feature: The T3 providers a machine gets
         """
       And the provider "personal_antigravity_a_example_com" is declared with at least:
         """
-        { "driver": "opencode", "displayName": "AntiGravity a@example.com" }
+        { "driver": "antigravity", "displayName": "AntiGravity a@example.com" }
         """
 
     Scenario: No account is ever named in tracked source

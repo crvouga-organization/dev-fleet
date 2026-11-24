@@ -257,9 +257,8 @@ export interface AccountContext {
 }
 
 /** How a per-account instance is launched: its tool's launcher, pinned to
- * the account as T3 pins it. OpenCode retries a rate-limited request quietly
- * until the deadline; its error log shows the 429 when it prints one, and
- * the proxy is asked when the session ran into the deadline without a word.
+ * the account as T3 pins it. The proxy is asked when a session ran into the
+ * deadline without a word.
  */
 export const ACCOUNT_LAUNCH: Record<
   string,
@@ -275,10 +274,17 @@ export const ACCOUNT_LAUNCH: Record<
     launcher: 'codex-proxy.ts',
     args: ['exec', '--skip-git-repo-check', PROMPT],
   },
-  opencode: {
-    wrapper: 'opencode-proxy.ts',
-    launcher: 'opencode-proxy.ts',
-    args: ['run', '--print-logs', '--log-level', 'ERROR', PROMPT],
+  antigravity: {
+    wrapper: 'antigravity-proxy.ts',
+    launcher: 'antigravity-proxy.ts',
+    args: [
+      '-p',
+      PROMPT,
+      '--model',
+      'Gemini 3.8 Flash (High)',
+      '--print-timeout',
+      '90s',
+    ],
   },
 };
 

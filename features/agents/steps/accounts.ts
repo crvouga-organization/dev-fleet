@@ -11,6 +11,7 @@ import {
 import {
   forward,
   pinModel,
+  pinPath,
   RETRY_DELAYS,
   startAccountRelay,
 } from '../../../src/agents/account-relay';
@@ -186,31 +187,6 @@ Then('its environment no longer sets {string}', (world, name: string) => {
   expect(roster(world).environment[name]).toBeUndefined();
 });
 
-interface OpenCodeConfig {
-  enabled_providers: string[];
-  provider: Record<string, { models: Record<string, unknown> }>;
-}
-const openCode = (world: AgentsWorld): OpenCodeConfig =>
-  JSON.parse(
-    roster(world).environment['OPENCODE_CONFIG_CONTENT']!
-  ) as OpenCodeConfig;
-
-Then(
-  'its OpenCode configuration enables only the provider {string}',
-  (world, provider: string) => {
-    expect(openCode(world).enabled_providers).toEqual([provider]);
-  }
-);
-
-Then(
-  'its OpenCode configuration offers exactly these models from {string}:',
-  (world, provider: string, table: DataTable) => {
-    expect(Object.keys(openCode(world).provider[provider]!.models)).toEqual(
-      table.list()
-    );
-  }
-);
-
 // ── The relay ────────────────────────────────────────────────────────────
 
 interface Seen {
@@ -240,6 +216,17 @@ When(
 
 Then(/^the body sent on is (.+)$/, (world, body: string) => {
   expect(relay(world).pinned).toBe(body);
+});
+
+When(
+  'the request path {string} is pinned to the account prefix {string}',
+  (world, path: string, prefix: string) => {
+    relay(world).pinned = pinPath(path, prefix);
+  }
+);
+
+Then('the path sent on is {string}', (world, path: string) => {
+  expect(relay(world).pinned).toBe(path);
 });
 
 // A server-sent event ends with an empty line.

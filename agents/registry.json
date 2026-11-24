@@ -39,7 +39,7 @@
         "provider": "codex",
         "models": ["gpt-6.1-sol", "gpt-6-luna"]
       },
-      "opencode": {
+      "antigravity": {
         "provider": "antigravity",
         "models": ["gemini-3.8-flash"]
       }

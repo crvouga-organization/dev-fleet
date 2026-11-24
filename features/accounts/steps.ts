@@ -7,10 +7,7 @@ import { Commands, failed, succeeded } from '../support/commands';
 import { accountsFrom } from '../../src/agents/accounts';
 import { forward, RETRY_DELAYS } from '../../src/agents/account-relay';
 import { routeThroughRelay } from '../../src/agents/launch';
-import {
-  ACCOUNT_LAUNCH,
-  verifyNativeAgents,
-} from '../../src/agents/native-verify';
+import { verifyNativeAgents } from '../../src/agents/native-verify';
 import { registry, select } from '../../src/agents/registry';
 import { cacheKey, cachedCheck } from '../../src/agents/verify-cache';
 import {
@@ -823,8 +820,12 @@ async function verifySessions(world: AccountsWorld): Promise<void> {
   );
   const now = () => world.clock ?? Date.now();
   const send = (async (url: string, init: RequestInit) => {
+    // A Gemini request names its model in the path, the others in the body.
+    const inPath = /\/models\/([^/:]+):/.exec(new URL(url).pathname)?.[1];
     world.asked.push(
-      (JSON.parse(String(init.body)) as { model: string }).model
+      inPath
+        ? decodeURIComponent(inPath)
+        : (JSON.parse(String(init.body)) as { model: string }).model
     );
     if (world.box)
       return fetch(url.replace(registry.proxy.endpoint, world.box.url), init);
@@ -913,13 +914,6 @@ Then('no check repeats what the proxy answered', (world) => {
 Then('the proxy was not asked about any account', (world) => {
   expect(world.asked).toEqual([]);
 });
-
-Then(
-  'the OpenCode account session is launched with {string}',
-  (_world, flags: string) => {
-    expect(ACCOUNT_LAUNCH['opencode']!.args.join(' ')).toContain(flags);
-  }
-);
 
 Then('its account is {string}', (world, result: string) => {
   expect(world.result).toBe(result as SessionResult);
