@@ -765,10 +765,10 @@ checksum = "sha256:f011188d735a63ee5278ce41e6f1a9388dbd17232238be31a1c2cfc39933b
 url = "https://storage.googleapis.com/cloud-sdk-release/google-cloud-sdk-591.0.0-windows-x86_64-bundled-python.zip"
 
 [[tools.gemini]]
-version = "0.70.0"
-aube = { path = ".mise/locks/gemini/0.70.0~84aac8e6", digest = "sha256:0978eb3c6cc273ff3d9a8e99caed0a27e5382951cac10688fc4b40a3ab3d8cc8" }
+version = "0.71.0"
+aube = { path = ".mise/locks/gemini/0.71.0~84aac8e6", digest = "sha256:1112ff863ea8ab3b7579b59ad634ef495fe7621598496d9c73126b0de5317877" }
 backend = "npm:@google/gemini-cli"
-specifiers = ["0.70.0"]
+specifiers = ["0.71.0"]
 
 [tools.gemini.options]
 allow_builds = '["@lydell/node-pty"]'
