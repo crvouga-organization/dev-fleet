@@ -101,10 +101,10 @@ with tempfile.TemporaryFile() as f:
     subprocess.run(ssh + ['cat > pressure-fixture.py'], input=script.encode(),
                    capture_output=True, check=True)
     check_slice_policy(ssh)
-    archive = subprocess.run(['tar', '-C', '/workspace', '-cf', '-', 'cliproxy/tests', 'cliproxy/scripts'],
+    archive = subprocess.run(['tar', '-C', '/workspace', '-cf', '-', 'cliproxy/tests', 'cliproxy/scripts', 'cliproxy/models.json'],
                              capture_output=True, check=True)
     subprocess.run(ssh + ['tar -xf -'], input=archive.stdout, check=True)
-    run(ssh + [f'systemd-run --user --unit={QUIET} --slice={AGENTS}-quiet.slice sleep 240'])
+    run(ssh + [f'systemd-run --user --unit={QUIET} --slice={THREAD}.slice sleep 240'])
     unit = BUSY
     launch = (f'systemd-run --user --unit={unit} --slice={THREAD}.slice '
               '--property=MemoryHigh=24M --property=MemoryMax=256M --property=RuntimeMaxSec=150 ')
@@ -125,6 +125,54 @@ with tempfile.TemporaryFile() as f:
         raise RuntimeError('oomd did not report killing the pressured fixture in time')
     finally:
         subprocess.run(ssh + [f'systemctl --user stop {unit} {QUIET}'], capture_output=True, timeout=10)
+
+
+def test_io_guard(ssh):
+    """Give one disposable block device slow writes while SSH and another session stay live."""
+    quiet = 't3code-quiet.scope'
+    writer = 't3code-writer.scope'
+    scope = ['systemd-run', '--user', '--scope', f'--slice={THREAD}.slice']
+    # Never delay the guest's system disk. The mapper addresses only a new loop file.
+    run(ssh + ["""set -eu
+truncate -s 64M io-fixture.img
+loop=$(sudo losetup --find --show io-fixture.img)
+echo "$loop" > io-fixture.loop
+echo "0 $(sudo blockdev --getsz "$loop") delay $loop 0 0 $loop 0 80" | sudo dmsetup create fleet-io-fixture
+sudo chown "$(id -u)" /dev/mapper/fleet-io-fixture"""])
+    def start(name, command):
+        return subprocess.Popen(ssh + [' '.join([*scope, '--unit=' + name, command])],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    quiet_process = start(quiet, """python3 -c 'import time; pages=bytearray(96*1024*1024); time.sleep(240)'""")
+    try:
+        wait_for(ssh, f'systemctl --user is-active --quiet {quiet}', 15, 'quiet session did not start')
+        started = run(ssh + ['date +%s']).stdout.strip()
+        # Synchronous, unbuffered writes to the scratch device. Each write takes
+        # at least 80 ms, so the 32-block burst ends well inside the grace period.
+        write = 'dd if=/dev/zero of=/dev/mapper/fleet-io-fixture bs=4096 oflag=direct status=none'
+        burst = start(writer, write + ' count=32')
+        assert burst.wait(timeout=30) == 0, 'short write burst was interrupted'
+        busy = start(writer, write + ' count=2000')
+        deadline = time.monotonic() + 140
+        while time.monotonic() < deadline:
+            before = time.monotonic()
+            sample = subprocess.run(ssh + [f'''set -e
+systemctl --user is-active --quiet {quiet}
+{answers(SERVER)}
+cat /proc/pressure/io
+sudo journalctl -u personal-fleet-pressure-guard --since=@{started} -o cat | grep '^{{' || true'''],
+                                    capture_output=True, text=True, timeout=5, check=True)
+            print(json.dumps(dict(io_fixture=sample.stdout.splitlines(),
+                                  ssh_ms=round(1000*(time.monotonic()-before)))), flush=True)
+            decisions = [json.loads(line) for line in sample.stdout.splitlines() if line.startswith('{')]
+            if decisions:
+                assert all(d['reason'] == 'io' and d['scope'] == writer for d in decisions), decisions
+                assert busy.wait(timeout=10) != 0
+                return
+            time.sleep(2)
+        raise RuntimeError('guard did not attribute sustained stalls to the writer')
+    finally:
+        run(ssh + [f'systemctl --user stop {writer} {quiet} || true; sudo dmsetup remove fleet-io-fixture && sudo losetup -d "$(cat io-fixture.loop)"'])
+        quiet_process.wait(timeout=10)
 
 
 def main():
@@ -218,6 +266,7 @@ ssh_keys:
         test_agent(ssh)
         reboot(ssh)
         check_slice_policy(ssh)
+        test_io_guard(ssh)
         run(ssh + ['test "$(systemctl is-enabled sleep.target)" = masked && test "$(cat work/uncommitted)" = preserved && sudo nft list table inet personal_fleet | grep -q "policy drop"'])
         # No play ran since the reboot: personal-fleet-firewall.service loaded it.
         run(ssh + ['systemctl is-active --quiet personal-fleet-firewall.service'])
