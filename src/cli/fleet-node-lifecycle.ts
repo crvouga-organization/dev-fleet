@@ -14,7 +14,8 @@ import {
   hostKeyAlias,
   renderKnownHosts,
 } from '../ssh-connection';
-import { changeWorkers, readPins } from '../state/workers';
+import { removeSuperWorkspace } from '../ide/super';
+import { changeWorkers, readPins, readWorkerStates } from '../state/workers';
 import { hubUrl } from '../topology';
 import { blockedBySecretsLogin, blockedCode } from '../secrets-blocked';
 import { FleetUsageError } from '../errors';
@@ -211,14 +212,31 @@ export async function retireWorker(
   apply: boolean
 ): Promise<CommandOutcome> {
   const host = await keyName(worker, services.run);
+  const owned = readWorkerStates().workers[worker.id]?.superWorkspaceId;
   if (!apply)
     return outcome(
       'fleet-node-retire',
       worker.id,
-      planRetirement(worker, entry, host, services.vault()),
+      [
+        ...planRetirement(worker, entry, host, services.vault()),
+        ...(owned
+          ? [planned('super:workspace', 'delete the fleet-created workspace')]
+          : []),
+      ],
       false
     );
   const checks: Check[] = [];
+  if (owned) {
+    const removed = await removeSuperWorkspace(services.run, owned);
+    if (removed.status !== 'pass')
+      return outcome(
+        'fleet-node-retire',
+        worker.id,
+        [{ ...removed, status: 'fail' }],
+        false
+      );
+    checks.push(removed);
+  }
   if (services.vault())
     checks.push(await revokeWorkerToken(worker.id, services.run));
   checks.push(await pinHostKey(worker, host, null, services));

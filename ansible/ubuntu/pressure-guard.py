@@ -17,10 +17,19 @@ def pressure(path):
 def io_bytes(group):
     devices = {}
     for line in (group / 'io.stat').read_text().splitlines():
+        if not line.strip():
+            continue
         device, *fields = line.split()
         values = dict(field.split('=') for field in fields)
-        devices[device] = int(values['rbytes']) + int(values['wbytes'])
+        if 'rbytes' in values and 'wbytes' in values:
+            devices[device] = int(values['rbytes']) + int(values['wbytes'])
     return devices
+
+
+def io_delta(previous, current):
+    # A new device or a counter reset cannot establish an interval of activity.
+    return {device: count - previous[device] for device, count in current.items()
+            if device in previous and count > previous[device]}
 
 
 class Guard:
@@ -47,6 +56,7 @@ class Guard:
                 counters['host'] = io_bytes(args.cgroup_root)
             except (OSError, ValueError, KeyError):
                 pass
+        host_delta = io_delta(self.previous.get('host', {}), counters.get('host', {}))
         if memory_due or io >= args.threshold:
             for scope in args.agent_tree.rglob('t3code-*.scope'):
                 try:
@@ -62,16 +72,15 @@ class Guard:
                     counters[scope] = current
                     if local < args.threshold:
                         continue
-                    for device, total in current.items():
-                        if device not in self.previous.get(scope, {}):
-                            continue
-                        count = total - self.previous[scope][device]
-                        if device not in self.previous.get('host', {}) or device not in counters.get('host', {}):
-                            continue
-                        host = counters['host'][device] - self.previous['host'][device]
+                    for device, count in io_delta(self.previous.get(scope, {}), current).items():
+                        host = host_delta.get(device, 0)
+                        # PSI alone would select a reader blocked behind another
+                        # writer. Require both local stalls and a majority of the
+                        # device's traffic in every interval of the grace period.
                         if 0 < count <= host and 2 * count > host and sustained((scope, device)):
-                            candidates.append((count, scope, dict(reason='io', device=device,
-                                               io_bytes=count, device_bytes=host, scope_psi=local)))
+                            evidence = dict(reason='io', device=device, bytes=size, io_bytes=count,
+                                            device_bytes=host, scope_psi=local)
+                            candidates.append((count, scope, evidence))
                 except (OSError, ValueError, KeyError):
                     continue
         self.previous = counters

@@ -1145,6 +1145,21 @@
           }
         }
       ]
+    },
+    "super": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["projects"],
+      "properties": {
+        "projects": {
+          "type": "array",
+          "description": "Directories relative to each worker account’s home to add to its Super workspace.",
+          "items": {
+            "type": "string",
+            "pattern": "^(?!.*(?:^|/)\\.{1,2}(?:/|$))[^/\\u0000-\\u001f\\u007f]+(?:/[^/\\u0000-\\u001f\\u007f]+)*$"
+          }
+        }
+      }
     }
   }
 }

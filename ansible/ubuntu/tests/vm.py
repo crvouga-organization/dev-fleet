@@ -90,13 +90,27 @@ def test_agent_pressure(ssh):
     run(ssh + ["""test "$(swapon --show=NAME,PRIO --noheadings | sort -k2,2nr | head -1 | awk '{print $1}')" = /dev/zram0"""])
     # Keep the fixture small enough that even without oomd its hard cap bounds
     # the damage. File-backed pages drive reclaim on repeated scans.
-    script = """import mmap, tempfile
+    script = """import mmap, sys, tempfile, time
+from pathlib import Path
+controlled = len(sys.argv) > 1
+group = Path('/sys/fs/cgroup' + Path('/proc/self/cgroup').read_text().strip().split('::',1)[1])
+def stalled():
+    line = (group / 'memory.pressure').read_text().splitlines()[-1]
+    return int(line.split('total=')[1]) / 1000000
+end = time.monotonic() + 65
 with tempfile.TemporaryFile() as f:
     f.truncate(160 * 1024 * 1024)
     with mmap.mmap(f.fileno(), 0) as pages:
-        while True:
-            for i in range(0, len(pages), 4096):
-                pages[i] = (pages[i] + 1) % 256
+        while not controlled or time.monotonic() < end:
+            for start in range(0, len(pages), 1024 * 1024):
+                before = time.monotonic()
+                baseline = stalled() if controlled else 0
+                for i in range(start, start + 1024 * 1024, 4096):
+                    pages[i] = (pages[i] + 1) % 256
+                if controlled:
+                    # Pace the fixture at 52% full PSI, between the historical
+                    # and candidate limits. The saturating run never sleeps.
+                    time.sleep(max(0, (stalled() - baseline) / 0.52 - (time.monotonic() - before)))
 """
     subprocess.run(ssh + ['cat > pressure-fixture.py'], input=script.encode(),
                    capture_output=True, check=True)
@@ -110,8 +124,12 @@ with tempfile.TemporaryFile() as f:
               '--property=MemoryHigh=24M --property=MemoryMax=256M --property=RuntimeMaxSec=150 ')
     try:
         # Run a real repository test while a bounded reclaim burst shares its session.
-        run(ssh + [launch + """--wait --collect /bin/sh -ec 'timeout 8 python3 pressure-fixture.py & pid=$!; python3 -m unittest discover -s cliproxy/tests -p test_model_protocol.py; wait "$pid" || test $? = 124'"""])
-        pressure_sample(ssh)
+        trial = subprocess.Popen(ssh + [launch + """--wait --collect /bin/sh -ec 'python3 pressure-fixture.py paced & pid=$!; python3 -m unittest discover -s cliproxy/tests -p test_model_protocol.py; wait "$pid"'"""],
+                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        while trial.poll() is None:
+            pressure_sample(ssh)
+            time.sleep(2)
+        assert trial.returncode == 0, trial.stdout.read().decode(errors='replace')
         start = run(ssh + ['date +%s']).stdout.strip()
         run(ssh + [launch + 'python3 pressure-fixture.py'])
         deadline = time.monotonic() + 100
@@ -134,6 +152,7 @@ def test_io_guard(ssh):
     scope = ['systemd-run', '--user', '--scope', f'--slice={THREAD}.slice']
     # Never delay the guest's system disk. The mapper addresses only a new loop file.
     run(ssh + ["""set -eu
+sudo modprobe dm-delay || sudo apt-get install -y linux-modules-extra-$(uname -r)
 truncate -s 64M io-fixture.img
 loop=$(sudo losetup --find --show io-fixture.img)
 echo "$loop" > io-fixture.loop

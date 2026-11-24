@@ -912,3 +912,26 @@ Then(
     else expect(requested).toBeUndefined();
   }
 );
+
+Given(
+  'the fleet state owns Super workspace {string} for {string}',
+  async (world, workspace: string, id: string) => {
+    await changeWorkers(stateContext(world.commands.run), (current) => ({
+      [id]: { ...current[id], superWorkspaceId: workspace },
+    }));
+  }
+);
+Given('the app accepts deletion of workspace {string}', (world, id: string) => {
+  world.commands.answer(
+    (command) =>
+      command.slice(1).join(' ') === `workspace delete ${id} --confirm --json`,
+    succeeded('{"ok":true}')
+  );
+});
+Then('the app deleted only workspace {string}', (world, id: string) => {
+  expect(
+    world.commands
+      .ran((command) => command[1] === 'workspace' && command[2] === 'delete')
+      .map((command) => command[3])
+  ).toEqual([id]);
+});

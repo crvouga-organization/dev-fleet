@@ -6,6 +6,11 @@ Feature: A quiet session survives another workload's I/O stalls
       | agents/thread.slice/t3code-claude-b.scope | 900    | 40   | 1                | 0      |
       | app-com-t3tools.scope                     | 1000   | 500  | 9                | 80     |
 
+  Scenario: Sustained memory pressure still selects the largest agent by RAM and swap
+    Given host memory PSI is 80 percent
+    When the guard samples host I/O PSI "0,0,0,0,0" every 10 seconds with 0 device bytes per second, threshold 50, duration 30 and cooldown 120
+    Then it records 1 kills and only "agents/thread.slice/t3code-claude-b.scope" receives a kill
+
   Scenario Outline: Attribute persistent stalls to a busy scope before ending a session
     When the guard samples host I/O PSI "<psi>" every 10 seconds with <rate> device bytes per second, threshold 50, duration 30 and cooldown 120
     Then it records <kills> kills and only "<scope>" receives a kill

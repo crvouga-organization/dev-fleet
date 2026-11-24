@@ -2,7 +2,7 @@ import { expect } from 'bun:test';
 import type { DataTable } from '../../support/gherkin';
 import { failed, succeeded } from '../../support/commands';
 import type { MachineDefinition } from '../../../src/definition';
-import { superIde } from '../../../src/ide/super';
+import { previewSuperWorkspaces, superIde } from '../../../src/ide/super';
 import type { CommandResult } from '../../../src/types';
 import { ide, ROOT, type IdeWorld } from './world';
 
@@ -12,6 +12,8 @@ interface Super {
   cli: string;
   home: string;
   workers: MachineDefinition[];
+  projects?: string[];
+  owned?: string;
 }
 const supers = new WeakMap<IdeWorld, Super>();
 const of = (world: IdeWorld): Super => {
@@ -60,7 +62,21 @@ function holds(world: IdeWorld, rows: Record<string, string>[]): void {
       JSON.stringify({
         kind: 'workspaces',
         response: {
-          workspaces: rows.map((row) => ({ id: row['id'], title: row['id'] })),
+          workspaces: rows.map((row) => ({
+            id: row['id'],
+            title: row['id'],
+            sections: [
+              {
+                items: [
+                  {
+                    items: row['project']
+                      ? [{ is_primary: true, path: row['project'] }]
+                      : [],
+                  },
+                ],
+              },
+            ],
+          })),
         },
       })
     )
@@ -171,7 +187,11 @@ Given(
 );
 
 const subject = (world: IdeWorld) =>
-  superIde({ home: of(world).home, workers: of(world).workers });
+  superIde({
+    home: of(world).home,
+    workers: of(world).workers,
+    projects: of(world).projects ?? [],
+  });
 
 When("the manager's super.engineering is checked", async (world) => {
   world.checks = await subject(world).manager({
@@ -193,7 +213,16 @@ When(
         workspace: '/w',
         required: [],
       },
-      { run: world.run, workspace: ROOT, earlier: [] }
+      {
+        run: world.run,
+        workspace: ROOT,
+        earlier: [],
+        ...(of(world).owned ? { ownedWorkspace: of(world).owned! } : {}),
+        rememberWorkspace: async (id) => {
+          if (id) of(world).owned = id;
+          else delete of(world).owned;
+        },
+      }
     );
   }
 );
@@ -210,4 +239,51 @@ Then('the worker was reached with {string}', (world, line: string) => {
   expect(world.lines.filter((ran) => ran.startsWith(`${line} `))).toHaveLength(
     1
   );
+});
+
+Given(
+  'the fleet owns workspace {string} for this worker',
+  (world, id: string) => {
+    of(world).owned = id;
+  }
+);
+Then(
+  'the fleet owns only workspace {string} for this worker',
+  (world, id: string) => {
+    expect(of(world).owned).toBe(id);
+  }
+);
+Given(
+  'the fleet declares project directories {string} under the worker home {string}',
+  (world, paths: string, home: string) => {
+    of(world).projects = paths.split(',');
+    world.commands.answer(
+      (command) => command.at(-1) === 'printf "%s" "$HOME"',
+      succeeded(home)
+    );
+  }
+);
+Then(
+  'the app added only the remote project {string}',
+  (world, path: string) => {
+    expect(
+      world.commands
+        .ran(asked(world, 'workspace add'))
+        .map((command) => command.at(-2))
+    ).toEqual([path]);
+  }
+);
+When(
+  'the operator previews a workspace for {string}',
+  async (world, id: string) => {
+    world.checks = await previewSuperWorkspaces(
+      [{ id, ssh: id, workspace: '/w', required: [] }],
+      [],
+      world.run,
+      of(world).home
+    );
+  }
+);
+Then('the workspace plan says {string}', (world, summary: string) => {
+  expect(world.checks.map((c) => c.summary)).toEqual([summary]);
 });

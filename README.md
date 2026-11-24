@@ -381,6 +381,12 @@ configuration, so a worker needs an `ssh` alias that works from a terminal on
 the manager. The `super:*` checks only warn, so an app that is closed never
 fails a sync.
 
+To add projects to every worker’s workspace, set `"super": {"projects":
+["src/app", "src/tools"]}` in `fleet.json`. Paths are relative to the worker
+account’s home. A dry run lists workspaces to create. The fleet records the ID
+of each workspace it creates so retirement or an SSH alias change can remove
+that grouping. Previously existing workspaces stay under their owner’s control.
+
 An agent the app starts on a worker signs in through the CLI proxy, with no
 sign-in on the worker: the app starts an agent by its plain command, and on a
 worker that command is the fleet's launcher (see
