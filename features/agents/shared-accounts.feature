@@ -26,7 +26,7 @@ Feature: Shared provider accounts
         | claude   | a@example.com | claude-a@example.com      | claude-sonnet-5-5, claude-haiku-5-5 |
         | claude   | b@example.com | claude-b@example.com      | claude-sonnet-5-5                   |
         | codex    | a@example.com | codex-a@example.com       | gpt-x                               |
-        | opencode | a@example.com | antigravity-a@example.com | gemini-3.8-flash, gemini-3-flash    |
+        | antigravity | a@example.com | antigravity-a@example.com | gemini-3.8-flash, gemini-3-flash |
 
     Scenario: A model that no account owns puts nobody on the roster
       Given the proxy lists only the model "claude-opus-5-5"
@@ -79,7 +79,7 @@ Feature: Shared provider accounts
   Rule: Only a real account of a routed tool has a prefix
 
     Scenario: An account's models carry the prefix of its provider
-      When the prefix of the "opencode" account "a@example.com" is asked for
+      When the prefix of the "antigravity" account "a@example.com" is asked for
       Then the prefix is "antigravity-a@example.com"
 
     Scenario Outline: <what> has no prefix
@@ -101,14 +101,12 @@ Feature: Shared provider accounts
       Then its environment sets "ANTHROPIC_BASE_URL" to "http://127.0.0.1:9"
       And its environment sets "ANTHROPIC_DEFAULT_HAIKU_MODEL" to "claude-haiku-5-5"
 
-    Scenario: OpenCode needs no relay: it is offered exactly the account's models
-      Given the environment sets "OPENCODE_CONFIG" to "/shared.json"
-      When "opencode" is launched on the machine "node" for the account "a@example.com", with its profile in "/tmp/x/opencode/proxy"
-      Then its environment no longer sets "OPENCODE_CONFIG"
-      And its OpenCode configuration enables only the provider "personal_proxy"
-      And its OpenCode configuration offers exactly these models from "personal_proxy":
-        | antigravity-a@example.com/gemini-3.8-flash |
-        | antigravity-a@example.com/gemini-3-flash   |
+    Scenario: Antigravity talks to a relay that pins the model it names in the path
+      Antigravity speaks the Gemini protocol, which names the model in the
+      request path; the relay adds the account's prefix there.
+      Given a relay that listens at "http://127.0.0.1:9"
+      When "antigravity" is launched on the machine "node" for the account "a@example.com", with its profile in "/tmp/x/antigravity/proxy"
+      Then its environment sets "GOOGLE_GEMINI_BASE_URL" to "http://127.0.0.1:9"
 
     Scenario: An account that is not signed in on the proxy is refused
       When "codex" is launched on the machine "node" for the account "b@example.com", with its profile in "/tmp/x/codex/proxy"

@@ -398,13 +398,13 @@ accounts. T3 launches most through a tracked launcher in
 `agents/` that injects the shared proxy key from Vault at
 launch; nothing is copied between nodes.
 
-| T3 provider                   | T3 driver     | Route                                                           |
-| ----------------------------- | ------------- | --------------------------------------------------------------- |
-| `Claude <account email>`      | `claudeAgent` | One per Claude account on the proxy (`claude-proxy`)            |
-| `Codex <account email>`       | `codex`       | One per Codex account on the proxy (`codex-proxy.ts`)           |
-| `AntiGravity <account email>` | `opencode`    | One per Antigravity account, via OpenCode (`opencode-proxy.ts`) |
-| `Grok CLI Proxy`              | `grok`        | Pooled: Grok Build custom model, `env_key` (`grok-proxy.ts`)    |
-| `OpenCode CLI Proxy`          | `opencode`    | Pooled accounts and Muse via OpenCode (`opencode-proxy.ts`)     |
+| T3 provider                   | T3 driver     | Route                                                             |
+| ----------------------------- | ------------- | ----------------------------------------------------------------- |
+| `Claude <account email>`      | `claudeAgent` | One per Claude account on the proxy (`claude-proxy`)              |
+| `Codex <account email>`       | `codex`       | One per Codex account on the proxy (`codex-proxy.ts`)             |
+| `AntiGravity <account email>` | `antigravity` | One per Antigravity account on the proxy (`antigravity-proxy.ts`) |
+| `Grok CLI Proxy`              | `grok`        | Pooled: Grok Build custom model, `env_key` (`grok-proxy.ts`)      |
+| `OpenCode CLI Proxy`          | `opencode`    | Pooled accounts and Muse via OpenCode (`opencode-proxy.ts`)       |
 
 **Ansible applies, TypeScript measures.** On a worker the T3 lifecycle is
 declared in playbooks: `t3-policy.yml` stages the provider policy and restarts
@@ -455,10 +455,9 @@ A provider is pinned to its account: T3 sets `WS_AGENT_ACCOUNT` and the
 launcher routes every request to `<type>-<email>/<model>`. Claude and Codex
 send whichever model is picked, so their launcher runs a loopback relay
 (`account-relay.ts`, alive only while that agent runs) that adds the prefix;
-OpenCode is configured with exactly the account's models. Requests without a
-prefix (Grok, the pooled OpenCode provider, health checks) still use the whole
-pool, fill-first. T3's own Antigravity runtime cannot carry an account, so
-Antigravity accounts run on the OpenCode harness. Cursor is not part of the
+Antigravity names its model in the Gemini request path, where the same relay
+adds it. Requests without a prefix (Grok, the pooled OpenCode provider, health
+checks) still use the whole pool, fill-first. Cursor is not part of the
 fleet (its backend cannot be proxied). Native Muse Code is not used: it only
 talks to Meta's own catalog endpoint, so Muse models run through OpenCode.
 

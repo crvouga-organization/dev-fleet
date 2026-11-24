@@ -69,35 +69,46 @@ export async function forward(
       status: 415,
     });
   const raw = request.body ? await request.text() : undefined;
-  const reach = reacher(
-    request,
-    headers,
-    endpoint + url.pathname + url.search,
-    options
-  );
+  const reach = reacher(request, headers, { endpoint, url, raw }, options);
   const { selector } = options;
   const reached =
     !prefix && selector && raw !== undefined
-      ? await failOver(selector, raw, reach)
-      : await pinnedReach(prefix, raw, reach, options);
+      ? await failOver(selector, reach)
+      : await pinnedReach(prefix, reach, options);
   if (reached instanceof Response) return reached;
   return answer(reached);
 }
 
-/** Sends one body to the proxy, retrying while the route is down. */
+/** Routed to one account, or to the proxy's pool without one. */
+type Reach = (account: string | undefined) => Promise<Reached>;
+
+/** Sends the request to the proxy, its model routed to the account, retrying
+ * while the route is down.
+ */
 function reacher(
   request: Request,
   headers: Headers,
-  target: string,
+  {
+    endpoint,
+    url,
+    raw,
+  }: { endpoint: string; url: URL; raw: string | undefined },
   { send = fetch, pause = sleep, now = Date.now }: RelayOptions
-): (body: string | undefined) => Promise<Reached> {
-  return (body) =>
-    reachProxy(
-      () => send(target, upstreamInit(request, headers, body)),
+): Reach {
+  return (account) => {
+    const path = account ? pinPath(url.pathname, account) : url.pathname;
+    const body = raw !== undefined && account ? pinModel(raw, account) : raw;
+    return reachProxy(
+      () =>
+        send(
+          endpoint + path + url.search,
+          upstreamInit(request, headers, body)
+        ),
       request.signal,
       pause,
       now
     );
+  };
 }
 
 /** The proxy's answer, decoded, or the distinct "unreachable" error. */
@@ -119,15 +130,12 @@ function answer(reached: Reached): Response {
  */
 async function pinnedReach(
   prefix: string,
-  raw: string | undefined,
-  reach: (body: string | undefined) => Promise<Reached>,
+  reach: Reach,
   { selector, alternatives = [] }: RelayOptions
 ): Promise<Reached | Response> {
   const cooling = prefix && selector ? selector.coolingUntil(prefix) : null;
   if (cooling !== null) return coolingDown(cooling, alternatives);
-  const reached = await reach(
-    raw !== undefined && prefix ? pinModel(raw, prefix) : raw
-  );
+  const reached = await reach(prefix || undefined);
   if (!prefix || !selector || reached.response?.status !== 429) return reached;
   selector.limited(prefix, retryAfter(reached.response.headers));
   await reached.response.body?.cancel().catch(() => undefined);
@@ -156,14 +164,13 @@ function upstreamInit(
  */
 async function failOver(
   selector: AccountSelector,
-  raw: string,
-  reach: (body: string | undefined) => Promise<Reached>
+  reach: Reach
 ): Promise<Reached> {
   const candidates = selector.candidates();
-  if (candidates.length === 0) return reach(raw);
+  if (candidates.length === 0) return reach(undefined);
   let reached!: Reached;
   for (const [position, candidate] of candidates.entries()) {
-    reached = await reach(pinModel(raw, candidate));
+    reached = await reach(candidate);
     const status = reached.response?.status;
     if (status === undefined || !accountRefused(status)) return reached;
     selector.limited(candidate, retryAfter(reached.response!.headers));
@@ -243,6 +250,17 @@ async function reachProxy(
     await response?.body?.cancel().catch(() => undefined);
     await pause(delay);
   }
+}
+
+/** A Gemini request names its model in the path (`/models/<model>:<method>`);
+ * that model is routed to the account the same way. Other paths are as-is.
+ */
+export function pinPath(path: string, prefix: string): string {
+  const match = /^(.*\/models\/)([^/:]+)(:[A-Za-z]+)$/.exec(path);
+  if (!match) return path;
+  const model = decodeURIComponent(match[2]!);
+  if (model.startsWith(`${prefix}/`)) return path;
+  return match[1] + encodeURIComponent(`${prefix}/${model}`) + match[3];
 }
 
 /** The JSON request with its model routed to the account; other bodies as-is. */
