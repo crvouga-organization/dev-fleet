@@ -77,7 +77,10 @@ class Guard:
                         # PSI alone would select a reader blocked behind another
                         # writer. Require both local stalls and a majority of the
                         # device's traffic in every interval of the grace period.
-                        if 0 < count <= host and 2 * count > host and sustained((scope, device)):
+                        # A cgroup counts a write when it is submitted and the
+                        # device when it completes, so a slow writer's count can
+                        # run ahead of the device's: that is still a majority.
+                        if count > 0 and 2 * count > host and sustained((scope, device)):
                             evidence = dict(reason='io', device=device, bytes=size, io_bytes=count,
                                             device_bytes=host, scope_psi=local)
                             candidates.append((count, scope, evidence))

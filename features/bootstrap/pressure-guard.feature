@@ -20,3 +20,9 @@ Feature: A quiet session survives another workload's I/O stalls
       | 80,80,80,80,80,80    | 100  | 1     | agents/t3code-terminal-a.scope |
       | 80,80,80,20,20,20    | 100  | 0     | none                           |
       | 80,80,80,80,80,80    | 1000 | 0     | none                           |
+
+  Scenario: A slow writer counted ahead of the device is still the busy scope
+    The cgroup counts a write when it is submitted and the device counts it
+    when it completes, so a slow writer can show more bytes than the device.
+    When the guard samples host I/O PSI "80,80,80,80,80,80" every 10 seconds with 85 device bytes per second, threshold 50, duration 30 and cooldown 120
+    Then it records 1 kills and only "agents/t3code-terminal-a.scope" receives a kill
