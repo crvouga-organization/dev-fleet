@@ -205,6 +205,11 @@ bytes throughout the grace period. A quiet session can keep running while the
 guard pauses new admissions. The guard journals the signal, host PSI and scope
 size, plus the device, interval byte counts and scope PSI for an I/O decision.
 
+The agent slices hand a session to systemd-oomd at 60% memory pressure. On the
+disposable VM, one thrashing session measures about 52–56% full PSI, so oomd
+is a last resort. Under that load SSH keeps answering, a quiet session keeps
+running and the session's `MemoryMax` contains it (`ansible/ubuntu/tests/vm.py`).
+
 Credential sync is deliberately indirect: no secret is copied between machines.
 Each worker has a Vault token of its own, kept in a document of its own,
 `<mount>/<project>/workers/<id>` (fields `token` and `accessor`; `<project>`
