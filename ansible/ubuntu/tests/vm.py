@@ -51,6 +51,40 @@ def run(args, **kwargs):
     return result
 
 
+AGENTS = 'app-t3code-agents'
+THREAD = AGENTS + '-fixture'
+QUIET = 'devfleet-quiet.service'
+BUSY = 'devfleet-pressure-fixture.service'
+
+
+def check_slice_policy(ssh):
+    limit = json.loads(Path('/workspace/ansible/ubuntu/policy.json').read_text())['resourceSafety']['agentSlice']['oomPressurePercent']
+    for name in [AGENTS, THREAD]:
+        unit = name + '.slice'
+        run(ssh + [f'systemctl --user start {unit}'])
+        # systemd exposes the percentage as a fraction of UINT32_MAX on D-Bus.
+        value = run(ssh + [f'systemctl --user show {unit} -p ManagedOOMMemoryPressureLimit --value']).stdout.strip()
+        percent = float(value[:-1]) if value.endswith('%') else int(value) * 100 / (2**32 - 1)
+        assert abs(percent - limit) < 0.1, (unit, percent, limit)
+        assert run(ssh + [f'systemctl --user show {unit} -p ManagedOOMMemoryPressure --value']).stdout.strip() == 'kill'
+
+
+def pressure_sample(ssh):
+    start = time.monotonic()
+    command = f"""set -e
+{answers(SERVER)}
+systemctl --user is-active --quiet {QUIET}
+cg=/sys/fs/cgroup$(systemctl --user show {THREAD}.slice -p ControlGroup --value)
+for dir in "$cg" "$(dirname "$cg")"; do
+  cat "$dir/memory.pressure" "$dir/memory.swap.current"
+  grep -E '^(pgscan|pgsteal) ' "$dir/memory.stat"
+done
+grep -E '^pswp(in|out) ' /proc/vmstat"""
+    result = subprocess.run(ssh + [command], check=True, capture_output=True, text=True, timeout=5)
+    print(json.dumps(dict(ssh_ms=round(1000 * (time.monotonic() - start)),
+                          quiet='active', samples=result.stdout.splitlines())), flush=True)
+
+
 def test_agent_pressure(ssh):
     """Exercise reclaim inside a small test cgroup in the disposable guest."""
     run(ssh + ["""test "$(swapon --show=NAME,PRIO --noheadings | sort -k2,2nr | head -1 | awk '{print $1}')" = /dev/zram0"""])
@@ -66,23 +100,31 @@ with tempfile.TemporaryFile() as f:
 """
     subprocess.run(ssh + ['cat > pressure-fixture.py'], input=script.encode(),
                    capture_output=True, check=True)
-    unit = 'devfleet-pressure-fixture.service'
-    start = run(ssh + ['date +%s']).stdout.strip()
-    run(ssh + [f'XDG_RUNTIME_DIR=/run/user/1000 systemd-run --user --unit={unit} --slice=app-t3code-agents.slice '
-               '--property=MemoryHigh=24M --property=MemoryMax=256M '
-               '--property=RuntimeMaxSec=120 /usr/bin/python3 -I -B /home/fleettest/pressure-fixture.py'])
+    check_slice_policy(ssh)
+    archive = subprocess.run(['tar', '-C', '/workspace', '-cf', '-', 'cliproxy/tests', 'cliproxy/scripts'],
+                             capture_output=True, check=True)
+    subprocess.run(ssh + ['tar -xf -'], input=archive.stdout, check=True)
+    run(ssh + [f'systemd-run --user --unit={QUIET} --slice={AGENTS}-quiet.slice sleep 240'])
+    unit = BUSY
+    launch = (f'systemd-run --user --unit={unit} --slice={THREAD}.slice '
+              '--property=MemoryHigh=24M --property=MemoryMax=256M --property=RuntimeMaxSec=150 ')
     try:
+        # Run a real repository test while a bounded reclaim burst shares its session.
+        run(ssh + [launch + """--wait --collect /bin/sh -ec 'timeout 8 python3 pressure-fixture.py & pid=$!; python3 -m unittest discover -s cliproxy/tests -p test_model_protocol.py; wait "$pid" || test $? = 124'"""])
+        pressure_sample(ssh)
+        start = run(ssh + ['date +%s']).stdout.strip()
+        run(ssh + [launch + 'python3 pressure-fixture.py'])
         deadline = time.monotonic() + 100
         while time.monotonic() < deadline:
-            subprocess.run(ssh + [answers(SERVER)], check=True, capture_output=True, timeout=5)
+            pressure_sample(ssh)
             journal = run(ssh + [f'sudo journalctl -u systemd-oomd --since=@{start} --no-pager -o cat'])
-            if unit in journal.stdout and 'Killed' in journal.stdout:
+            if any(unit in line and 'Killed' in line for line in journal.stdout.splitlines()):
                 print('oomd relieved agent pressure while SSH stayed reachable', flush=True)
                 return
             time.sleep(2)
         raise RuntimeError('oomd did not report killing the pressured fixture in time')
     finally:
-        subprocess.run(ssh + [f'systemctl --user stop {unit}'], capture_output=True, timeout=10)
+        subprocess.run(ssh + [f'systemctl --user stop {unit} {QUIET}'], capture_output=True, timeout=10)
 
 
 def main():
@@ -175,6 +217,7 @@ ssh_keys:
         test_agent_pressure(ssh)
         test_agent(ssh)
         reboot(ssh)
+        check_slice_policy(ssh)
         run(ssh + ['test "$(systemctl is-enabled sleep.target)" = masked && test "$(cat work/uncommitted)" = preserved && sudo nft list table inet personal_fleet | grep -q "policy drop"'])
         # No play ran since the reboot: personal-fleet-firewall.service loaded it.
         run(ssh + ['systemctl is-active --quiet personal-fleet-firewall.service'])
