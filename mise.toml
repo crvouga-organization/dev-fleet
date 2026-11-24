@@ -46,7 +46,7 @@ railway = "5.71.0"
 vault = "2.2.1"
 claude = "2.1.330"
 codex = "0.171.0"
-gemini = { version = "0.70.0", allow_builds = ["@lydell/node-pty"] }
+gemini = { version = "0.71.0", allow_builds = ["@lydell/node-pty"] }
 copilot = "1.0.114"
 # Agent CLIs without a registry backend: exact vendor artifacts, checksums in mise.lock.
 "http:grok" = { version = "1.0.92", bin = "grok", platforms = { linux-x64 = { url = "https://x.ai/cli/grok-{{version}}-linux-x86_64" }, linux-arm64 = { url = "https://x.ai/cli/grok-{{version}}-linux-aarch64" }, macos-x64 = { url = "https://x.ai/cli/grok-{{version}}-macos-x86_64" }, macos-arm64 = { url = "https://x.ai/cli/grok-{{version}}-macos-aarch64" } }, os = ["linux", "macos"] }
