@@ -1291,10 +1291,10 @@ backend = "npm:vercel"
 specifiers = ["66.6.0"]
 
 [[tools."npm:wrangler"]]
-version = "4.166.0"
-aube = { path = ".mise/locks/npm-wrangler/4.166.0", digest = "sha256:ef2e4a69e2fde59a14c33da39b7b5175d82e8a2ac4ab3d72f7a67931fc7fda99" }
+version = "4.168.0"
+aube = { path = ".mise/locks/npm-wrangler/4.168.0", digest = "sha256:2f30829b64e91193688605958c3332247e406492322aeed5ac5e9c95a2fd391c" }
 backend = "npm:wrangler"
-specifiers = ["4.166.0"]
+specifiers = ["4.168.0"]
 
 [[tools.opentofu]]
 version = "1.13.10"
