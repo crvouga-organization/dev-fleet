@@ -6,6 +6,18 @@ import { join, resolve } from 'node:path';
 // No test touches a real machine's fleet state or bucket: each run gets an
 // empty directory.
 const state = mkdtempSync(join(os.tmpdir(), 'devfleet-test-state-'));
+// Real-tool scenarios may consult the existing tool installations with
+// `mise which`. Capture their location before moving into the test home.
+export const miseInstalls =
+  process.env['MISE_INSTALLS_DIR'] ??
+  join(
+    process.env['MISE_DATA_DIR'] ??
+      join(
+        process.env['XDG_DATA_HOME'] ?? join(os.homedir(), '.local/share'),
+        'mise'
+      ),
+    'installs'
+  );
 // Children inherit the test home. Bun caches os.homedir() at startup, and
 // os.userInfo() reads the system account database, so redirect those too.
 process.env['HOME'] = state;

@@ -2,9 +2,8 @@ import { expect } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fleetState } from '../../../src/cli/fleet-state';
-import { runCommand } from '../../../src/runner';
 import { parseBucket } from '../../../src/state/bucket';
-import { requirements } from '../support/requirements';
+import { requirements, runWithLitestream } from '../support/requirements';
 import { write } from './common';
 import { WHO, phrase, state } from './world';
 
@@ -26,7 +25,7 @@ Given(
     for (const name of [first, second]) {
       const manager = world.manager(name);
       manager.bucket = parseBucket({ directory: world.remote });
-      manager.run = runCommand;
+      manager.run = runWithLitestream;
     }
   }
 );
@@ -34,7 +33,8 @@ Given(
 Given(
   'managers {string} and {string} run the pinned Litestream',
   (world, first: string, second: string) => {
-    for (const name of [first, second]) world.manager(name).run = runCommand;
+    for (const name of [first, second])
+      world.manager(name).run = runWithLitestream;
   }
 );
 
