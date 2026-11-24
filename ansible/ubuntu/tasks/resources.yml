@@ -162,10 +162,12 @@
     content: |
       # Managed by personal fleet-sync. Applies to every t3code-*.scope T3 starts for an agent.
       # OOMPolicy=continue: the kernel kills the largest process in the agent; the agent itself keeps running.
+      # IOAccounting=yes: the pressure guard needs each agent's io.stat to tell a writer from a reader it blocks.
       [Scope]
       MemoryMax={{ resourceSafety.agentMemoryMax }}
       MemorySwapMax={{ resourceSafety.agentSwapMax }}
       OOMPolicy=continue
+      IOAccounting=yes
   register: agent_policy
 - name: Bound the combined agents and each thread of agents
   ansible.builtin.copy:
