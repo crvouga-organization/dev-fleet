@@ -188,6 +188,14 @@ sudo chown "$(id -u)" /dev/mapper/fleet-io-fixture"""])
 systemctl --user is-active --quiet {quiet}
 {answers(SERVER)}
 cat /proc/pressure/io
+# What the guard reads: its state, the writer's stalls and bytes, the root's bytes.
+systemctl is-active personal-fleet-pressure-guard || true
+cg=/sys/fs/cgroup$(systemctl --user show {writer} -p ControlGroup --value)
+tail -1 "$cg/io.pressure" 2>/dev/null || true
+sed 's/^/writer /' "$cg/io.stat" 2>/dev/null || true
+dev=$(lsblk -dno MAJ:MIN /dev/mapper/fleet-io-fixture | tr -d ' ')
+grep "^$dev " /sys/fs/cgroup/io.stat | sed 's/^/root /' || true
+sudo journalctl -u personal-fleet-pressure-guard --since=@{started} -o cat | grep -v '^{{' | tail -3 || true
 sudo journalctl -u personal-fleet-pressure-guard --since=@{started} -o cat | grep '^{{' || true'''],
                                     capture_output=True, text=True, timeout=5, check=True)
             print(json.dumps(dict(io_fixture=sample.stdout.splitlines(),
