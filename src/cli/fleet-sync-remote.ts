@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { previewSuperWorkspaces } from '../ide/super';
+import { stateContext } from '../state/sync';
 import { IDES } from '../ide';
 import { enabled, workerChecks } from '../ide/orchestrate';
 import { idesOf } from '../ide/definition';
@@ -16,7 +18,7 @@ import { FleetUsageError } from '../errors';
 import { selectNodes } from '../config';
 import { loadRoster } from './roster';
 import { enrolledRoster } from '../enrolled-roster';
-import { readParked, readWorkerStates } from '../state/workers';
+import { changeWorkers, readParked, readWorkerStates } from '../state/workers';
 import { withoutParked } from '../worker-parking';
 import { reconcileRecords } from './fleet-sync-records';
 import type { FleetDefinition } from '../definition';
@@ -153,6 +155,19 @@ export async function selected(
   // A worker that could not be retired, like any other failed check of the
   // fleet, means the run did not converge: it is not recorded as applied.
   if (notes.some(blocking)) report.ok = false;
+  if (!options.apply) {
+    report.checks.push(
+      ...(await previewSuperWorkspaces(
+        nodes.filter(
+          (node) =>
+            node.id !== canonical.manager.id &&
+            idesOf(canonical).includes('super')
+        ),
+        canonical.workers,
+        run
+      ))
+    );
+  }
   if (settle) report.checks.push(await settle(report));
   return outcome(report, planFingerprint, started);
 }
@@ -377,11 +392,22 @@ function convergeWorker(
     // Workers are Linux by definition.
     ui.progress.step(node.id, 'Verifying SSH, OS and T3');
     result.checks.push(...(await inspectBootstrap(node, run)));
+    const ownedWorkspace =
+      readWorkerStates().workers[node.id]?.superWorkspaceId;
     result.checks.push(
       ...(await workerChecks(enabled(idesOf(canonical), IDES), node, {
         run,
         workspace: ui.workspace,
         earlier: result.checks,
+        ...(ownedWorkspace ? { ownedWorkspace } : {}),
+        rememberWorkspace: async (id) => {
+          await changeWorkers(stateContext(run), (current) => {
+            const entry = { ...current[node.id] };
+            if (id) entry.superWorkspaceId = id;
+            else delete entry.superWorkspaceId;
+            return { [node.id]: entry };
+          });
+        },
         remember: async (id, identity) => {
           await rememberEnvironment(ui.roster, id, identity);
         },

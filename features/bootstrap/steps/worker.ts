@@ -572,6 +572,7 @@ Then(/^the filesystem is (above|below) its floors$/, (world, side: string) => {
 
 const pressureGuard = part((world) => ({
   directory: world.directory('pressure-guard-'),
+  memoryPsi: 0,
   scopes: [] as string[],
   decisions: 0,
 }));
@@ -594,6 +595,10 @@ Given(
   }
 );
 
+Given('host memory PSI is {int} percent', (world, percent: number) => {
+  pressureGuard(world).memoryPsi = percent;
+});
+
 When(
   'the guard samples host I\\/O PSI {string} every {int} seconds with {int} device bytes per second, threshold {int}, duration {int} and cooldown {int}',
   (
@@ -608,7 +613,10 @@ When(
     const state = pressureGuard(world);
     const proc = join(state.directory, 'proc');
     mkdirSync(join(proc, 'pressure'), { recursive: true });
-    writeFileSync(join(proc, 'pressure/memory'), 'full avg10=0');
+    writeFileSync(
+      join(proc, 'pressure/memory'),
+      `full avg10=${state.memoryPsi}`
+    );
     const simulation = `
 import runpy, sys, json
 from pathlib import Path

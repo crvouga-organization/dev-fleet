@@ -33,6 +33,14 @@ Feature: A worker is replaced or retired with one command
       And the roster holds only "worker-two"
       And the fleet state records "worker-one" as retired
 
+    Scenario: Retirement deletes the workspace recorded when the fleet created it
+      Given the fleet state owns Super workspace "created-id" for "worker-one"
+      And the app accepts deletion of workspace "created-id"
+      When the operator runs fleet-node-retire for "worker-one" with --apply --yes
+      Then the command exits with 0
+      And the app deleted only workspace "created-id"
+      And the fleet state records "worker-one" as retired
+
     Scenario: Retiring twice changes nothing more
       Given the operator has retired "worker-one"
       When the operator runs fleet-node-retire for "worker-one" with --apply --yes
