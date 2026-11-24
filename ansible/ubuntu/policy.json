@@ -168,7 +168,7 @@
       "swapMiB": 4096,
       "tasks": 3000,
       "weight": 50,
-      "oomPressurePercent": 40
+      "oomPressurePercent": 60
     },
     "journalMaxUse": "1G",
     "journalKeepFree": "4G",

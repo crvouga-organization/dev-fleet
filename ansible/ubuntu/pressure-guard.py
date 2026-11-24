@@ -14,58 +14,96 @@ def pressure(path):
     raise ValueError('full pressure unavailable')
 
 
-def largest_scope(tree):
-    best = None
-    largest = 0
-    for scope in tree.rglob('t3code-*.scope'):
-        try:
-            # A scope with delegated descendants is not a leaf.
-            if any(child.is_dir() for child in scope.iterdir()):
-                continue
-            size = int((scope / 'memory.current').read_text())
-            size += int((scope / 'memory.swap.current').read_text())
-        except (OSError, ValueError):
+def io_bytes(group):
+    devices = {}
+    for line in (group / 'io.stat').read_text().splitlines():
+        if not line.strip():
             continue
-        if size > largest:
-            largest, best = size, scope
-    return best, largest
+        device, *fields = line.split()
+        values = dict(field.split('=') for field in fields)
+        if 'rbytes' in values and 'wbytes' in values:
+            devices[device] = int(values['rbytes']) + int(values['wbytes'])
+    return devices
+
+
+def io_delta(previous, current):
+    # A new device or a counter reset cannot establish an interval of activity.
+    return {device: count - previous[device] for device, count in current.items()
+            if device in previous and count > previous[device]}
 
 
 class Guard:
     def __init__(self):
-        self.since = None
+        self.since = {}
         self.next_action = 0
+        self.previous = {}
 
     def sample(self, args, now):
         io = pressure(args.proc / 'pressure/io')
         memory = pressure(args.proc / 'pressure/memory')
-        if max(io, memory) < args.threshold:
-            self.since = None
-            if args.marker and not args.dry_run:
-                args.marker.unlink(missing_ok=True)
-            return
-        if self.since is None:
-            self.since = now
-        if now - self.since < args.duration:
-            return
+        active = {}
+        counters = {}
+        candidates = []
+
+        def sustained(key):
+            active[key] = self.since.get(key, now)
+            return now - active[key] >= args.duration
+
+        memory_due = memory >= args.threshold and sustained('memory')
+        io_due = io >= args.threshold and sustained('io')
+        if io >= args.threshold:
+            try:
+                counters['host'] = io_bytes(args.cgroup_root)
+            except (OSError, ValueError, KeyError):
+                pass
+        host_delta = io_delta(self.previous.get('host', {}), counters.get('host', {}))
+        if memory_due or io >= args.threshold:
+            for scope in args.agent_tree.rglob('t3code-*.scope'):
+                try:
+                    if any(child.is_dir() for child in scope.iterdir()):
+                        continue
+                    size = int((scope / 'memory.current').read_text())
+                    size += int((scope / 'memory.swap.current').read_text())
+                    if memory_due:
+                        candidates.append((size, scope, dict(reason='memory', bytes=size)))
+                        continue
+                    local = pressure(scope / 'io.pressure')
+                    current = io_bytes(scope)
+                    counters[scope] = current
+                    if local < args.threshold:
+                        continue
+                    for device, count in io_delta(self.previous.get(scope, {}), current).items():
+                        host = host_delta.get(device, 0)
+                        # PSI alone would select a reader blocked behind another
+                        # writer. Require both local stalls and a majority of the
+                        # device's traffic in every interval of the grace period.
+                        if 0 < count <= host and 2 * count > host and sustained((scope, device)):
+                            evidence = dict(reason='io', device=device, bytes=size, io_bytes=count,
+                                            device_bytes=host, scope_psi=local)
+                            candidates.append((count, scope, evidence))
+                except (OSError, ValueError, KeyError):
+                    continue
+        self.previous = counters
+        self.since = active
         if args.marker and not args.dry_run:
-            args.marker.touch()
-        if now < self.next_action:
+            if memory_due or io_due:
+                args.marker.touch()
+            else:
+                args.marker.unlink(missing_ok=True)
+        if not candidates or now < self.next_action:
             return
-        scope, size = largest_scope(args.agent_tree)
-        if scope is None:
-            return
+        _, scope, evidence = max(candidates, key=lambda item: (item[0], item[1]))
         if not args.dry_run:
             (scope / 'cgroup.kill').write_text('1')
         self.next_action = now + args.cooldown
-        print(json.dumps(dict(event='agent_pressure', scope=scope.name,
-                              bytes=size, io=io, memory=memory,
-                              dry_run=args.dry_run)), flush=True)
+        print(json.dumps(dict(event='agent_pressure', scope=scope.name, io=io,
+                              memory=memory, dry_run=args.dry_run, **evidence)), flush=True)
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--proc', type=Path, default=Path('/proc'))
+    parser.add_argument('--cgroup-root', type=Path, default=Path('/sys/fs/cgroup'))
     parser.add_argument('--agent-tree', type=Path, required=True)
     parser.add_argument('--threshold', type=float, required=True)
     parser.add_argument('--duration', type=int, required=True)
@@ -79,7 +117,8 @@ def main():
         try:
             guard.sample(args, time.monotonic())
         except (OSError, KeyError, ValueError):
-            guard.since = None
+            guard.since.clear()
+            guard.previous.clear()
             if args.marker and not args.dry_run:
                 args.marker.unlink(missing_ok=True)
         time.sleep(args.interval)

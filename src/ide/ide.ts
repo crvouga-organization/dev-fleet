@@ -31,6 +31,8 @@ export interface MachineContext {
 }
 
 export interface WorkerContext {
+  ownedWorkspace?: string;
+  rememberWorkspace?: (id: string | null) => Promise<void>;
   run: Runner;
   /** The manager's checkout of the revision this sync applies. */
   workspace: string;

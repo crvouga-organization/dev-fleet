@@ -6,6 +6,7 @@ import { mutateState, type StateContext, type Standing } from './sync';
 
 /** What the manager knows of one worker that fleet.json does not say. */
 export interface WorkerState {
+  superWorkspaceId?: string;
   /** The pinned SSH host key, "TYPE BASE64", and when it was pinned. */
   hostKey?: string;
   hostKeyPinnedAt?: string;
@@ -36,6 +37,8 @@ const isTime = (value: unknown): value is string =>
   typeof value === 'string' && !Number.isNaN(Date.parse(value));
 
 const RULES: Record<keyof WorkerState, (value: unknown) => boolean> = {
+  superWorkspaceId: (value) =>
+    typeof value === 'string' && /^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(value),
   hostKey: (value) => typeof value === 'string' && HOST_KEY.test(value),
   hostKeyPinnedAt: isTime,
   parkedAt: isTime,
@@ -52,6 +55,9 @@ function workerState(value: unknown): WorkerState | null {
   const { hostKey, hostKeyPinnedAt, parkedAt, origin, t3PairingRequestedAt } =
     value;
   return {
+    ...(typeof value['superWorkspaceId'] === 'string'
+      ? { superWorkspaceId: value['superWorkspaceId'] }
+      : {}),
     ...(typeof hostKey === 'string' ? { hostKey } : {}),
     ...(isTime(hostKeyPinnedAt) ? { hostKeyPinnedAt } : {}),
     ...(isTime(parkedAt) ? { parkedAt } : {}),

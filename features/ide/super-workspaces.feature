@@ -70,6 +70,35 @@ Feature: Every worker is an SSH workspace of super.engineering on the manager
       And the check "super:workspace" passes
       And the app was asked to "workspace create worker-one --type remote --ssh-target worker-one --json"
 
+      And the fleet owns only workspace "new" for this worker
+
+    Scenario: The fleet deletes its own workspace when the SSH alias changes
+      Given the fleet owns workspace "created" for this worker
+      And the app holds these workspaces:
+        | id      | type   | ssh target |
+        | created | remote | old-alias  |
+        | manual  | remote | old-alias  |
+      And the app answers "workspace delete created --confirm" with {"ok":true}
+      When the worker "worker-one" is converged for super.engineering
+      Then the app was asked to "workspace delete created --confirm --json"
+      And the fleet owns only workspace "new" for this worker
+
+    Scenario: A declared project already in the workspace is kept
+      Given the app holds these workspaces:
+        | id  | type   | ssh target | project         |
+        | w-2 | remote | worker-one | /home/dev/first |
+      And the fleet declares project directories "first,second" under the worker home "/home/dev"
+      And the app answers "workspace add" with {"ok":true}
+      When the worker "worker-one" is converged for super.engineering
+      Then the check "super:workspace" passes
+      And the app added only the remote project "/home/dev/second"
+
+    Scenario: The preview names a missing workspace without creating it
+      Given the app holds no workspace
+      When the operator previews a workspace for "worker-one"
+      Then the workspace plan says "Planned: create a super.engineering workspace for worker worker-one."
+      And the app was not asked to create a workspace
+
     Scenario: A worker that has its workspace is left alone
       A workspace the operator renamed is still that worker's.
       Given the app holds these workspaces:

@@ -158,6 +158,7 @@ export interface FleetDefinition {
   worker?: WorkerPolicy;
   /** The IDEs the fleet runs; `["t3"]` when not named (idesOf). */
   ides?: IdeId[];
+  super?: { projects: string[] };
   /** What every machine's T3 holds beyond its provider instances. */
   t3?: T3Definition;
   /** The Git identity and GitHub credential helper every node, manager
@@ -642,6 +643,7 @@ export function parseDefinition(value: unknown): FleetDefinition {
       'ubuntu',
       'worker',
       'ides',
+      'super',
       't3',
       'git',
       'notify',
@@ -687,6 +689,9 @@ export function parseDefinition(value: unknown): FleetDefinition {
       ? {}
       : { worker: policy(fields['worker']) }),
     // Kept only when named: an earlier revision must still read the copy.
+    ...(fields['super'] === undefined
+      ? {}
+      : { super: superProjects(fields['super']) }),
     ...(fields['ides'] === undefined
       ? {}
       : { ides: block('$.ides', () => parseIdes(fields['ides'])) }),
@@ -726,6 +731,32 @@ export function parseDefinition(value: unknown): FleetDefinition {
 }
 /** How every node signs in to GitHub, how workers are parked, and the
  * tailnet control plane they are enrolled with. */
+function superProjects(value: unknown): { projects: string[] } {
+  const data = object(value, '$.super');
+  keys(data, ['projects'], '$.super');
+  const projects = data['projects'];
+  if (!Array.isArray(projects))
+    return fail(
+      '$.super.projects',
+      'worker project directories relative to home',
+      projects
+    );
+  const paths = projects.map((path: unknown, i) => {
+    if (
+      typeof path !== 'string' ||
+      /[\x00-\x1f\x7f]/u.test(path) ||
+      path.split('/').some((part) => ['', '.', '..'].includes(part))
+    )
+      return fail(
+        `$.super.projects[${i}]`,
+        'a directory relative to the worker home',
+        path
+      );
+    return path;
+  });
+  return { projects: [...new Set(paths)] };
+}
+
 function operations(
   fields: Record<string, unknown>
 ): Pick<FleetDefinition, 'github' | 'parking' | 'tailnet' | 'storage'> {

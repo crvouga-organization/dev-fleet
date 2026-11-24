@@ -1,7 +1,7 @@
 import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { join, posix } from 'node:path';
 import type { Check, CommandResult, FleetNode, Runner } from '../types';
-import type { Ide } from './ide';
+import type { Ide, WorkerContext } from './ide';
 import type { MachineDefinition } from '../definition';
 import { record } from '../config';
 import { fleet } from '../fleet-config';
@@ -42,6 +42,7 @@ const START = 'Start super.engineering on the manager, then run fleet-sync.';
 /** What the scenarios replace: the home directory and the declared workers. */
 export interface SuperInputs {
   home?: string;
+  projects?: readonly string[];
   workers?: readonly MachineDefinition[];
 }
 
@@ -136,16 +137,136 @@ function unanswered(
   };
 }
 
-export function superIde(inputs: SuperInputs = {}): Ide {
-  const cli = () => join(inputs.home ?? homedir(), APP_HOME, 'bin', 'se');
-  const workers = () => inputs.workers ?? fleet.workers;
-  const ask = async (run: Runner, ...args: string[]): Promise<Answer> =>
-    parse(await run([cli(), ...args, '--json'], { timeoutMs: 30_000 }));
+const ask = async (
+  run: Runner,
+  home: string | undefined,
+  ...args: string[]
+): Promise<Answer> =>
+  parse(
+    await run(
+      [join(home ?? homedir(), APP_HOME, 'bin', 'se'), ...args, '--json'],
+      { timeoutMs: 30_000 }
+    )
+  );
 
+const workspaceCheck = 'super:workspace';
+interface Workspace {
+  id: string;
+  target: string;
+  projects: string[];
+}
+
+export async function removeSuperWorkspace(
+  run: Runner,
+  owned: string,
+  home?: string
+): Promise<Check> {
+  const result = await ask(
+    run,
+    home,
+    'workspace',
+    'delete',
+    owned,
+    '--confirm'
+  );
+  if (
+    'response' in result ||
+    ('refused' in result && result.refused === 'not_found')
+  )
+    return {
+      id: workspaceCheck,
+      status: 'pass',
+      summary: 'The fleet-created workspace was removed.',
+    };
+  return unanswered(workspaceCheck, result);
+}
+
+/** The app groups worktrees into projects and sections. Only a primary
+ * worktree names the project directory itself. */
+function projectRoots(rows: unknown): string[] {
+  if (!Array.isArray(rows)) return [];
+  return rows.flatMap((row: unknown) => {
+    if (!record(row)) return [];
+    if (row['is_primary'] === true && typeof row['path'] === 'string')
+      return [row['path']];
+    return projectRoots(row['items']);
+  });
+}
+
+async function discover(
+  run: Runner,
+  home?: string
+): Promise<{ entries: Workspace[] } | { problem: Check }> {
+  const list = await ask(run, home, 'workspace', 'list');
+  if (!('response' in list))
+    return { problem: unanswered(workspaceCheck, list) };
+  const rows = list.response['workspaces'];
+  const invalid = {
+    problem: unanswered(workspaceCheck, { refused: 'unreadable' }),
+  };
+  if (!Array.isArray(rows)) return invalid;
+  const entries = [];
+  for (const row of rows) {
+    if (!record(row) || typeof row['id'] !== 'string') return invalid;
+    const got = await ask(run, home, 'workspace', 'get', row['id']);
+    if (!('response' in got))
+      return { problem: unanswered(workspaceCheck, got) };
+    const w = got.response['workspace'];
+    if (!record(w) || typeof w['type'] !== 'string') return invalid;
+    if (w['type'] !== 'remote') continue;
+    if (typeof w['ssh_target'] !== 'string') return invalid;
+    const projects = projectRoots(row['sections']);
+    entries.push({ id: row['id'], target: w['ssh_target'], projects });
+  }
+  return { entries };
+}
+
+async function matchWorkspace(
+  entries: Workspace[],
+  target: string,
+  context: WorkerContext,
+  home?: string
+): Promise<{ workspace: Workspace | undefined } | { problem: Check }> {
+  const { run, ownedWorkspace } = context;
+  const owned = entries.find((w) => w.id === ownedWorkspace);
+  if (owned && owned.target !== target) {
+    const removed = await removeSuperWorkspace(run, owned.id, home);
+    if (removed.status !== 'pass') return { problem: removed };
+  }
+  const matches = entries.filter((w) => w.target === target);
+  const existing = matches.find((w) => w.id === ownedWorkspace) ?? matches[0];
+  if (ownedWorkspace && existing && existing.id !== ownedWorkspace)
+    await context.rememberWorkspace?.(null);
+  return { workspace: existing };
+}
+
+export async function previewSuperWorkspaces(
+  nodes: readonly FleetNode[],
+  workers: readonly MachineDefinition[],
+  run: Runner,
+  home?: string
+): Promise<Check[]> {
+  if (!nodes.length) return [];
+  const result = await discover(run, home);
+  if ('problem' in result) return [result.problem];
+  return nodes
+    .filter(
+      (node) =>
+        !result.entries.some((w) => w.target === sshTarget(node, workers))
+    )
+    .map((node) => ({
+      id: workspaceCheck,
+      status: 'skip',
+      summary: `Planned: create a super.engineering workspace for worker ${node.id}.`,
+    }));
+}
+
+export function superIde(inputs: SuperInputs = {}): Ide {
+  const workers = () => inputs.workers ?? fleet.workers;
   /** `super:app`: the app on the manager answers its CLI. */
   const app = async (run: Runner): Promise<Check> => {
     const id = 'super:app';
-    const answer = await ask(run, 'status');
+    const answer = await ask(run, inputs.home, 'status');
     return 'response' in answer
       ? {
           id,
@@ -232,6 +353,76 @@ export function superIde(inputs: SuperInputs = {}): Ide {
     };
   };
 
+  const create = async (
+    nodeId: string,
+    target: string,
+    context: WorkerContext
+  ): Promise<{ workspace: Workspace } | { problem: Check }> => {
+    const created = await ask(
+      context.run,
+      inputs.home,
+      'workspace',
+      'create',
+      nodeId,
+      '--type',
+      'remote',
+      '--ssh-target',
+      target
+    );
+    if (!('response' in created))
+      return { problem: unanswered(workspaceCheck, created) };
+    const w = created.response['workspace'];
+    if (
+      !record(w) ||
+      typeof w['id'] !== 'string' ||
+      !/^[a-zA-Z0-9][a-zA-Z0-9_-]*$/.test(w['id'])
+    )
+      return { problem: unanswered(workspaceCheck, { refused: 'unreadable' }) };
+    await context.rememberWorkspace?.(w['id']);
+    return { workspace: { id: w['id'], target, projects: [] } };
+  };
+  const addProjects = async (
+    existing: Workspace,
+    run: Runner
+  ): Promise<Check | undefined> => {
+    const projects = inputs.projects ?? fleet.super?.projects ?? [];
+    if (!projects.length) return;
+    const remote = await run(
+      [
+        'ssh',
+        '-T',
+        '-o',
+        'BatchMode=yes',
+        '-o',
+        'ConnectTimeout=10',
+        existing.target,
+        'printf "%s" "$HOME"',
+      ],
+      { timeoutMs: 30_000 }
+    );
+    if (
+      !remote.ok ||
+      !posix.isAbsolute(remote.stdout) ||
+      remote.stdout.includes('\n')
+    )
+      return unanswered(workspaceCheck, { refused: 'remote_home_unavailable' });
+    for (const relative of projects) {
+      const path = posix.join(remote.stdout, relative);
+      if (existing.projects.includes(path)) continue;
+      const added = await ask(
+        run,
+        inputs.home,
+        'workspace',
+        'add',
+        existing.id,
+        '--remote-project',
+        path
+      );
+      if (!('response' in added)) return unanswered(workspaceCheck, added);
+    }
+    return undefined;
+  };
+
   /** `super:workspace`: the app holds a remote workspace whose SSH target
    * is this worker, created here when it does not. A workspace is told by
    * its target alone: its name is the operator's to change.
@@ -239,44 +430,32 @@ export function superIde(inputs: SuperInputs = {}): Ide {
   const workspace = async (
     node: FleetNode,
     target: string,
-    run: Runner
+    context: WorkerContext
   ): Promise<Check> => {
-    const id = 'super:workspace';
-    const list = await ask(run, 'workspace', 'list');
-    if (!('response' in list)) return unanswered(id, list);
-    const listed = list.response['workspaces'];
-    for (const entry of Array.isArray(listed) ? listed : []) {
-      if (!record(entry) || typeof entry['id'] !== 'string') continue;
-      const got = await ask(run, 'workspace', 'get', entry['id']);
-      const held = 'response' in got ? got.response['workspace'] : undefined;
-      if (
-        record(held) &&
-        held['type'] === 'remote' &&
-        held['ssh_target'] === target
-      )
-        return {
-          id,
-          status: 'pass',
-          summary: `super.engineering on the manager holds the SSH workspace of worker ${node.id}.`,
-        };
-    }
-    const created = await ask(
-      run,
-      'workspace',
-      'create',
-      node.id,
-      '--type',
-      'remote',
-      '--ssh-target',
-      target
+    const { run } = context;
+    const id = workspaceCheck;
+    const result = await discover(run, inputs.home);
+    if ('problem' in result) return result.problem;
+    const matched = await matchWorkspace(
+      result.entries,
+      target,
+      context,
+      inputs.home
     );
-    return 'response' in created
-      ? {
-          id,
-          status: 'pass',
-          summary: `super.engineering on the manager was given the SSH workspace of worker ${node.id}.`,
-        }
-      : unanswered(id, created);
+    if ('problem' in matched) return matched.problem;
+    let existing = matched.workspace;
+    if (!existing) {
+      const result = await create(node.id, target, context);
+      if ('problem' in result) return result.problem;
+      existing = result.workspace;
+    }
+    return (
+      (await addProjects(existing, run)) ?? {
+        id,
+        status: 'pass',
+        summary: `super.engineering on the manager holds the SSH workspace of worker ${node.id}.`,
+      }
+    );
   };
 
   return {
@@ -290,7 +469,7 @@ export function superIde(inputs: SuperInputs = {}): Ide {
       // A workspace the app cannot reach only asks the operator for a key.
       return reached.summary === 'SUPER_SSH_UNREACHABLE'
         ? [reached]
-        : [reached, await workspace(node, target, context.run)];
+        : [reached, await workspace(node, target, context)];
     },
   };
 }

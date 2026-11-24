@@ -14,7 +14,8 @@ import {
   hostKeyAlias,
   renderKnownHosts,
 } from '../ssh-connection';
-import { changeWorkers, readPins } from '../state/workers';
+import { removeSuperWorkspace } from '../ide/super';
+import { changeWorkers, readPins, readWorkerStates } from '../state/workers';
 import { hubUrl } from '../topology';
 import { blockedBySecretsLogin, blockedCode } from '../secrets-blocked';
 import { FleetUsageError } from '../errors';
@@ -201,6 +202,23 @@ export async function fleetNodeRetire(
   return retireWorker(worker, entry, services, !preview(options));
 }
 
+/** Advisory like every super:* check: a closed app never blocks a
+ * retirement, so the warning names the workspace left to delete. */
+async function removeOwnedWorkspace(
+  owned: string,
+  run: Runner
+): Promise<Check> {
+  const removed = await removeSuperWorkspace(run, owned);
+  if (removed.status === 'pass') return removed;
+  return {
+    ...removed,
+    remedy: {
+      action:
+        `${removed.remedy?.action ?? ''} Then delete workspace ${owned} in super.engineering on the manager (se workspace delete ${owned} --confirm).`.trim(),
+    },
+  };
+}
+
 /** Retires one worker; with `apply` false it only plans. Shared with the
  * retirement of a worker whose record disappeared (fleet-sync).
  */
@@ -211,14 +229,21 @@ export async function retireWorker(
   apply: boolean
 ): Promise<CommandOutcome> {
   const host = await keyName(worker, services.run);
+  const owned = readWorkerStates().workers[worker.id]?.superWorkspaceId;
   if (!apply)
     return outcome(
       'fleet-node-retire',
       worker.id,
-      planRetirement(worker, entry, host, services.vault()),
+      [
+        ...planRetirement(worker, entry, host, services.vault()),
+        ...(owned
+          ? [planned('super:workspace', 'delete the fleet-created workspace')]
+          : []),
+      ],
       false
     );
   const checks: Check[] = [];
+  if (owned) checks.push(await removeOwnedWorkspace(owned, services.run));
   if (services.vault())
     checks.push(await revokeWorkerToken(worker.id, services.run));
   checks.push(await pinHostKey(worker, host, null, services));

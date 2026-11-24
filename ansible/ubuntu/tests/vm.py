@@ -51,38 +51,152 @@ def run(args, **kwargs):
     return result
 
 
+AGENTS = 'app-t3code-agents'
+THREAD = AGENTS + '-fixture'
+QUIET = 'devfleet-quiet.service'
+BUSY = 'devfleet-pressure-fixture.service'
+
+
+def check_slice_policy(ssh):
+    limit = json.loads(Path('/workspace/ansible/ubuntu/policy.json').read_text())['resourceSafety']['agentSlice']['oomPressurePercent']
+    for name in [AGENTS, THREAD]:
+        unit = name + '.slice'
+        run(ssh + [f'systemctl --user start {unit}'])
+        # systemd exposes the percentage as a fraction of UINT32_MAX on D-Bus.
+        value = run(ssh + [f'systemctl --user show {unit} -p ManagedOOMMemoryPressureLimit --value']).stdout.strip()
+        percent = float(value[:-1]) if value.endswith('%') else int(value) * 100 / (2**32 - 1)
+        assert abs(percent - limit) < 0.1, (unit, percent, limit)
+        assert run(ssh + [f'systemctl --user show {unit} -p ManagedOOMMemoryPressure --value']).stdout.strip() == 'kill'
+
+
+def pressure_sample(ssh):
+    start = time.monotonic()
+    command = f"""set -e
+{answers(SERVER)}
+systemctl --user is-active --quiet {QUIET}
+cg=/sys/fs/cgroup$(systemctl --user show {THREAD}.slice -p ControlGroup --value)
+for dir in "$cg" "$(dirname "$cg")"; do
+  cat "$dir/memory.pressure" "$dir/memory.swap.current"
+  grep -E '^(pgscan|pgsteal) ' "$dir/memory.stat"
+done
+grep -E '^pswp(in|out) ' /proc/vmstat"""
+    result = subprocess.run(ssh + [command], check=True, capture_output=True, text=True, timeout=5)
+    print(json.dumps(dict(ssh_ms=round(1000 * (time.monotonic() - start)),
+                          quiet='active', samples=result.stdout.splitlines())), flush=True)
+
+
 def test_agent_pressure(ssh):
     """Exercise reclaim inside a small test cgroup in the disposable guest."""
     run(ssh + ["""test "$(swapon --show=NAME,PRIO --noheadings | sort -k2,2nr | head -1 | awk '{print $1}')" = /dev/zram0"""])
     # Keep the fixture small enough that even without oomd its hard cap bounds
     # the damage. File-backed pages drive reclaim on repeated scans.
-    script = """import mmap, tempfile
+    script = """import mmap, sys, tempfile, time
+from pathlib import Path
+controlled = len(sys.argv) > 1
+group = Path('/sys/fs/cgroup' + Path('/proc/self/cgroup').read_text().strip().split('::',1)[1])
+def stalled():
+    line = (group / 'memory.pressure').read_text().splitlines()[-1]
+    return int(line.split('total=')[1]) / 1000000
+end = time.monotonic() + 65
 with tempfile.TemporaryFile() as f:
     f.truncate(160 * 1024 * 1024)
     with mmap.mmap(f.fileno(), 0) as pages:
-        while True:
-            for i in range(0, len(pages), 4096):
-                pages[i] = (pages[i] + 1) % 256
+        while not controlled or time.monotonic() < end:
+            for start in range(0, len(pages), 1024 * 1024):
+                before = time.monotonic()
+                baseline = stalled() if controlled else 0
+                for i in range(start, start + 1024 * 1024, 4096):
+                    pages[i] = (pages[i] + 1) % 256
+                if controlled:
+                    # Pace the fixture at 52% full PSI, between the historical
+                    # and candidate limits. The saturating run never sleeps.
+                    time.sleep(max(0, (stalled() - baseline) / 0.52 - (time.monotonic() - before)))
 """
     subprocess.run(ssh + ['cat > pressure-fixture.py'], input=script.encode(),
                    capture_output=True, check=True)
-    unit = 'devfleet-pressure-fixture.service'
-    start = run(ssh + ['date +%s']).stdout.strip()
-    run(ssh + [f'XDG_RUNTIME_DIR=/run/user/1000 systemd-run --user --unit={unit} --slice=app-t3code-agents.slice '
-               '--property=MemoryHigh=24M --property=MemoryMax=256M '
-               '--property=RuntimeMaxSec=120 /usr/bin/python3 -I -B /home/fleettest/pressure-fixture.py'])
+    check_slice_policy(ssh)
+    archive = subprocess.run(['tar', '-C', '/workspace', '-cf', '-', 'cliproxy/tests', 'cliproxy/scripts', 'cliproxy/models.json'],
+                             capture_output=True, check=True)
+    subprocess.run(ssh + ['tar -xf -'], input=archive.stdout, check=True)
+    run(ssh + [f'systemd-run --user --unit={QUIET} --slice={THREAD}.slice sleep 240'])
+    unit = BUSY
+    launch = (f'systemd-run --user --unit={unit} --slice={THREAD}.slice '
+              '--property=MemoryHigh=24M --property=MemoryMax=256M --property=RuntimeMaxSec=150 ')
     try:
+        # Run a real repository test while a bounded reclaim burst shares its session.
+        # --pipe forwards the session's output, the evidence when it fails.
+        evidence = ROOT / 'pressure-trial.log'
+        with evidence.open('wb') as log:
+            trial = subprocess.Popen(ssh + [launch + """--pipe --wait --collect /bin/sh -ec 'python3 pressure-fixture.py paced & pid=$!; python3 -m unittest discover -s cliproxy/tests -p test_model_protocol.py; wait "$pid"'"""],
+                                     stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT)
+            while trial.poll() is None:
+                pressure_sample(ssh)
+                time.sleep(2)
+        if trial.returncode:
+            (ROOT / 'last-failure.log').write_bytes(evidence.read_bytes())
+            raise RuntimeError('A test session under paced pressure failed; inspect private artifact last-failure.log')
+        start = run(ssh + ['date +%s']).stdout.strip()
+        run(ssh + [launch + 'python3 pressure-fixture.py'])
         deadline = time.monotonic() + 100
         while time.monotonic() < deadline:
-            subprocess.run(ssh + [answers(SERVER)], check=True, capture_output=True, timeout=5)
+            pressure_sample(ssh)
             journal = run(ssh + [f'sudo journalctl -u systemd-oomd --since=@{start} --no-pager -o cat'])
-            if unit in journal.stdout and 'Killed' in journal.stdout:
+            if any(unit in line and 'Killed' in line for line in journal.stdout.splitlines()):
                 print('oomd relieved agent pressure while SSH stayed reachable', flush=True)
                 return
             time.sleep(2)
         raise RuntimeError('oomd did not report killing the pressured fixture in time')
     finally:
-        subprocess.run(ssh + [f'systemctl --user stop {unit}'], capture_output=True, timeout=10)
+        subprocess.run(ssh + [f'systemctl --user stop {unit} {QUIET}'], capture_output=True, timeout=10)
+
+
+def test_io_guard(ssh):
+    """Give one disposable block device slow writes while SSH and another session stay live."""
+    quiet = 't3code-quiet.scope'
+    writer = 't3code-writer.scope'
+    scope = ['systemd-run', '--user', '--scope', f'--slice={THREAD}.slice']
+    # Never delay the guest's system disk. The mapper addresses only a new loop file.
+    run(ssh + ["""set -eu
+sudo modprobe dm-delay || sudo apt-get install -y linux-modules-extra-$(uname -r)
+truncate -s 64M io-fixture.img
+loop=$(sudo losetup --find --show io-fixture.img)
+echo "$loop" > io-fixture.loop
+echo "0 $(sudo blockdev --getsz "$loop") delay $loop 0 0 $loop 0 80" | sudo dmsetup create fleet-io-fixture
+sudo chown "$(id -u)" /dev/mapper/fleet-io-fixture"""])
+    def start(name, command):
+        return subprocess.Popen(ssh + [' '.join([*scope, '--unit=' + name, command])],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    quiet_process = start(quiet, """python3 -c 'import time; pages=bytearray(96*1024*1024); time.sleep(240)'""")
+    try:
+        wait_for(ssh, f'systemctl --user is-active --quiet {quiet}', 15, 'quiet session did not start')
+        started = run(ssh + ['date +%s']).stdout.strip()
+        # Synchronous, unbuffered writes to the scratch device. Each write takes
+        # at least 80 ms, so the 32-block burst ends well inside the grace period.
+        write = 'dd if=/dev/zero of=/dev/mapper/fleet-io-fixture bs=4096 oflag=direct status=none'
+        burst = start(writer, write + ' count=32')
+        assert burst.wait(timeout=30) == 0, 'short write burst was interrupted'
+        busy = start(writer, write + ' count=2000')
+        deadline = time.monotonic() + 140
+        while time.monotonic() < deadline:
+            before = time.monotonic()
+            sample = subprocess.run(ssh + [f'''set -e
+systemctl --user is-active --quiet {quiet}
+{answers(SERVER)}
+cat /proc/pressure/io
+sudo journalctl -u personal-fleet-pressure-guard --since=@{started} -o cat | grep '^{{' || true'''],
+                                    capture_output=True, text=True, timeout=5, check=True)
+            print(json.dumps(dict(io_fixture=sample.stdout.splitlines(),
+                                  ssh_ms=round(1000*(time.monotonic()-before)))), flush=True)
+            decisions = [json.loads(line) for line in sample.stdout.splitlines() if line.startswith('{')]
+            if decisions:
+                assert all(d['reason'] == 'io' and d['scope'] == writer for d in decisions), decisions
+                assert busy.wait(timeout=10) != 0
+                return
+            time.sleep(2)
+        raise RuntimeError('guard did not attribute sustained stalls to the writer')
+    finally:
+        run(ssh + [f'systemctl --user stop {writer} {quiet} || true; sudo dmsetup remove fleet-io-fixture && sudo losetup -d "$(cat io-fixture.loop)"'])
+        quiet_process.wait(timeout=10)
 
 
 def main():
@@ -175,6 +289,8 @@ ssh_keys:
         test_agent_pressure(ssh)
         test_agent(ssh)
         reboot(ssh)
+        check_slice_policy(ssh)
+        test_io_guard(ssh)
         run(ssh + ['test "$(systemctl is-enabled sleep.target)" = masked && test "$(cat work/uncommitted)" = preserved && sudo nft list table inet personal_fleet | grep -q "policy drop"'])
         # No play ran since the reboot: personal-fleet-firewall.service loaded it.
         run(ssh + ['systemctl is-active --quiet personal-fleet-firewall.service'])

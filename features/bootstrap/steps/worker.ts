@@ -572,6 +572,7 @@ Then(/^the filesystem is (above|below) its floors$/, (world, side: string) => {
 
 const pressureGuard = part((world) => ({
   directory: world.directory('pressure-guard-'),
+  memoryPsi: 0,
   scopes: [] as string[],
   decisions: 0,
 }));
@@ -580,23 +581,31 @@ Given(
   'these scopes hold memory in the worker cgroup tree:',
   (world, table: DataTable) => {
     const state = pressureGuard(world);
-    for (const { scope, memory, swap } of table.hashes()) {
+    for (const row of table.hashes()) {
+      const { scope, memory, swap } = row;
       const path = join(state.directory, scope!);
       mkdirSync(path, { recursive: true });
       writeFileSync(join(path, 'memory.current'), memory!);
       writeFileSync(join(path, 'memory.swap.current'), swap!);
       writeFileSync(join(path, 'cgroup.kill'), '');
+      writeFileSync(join(path, 'rate'), row['bytes per second']!);
+      writeFileSync(join(path, 'io.pressure'), `full avg10=${row['io psi']}\n`);
       state.scopes.push(scope!);
     }
   }
 );
 
+Given('host memory PSI is {int} percent', (world, percent: number) => {
+  pressureGuard(world).memoryPsi = percent;
+});
+
 When(
-  'the guard measures {int} percent I\\/O pressure at seconds {string} with threshold {int}, duration {int} and cooldown {int}',
+  'the guard samples host I\\/O PSI {string} every {int} seconds with {int} device bytes per second, threshold {int}, duration {int} and cooldown {int}',
   (
     world,
-    psi: number,
-    times: string,
+    psi: string,
+    interval: number,
+    rate: number,
     threshold: number,
     duration: number,
     cooldown: number
@@ -604,11 +613,10 @@ When(
     const state = pressureGuard(world);
     const proc = join(state.directory, 'proc');
     mkdirSync(join(proc, 'pressure'), { recursive: true });
-    for (const [signal, value] of [
-      ['io', psi],
-      ['memory', 0],
-    ] as const)
-      writeFileSync(join(proc, 'pressure', signal), `full avg10=${value}\n`);
+    writeFileSync(
+      join(proc, 'pressure/memory'),
+      `full avg10=${state.memoryPsi}`
+    );
     const simulation = `
 import runpy, sys, json
 from pathlib import Path
@@ -616,7 +624,13 @@ from types import SimpleNamespace
 guard = runpy.run_path(sys.argv[1])['Guard']()
 args = SimpleNamespace(**json.loads(sys.argv[2]))
 args.proc, args.agent_tree = Path(args.proc), Path(args.agent_tree)
-for second in args.times:
+args.cgroup_root = args.proc.parent
+for i, psi in enumerate(args.psi):
+    second = i * args.interval
+    (args.proc / 'pressure/io').write_text(f'full avg10={psi}')
+    for group in [args.cgroup_root, *args.agent_tree.rglob('*.scope')]:
+        rate = args.rate if group == args.cgroup_root else int((group / 'rate').read_text())
+        (group / 'io.stat').write_text(f'1:0 rbytes=0 wbytes={rate * second}')
     guard.sample(args,second)
 `;
     const result = Bun.spawnSync([
@@ -629,7 +643,9 @@ for second in args.times:
       JSON.stringify({
         proc,
         agent_tree: join(state.directory, 'agents'),
-        times: times.split(',').map(Number),
+        psi: psi.split(',').map(Number),
+        interval,
+        rate,
         threshold,
         duration,
         cooldown,
