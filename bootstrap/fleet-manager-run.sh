@@ -98,11 +98,16 @@ fi
 # prune.
 if [ "$preview" = false ]; then
   applied=$(basename "$(readlink "$(dirname "$runs")/current" 2>/dev/null || true)")
+  # Older launchers can point inside a nested checkout in a previous run.
+  # Keep that run until the manager playbook links the launcher to current.
+  launcher=$(readlink -f "$HOME/.local/bin/devfleet" 2>/dev/null || true)
+  runs_real=$(cd "$runs" && pwd -P)
   kept=0
   if [ -n "$applied" ] && [ "$applied" != "$revision" ] && [ -d "$runs/$applied" ]; then kept=1; fi
   # shellcheck disable=SC2012
-  for old in $(ls -1td "$runs"/*/); do
+  ls -1td "$runs"/*/ | while IFS= read -r old; do
     [ "$(basename "$old")" != "$revision" ] && [ "$(basename "$old")" != "$applied" ] || continue
+    case "$launcher" in "$runs_real/$(basename "$old")"/*) continue;; esac
     kept=$((kept + 1))
     [ "$kept" -gt 1 ] || continue
     # A checkout made from another repository (an earlier clone) is not this

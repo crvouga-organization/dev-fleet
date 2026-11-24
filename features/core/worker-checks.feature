@@ -244,7 +244,7 @@ Feature: What is measured on a worker
 
     Scenario: A launcher that is there passes, after one command that only reads
       Given every command prints "PRIVATE_SENTINEL"
-      When the devfleet launcher of the checkout at "/checkout" is checked
+      When the public devfleet launcher is checked
       Then the check "workstation:configuration" passes
       And exactly 1 command was run
       And only "test" commands were run
@@ -252,7 +252,7 @@ Feature: What is measured on a worker
 
     Scenario: A launcher that is missing fails
       Given every command fails, printing "PRIVATE_SENTINEL"
-      When the devfleet launcher of the checkout at "/checkout" is checked
+      When the public devfleet launcher is checked
       Then the check "workstation:configuration" fails
       And nothing reported contains "PRIVATE_SENTINEL"
 

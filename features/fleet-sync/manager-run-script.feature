@@ -93,3 +93,18 @@ Feature: Every fleet-sync on the manager runs through the manager run script
       Then the run script exits with 0
       And the run checkouts that remain are that of the commit "first" and:
         | 4444444444444444444444444444444444444444 |
+
+    Scenario: Pruning preserves an older nested launcher until the manager links it to current
+      Given the manager has its own copy of the source repository
+      And these run checkouts, each with its "node_modules", were left behind by an earlier clone:
+        | name                                     | last used  |
+        | 1111111111111111111111111111111111111111 | 2020-01-01 |
+        | 2222222222222222222222222222222222222222 | 2020-01-02 |
+        | 3333333333333333333333333333333333333333 | 2020-01-03 |
+      And the public launcher points at "node_modules/.fleet-revisions/old/bootstrap/devfleet" inside the old run "1111111111111111111111111111111111111111"
+      When the run script is started for the commit "first" with "--json"
+      Then the run script exits with 0
+      And the public launcher still runs
+      And the run checkouts that remain are that of the commit "first" and:
+        | 1111111111111111111111111111111111111111 |
+        | 3333333333333333333333333333333333333333 |

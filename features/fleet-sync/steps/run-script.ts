@@ -5,10 +5,11 @@ import {
   mkdirSync,
   readFileSync,
   readdirSync,
+  symlinkSync,
   utimesSync,
   writeFileSync,
 } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import type { DataTable } from '../../support/gherkin';
 import {
   ROOT,
@@ -161,6 +162,25 @@ Given(
     }
   }
 );
+
+Given(
+  'the public launcher points at {string} inside the old run {string}',
+  (world, path: string, old: string) => {
+    const node = manager(world);
+    const executable = join(node.runs, old, path);
+    mkdirSync(dirname(executable), { recursive: true });
+    writeFileSync(executable, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
+    symlinkSync(executable, join(node.home, '.local/bin/devfleet'));
+  }
+);
+
+Then('the public launcher still runs', (world) => {
+  const node = manager(world);
+  expect(
+    Bun.spawnSync([join(node.home, '.local/bin/devfleet')], { env: node.env })
+      .exitCode
+  ).toBe(0);
+});
 
 Given(
   'the run script has already run for the commit {string} with {string}',

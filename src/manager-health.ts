@@ -2,6 +2,7 @@ import { statSync } from 'node:fs';
 import { homedir, userInfo } from 'node:os';
 import { join } from 'node:path';
 import macos from '../ansible/macos/policy.json';
+import { launcherCheck } from './workstation-checks';
 import { diskGcReportCheck, readDiskGcReport } from './disk-gc-report';
 import type { Check, Runner } from './types';
 
@@ -18,6 +19,7 @@ export async function managerHealth(
   }
 ): Promise<Check[]> {
   return [
+    await launcherCheck(run, home),
     await managerRelease(run),
     await managerUpdates(run),
     await managerDisk(run),

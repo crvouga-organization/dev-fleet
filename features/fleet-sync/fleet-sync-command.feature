@@ -18,6 +18,7 @@ Feature: devfleet fleet-sync refuses before it changes anything
         | command         | fleet-sync                               |
         | applied         | false                                    |
         | desiredRevision | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
+      And the manager keeps reports under ".local/share/personal/fleet/manager/reports" in the temporary test home
 
     Scenario: A noninteractive sync cannot enroll or log in without confirmation
       When the operator runs "devfleet fleet-sync --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --non-interactive --json"

@@ -290,6 +290,7 @@ async function convergePolicy(world: FleetSyncWorld, hours: number) {
   kept.receipts ??= temporary(world, 'manager-receipts-');
   kept.scratch ??= temporary(world, 'manager-variables-');
   pmset(world, { ...policy.pmset });
+  world.commands.answer('test -x', succeeded());
   world.commands.answer(
     (command) => command[0] === '/bin/launchctl' && command[1] === 'print',
     () => (kept.watching ? succeeded('state = waiting') : failed())

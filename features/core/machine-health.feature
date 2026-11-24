@@ -193,6 +193,7 @@ Feature: The health of a machine itself
     Background:
       Given these commands print:
         | command        | prints                                                                                  |
+        | test -x /Users/dev/.local/bin/devfleet | |
         | sw_vers        | 15.1                                                                                    |
         | softwareupdate | No new software available.                                                              |
         | df             | Filesystem 1024-blocks Used Available Capacity Mounted␊/dev/disk3s5 1 1 104857600 1% /x |
@@ -225,6 +226,12 @@ Feature: The health of a machine itself
         | 2 GiB free                   | manager:disk    | df             | Filesystem 1024-blocks Used Available Capacity Mounted␊/dev/disk3s5 1 1 2097152 99% /x                                                 | fails   | MANAGER_DISK_FULL          |
         | 10 GiB free                  | manager:disk    | df             | Filesystem 1024-blocks Used Available Capacity Mounted␊/dev/disk3s5 1 1 10485760 90% /x                                                | warns   | MANAGER_DISK_LOW           |
         | 80 GB in Docker              | manager:disk    | docker         | 80GB                                                                                                                                  | warns   | MANAGER_DOCKER_DISK_LARGE  |
+
+    Scenario: A manager whose launcher is dangling can repair it from the fleet project
+      Given the command "test -x /Users/dev/.local/bin/devfleet" fails
+      When the health of the manager is checked
+      Then the check "workstation:configuration" fails
+      And the remedy of the check "workstation:configuration" mentions "npx devfleet fleet-sync"
 
     Scenario: A manager whose clock is off network time fails, and is told how to turn it on
       Given the command "sudo -n /usr/sbin/systemsetup" prints "Network Time: Off"

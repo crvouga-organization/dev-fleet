@@ -16,7 +16,7 @@ import {
   runningVersionCheck,
   t3RestartMarker,
 } from '../../../src/platform/t3-service';
-import { workstationChecks } from '../../../src/workstation-checks';
+import { launcherCheck } from '../../../src/workstation-checks';
 import type { Check } from '../../../src/types';
 import { core, need, type CoreWorld } from './world';
 
@@ -125,12 +125,9 @@ Given(
   }
 );
 
-When(
-  'the devfleet launcher of the checkout at {string} is checked',
-  async (world, checkout: string) => {
-    reported(world, await workstationChecks(checkout, world.commands.run));
-  }
-);
+When('the public devfleet launcher is checked', async (world) => {
+  reported(world, [await launcherCheck(world.commands.run)]);
+});
 
 When(
   'the proxy is converged on {string} at the revision {string}',

@@ -156,7 +156,15 @@ jobs:
               ansible-playbook --inventory localhost, ansible/macos/manager.yml "$@" | tee "$RUNNER_TEMP/run.log"
           }
           changed() { grep -Eo 'changed=[0-9]+' "$RUNNER_TEMP/run.log" | tail -n 1; }
+          # A previous run was pruned while the public launcher still named it.
+          fleet="$HOME/.local/share/personal/fleet"
+          mkdir -p "$HOME/.local/bin" "$fleet/manager-runs"
+          git worktree add --quiet --detach "$fleet/manager-runs/$GITHUB_SHA" "$GITHUB_SHA"
+          ln -s "manager-runs/$GITHUB_SHA" "$fleet/current"
+          ln -s "$fleet/manager-runs/pruned/bootstrap/devfleet" "$HOME/.local/bin/devfleet"
           converge
+          test -x "$HOME/.local/bin/devfleet"
+          test "$(readlink "$HOME/.local/bin/devfleet")" = "$fleet/current/bootstrap/devfleet"
           converge
           [ "$(changed)" = changed=0 ] || { echo '::error::A second run changed the manager.'; exit 1; }
           converge --check --diff

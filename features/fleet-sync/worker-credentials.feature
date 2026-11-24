@@ -13,6 +13,7 @@ Feature: Each worker's Vault token is its own
   Scenario: One worker cannot read another worker's token
     When "worker-one" reads the token document of "worker-two" with its own token
     Then Vault refuses it
+    And the development server has not stored a Vault login
 
   Scenario: A worker reads its own token document and the shared one
     When "worker-one" reads the token document of "worker-one" with its own token
