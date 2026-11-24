@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@google/gemini-cli':
-        specifier: 0.71.0
-        version: 0.71.0
+        specifier: 0.71.1
+        version: 0.71.1
 
 packages:
 
@@ -18,8 +18,8 @@ packages:
     resolution: {integrity: sha512-mRW6cUsSG+nj4jp5gp8e91zPySaT73r+2JM6VyMZfrEgksjPmjSMr+tPGNOK3HUHV+GUU9B1LAiiYy/wmAnIxA==}
     deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
-  '@google/gemini-cli@0.71.0':
-    resolution: {integrity: sha512-5IIDLn48gVpYfdC1amoOTte/R4rclqB/jlY6DNWb7mrkvSSVB0wR/BNrocoRIL1fVnyi9DH5lFegvNHzywZ9qA==}
+  '@google/gemini-cli@0.71.1':
+    resolution: {integrity: sha512-FYDTjU+9BFPYKBcFS3vCjJol8pFyV0iHVigUNr2wZqk4vYNFgacGB5ubyrySFGM5jWxCK+1EFdcDJiEQjNomaw==}
     engines: {node: '>=20'}
     hasBin: true
 
@@ -73,7 +73,7 @@ snapshots:
       node-addon-api: 8.9.2
     optional: true
 
-  '@google/gemini-cli@0.71.0':
+  '@google/gemini-cli@0.71.1':
     optionalDependencies:
       '@github/keytar': 7.10.6
       '@lydell/node-pty': 1.1.0
