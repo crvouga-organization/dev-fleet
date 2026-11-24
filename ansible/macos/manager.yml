@@ -129,6 +129,16 @@
     watch_plist: '{{ watch_home }}/Library/LaunchAgents/{{ watch_label }}.plist'
     watch_domain: 'gui/{{ ansible_facts.user_uid }}'
   tasks:
+    - name: Find the launcher in the applied checkout
+      ansible.builtin.stat:
+        path: '{{ watch_home }}/.local/share/personal/fleet/current/bootstrap/devfleet'
+      register: applied_launcher
+    - name: Install the public launcher from the applied checkout
+      ansible.builtin.file:
+        src: '{{ applied_launcher.stat.path }}'
+        dest: '{{ watch_home }}/.local/bin/devfleet'
+        state: link
+      when: applied_launcher.stat.executable | default(false)
     - name: Require an interval the schema allows
       ansible.builtin.assert:
         that:

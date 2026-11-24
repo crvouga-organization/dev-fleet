@@ -26,3 +26,19 @@ Feature: A quiet session survives another workload's I/O stalls
     when it completes, so a slow writer can show more bytes than the device.
     When the guard samples host I/O PSI "80,80,80,80,80,80" every 10 seconds with 85 device bytes per second, threshold 50, duration 30 and cooldown 120
     Then it records 1 kills and only "agents/t3code-terminal-a.scope" receives a kill
+
+  Scenario Outline: Sustained I/O from a detached job can be relieved before or after the worker applies the shared budget
+    Given these scopes hold memory in the worker cgroup tree:
+      | scope                      | memory | swap | bytes per second | io psi |
+      | <job>                      | 800    | 10   | 2000             | 80     |
+      | t3code-desktop.service     | 5000   | 100  | 3000             | 90     |
+      | t3code-headless.service    | 5000   | 100  | 3000             | 90     |
+    When the guard samples host I/O PSI "80,80,80,80,80" every 10 seconds with 2500 device bytes per second, threshold 50, duration 30 and cooldown 120
+    Then it records 1 kills and only "<job>" receives a kill
+
+    Examples:
+      | job                             |
+      | run-p100-i200.service           |
+      | agents/run-p100-i200.service    |
+      | run-p100-i200.scope             |
+      | agents/run-p100-i200.scope      |

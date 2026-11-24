@@ -1,6 +1,8 @@
 import { expect } from 'bun:test';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { createServer } from 'node:net';
 import { runCommand } from '../../../src/runner';
 import type { CommandResult, Runner } from '../../../src/types';
@@ -10,7 +12,7 @@ import {
   revokeWorkerToken,
   workerTokenLocation,
 } from '../../../src/worker-credentials';
-import { fleetSync, type FleetSyncWorld } from '../support/world';
+import { fleetSync, temporary, type FleetSyncWorld } from '../support/world';
 
 /** A real Vault development server: the policies dev-fleet writes are
  * checked by Vault itself.
@@ -19,6 +21,7 @@ const { Given, When, Then } = fleetSync;
 
 interface DevVault {
   config: VaultConfig;
+  home: string;
   root: string;
   tokens: Map<string, string>;
   answer?: CommandResult;
@@ -53,6 +56,7 @@ const as =
       ...options,
       env: {
         ...options.env,
+        HOME: vault.home,
         VAULT_ADDR: vault.config.addr,
         VAULT_TOKEN: token,
       },
@@ -61,6 +65,7 @@ const as =
 Given(
   "a Vault development server holding the fleet's shared document",
   async (world) => {
+    const home = temporary(world, 'fleet-vault-home-');
     const port = await freePort();
     const root = `root-${randomUUID()}`;
     const child: ChildProcess = spawn(
@@ -68,15 +73,19 @@ Given(
       [
         'server',
         '-dev',
-        `-dev-root-token-id=${root}`,
+        '-dev-no-store-token',
         `-dev-listen-address=127.0.0.1:${port}`,
       ],
-      { stdio: 'ignore' }
+      {
+        stdio: 'ignore',
+        env: { ...process.env, HOME: home, VAULT_DEV_ROOT_TOKEN_ID: root },
+      }
     );
     world.defer(() => {
       child.kill('SIGKILL');
     });
     const vault: DevVault = {
+      home,
       config: {
         addr: `http://127.0.0.1:${port}`,
         mount: 'secret',
@@ -197,4 +206,8 @@ Then(
 
 Then('the token of {string} still authenticates', async (world, id: string) => {
   expect((await lookup(server(world), id)).ok).toBe(true);
+});
+
+Then('the development server has not stored a Vault login', (world) => {
+  expect(existsSync(join(server(world).home, '.vault-token'))).toBe(false);
 });

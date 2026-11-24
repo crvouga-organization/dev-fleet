@@ -624,11 +624,11 @@ from types import SimpleNamespace
 guard = runpy.run_path(sys.argv[1])['Guard']()
 args = SimpleNamespace(**json.loads(sys.argv[2]))
 args.proc, args.agent_tree = Path(args.proc), Path(args.agent_tree)
-args.cgroup_root = args.proc.parent
+args.app_tree = args.cgroup_root = args.proc.parent
 for i, psi in enumerate(args.psi):
     second = i * args.interval
     (args.proc / 'pressure/io').write_text(f'full avg10={psi}')
-    for group in [args.cgroup_root, *args.agent_tree.rglob('*.scope')]:
+    for group in [args.cgroup_root, *(file.parent for file in args.app_tree.rglob('rate'))]:
         rate = args.rate if group == args.cgroup_root else int((group / 'rate').read_text())
         (group / 'io.stat').write_text(f'1:0 rbytes=0 wbytes={rate * second}')
     guard.sample(args,second)

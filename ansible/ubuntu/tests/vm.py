@@ -68,6 +68,10 @@ def check_slice_policy(ssh):
         assert abs(percent - limit) < 0.1, (unit, percent, limit)
         assert run(ssh + [f'systemctl --user show {unit} -p ManagedOOMMemoryPressure --value']).stdout.strip() == 'kill'
 
+    for mode in ('--pipe --wait', '--scope'):
+        actual = run(ssh + [f'systemd-run --user --quiet {mode} cat /proc/self/cgroup']).stdout.strip()
+        assert f'/{AGENTS}.slice/run-' in actual, actual
+
 
 def pressure_sample(ssh):
     start = time.monotonic()

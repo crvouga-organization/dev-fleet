@@ -109,6 +109,8 @@
     - '/etc/systemd/system/user@{{ development_uid }}.service.d'
     - /etc/systemd/user/app-t3code-agents.slice.d
     - /etc/systemd/user/app-t3code-agents-.slice.d
+    - /etc/systemd/user/run-.service.d
+    - /etc/systemd/user/run-.scope.d
     - /etc/systemd/user/t3code-.scope.d
     - /etc/systemd/journald.conf.d
     - /etc/systemd/system/systemd-tmpfiles-clean.timer.d
@@ -169,6 +171,21 @@
       OOMPolicy=continue
       IOAccounting=yes
   register: agent_policy
+- name: Charge automatically named systemd-run jobs to the shared agent budget
+  ansible.builtin.copy:
+    dest: '/etc/systemd/user/run-.{{ item | lower }}.d/60-personal-fleet.conf'
+    owner: root
+    group: root
+    mode: '0644'
+    content: |
+      # Managed by personal fleet-sync. Detached builds share the agent budget.
+      [{{ item }}]
+      Slice=app-t3code-agents.slice
+      MemoryMax={{ resourceSafety.agentMemoryMax }}
+      MemorySwapMax={{ resourceSafety.agentSwapMax }}
+      IOAccounting=yes
+  loop: [Service, Scope]
+  register: transient_limits
 - name: Bound the combined agents and each thread of agents
   ansible.builtin.copy:
     dest: '/etc/systemd/user/{{ item.unit }}.slice.d/60-personal-fleet.conf'
@@ -214,7 +231,7 @@
   ansible.builtin.systemd_service:
     scope: user
     daemon_reload: true
-  when: agent_policy.changed or agent_slices.changed or agent_overrides.changed
+  when: agent_policy.changed or transient_limits.changed or agent_slices.changed or agent_overrides.changed
   failed_when: false
 - name: Run systemd-oomd
   ansible.builtin.systemd_service:
@@ -430,10 +447,10 @@
     content: |
       # Managed by personal fleet-sync.
       [Unit]
-      Description=Relieve sustained pressure in the T3 agent slice
+      Description=Relieve sustained pressure from agents and transient user jobs
       [Service]
       RuntimeDirectory=personal-fleet-pressure-guard
-      ExecStart=/usr/bin/python3 -I -B /usr/local/lib/personal-fleet-pressure-guard.py --marker /run/personal-fleet-pressure-guard/active --agent-tree /sys/fs/cgroup/user.slice/user-{{ development_uid }}.slice/user@{{ development_uid }}.service/app.slice/app-t3code.slice/app-t3code-agents.slice --threshold {{ resourceSafety.pressureGuard.threshold }} --duration {{ resourceSafety.pressureGuard.duration }} --cooldown {{ resourceSafety.pressureGuard.cooldown }} --interval {{ resourceSafety.pressureGuard.interval }}
+      ExecStart=/usr/bin/python3 -I -B /usr/local/lib/personal-fleet-pressure-guard.py --marker /run/personal-fleet-pressure-guard/active --agent-tree /sys/fs/cgroup/user.slice/user-{{ development_uid }}.slice/user@{{ development_uid }}.service/app.slice/app-t3code.slice/app-t3code-agents.slice --app-tree /sys/fs/cgroup/user.slice/user-{{ development_uid }}.slice/user@{{ development_uid }}.service/app.slice --threshold {{ resourceSafety.pressureGuard.threshold }} --duration {{ resourceSafety.pressureGuard.duration }} --cooldown {{ resourceSafety.pressureGuard.cooldown }} --interval {{ resourceSafety.pressureGuard.interval }}
       Restart=always
       RestartSec=5
       MemoryMax=64M

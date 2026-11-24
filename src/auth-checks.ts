@@ -3,7 +3,7 @@ import { fleet as definition } from './fleet-config';
 import { workerReadiness } from './worker-readiness';
 import { record } from './config';
 import { codingAuth, serviceAuth } from './service-auth';
-import { workstationChecks } from './workstation-checks';
+import { launcherCheck } from './workstation-checks';
 import { toolchainChecks } from './toolchain-checks';
 import { workerSelection } from '../bootstrap/worker-tools';
 import { githubChecks } from './github/checks';
@@ -21,7 +21,7 @@ export async function authCheck(
   if (capability === 'codex' || capability === 'claude')
     return codingAuth(capability, run);
   if (capability === 'services') return serviceAuth(run);
-  if (capability === 'workstation') return workstationChecks(root, run);
+  if (capability === 'workstation') return [await launcherCheck(run)];
   if (capability === 'github')
     return githubChecks(run, {
       definition,

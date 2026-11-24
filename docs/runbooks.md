@@ -134,7 +134,10 @@ There are 449 codes; 95 need a person.
 - `WORKER_RECOVERY_LAST_RUN_FAILED`: the last run of `personal-worker-recovery.service` did not succeed; the check names its result. On the worker, `systemctl --user status personal-worker-recovery.service` and `journalctl --user -u personal-worker-recovery.service`, then run `devfleet fleet-sync`.
 - `SSH_CONFIG_REJECTED`: `sshd -t` refused the complete SSH configuration with the fragments fleet-sync wrote. The previous fragments were restored and sshd was not reloaded, so the worker serves SSH as before. On the worker `sudo sshd -t` names the line; it is usually another fragment under `/etc/ssh/sshd_config.d` that a person corrects before `devfleet fleet-sync` is run again. **Needs a person.**
 
-Under sustained I/O or memory pressure the pressure guard can stop a build.
+On workers, automatically named `systemd-run --user` services and scopes
+share the T3 agents' memory budget. Under sustained I/O or memory pressure
+the pressure guard can stop an agent or a transient build, including a job
+still running in `app.slice` from before the policy was applied.
 Inspect `journalctl -u personal-fleet-pressure-guard --since yesterday` for
 the scope, memory usage and pressure at each decision. During a stall,
 connect with `ssh -t WORKER bash --noprofile --norc` and inspect

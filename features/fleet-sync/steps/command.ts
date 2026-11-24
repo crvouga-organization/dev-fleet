@@ -1,7 +1,8 @@
 import { expect } from 'bun:test';
 import { writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { mergeEnrollment } from '../../../src/cli/fleet-sync-enrollment';
+import { machineRoot } from '../../../src/cli/fleet-sync';
 import { selected } from '../../../src/cli/fleet-sync-remote';
 import {
   managerSchedule,
@@ -283,3 +284,12 @@ Then('the merged roster is exactly:', (world, table: DataTable) => {
 Then('the roster it started from still enrolls:', (world, table: DataTable) => {
   expect(world.roster).toEqual(table.hashes().map(rosterEntry));
 });
+
+Then(
+  'the manager keeps reports under {string} in the temporary test home',
+  (_world, path: string) => {
+    const home = dirname(process.env['DEVFLEET_STATE']!);
+    expect(process.env['HOME']).toBe(home);
+    expect(join(machineRoot(), 'reports')).toBe(join(home, path));
+  }
+);

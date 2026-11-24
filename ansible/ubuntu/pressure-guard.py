@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Shed one T3 agent scope after sustained I/O or memory pressure."""
+"""Shed one T3 agent or transient user job after sustained I/O or memory pressure."""
 import argparse
 import json
 from pathlib import Path
@@ -32,6 +32,16 @@ def io_delta(previous, current):
             if device in previous and count > previous[device]}
 
 
+def workloads(args):
+    yield from args.agent_tree.rglob('t3code-*.scope')
+    # The drop-ins place new transient units in the shared slice. Jobs that
+    # predate the policy can still be direct children of app.slice.
+    for tree in (args.agent_tree, args.app_tree):
+        if tree is not None:
+            yield from tree.glob('run-*.service')
+            yield from tree.glob('run-*.scope')
+
+
 class Guard:
     def __init__(self):
         self.since = {}
@@ -58,7 +68,7 @@ class Guard:
                 pass
         host_delta = io_delta(self.previous.get('host', {}), counters.get('host', {}))
         if memory_due or io >= args.threshold:
-            for scope in args.agent_tree.rglob('t3code-*.scope'):
+            for scope in workloads(args):
                 try:
                     if any(child.is_dir() for child in scope.iterdir()):
                         continue
@@ -108,6 +118,7 @@ def main():
     parser.add_argument('--proc', type=Path, default=Path('/proc'))
     parser.add_argument('--cgroup-root', type=Path, default=Path('/sys/fs/cgroup'))
     parser.add_argument('--agent-tree', type=Path, required=True)
+    parser.add_argument('--app-tree', type=Path)
     parser.add_argument('--threshold', type=float, required=True)
     parser.add_argument('--duration', type=int, required=True)
     parser.add_argument('--cooldown', type=int, required=True)

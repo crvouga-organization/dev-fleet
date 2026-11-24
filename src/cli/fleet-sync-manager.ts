@@ -13,6 +13,8 @@ import { IDES } from '../ide';
 import { enabled, managerChecks } from '../ide/orchestrate';
 import { idesOf } from '../ide/definition';
 import { convergeGitIdentity, gitChecks } from '../git-identity';
+import { stableWorkspace } from '../platform/t3-policy';
+import { launcherCheck } from '../workstation-checks';
 import { ansibleCommand } from '../platform/ansible';
 import { runAnsibleWithReceipt } from '../platform/ansible-receipt';
 import macos from '../../ansible/macos/policy.json';
@@ -57,6 +59,8 @@ export async function convergeManager(
     // Launchers and scheduled jobs on the manager read the installed copy.
     if (input.apply) {
       installConfig();
+      // The public launcher and scheduled jobs need current even without T3.
+      await stableWorkspace(input.workspace);
       say('Applying the manager playbook');
       checks.push(
         ...(await timed(() => convergeManagerPolicy(run, definition, host)))
@@ -495,6 +499,7 @@ export async function convergeManagerPolicy(
       checkFirst: true,
       verify: async () =>
         (await host.powerDrift(run)).drifted.length === 0 &&
+        (await launcherCheck(run)).status === 'pass' &&
         (await watchLoaded(run, uid)) &&
         (await jobLoaded(run, uid, macos.diskGc.label)),
       ...(receipts ? { directory: receipts } : {}),

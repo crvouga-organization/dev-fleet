@@ -443,7 +443,7 @@ export async function pressureEvents(run: Runner): Promise<Check> {
   return {
     id,
     status: count ? 'warn' : 'pass',
-    summary: `The pressure guard stopped ${count} agent scopes in the last 24 hours.`,
+    summary: `The pressure guard stopped ${count} workloads in the last 24 hours.`,
   };
 }
 
