@@ -1,6 +1,7 @@
 import { expect } from 'bun:test';
 import { renewWorkerVault } from '../../../bootstrap/worker-auth';
 import { workerTools } from '../../../bootstrap/worker-tools';
+import { authorizeWorkerGithub } from '../../../src/cli/fleet-sync-github';
 import { authorizePrivilege } from '../../../src/cli/fleet-sync-privilege';
 import {
   authorizeManager,
@@ -274,4 +275,61 @@ When('the worker renews its Vault session', (world) => {
 
 Then(/^the session is (renewed|not renewed)$/, (world, result: string) => {
   expect(state(world).renewed).toBe(result === 'renewed');
+});
+
+Given(
+  'GitHub has no worker login and the device approval returns {string}',
+  (world, account: string) => {
+    world.commands.answer(
+      /'gh' 'api' 'user'/,
+      inTurn([failed(), succeeded(account)])
+    );
+    world.commands.answer(/'gh' 'auth' 'status'/, {
+      ...failed(),
+      stderr: 'You are not logged into any GitHub hosts.',
+    });
+  }
+);
+Given(
+  'GitHub already authenticates the worker as {string}',
+  (world, account: string) => {
+    world.commands.answer(/'gh' 'api' 'user'/, succeeded(account));
+  }
+);
+When(
+  'GitHub is authorized for the worker as {string}',
+  async (world, login: string) => {
+    state(world).loggedIn = await authorizeWorkerGithub(
+      world.node!,
+      { login, scopes: [] },
+      world.commands.run,
+      attach(world)
+    );
+  }
+);
+Then('the GitHub authorization is {string}', (world, outcome: string) => {
+  expect(state(world).loggedIn).toBe(outcome === 'verified');
+  for (const command of state(world).prompts) {
+    expect(command).toEqual(
+      remote(
+        world.node!,
+        [
+          'env',
+          '-u',
+          'GH_TOKEN',
+          '-u',
+          'GITHUB_TOKEN',
+          'gh',
+          'auth',
+          'login',
+          '--hostname',
+          'github.com',
+          '--git-protocol',
+          'https',
+          '--web',
+        ],
+        '-t'
+      )
+    );
+  }
 });

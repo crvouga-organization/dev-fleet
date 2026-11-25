@@ -6,6 +6,7 @@ import { enabled, workerChecks } from '../ide/orchestrate';
 import { idesOf } from '../ide/definition';
 import { pairIfRequested, rememberEnvironment } from '../t3/pairing';
 import { managerT3 } from '../t3/peer-link';
+import { recoverGithub } from './fleet-sync-github';
 import { authorizePrivilege } from './fleet-sync-privilege';
 import { authorizeVault } from './fleet-sync-vault';
 import { managerFailure } from '../manager-failure';
@@ -405,10 +406,20 @@ function convergeWorker(
     if (ui.interactiveAuthorization) ui.progress.stop();
     const before = await authorizeVault(node, vault, run);
     ui.progress.step(node.id, 'Converging (remote lock, install, verify)');
-    const result = await bootstrapRemote(node, payload!, run, {
-      progress: (line) => ui.progress.step(node.id, line),
-      ...(tailnetKey ? { tailnetKey } : {}),
-    });
+    const bootstrap = () =>
+      bootstrapRemote(node, payload!, run, {
+        progress: (line) => ui.progress.step(node.id, line),
+        ...(tailnetKey ? { tailnetKey } : {}),
+      });
+    let result = await bootstrap();
+    if (
+      await recoverGithub(node, result.checks, canonical, {
+        interactiveAuthorization: ui.interactiveAuthorization,
+        stop: () => ui.progress.stop(),
+        run,
+      })
+    )
+      result = await bootstrap();
     // A fresh node gets vault from the bootstrap; log it in now. Its provider
     // checks in this run predate the login, so the next sync verifies them.
     result.checks.push(
