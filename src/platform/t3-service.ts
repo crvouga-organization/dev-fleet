@@ -174,18 +174,7 @@ export async function runningVersionCheck(
   now: number = Date.now(),
   session: Session = 'desktop'
 ): Promise<Check> {
-  const server = await run(
-    [
-      'curl',
-      '--fail',
-      '--silent',
-      '--max-time',
-      '10',
-      'http://127.0.0.1:3773/.well-known/t3/environment',
-    ],
-    { timeoutMs: 15_000 }
-  );
-  const running = serverVersion(server.ok ? server.stdout : '');
+  const running = await liveServerVersion(run);
   const release = await installedRelease(run, session);
   const id = 't3:running-version';
   if (!running || !release)
@@ -287,6 +276,22 @@ async function installedRelease(
   return /^T3-Code-(.+)-[a-z0-9]+\.deb$/.exec(
     installed.ok ? installed.stdout.trim() : ''
   )?.[1];
+}
+
+export async function liveServerVersion(run: Runner, transport: string[] = []) {
+  const server = await run(
+    [
+      ...transport,
+      'curl',
+      '--fail',
+      '--silent',
+      '--max-time',
+      '10',
+      'http://127.0.0.1:3773/.well-known/t3/environment',
+    ],
+    { timeoutMs: 15_000 }
+  );
+  return serverVersion(server.ok ? server.stdout : '');
 }
 
 function serverVersion(body: string): string | undefined {

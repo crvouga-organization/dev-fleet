@@ -49,11 +49,29 @@ Feature: The manager runs the T3 release the workers run
       Then the check "t3:desktop-installed" passes
       And macOS verified the installed app again without running the installer
 
-    Scenario: A worker reports its version over SSH
-      Given the worker "worker-one" says over SSH that its T3 last started as "0.1.9-nightly.20261111.4501"
+    Scenario Outline: Launch Services reports <count> copies of the managed app
+      Given Launch Services returns the application count "<count>" as text
+      When the T3 desktop of the manager is checked
+      Then the check "t3:version" <outcome>
+
+      Examples:
+        | count | outcome                         |
+        | 0     | warns with "T3_VERSION_UNKNOWN" |
+        | 1     | passes                          |
+        | 2     | warns with "T3_VERSION_UNKNOWN" |
+
+    Scenario Outline: The live worker server reports its release over SSH
+      Given the worker server answers the environment query with '<response>'
       When the T3 version of the worker "worker-one" is checked
-      Then the check "t3:version" warns with "T3_VERSION_SKEW"
-      And the remedy of the check "t3:version" mentions "the fleet pins <pinned>"
+      Then the check "t3:version" <outcome>
+
+      Examples:
+        | response                      | outcome                         |
+        | {"serverVersion":"<pinned>"}  | passes                          |
+        | {"serverVersion":"0.1.0"}     | warns with "T3_VERSION_SKEW"    |
+        | {}                            | warns with "T3_VERSION_UNKNOWN" |
+        | malformed                     | warns with "T3_VERSION_UNKNOWN" |
+        | unreachable                   | warns with "T3_VERSION_UNKNOWN" |
 
   Rule: T3 on the manager does not update itself
 
