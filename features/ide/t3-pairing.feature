@@ -29,8 +29,7 @@ Feature: The roster remembers which T3 environment each worker runs
 
   Rule: The manager pairs with a worker it cannot reach only when asked to
     fleet-node-replace asks for it; the pairing itself is
-    features/fleet-sync/node-lifecycle.feature. A worker's first pairing is
-    a person's.
+    features/fleet-sync/node-lifecycle.feature. First pairing requires the fleet's policy or terminal approval.
 
     Background:
       Given the T3 of the manager has no links

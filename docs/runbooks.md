@@ -303,7 +303,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - **Meaning:** The native T3 server or desktop app, its policy, its private route or its providers did not converge or verify.
 - **Confirm:** `devfleet t3-status` and the `t3:*` checks of `devfleet fleet-status`.
 - **Fix:** Run `devfleet fleet-sync`, then `devfleet t3-apply` for providers. A MIGRATION or MAINTENANCE code names a one-time step in its remedy.
-- **Escalate:** A worker's first pairing, and relinking a peer that was not replaced, need a person in T3 Settings (Connections). A replaced worker is paired by `devfleet fleet-node-replace` or the next `devfleet fleet-sync` (`t3:link`).
+- **Escalate:** Set `t3.pairOnEnrollment` to true in fleet.json to authorize first pairing during sync for enrolled workers. When omitted, interactive sync asks once for the worker and carries out the approved pairing. False keeps first pairing in T3 Settings (Connections). Relinking a previously recorded peer still requires an explicit replacement or manual pairing. A replaced worker is paired by `devfleet fleet-node-replace` or the next `devfleet fleet-sync` (`t3:link`).
 
 - `MANAGER_T3_LINK_UNVERIFIED`: manager t3 link unverified.
 - `T3_BASELINE_PREREQUISITES_REQUIRED`: t3 baseline prerequisites required.

@@ -58,7 +58,7 @@ async function linkedOnce(
     summary: 'MANAGER_T3_LINK_UNVERIFIED',
     remedy: {
       action:
-        'Link this exact worker environment to the manager using T3 Connections once. Existing pairing identities are preserved; passwords and pairing tokens are never copied by Fleet.',
+        'For first pairing, enable t3.pairOnEnrollment in fleet.json and sync, or link this exact worker in T3 Connections. Existing pairing identities are preserved; passwords and pairing tokens are never copied by Fleet.',
     },
   };
   try {

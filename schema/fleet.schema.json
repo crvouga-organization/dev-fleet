@@ -689,6 +689,10 @@
             }
           }
         },
+        "pairOnEnrollment": {
+          "type": "boolean",
+          "description": "Allow first T3 pairing for enrolled workers over their verified connection. Omit to ask during interactive sync; false keeps pairing manual."
+        },
         "requiredModels": {
           "type": "object",
           "description": "Models T3 must offer, and the proxy must serve, for every account of a tool, by tool (claude, codex, opencode).",
