@@ -37,6 +37,7 @@ Feature: A pin that carries digests moves with them
       | v0.1.10-nightly.20261111.4544/t3-0.1.10-nightly.20261111.4544-darwin-arm64.tar.gz | 5      |
       | v0.1.10-nightly.20261111.4544/T3-Code-0.1.10-nightly.20261111.4544-amd64.deb     | 3      |
       | v0.1.10-nightly.20261111.4544/T3-Code-0.1.10-nightly.20261111.4544-arm64.deb     | 4      |
+      | v0.1.10-nightly.20261111.4544/T3-Code-0.1.10-nightly.20261111.4544-arm64.zip     | 6      |
     When the "t3" pin is updated
     Then the pin moved from "0.1.8-nightly.20261106.4262" to "0.1.10-nightly.20261111.4544"
     And mise.toml now reads:
@@ -44,6 +45,7 @@ Feature: A pin that carries digests moves with them
       | t3_version              | 0.1.10-nightly.20261111.4544 |
       | t3_linux_x64_sha256     | 1                            |
       | t3_linux_arm64_sha256   | 2                            |
+      | t3_desktop_darwin_arm64_sha256 | 6 |
       | t3_darwin_arm64_sha256  | 5                            |
       | t3_desktop_amd64_sha256 | 3                            |
       | t3_desktop_arm64_sha256 | 4                            |

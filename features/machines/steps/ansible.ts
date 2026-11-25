@@ -1,5 +1,5 @@
 import { expect } from 'bun:test';
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { mkdir, rename, readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join } from 'node:path';
 import {
   ansibleCommand,
@@ -190,6 +190,15 @@ Given(
   }
 );
 
+Given(
+  'the policy moves unchanged to checkout {string}',
+  async (world, name: string) => {
+    const moved = join(dirname(world.sources), name);
+    await rename(world.sources, moved);
+    world.sources = moved;
+  }
+);
+
 const HOUR_MS = 60 * 60 * 1000;
 
 // The same step sets a situation up ("was applied") and is what happens
@@ -200,7 +209,7 @@ When(
     const hours = /^(\d+) hours later$/.exec(how ?? '')?.[1];
     world.applied = await runAnsibleWithReceipt(
       world.run,
-      world.playbook,
+      join(world.sources, world.playbook),
       { input: variables },
       {
         name: world.receipt,

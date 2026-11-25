@@ -22,6 +22,16 @@
     "execution": { "const": "manager-push" },
     "ok": { "type": "boolean" },
     "applied": { "type": "boolean" },
+    "acceptance": {
+      "description": "Acceptance after recording deployment and checking the fleet state.",
+      "type": "object",
+      "required": ["failOnWarning", "warnings", "accepted"],
+      "properties": {
+        "failOnWarning": { "type": "boolean" },
+        "warnings": { "type": "integer", "minimum": 0 },
+        "accepted": { "type": "boolean" }
+      }
+    },
     "desiredRevision": { "type": ["string", "null"] },
     "selectedBy": {
       "description": "What selected the desired revision: the installed package, --revision, --rollback, the manager's schedule, the HEAD of the checkout fleet-sync was started in, or the revision already approved.",
@@ -85,6 +95,10 @@
           "desiredRevision": { "type": ["string", "null"] },
           "appliedRevision": { "type": ["string", "null"] },
           "durationMs": { "type": "number" },
+          "earlierChecks": {
+            "type": "array",
+            "items": { "$ref": "check.schema.json" }
+          },
           "checks": {
             "type": "array",
             "items": { "$ref": "check.schema.json" }

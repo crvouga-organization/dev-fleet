@@ -1,0 +1,87 @@
+---
+# A versioned destination lets the running app keep reading its own bundle.
+# The operator opens the staged app after quitting T3 during maintenance.
+- name: Stage the pinned T3 desktop on the manager
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  tasks:
+    - name: Create the private directory for this pinned release
+      ansible.builtin.file:
+        path: '{{ t3_directory }}'
+        state: directory
+        mode: '0700'
+    - name: Inspect the destination
+      ansible.builtin.stat:
+        path: '{{ t3_directory }}/{{ t3_app }}'
+      register: t3_destination
+    - name: Preserve an existing bundle
+      ansible.builtin.assert:
+        that: not t3_destination.stat.exists
+        fail_msg: An existing desktop failed verification. Move it aside during maintenance.
+    - name: Prepare a temporary directory on the destination filesystem
+      ansible.builtin.tempfile:
+        path: '{{ t3_directory }}'
+        state: directory
+      register: t3_stage
+      when: not ansible_check_mode
+    - name: Verify the desktop before publishing it
+      when: not ansible_check_mode
+      block:
+        - name: Download the pinned macOS desktop archive
+          ansible.builtin.get_url:
+            url: 'https://github.com/pingdotgg/t3code/releases/download/v{{ t3_version }}/T3-Code-{{ t3_version }}-arm64.zip'
+            dest: '{{ t3_stage.path }}/desktop.zip'
+            checksum: 'sha256:{{ t3_checksum }}'
+            mode: '0600'
+            timeout: 120
+        - name: Unpack the signed application and its resource forks
+          ansible.builtin.command:
+            argv:
+              [
+                /usr/bin/ditto,
+                -x,
+                -k,
+                '{{ t3_stage.path }}/desktop.zip',
+                '{{ t3_stage.path }}/unpacked',
+              ]
+            creates: '{{ t3_stage.path }}/unpacked/{{ t3_app }}'
+        - name: Verify the signature and all nested code in the staged application
+          ansible.builtin.command:
+            argv:
+              [
+                /usr/bin/codesign,
+                --verify,
+                --deep,
+                --strict,
+                '{{ t3_stage.path }}/unpacked/{{ t3_app }}',
+              ]
+          changed_when: false
+          when: not ansible_check_mode
+        - name: Verify the publisher and pinned release of the signed bundle
+          ansible.builtin.command:
+            argv:
+              [
+                /usr/bin/codesign,
+                --verify,
+                --strict,
+                '-R={{ t3_requirement }}',
+                '{{ t3_stage.path }}/unpacked/{{ t3_app }}',
+              ]
+          changed_when: false
+          when: not ansible_check_mode
+        - name: Publish the verified application without launching it
+          ansible.builtin.command:
+            argv:
+              [
+                /bin/mv,
+                '{{ t3_stage.path }}/unpacked/{{ t3_app }}',
+                '{{ t3_directory }}/{{ t3_app }}',
+              ]
+            creates: '{{ t3_directory }}/{{ t3_app }}'
+      always:
+        - name: Remove the staged download
+          ansible.builtin.file:
+            path: '{{ t3_stage.path }}'
+            state: absent

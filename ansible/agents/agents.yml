@@ -128,6 +128,7 @@
     # A template, not copy's content: before 2.19, Ansible turns a task
     # argument that reads as JSON into data and writes it back reformatted.
     - name: Record the receipt of the profile
+      tags: [receipt]
       ansible.builtin.template:
         src: receipt.json.j2
         dest: '{{ agent_profile_directory }}/receipt.json'

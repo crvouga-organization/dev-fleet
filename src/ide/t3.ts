@@ -1,3 +1,4 @@
+import { managerDesktop } from '../t3/manager-desktop';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { Check, FleetNode } from '../types';
@@ -8,12 +9,7 @@ import { providerNames } from '../t3/names-check';
 import { profileCheck } from '../t3/profile';
 import { modelsCheck } from '../t3/models';
 import { proxyAccounts, type Roster } from '../t3/accounts';
-import {
-  MACOS_POLICY,
-  managerVersion,
-  updatesCheck,
-  workerVersion,
-} from '../t3/version';
+import { MACOS_POLICY, updatesCheck, workerVersion } from '../t3/version';
 import { verifyT3Endpoint } from '../t3-endpoint';
 import { observedIdentity, verifyT3Linked } from '../t3-linked-check';
 import { T3_RESTARTED_SUMMARY } from '../platform/t3-policy';
@@ -76,7 +72,7 @@ export function t3Ide(inputs: T3Inputs = {}): Ide {
     async manager(context) {
       return [
         ...(await settings(context)),
-        await managerVersion(home(), context.workspace),
+        ...(await managerDesktop(context)),
         await updatesCheck(
           inputs.policyPath ?? MACOS_POLICY,
           `cd ${context.workspace} && ${ansibleCommand().join(' ')} -e user=$(id -un) -K ansible/macos/manager-privilege.yml`

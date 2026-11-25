@@ -6,7 +6,7 @@ import { commandsPlay, type CommandsPlay } from '../../../src/agents/commands';
 import { agentsPlay, type ProfilePlay } from '../../../src/agents/converge';
 import { ansibleCommand } from '../../../src/platform/ansible';
 import { runCommand } from '../../../src/runner';
-import type { CommandResult } from '../../../src/types';
+import type { CommandResult, Runner } from '../../../src/types';
 import type { World } from '../../support/gherkin';
 
 const checkout = resolve(import.meta.dir, '../../..');
@@ -38,28 +38,32 @@ export async function lockedPlay(
 ): Promise<ProfilePlay> {
   const scratch = await mkdtemp(join(tmpdir(), 'agents-play-'));
   world.defer(() => rm(scratch, { recursive: true, force: true }));
-  const play = agentsPlay(
-    (command, commandOptions) => {
-      const playbook = command.indexOf('ansible-playbook');
-      return runCommand(
-        [...ansibleCommand('darwin', checkout), ...command.slice(playbook + 1)],
-        {
-          ...commandOptions,
-          env: {
-            ...commandOptions?.env,
-            ANSIBLE_HOME: join(scratch, 'ansible'),
-            ANSIBLE_LOCAL_TEMP: join(scratch, 'tmp'),
-            ANSIBLE_NOCOLOR: '1',
-          },
-        }
-      );
-    },
-    { scratch: join(scratch, 'run'), check: options.check === true }
-  );
-  return async (variables) => {
-    const result = await play(variables);
+  const play = agentsPlay(lockedRunner(scratch), {
+    scratch: join(scratch, 'run'),
+    check: options.check === true,
+  });
+  return async (variables, receiptOnly) => {
+    const result = await play(variables, receiptOnly);
     runs.push({ result, check: options.check === true });
     return result;
+  };
+}
+
+export function lockedRunner(scratch: string): Runner {
+  return (command, commandOptions) => {
+    const playbook = command.indexOf('ansible-playbook');
+    return runCommand(
+      [...ansibleCommand('darwin', checkout), ...command.slice(playbook + 1)],
+      {
+        ...commandOptions,
+        env: {
+          ...commandOptions?.env,
+          ANSIBLE_HOME: join(scratch, 'ansible'),
+          ANSIBLE_LOCAL_TEMP: join(scratch, 'tmp'),
+          ANSIBLE_NOCOLOR: '1',
+        },
+      }
+    );
   };
 }
 

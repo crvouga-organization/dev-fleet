@@ -6,6 +6,43 @@ Feature: fleet-sync prints a short report that is the same every time
   Background:
     Given a fleet-sync report that applied the revision "abcdef0123456789", with the dashboard "https://beszel.example.com"
 
+  Rule: Warning acceptance and final observations are separate from deployment
+
+    Scenario Outline: Warning acceptance after the revision was applied
+      Given the worker "w1", online and applied at "abc" after 10 ms, reports:
+        | check        | status | summary             | remedy             |
+        | beszel:backup | warn  | Backup is overdue.  | Inspect the timer. |
+        | ubuntu:disk-gc | skip | DISK_GC_NOT_REPORTED |                    |
+      When the report is accepted <policy> the zero-warning policy
+      Then the applied report records 1 warnings and acceptance <accepted>
+      And the printed report contains "<verdict>"
+      And the printed report contains "Inspect the timer."
+
+      Examples:
+        | policy  | accepted | verdict                |
+        | with    | false    | WARNING POLICY FAILED  |
+        | without | true     | CONVERGED WITH WARNINGS |
+
+    Scenario: Inspection and convergence each measure the same workers
+      Given the worker "w1", online and applied at "abc" after 10 ms, reports:
+        | check          | status | summary              |
+        | ubuntu:disk-gc | skip   | DISK_GC_NOT_REPORTED |
+        | worker:power-loss-recovery | skip | Firmware setting unavailable. |
+      And the worker "w2", online and applied at "abc" after 10 ms, reports:
+        | check          | status | summary              |
+        | ubuntu:disk-gc | skip   | DISK_GC_NOT_REPORTED |
+      And convergence measures each worker again and reports:
+        | check          | status         | summary              |
+        | ubuntu:disk-gc | skip           | DISK_GC_NOT_REPORTED |
+        | ubuntu:disk-gc | skip           | DISK_GC_NOT_REPORTED |
+        | worker:browser | not-applicable | Web profile off.     |
+      When the report is accepted with the zero-warning policy
+      Then the applied report records 0 warnings and acceptance true
+      And each worker retains 2 earlier observations
+      And the printed report names "DISK_GC_NOT_REPORTED" 1 time
+      And the printed report contains "3 skipped   2 not applicable"
+      And the printed report contains "Firmware settings unavailable on this hardware"
+
   Rule: Plain output is greppable
 
     Scenario: A verdict, a grid of words and one line for each problem

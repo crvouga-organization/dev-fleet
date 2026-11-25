@@ -24,13 +24,35 @@ export async function workerReadiness(
   root = process.cwd()
 ): Promise<Check[]> {
   const features = workerFeatures(fleet, nodeId);
-  const host = await UBUNTU_WORKER.hostChecks(
-    userInfo().username,
+  const exposure = workerExposure(fleet, nodeId);
+  const results = await Promise.all([
+    UBUNTU_WORKER.hostChecks(
+      userInfo().username,
+      run,
+      features,
+      fleet.workers.find((entry) => entry.id === nodeId)?.powerRecoveryNote
+    ),
+    workerAccessChecks(run, nodeId),
+    singletonCheck(run, nodeId),
+    exposureCheck(exposure, run),
+    gitChecks(fleet.git, run),
+    pressureEvents(run),
+    features.session === 'desktop' ? rendererCheck(run) : [],
+    t3Protection(exposure.t3Port, run),
+    workerCapacity(root, nodeId, run),
+  ]);
+  // Sample the idle worker before either smoke test adds its own load.
+  const docker = features.containers
+    ? await dockerRunCheck(run)
+    : notApplicable('worker:docker-run', offReason(features, 'docker'));
+  const browser = await browserCheck(
     run,
-    features,
-    fleet.workers.find((entry) => entry.id === nodeId)?.powerRecoveryNote
+    workerSelection(fleet, nodeId).profiles.includes('web')
   );
-  const access = await workerAccessChecks(run, nodeId);
+  return [...results.flat(), docker, browser];
+}
+
+async function singletonCheck(run: Runner, nodeId: string): Promise<Check> {
   const revision = await run(['git', 'rev-parse', 'HEAD']);
   const singleton = await run(
     [
@@ -72,22 +94,5 @@ export async function workerReadiness(
   } catch {
     /* Raw proxy output is never exposed. */
   }
-  return [
-    ...host,
-    ...access,
-    proxy,
-    features.containers
-      ? await dockerRunCheck(run)
-      : notApplicable('worker:docker-run', offReason(features, 'docker')),
-    await browserCheck(
-      run,
-      workerSelection(fleet, nodeId).profiles.includes('web')
-    ),
-    await exposureCheck(workerExposure(fleet, nodeId), run),
-    ...(await gitChecks(fleet.git, run)),
-    await pressureEvents(run),
-    ...(features.session === 'desktop' ? [await rendererCheck(run)] : []),
-    await t3Protection(workerExposure(fleet, nodeId).t3Port, run),
-    ...(await workerCapacity(root, nodeId, run)),
-  ];
+  return proxy;
 }

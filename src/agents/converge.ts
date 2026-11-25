@@ -1,6 +1,6 @@
 import { AgentConfigurationError } from './errors';
-import { mkdir, rm } from 'node:fs/promises';
-import { join } from 'node:path';
+import { lstat, mkdir, rm } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { digest, registry, type Selection } from './registry';
 import { render } from './render';
@@ -43,7 +43,8 @@ export interface ProfileVariables {
 
 /** Runs the agents play with these variables. */
 export type ProfilePlay = (
-  variables: ProfileVariables
+  variables: ProfileVariables,
+  receiptOnly?: boolean
 ) => Promise<CommandResult>;
 
 /** The package's agents play, with the Ansible this machine runs. `scratch`
@@ -55,12 +56,13 @@ export function agentsPlay(
   options: { check?: boolean; scratch?: string } = {}
 ): ProfilePlay {
   const directory = join(PACKAGE_ROOT, 'ansible', 'agents');
-  return (variables) =>
+  return (variables, receiptOnly) =>
     runAnsible(
       run,
       join(directory, 'agents.yml'),
       {
         cwd: directory,
+        ...(receiptOnly ? { tags: 'receipt' } : {}),
         input: JSON.stringify(variables),
         // Inside the two minutes the sync gives `agents apply`.
         timeoutMs: 90_000,
@@ -94,7 +96,37 @@ export async function plan(context: Context) {
     });
   }
   const fingerprint = digest(JSON.stringify({ registry, selection, outputs }));
-  return { directory, receiptPath, previous, files, fingerprint };
+  return { directory, receiptPath, raw, previous, files, fingerprint };
+}
+
+/** The full play also enforces private modes. Reapply to repair drift, and
+ * refuse a profile owned by another account before advancing its evidence. */
+async function privateProfile(
+  context: Context,
+  result: Awaited<ReturnType<typeof plan>>
+): Promise<boolean> {
+  if (process.platform === 'win32') return true;
+  const root = resolve(context.root);
+  const paths = new Map<string, number>();
+  for (const file of [
+    result.receiptPath,
+    ...result.files.map((entry) => entry.path),
+  ]) {
+    paths.set(file, 0o600);
+    for (let dir = dirname(resolve(file)); dir !== root; dir = dirname(dir))
+      paths.set(dir, 0o700);
+  }
+  const modes = await Promise.all(
+    [...paths].map(async ([path, mode]) => {
+      const entry = await lstat(path);
+      if (entry.uid !== process.getuid!() || entry.isSymbolicLink())
+        throw new AgentConfigurationError(
+          'Profile ownership changed. Inspect the managed paths before applying.'
+        );
+      return (entry.mode & 0o777) === mode;
+    })
+  );
+  return modes.every(Boolean);
 }
 
 /** Applies one profile. A file someone edited is refused unless `adopt`;
@@ -107,17 +139,7 @@ export async function convergeAgents(
   adopt = false,
   play: ProfilePlay = agentsPlay()
 ) {
-  await safeParents(context.root);
-  await mkdir(context.root, { recursive: true, mode: 0o700 });
-  const lock = join(context.root, '.apply-lock');
-  try {
-    await mkdir(lock);
-  } catch {
-    throw new AgentConfigurationError(
-      'Another apply is active; inspect .apply-lock before retrying.'
-    );
-  }
-  try {
+  return withProfileLock(context.root, async () => {
     const result = await plan(context);
     if (!adopt && result.files.some((file) => file.state === 'conflict'))
       throw new AgentConfigurationError(
@@ -125,7 +147,12 @@ export async function convergeAgents(
       );
     const { receipt, encoded } = receiptFor(result, context.revision);
     const changing = result.files.filter((file) => file.state !== 'unchanged');
-    if (changing.length || (await readOwned(result.receiptPath)) !== encoded) {
+    const sameProfile =
+      changing.length === 0 &&
+      result.previous !== null &&
+      receiptFor(result, result.previous.revision).encoded === result.raw &&
+      (await privateProfile(context, result));
+    if (!sameProfile || result.raw !== encoded) {
       const applied = await play(
         profileVariables(context, receipt, {
           backups: changing
@@ -134,7 +161,8 @@ export async function convergeAgents(
               source: file.path,
               dest: join(context.root, 'backups', randomUUID()),
             })),
-        })
+        }),
+        sameProfile
       );
       if (!applied.ok)
         throw new AgentConfigurationError(
@@ -147,6 +175,78 @@ export async function convergeAgents(
       appliedRevision: context.revision,
       receiptMatches: true,
     };
+  });
+}
+
+/** All files and their prior receipts must still match. On a mixed batch
+ * the caller uses individual applies, which name the first failed tool. */
+export async function refreshProfileBatch(
+  contexts: Context[],
+  run: Runner = runCommand,
+  scratch?: string
+) {
+  return withProfileLock(contexts[0]!.root, async () => {
+    const plans = await Promise.all(contexts.map(plan));
+    const updates = [];
+    for (const [i, result] of plans.entries()) {
+      if (
+        !result.previous ||
+        result.files.some((file) => file.state !== 'unchanged') ||
+        receiptFor(result, result.previous.revision).encoded !== result.raw ||
+        !(await privateProfile(contexts[i]!, result))
+      )
+        return null;
+      const context = contexts[i]!;
+      if (context.revision !== result.previous.revision) {
+        const { receipt, encoded } = receiptFor(result, context.revision);
+        updates.push({
+          context,
+          encoded,
+          variables: { dest: result.receiptPath, ...receipt },
+        });
+      }
+    }
+    if (updates.length) {
+      const applied = await runAnsible(
+        run,
+        join(PACKAGE_ROOT, 'ansible/agents/receipts.yml'),
+        {
+          input: JSON.stringify({
+            receipts: updates.map((update) => update.variables),
+          }),
+          timeoutMs: 90_000,
+        },
+        scratch
+      );
+      if (!applied.ok) return null;
+      await Promise.all(
+        updates.map((update) => measure(update.context, update.encoded))
+      );
+    }
+    return plans.map((result, i) => ({
+      ...publicPlan(result, contexts[i]!.revision),
+      appliedRevision: contexts[i]!.revision,
+      receiptMatches: true,
+    }));
+  });
+}
+
+async function withProfileLock<T>(
+  root: string,
+  apply: () => Promise<T>
+): Promise<T> {
+  await safeParents(root);
+  await mkdir(root, { recursive: true, mode: 0o700 });
+  const lock = join(root, '.apply-lock');
+  try {
+    await mkdir(lock);
+  } catch {
+    throw new AgentConfigurationError(
+      'Another apply is active; inspect .apply-lock before retrying.'
+    );
+  }
+  try {
+    return await apply();
   } finally {
     await rm(lock, { recursive: true, force: true });
   }

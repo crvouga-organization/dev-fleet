@@ -110,6 +110,12 @@ Feature: Native agents are verified on every machine
       Then no launcher was run again
       And every check passes
 
+    Scenario: An unchanged release in another checkout reuses session verification
+      Given the same launcher sources and pins are installed in another checkout
+      When the agents of the machine "node-a" are verified
+      Then no launcher was run again
+      And every check passes
+
     Scenario Outline: The <agent> profile changed, so only its session is launched again
       Given the "<tool>" profile of the machine "node-a" now holds something else
       When the agents of the machine "node-a" are verified

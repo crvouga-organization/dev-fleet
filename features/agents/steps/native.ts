@@ -1,5 +1,5 @@
 import { expect } from 'bun:test';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { render } from '../../../src/agents/render';
@@ -46,6 +46,7 @@ const agentOf = (binary: string | undefined) => {
 };
 
 const machine = part(() => ({
+  workspace: checkout,
   pins: {} as Record<string, string>,
   // mise reinstalls whatever it is asked to; every other command is scripted
   // by the scenario.
@@ -176,7 +177,7 @@ async function verify(world: AgentsWorld, id: string): Promise<Check[]> {
     machine(world);
   if (!cache)
     throw new Error('Say what is remembered of earlier verification.');
-  return verifyNativeAgents(id, checkout, commands.run, {
+  return verifyNativeAgents(id, machine(world).workspace, commands.run, {
     outOfQuota,
     cache,
     t3Service: machine(world).service,
@@ -195,6 +196,19 @@ Given(
       rosterVersion: version,
       keyVersion: '',
     };
+  }
+);
+
+Given(
+  'the same launcher sources and pins are installed in another checkout',
+  async (world) => {
+    const directory = await mkdtemp(join(tmpdir(), 'fleet-revision-'));
+    world.defer(() => rm(directory, { recursive: true, force: true }));
+    for (const name of ['mise.toml', 'agents', 'src'])
+      await cp(join(checkout, name), join(directory, name), {
+        recursive: true,
+      });
+    machine(world).workspace = directory;
   }
 );
 

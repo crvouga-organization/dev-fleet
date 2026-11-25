@@ -140,13 +140,10 @@ system and T3 reserves, then budgets 512 MiB per session and 4096 MiB per
 build. Both T3 worker units set the Node old-space limit to the build budget.
 That budget is an estimate, and a generous one: it reserves a build for every
 session at once. So it decides the `AGENTS_OVER_CAPACITY` warning only where
-nothing was measured. Where the kernel kept the memory peak of each running
-agent (every supported release), the check warns when those peaks, added up,
-are more than the memory the policy leaves agents: what the agents would take
-if each returned to its own peak at once. Its summary gives the median and the
-largest peak, their sum, how far the estimate is from the median, and the most
-everything T3 Code started took at one moment, which is the one number that
-holds the sessions that ended.
+nothing was measured. The kernel’s aggregate peak measures what sessions used at the same moment,
+including sessions that have since ended. When available, this decides
+whether memory usage exceeded the budget. Without it, a sum of individual
+peaks above budget gives the separate `AGENT_PEAK_PROJECTION` advisory.
 The number of sessions is a recommendation, not an admission limit: T3 Code starts a
 session whenever it is asked for one and its administrator policy has no limit
 on them, so nothing refuses the next session and the check says so. What is

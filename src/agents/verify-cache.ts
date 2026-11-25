@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative } from 'node:path';
 import { receiptDirectory } from '../platform/ansible-receipt';
 import type { Check } from '../types';
 
@@ -25,13 +25,22 @@ export function cacheKey(...parts: (string | object)[]): string {
 }
 
 /** Digest of source files, so a code change re-verifies. */
-export async function sourceKey(paths: string[]): Promise<string> {
+export async function sourceKey(
+  root: string,
+  paths: string[]
+): Promise<string> {
   const hash = createHash('sha256');
-  for (const path of [...paths].sort())
+  for (const path of [...paths].sort()) {
+    const contents = await readFile(path).catch(() => null);
+    hash.update(relative(root, path)).update('\0');
     hash
-      .update(path)
-      .update('\0')
-      .update(await readFile(path).catch(() => ''));
+      .update(
+        contents
+          ? createHash('sha256').update(contents).digest('hex')
+          : 'missing'
+      )
+      .update('\0');
+  }
   return hash.digest('hex');
 }
 

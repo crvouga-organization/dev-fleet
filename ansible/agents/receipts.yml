@@ -1,0 +1,19 @@
+---
+- name: Advance revision evidence for verified agent profiles
+  hosts: localhost
+  connection: local
+  become: false
+  gather_facts: false
+  tasks:
+    - name: Record the receipt of each unchanged profile
+      ansible.builtin.template:
+        src: receipt.json.j2
+        dest: '{{ item.dest }}'
+        mode: '0600'
+      vars:
+        agent_revision: '{{ item.revision }}'
+        agent_fingerprint: '{{ item.fingerprint }}'
+        agent_files: '{{ item.files }}'
+      loop: '{{ receipts }}'
+      loop_control:
+        label: '{{ item.dest }}'

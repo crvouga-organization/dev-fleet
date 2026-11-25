@@ -85,7 +85,7 @@ Feature: A worker proves it can do what agents do on it
 
     Scenario: A worker without the web profile has no browser to check
       When the worker's browser is tried without the web profile
-      Then the check "worker:browser" is skipped
+      Then the check "worker:browser" is not applicable
       And exactly 0 commands were run
 
     Scenario Outline: The headless shell of <arch> loads a blank page

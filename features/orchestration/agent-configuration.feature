@@ -58,13 +58,27 @@ Feature: An agent profile is configured from one reviewed commit
       And git reports every directory it is asked about as a clean worktree at the requested revision
       And a command with the argument "agents" succeeds, printing:
         """
-        {"ok":true,"revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","fingerprint":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+        {"tool":"codex","ok":true,"revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","fingerprint":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+        {"tool":"opencode","ok":true,"revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","fingerprint":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
         """
       When the bootstrapped checkout is configured, with "opencode" as an additional tool
       Then every check has passed
       And no command with the argument "bootstrap/setup.ts" was run
       And no command with the argument "worktree" was run
-      And 2 commands with the argument "agents" were run
+      And 1 command with the argument "agents" was run
+
+    Scenario: A receipt for the wrong tool stops the batch after the verified prefix
+      Given an empty directory
+      And git reports every directory it is asked about as a clean worktree at the requested revision
+      And a command with the argument "agents" succeeds, printing:
+        """
+        {"tool":"codex","ok":true,"revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","fingerprint":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+        {"tool":"claude","ok":true,"revision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","fingerprint":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}
+        """
+      When the bootstrapped checkout is configured, with "opencode" as an additional tool
+      Then the configuration receipts exist only for "codex" out of "codex,opencode"
+      And the last configuration check fails and mentions "Profile opencode was not verified"
+      And 1 command with the argument "agents" was run
 
     Scenario: A checkout marked as prepared is still inspected for drift
       Given git reports every directory it is asked about as a clean worktree at the requested revision

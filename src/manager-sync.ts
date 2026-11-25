@@ -35,6 +35,8 @@ export interface ManagerNode extends NodeReport {
   appliedRevision: string | null;
   durationMs: number;
   diagnostics?: Diagnostic[];
+  /** Observations superseded by a later measurement during this run. */
+  earlierChecks?: Check[];
 }
 export interface ManagerReport {
   version: 3;
@@ -42,6 +44,7 @@ export interface ManagerReport {
   execution: 'manager-push';
   ok: boolean;
   applied: boolean;
+  acceptance?: { failOnWarning: boolean; warnings: number; accepted: boolean };
   desiredRevision: string | null;
   /** What selected the desired revision. */
   selectedBy?: RevisionSelection;
@@ -348,7 +351,7 @@ async function deployNode(
       input.revision
     );
     ran = true;
-    result.checks.push(...outcome.checks);
+    reconcileObservations(result, outcome.checks);
     if (!outcome.checks.length)
       result.checks.push({
         id: 'rollout:evidence',
@@ -369,6 +372,25 @@ async function deployNode(
   result.durationMs += Date.now() - started;
   if (!result.checks.some(blocking)) result.appliedRevision = input.revision;
   return ran;
+}
+
+/** Inspection measures single resources. Convergence may measure one again.
+ * Within convergence keep per-profile results sharing configuration:apply. */
+export function reconcileObservations(
+  result: ManagerNode,
+  final: Check[]
+): void {
+  const measured = new Set(final.map((check) => check.id));
+  const earlier = result.checks.filter((check) => measured.has(check.id));
+  result.checks = result.checks.filter((check) => !measured.has(check.id));
+  // Disk GC is measured both after the baseline and during final readiness.
+  // Other checks may share an ID across distinct resources (agent profiles).
+  const lastGc = final.map((check) => check.id).lastIndexOf('ubuntu:disk-gc');
+  for (const [index, check] of final.entries()) {
+    if (check.id === 'ubuntu:disk-gc' && index !== lastGc) earlier.push(check);
+    else result.checks.push(check);
+  }
+  if (earlier.length) result.earlierChecks = earlier;
 }
 
 function connectionState(

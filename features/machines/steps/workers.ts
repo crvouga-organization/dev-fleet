@@ -1,5 +1,6 @@
 import { expect } from 'bun:test';
 import {
+  pressureEvents,
   rendererCheck,
   t3Protection,
   verifyResourceSafety,
@@ -45,6 +46,10 @@ When(
     world.checks = await verifyUbuntuBoot(user, world.run);
   }
 );
+
+When('the worker pressure interventions are inspected', async (world) => {
+  world.checks = [await pressureEvents(world.run)];
+});
 
 When('the worker is audited', async (world) => {
   world.audit = await auditUbuntu(world.run);

@@ -107,6 +107,7 @@ async function t3(text: string, upstream: Upstream): Promise<Change> {
     ['t3_linux_arm64_sha256', `t3-${to}-linux-arm64.tar.gz`],
     // The manager's own T3: without it the manager refuses the new release.
     ['t3_darwin_arm64_sha256', `t3-${to}-darwin-arm64.tar.gz`],
+    ['t3_desktop_darwin_arm64_sha256', `T3-Code-${to}-arm64.zip`],
     ['t3_desktop_amd64_sha256', `T3-Code-${to}-amd64.deb`],
     ['t3_desktop_arm64_sha256', `T3-Code-${to}-arm64.deb`],
   ];

@@ -109,9 +109,15 @@ export function managerText(
   lines.push('', ...grid(c, report.nodes, mark, options.color === true));
   lines.push('', totals(c, counts, options.color === true));
   lines.push(...slowLines(c, report.nodes));
-  for (const status of ['fail', 'warn', 'skip', 'not-applicable'] as const) {
+  for (const status of [
+    'fail',
+    'warn',
+    'skip',
+    'firmware',
+    'not-applicable',
+  ] as const) {
     const problems = groupProblems(
-      all.filter((entry) => entry.check.status === status)
+      all.filter(({ check }) => problemSection(check) === status)
     );
     if (!problems.length) continue;
     lines.push('', c.bold(SECTION[status]));
@@ -176,10 +182,21 @@ export function stableUrls(text: string): string {
   return text.replace(TAILNET_URL, 'its private tailnet address');
 }
 
-const SECTION: Record<'fail' | 'warn' | 'skip' | 'not-applicable', string> = {
+function problemSection(check: Check) {
+  if (check.status === 'skip' && check.id === 'worker:power-loss-recovery')
+    return 'firmware';
+  if (check.status === 'fail' && !blocking(check)) return 'warn';
+  return check.status;
+}
+
+const SECTION: Record<
+  'fail' | 'warn' | 'skip' | 'firmware' | 'not-applicable',
+  string
+> = {
   fail: 'Failing — fix these',
-  warn: 'Warnings — outside the fleet; sync still succeeds',
-  skip: 'Not observable on this hardware',
+  warn: 'Warnings',
+  firmware: 'Firmware settings unavailable on this hardware',
+  skip: 'Skipped checks — evidence unavailable',
   'not-applicable': 'Not applicable to this machine — with the reason',
 };
 
@@ -189,11 +206,7 @@ function header(
   failing: boolean,
   options: OutputOptions
 ): string {
-  const verdict = failing
-    ? c.red.bold(`${options.color ? '✖ ' : ''}ACTION REQUIRED`)
-    : report.applied
-      ? c.green.bold(`${options.color ? '✔ ' : ''}CONVERGED`)
-      : c.green.bold(`${options.color ? '✔ ' : ''}PREVIEW OK`);
+  const verdict = verdictText(c, report, failing, options);
   const parts = [
     c.bold('fleet-sync'),
     verdict,
@@ -202,6 +215,24 @@ function header(
   if (options.durationMs !== undefined)
     parts.push(`${c.dim('in')} ${duration(options.durationMs)}`);
   return parts.join('  ');
+}
+
+function verdictText(
+  c: ChalkInstance,
+  report: ManagerReport,
+  failing: boolean,
+  options: OutputOptions
+) {
+  const badge = options.color ? '✔ ' : '';
+  return failing
+    ? c.red.bold(`${options.color ? '✖ ' : ''}ACTION REQUIRED`)
+    : report.acceptance?.failOnWarning && !report.acceptance.accepted
+      ? c.yellow.bold('WARNING POLICY FAILED')
+      : report.applied && report.acceptance?.warnings
+        ? c.yellow.bold('CONVERGED WITH WARNINGS')
+        : report.applied
+          ? c.green.bold(`${badge}CONVERGED`)
+          : c.green.bold(`${badge}PREVIEW OK`);
 }
 
 function grid(
@@ -261,10 +292,12 @@ function groupProblems(entries: { node: string; check: Check }[]): Problem[] {
       check.status,
       check.summary,
       check.remedy?.action ?? '',
+      check.remedy?.command ?? '',
     ].join('\u0000');
     const group = groups.get(key);
-    if (group) group.nodes.push(node);
-    else groups.set(key, { check, nodes: [node] });
+    if (group) {
+      if (!group.nodes.includes(node)) group.nodes.push(node);
+    } else groups.set(key, { check, nodes: [node] });
   }
   return [...groups.values()];
 }

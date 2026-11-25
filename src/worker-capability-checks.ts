@@ -158,7 +158,7 @@ export async function browserCheck(
   if (!web)
     return {
       id,
-      status: 'skip',
+      status: 'not-applicable',
       summary:
         'This worker does not select the web tool profile, so no browser is installed for tests.',
     };

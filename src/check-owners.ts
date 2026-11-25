@@ -149,6 +149,11 @@ export const CHECK_OWNERS: CheckOwner[] = [
       'Re-converge the machine with fleet-sync; an agent that needs a sign-in is a person’s.',
   },
   {
+    pattern: 't3:desktop-installed',
+    manual:
+      'Run fleet-sync to stage the verified manager desktop. Quit T3 after active sessions finish and open the staged copy.',
+  },
+  {
     pattern: 't3:*',
     manual:
       'A worker’s first T3 pairing and its private route are approved by a person; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest.',

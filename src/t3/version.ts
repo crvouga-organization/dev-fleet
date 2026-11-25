@@ -51,21 +51,6 @@ export function versionCheck(
   };
 }
 
-export async function managerVersion(
-  t3Home: string,
-  workspace: string
-): Promise<Check> {
-  const running = await readFile(join(t3Home, STARTED_VERSION), 'utf8').catch(
-    () => null
-  );
-  return versionCheck(
-    running,
-    await pinnedT3Version(workspace),
-    'the manager',
-    'Install that release of T3 Code on the manager. With the fleet policy staged (ansible-playbook -e user=$(id -un) -K ansible/macos/manager-privilege.yml) it no longer updates itself.'
-  );
-}
-
 export async function workerVersion(
   node: FleetNode,
   run: Runner,

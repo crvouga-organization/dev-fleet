@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
-import { join, relative } from 'node:path';
+import { dirname, basename, join, relative, resolve } from 'node:path';
 import { runAnsible } from './ansible';
 import type { CommandOptions, CommandResult, Runner } from '../types';
 
@@ -53,7 +53,11 @@ export async function runAnsibleWithReceipt(
   const directory = receipt.directory ?? receiptDirectory();
   const path = join(directory, `${receipt.name}.json`);
   const now = receipt.now ?? Date.now();
-  const key = await inputKey(playbook, options.input, receipt.sources);
+  const key = await inputKey(
+    resolve(options.cwd ?? process.cwd(), playbook),
+    options.input,
+    receipt.sources
+  );
   if (
     !receipt.force &&
     key !== null &&
@@ -113,11 +117,11 @@ export async function inputKey(
   sources: string[]
 ): Promise<string | null> {
   const hash = createHash('sha256');
-  hash.update(`playbook\0${playbook}\0input\0${input}\0`);
+  hash.update(`playbook\0${basename(playbook)}\0input\0${input}\0`);
   try {
     for (const source of [...sources].sort())
       for (const file of await files(source)) {
-        hash.update(`${relative(source, file)}\0`);
+        hash.update(`${relative(dirname(playbook), file)}\0`);
         hash.update(await readFile(file));
         hash.update('\0');
       }

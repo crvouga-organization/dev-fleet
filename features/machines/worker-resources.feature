@@ -30,6 +30,21 @@ Feature: A worker's memory and disk guards are measured where they run
       | sh -c …mktemp /tmp/personal-fleet-probe.XXXXXX…                  | succeeds                                                               |
       | cat /var/lib/personal-fleet-disk-gc/report.json                  | fails                                                                  |
 
+  Scenario: Past I/O and memory stops remain visible after pressure clears
+    Given the command "sudo -n journalctl …" prints:
+      """
+      {"event":"agent_pressure","reason":"io","dry_run":false}
+      {"event":"agent_pressure","reason":"memory","dry_run":false}
+      {"event":"agent_pressure","dry_run":false}
+      {"event":"agent_pressure","reason":"io","dry_run":true}
+      {"event":"agent_pressure"}
+      """
+    And the command "test -e /run/personal-fleet-pressure-guard/active" fails
+    When the worker pressure interventions are inspected
+    Then the check warns
+    And the summary of the check is "In the last 24 hours the pressure guard stopped 3 workloads (I/O: 1, memory: 1, unknown cause: 1). Dry runs: 1. Unclassified historical records: 1. The sustained-pressure marker is absent."
+    And the remedy of the check contains "Inspect current I/O and memory stalls"
+
   Scenario: A guarded worker with headroom passes
     When the resource safety of the worker whose home is "/home/fixture" is measured
     Then the check passes

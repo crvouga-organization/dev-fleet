@@ -220,6 +220,10 @@ function registerSync({ program, defaults, complete }: Registration) {
       'Opt-in: log a worker without a token of its own in with the shared Vault user, on its own terminal'
     )
     .option(
+      '--fail-on-warning',
+      'Exit 1 if warnings remain after convergence; skips are counted separately'
+    )
+    .option(
       '--restart-busy',
       'Restart a worker T3 for a new release or policy even while agent turns run, which ends them; by default the restart waits until T3 is idle'
     )
