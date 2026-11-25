@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { liveServerVersion } from '../platform/t3-service';
 import { sshArgs } from '../ssh';
 import type { Check, FleetNode, Runner } from '../types';
 
@@ -10,9 +11,6 @@ export async function pinnedT3Version(workspace: string): Promise<string> {
   if (!version) throw new Error('mise.toml pins no T3 version.');
   return version;
 }
-
-/** Where T3 notes the version it last started as, under its home. */
-export const STARTED_VERSION = 'userdata/desktop-last-started-version';
 
 const VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?$/;
 
@@ -32,7 +30,7 @@ export function versionCheck(
       status: 'warn',
       summary: 'T3_VERSION_UNKNOWN',
       remedy: {
-        action: `T3 on ${where} has not recorded the version it runs. Start T3 there once, then run fleet-sync.`,
+        action: `Fleet could not read the running T3 version on ${where}. Check the T3 service and rerun fleet-sync.`,
       },
     };
   if (observed !== pinned)
@@ -56,12 +54,8 @@ export async function workerVersion(
   run: Runner,
   workspace: string
 ): Promise<Check> {
-  const result = await run(
-    [...sshArgs(node), `cat "$HOME/.t3/${STARTED_VERSION}"`],
-    { timeoutMs: 15_000 }
-  );
   return versionCheck(
-    result.ok ? result.stdout : null,
+    (await liveServerVersion(run, sshArgs(node))) ?? null,
     await pinnedT3Version(workspace),
     `worker ${node.id}`,
     'Run fleet-sync for that worker: it installs the pinned desktop app and restarts T3 when its policy changed.'

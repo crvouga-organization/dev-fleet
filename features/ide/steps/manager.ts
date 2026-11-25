@@ -4,13 +4,10 @@ import { managerDesktop } from '../../../src/t3/manager-desktop';
 import { expect } from 'bun:test';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { runInNewContext } from 'node:vm';
 import { parse } from 'yaml';
 import { nativeT3Artifact } from '../../../bootstrap/native-t3';
-import {
-  STARTED_VERSION,
-  updatesCheck,
-  workerVersion,
-} from '../../../src/t3/version';
+import { updatesCheck, workerVersion } from '../../../src/t3/version';
 import { failed, succeeded } from '../../support/commands';
 import { ide, ROOT, withPin, type IdeWorld } from './world';
 
@@ -143,12 +140,45 @@ Then(
 );
 
 Given(
-  'the worker {string} says over SSH that its T3 last started as {string}',
-  (world, _node: string, version: string) => {
+  'Launch Services returns the application count {string} as text',
+  (world, count: string) => {
+    world.commands.answer('/usr/bin/codesign', succeeded());
+    world.commands.answer('/usr/bin/osascript', (command) => {
+      const args = command.slice(-2);
+      const app = { bundleURL: { path: args[1] } };
+      const result: unknown = runInNewContext(
+        command[command.indexOf('-e') + 1] + '\nrun(args)',
+        {
+          args,
+          ObjC: { import() {}, unwrap: (value: unknown) => value },
+          $: {
+            NSRunningApplication: {
+              runningApplicationsWithBundleIdentifier: () => ({
+                count,
+                objectAtIndex: () => app,
+              }),
+            },
+            NSBundle: {
+              bundleWithURL: () => ({
+                objectForInfoDictionaryKey: () => withPin('<pinned>'),
+              }),
+            },
+          },
+        }
+      );
+      return succeeded(String(result));
+    });
+  }
+);
+
+Given(
+  /^the worker server answers the environment query with '(.*)'$/,
+  (world, body: string) => {
     world.commands.answer(
-      (command) =>
-        command[0] === 'ssh' && command.join(' ').includes(STARTED_VERSION),
-      succeeded(`${version}\n`)
+      (argv) =>
+        argv[0] === 'ssh' &&
+        argv.includes('http://127.0.0.1:3773/.well-known/t3/environment'),
+      body === 'unreachable' ? failed() : succeeded(withPin(body))
     );
   }
 );

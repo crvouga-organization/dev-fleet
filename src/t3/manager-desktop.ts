@@ -13,7 +13,7 @@ const APP = 'T3 Code (Nightly).app';
 const runningApp = `ObjC.import('AppKit');
 function run(argv) {
   const apps = $.NSRunningApplication.runningApplicationsWithBundleIdentifier(argv[0]);
-  if (apps.count !== 1) return 'absent-or-ambiguous';
+  if (Number(apps.count) !== 1) return 'absent-or-ambiguous';
   const url = apps.objectAtIndex(0).bundleURL;
   const version = ObjC.unwrap($.NSBundle.bundleWithURL(url).objectForInfoDictionaryKey('CFBundleShortVersionString'));
   const owner = ObjC.unwrap(url.path) === argv[1] ? 'managed' : 'other';
