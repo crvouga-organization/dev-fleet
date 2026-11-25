@@ -41,7 +41,7 @@ const TOOLS: Record<
     driver: 'antigravity',
     label: 'AntiGravity',
     config: {
-      binaryPath: '${workspace}/agents/antigravity-proxy.ts',
+      binaryPath: '${workspace}/agents/bin/agy',
     },
   },
 };

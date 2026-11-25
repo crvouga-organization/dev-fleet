@@ -60,7 +60,7 @@ Feature: The T3 providers a machine gets
         """
       And the provider "personal_antigravity_a_example_com" is declared with at least:
         """
-        { "driver": "antigravity", "displayName": "AntiGravity a@example.com" }
+        { "driver": "antigravity", "displayName": "AntiGravity a@example.com", "config": { "binaryPath": "/repo/agents/bin/agy" } }
         """
 
     Scenario: No account is ever named in tracked source
