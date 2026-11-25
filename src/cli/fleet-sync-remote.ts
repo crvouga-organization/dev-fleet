@@ -169,7 +169,32 @@ export async function selected(
     );
   }
   if (settle) report.checks.push(await settle(report));
+  applyAcceptance(report, options.failOnWarning === true);
   return outcome(report, planFingerprint, started);
+}
+
+/** Called after recording deployment and the bucket's final evidence. */
+export function applyAcceptance(
+  report: ManagerReport,
+  failOnWarning: boolean
+): void {
+  const warnings = [
+    ...report.checks,
+    ...report.nodes.flatMap((node) => node.checks),
+  ].filter(
+    (check) =>
+      check.status === 'warn' || (check.status === 'fail' && !blocking(check))
+  ).length;
+  const accepted =
+    report.ok &&
+    !report.checks.some(blocking) &&
+    (!failOnWarning || warnings === 0);
+  report.acceptance = {
+    failOnWarning,
+    warnings,
+    accepted,
+  };
+  report.ok = accepted;
 }
 
 /** What the request asks of each worker's bootstrap. */

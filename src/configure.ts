@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { mkdir, writeFile, rename, readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { record } from './config';
-import type { Check, Runner } from './types';
+import type { Check, CommandResult, Runner } from './types';
 
 export type ConfigurationRequest = {
   revision: string;
@@ -69,11 +69,48 @@ export async function configureWorkspace(
     const setup = await setupRevision(directory, run);
     if (setup.length) return setup;
   }
+  const tools = [...new Set([request.tool, ...options.additionalTools])];
+  return recordProfiles(
+    root,
+    request,
+    tools,
+    await applyOwner(directory, request, tools, run)
+  );
+}
+
+async function recordProfiles(
+  root: string,
+  request: ConfigurationRequest,
+  tools: string[],
+  applied: CommandResult
+): Promise<Check[]> {
+  const single = tools.length === 1;
+  const lines = single ? [applied.stdout] : applied.stdout.trim().split('\n');
   const checks: Check[] = [];
-  for (const tool of [request.tool, ...options.additionalTools]) {
-    checks.push(
-      ...(await applyProfile(root, directory, { ...request, tool }, run))
+  for (const [index, tool] of tools.entries()) {
+    const receipt = decodeReceipt(
+      lines[index] ?? '',
+      request.revision,
+      single ? undefined : tool
     );
+    if (
+      !receipt ||
+      (index === tools.length - 1 &&
+        (!applied.ok || lines.length !== tools.length))
+    ) {
+      checks.push(
+        ...failure(
+          `Profile ${tool} was not verified. Receipts advanced for ${index} of ${tools.length} profiles; inspect agents preview before retrying.`
+        )
+      );
+      break;
+    }
+    await recordConfiguration(root, { ...request, tool }, receipt);
+    checks.push({
+      id: 'configuration:apply',
+      status: 'pass',
+      summary: `${tool} profile applied at revision ${request.revision}; configuration fingerprint ${receipt}.`,
+    });
   }
   return checks;
 }
@@ -98,37 +135,16 @@ async function setupRevision(directory: string, run: Runner): Promise<Check[]> {
   return [];
 }
 
-async function applyProfile(
-  root: string,
-  directory: string,
-  request: ConfigurationRequest,
-  run: Runner
-): Promise<Check[]> {
-  const applied = await applyOwner(directory, request, run);
-  if (!applied.ok)
-    return failure(
-      'Agent profile configuration failed. Inspect preview on this node; no rollout receipt was advanced.'
-    );
-  const receipt = decodeReceipt(applied.stdout, request.revision);
-  if (!receipt)
-    return failure(
-      'The agent profile owner returned an invalid receipt; rollout remains unverified.'
-    );
-  await recordConfiguration(root, request, receipt);
-  return [
-    {
-      id: 'configuration:apply',
-      status: 'pass',
-      summary: `agent profile applied at revision ${request.revision}; configuration fingerprint ${receipt}. Authentication and T3 end-to-end remain separate gates.`,
-    },
-  ];
-}
-
-export function decodeReceipt(output: string, revision: string): string | null {
+export function decodeReceipt(
+  output: string,
+  revision: string,
+  tool?: string
+): string | null {
   try {
     const data: unknown = JSON.parse(output);
     return record(data) &&
       data['ok'] === true &&
+      (tool === undefined || data['tool'] === tool) &&
       data['revision'] === revision &&
       typeof data['fingerprint'] === 'string' &&
       /^[a-f0-9]{64}$/.test(data['fingerprint'])
@@ -153,7 +169,7 @@ async function prepareRevision(
   await mkdir(join(root, 'node_modules', '.fleet-revisions'), {
     recursive: true,
   });
-  let deployed = await run(['git', 'rev-parse', 'HEAD'], { cwd: directory });
+  const deployed = await run(['git', 'rev-parse', 'HEAD'], { cwd: directory });
   if (!deployed.ok) {
     const created = await run(
       ['git', 'worktree', 'add', '--detach', directory, revision],
@@ -163,7 +179,6 @@ async function prepareRevision(
       return failure(
         'Cannot create pinned deployment worktree. Existing data was preserved.'
       );
-    deployed = await run(['git', 'rev-parse', 'HEAD'], { cwd: directory });
   }
   return verifyRevision(directory, revision, run);
 }
@@ -217,6 +232,7 @@ async function recordConfiguration(
 async function applyOwner(
   directory: string,
   request: ConfigurationRequest,
+  tools: string[],
   run: Runner
 ) {
   return run(
@@ -236,11 +252,11 @@ async function applyOwner(
       '--node',
       request.node,
       '--tool',
-      request.tool,
+      tools.join(','),
       '--profile',
       request.profile,
     ],
-    { cwd: directory, timeoutMs: 120_000 }
+    { cwd: directory, timeoutMs: 120_000 * tools.length }
   );
 }
 

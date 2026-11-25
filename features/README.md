@@ -100,6 +100,7 @@ skipped where it cannot.
 | `@vault`       | Where `vault` is on PATH, or `DEVFLEET_TEST_VAULT=required`; a dev server                |
 | `@ansible`     | Where `uv` is on PATH, or `DEVFLEET_TEST_ANSIBLE=required`; the locked Ansible project   |
 | `@required`    | Only where `DEVFLEET_TEST_LITESTREAM=required`, to prove nothing was skipped             |
+| `@t3-desktop`  | On macOS with `DEVFLEET_TEST_MANAGER_DESKTOP` set; stages the pinned app temporarily     |
 | `@macos`       | On macOS only; the manager job of CI runs them                                           |
 | `@posix`       | Not on Windows                                                                           |
 | `@linux`       | On Linux only                                                                            |

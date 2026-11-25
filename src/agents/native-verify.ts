@@ -180,30 +180,36 @@ export async function verifyNativeAgents(
   const { launch } = environment;
   const cwd = await mkdtemp(join(tmpdir(), 'fleet-agents-'));
   try {
+    const keys = new Map<string, string>();
     const results = await Promise.all(
-      NATIVE_AGENTS.map(async (agent) => [
-        await versionCheck(agent, pins[agent.pin], run, sync),
-        outOfQuota.has(agent.name)
-          ? quotaPass(agent)
-          : launch.kind === 'incomplete'
-            ? incompleteSession(agent)
-            : await cachedCheck(
-                `agent-${node}-${agent.name}`,
-                cacheKey(
-                  node,
-                  agent,
-                  pins[agent.pin] ?? '',
-                  registry,
-                  await sourceKey(launcherSources(workspace, agent)),
-                  options.accounts?.rosterVersion ?? '',
-                  options.accounts?.keyVersion ?? '',
-                  await configurationKey(profiles, node, agent.binary)
+      NATIVE_AGENTS.map(async (agent) => {
+        const key = cacheKey(
+          node,
+          agent,
+          pins[agent.pin] ?? '',
+          registry,
+          launch.kind,
+          await sourceKey(workspace, launcherSources(workspace, agent)),
+          options.accounts?.rosterVersion ?? '',
+          options.accounts?.keyVersion ?? '',
+          await configurationKey(profiles, node, agent.binary)
+        );
+        keys.set(agent.binary, key);
+        return [
+          await versionCheck(agent, pins[agent.pin], run, sync),
+          outOfQuota.has(agent.name)
+            ? quotaPass(agent)
+            : launch.kind === 'incomplete'
+              ? incompleteSession(agent)
+              : await cachedCheck(
+                  `agent-${node}-${agent.name}`,
+                  key,
+                  () =>
+                    sessionCheck(agent, { node, workspace, cwd, launch }, run),
+                  cache
                 ),
-                () =>
-                  sessionCheck(agent, { node, workspace, cwd, launch }, run),
-                cache
-              ),
-      ])
+        ];
+      })
     );
     const accounts =
       options.accounts && launch.kind !== 'incomplete'
@@ -218,7 +224,7 @@ export async function verifyNativeAgents(
                 launch,
                 cache,
                 run,
-                profiles,
+                launcherKey: keys.get(instance.tool)!,
               })
           )
         : [];
@@ -308,7 +314,7 @@ interface SessionContext {
   launch: Exclude<Launch, { kind: 'incomplete' }>;
   cache: VerifyCache;
   run: Runner;
-  profiles: string;
+  launcherKey: string;
 }
 
 /** An outcome as the cache keeps it: `cooling-down 2027-01-15T09:30:00Z`. */
@@ -349,7 +355,7 @@ async function accountSession(
     spec,
     accounts.rosterVersion,
     accounts.keyVersion,
-    await configurationKey(context.profiles, context.node, instance.tool)
+    context.launcherKey
   );
   const last = await lastFailure(name, key, context.cache);
   if (last && last.ageMs < SESSION_FAILURE_REUSE_MS)
@@ -681,6 +687,7 @@ export async function configurationKey(
     const selection = select(node, tool, 'proxy');
     const directory = join(profiles, node, tool, 'proxy');
     return await sourceKey(
+      directory,
       Object.keys(render(selection)).map((name) => join(directory, name))
     );
   } catch {
@@ -692,10 +699,20 @@ function launcherSources(workspace: string, agent: Agent): string[] {
   const agents = join(workspace, 'agents');
   const lib = join(workspace, 'src/agents');
   return [
-    join(agents, agent.wrapper),
+    ...new Set([join(agents, agent.wrapper), join(agents, agent.launcher)]),
     join(agents, 'managed-proxy.ts'),
-    ...['launch.ts', 'render.ts', 'secrets.ts', 'toolchain.ts'].map((name) =>
-      join(lib, name)
-    ),
+    ...[
+      'native-verify.ts',
+      'admission.ts',
+      'account-relay.ts',
+      'accounts.ts',
+      'commands.ts',
+      'converge.ts',
+      'registry.ts',
+      'launch.ts',
+      'render.ts',
+      'secrets.ts',
+      'toolchain.ts',
+    ].map((name) => join(lib, name)),
   ];
 }

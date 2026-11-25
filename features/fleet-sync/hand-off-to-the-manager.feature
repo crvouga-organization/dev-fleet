@@ -74,6 +74,7 @@ Feature: fleet-sync started on a worker is handed to the manager
         | --canary               | --canary w1                                 | --canary w1                                                             |
         | --config               | --config /roster.json                       | nothing: the manager reads its own roster                               |
         | --dry-run              | --dry-run                                   | --dry-run                                                               |
+        | --fail-on-warning      | --fail-on-warning                           | --fail-on-warning                                                       |
         | --force                | --maintenance-reboot --force                | --maintenance-reboot --force                                            |
         | --json                 | --json                                      | --json                                                                  |
         | --maintenance-reboot   | --maintenance-reboot                        | --maintenance-reboot                                                    |

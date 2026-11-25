@@ -109,6 +109,7 @@ t3_darwin_arm64_sha256 = "cf2f43cf972d6a07abb3200c8f181d8046659cc8a4842984c87fbf
 # Official T3 Code desktop .deb (same release). Workers run this GUI app as their
 # only T3 process; it embeds the server. Upstream SHA256SUMS omits .deb files,
 # so these digests were computed from the release assets.
+t3_desktop_darwin_arm64_sha256 = "67ea227870abc7a8a70335a305c4bd506b34bc467c0612da760e202598031bc0"
 t3_desktop_amd64_sha256 = "167a47c94cde7881324970a336da3b2c95138f6492b563e1b928f34751827c7a"
 t3_desktop_arm64_sha256 = "66986a6501b0da8fd9e64e05de5e01e0c050ac208d1db86fac63a5343140812b"
 # Official AWS v2 Windows MSI, same version as tools.aws; checked before execution.

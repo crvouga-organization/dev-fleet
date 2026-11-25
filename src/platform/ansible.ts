@@ -57,6 +57,7 @@ export async function runAnsible(
     input: string;
     /** Run in check mode: report what would change, change nothing. */
     check?: boolean;
+    tags?: string;
   },
   scratch = variablesDirectory()
 ): Promise<CommandResult> {
@@ -67,12 +68,13 @@ export async function runAnsible(
   const path = join(directory, 'variables.json');
   try {
     await writeFile(path, options.input, { mode: 0o600, flag: 'wx' });
-    const { input: _input, check, ...commandOptions } = options;
+    const { input: _input, check, tags, ...commandOptions } = options;
     return await run(
       [
         ...ansibleCommand(),
         playbook,
         ...(check ? ['--check'] : []),
+        ...(tags ? ['--tags', tags] : []),
         '--extra-vars',
         '@' + path,
       ],

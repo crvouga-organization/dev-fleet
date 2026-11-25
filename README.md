@@ -99,7 +99,12 @@ environment and never taken from arguments.
 fetches the commit your dev-fleet version was published from, sends it and
 your configuration to each machine, installs the pinned toolchain, applies the
 Ansible policy and verifies the result. It prints one table and writes a full
-JSON report. The first run on a machine installs everything, mise included, so
+JSON report. Use `--fail-on-warning` for unattended acceptance.
+It exits with status 1 if warnings remain, including a warning from uploading
+the fleet state. The JSON report records the warning count and acceptance
+beside the deployment result. Skipped checks are counted separately.
+
+The first run on a machine installs everything, mise included, so
 Git is the only tool it needs beforehand.
 
 `--dry-run` changes no machine. It first brings the manager's copy of the
@@ -361,10 +366,16 @@ settings on each machine, the manager's own copy (pinned version and policy)
 and what the manager measures of each worker. Enabling one is `ides` in
 `fleet.json`.
 
-| IDE               | `ides`  | Manager                                               | Workers                                          |
-| ----------------- | ------- | ----------------------------------------------------- | ------------------------------------------------ |
-| T3 Code           | `t3`    | Pinned CLI, policy with updates off, version measured | Pinned desktop app, locked policy, pairing       |
-| super.engineering | `super` | Your own install; one SSH workspace per worker        | Reached over SSH; nothing installed by dev-fleet |
+| IDE               | `ides`  | Manager                                        | Workers                                          |
+| ----------------- | ------- | ---------------------------------------------- | ------------------------------------------------ |
+| T3 Code           | `t3`    | Pinned CLI and signed desktop, updates off     | Pinned desktop app, locked policy, pairing       |
+| super.engineering | `super` | Your own install; one SSH workspace per worker | Reached over SSH; nothing installed by dev-fleet |
+
+On the macOS manager, sync stages the checksum-pinned T3 desktop under
+`~/Applications/dev-fleet/`. Its installed signature and version appear as
+`t3:desktop-installed`. The separate `t3:version` check measures the running
+app. During a maintenance window, finish active sessions, quit the old app
+and use the `open` command in the remedy to activate the verified copy.
 
 `"ides": ["t3", "super"]` adds [super.engineering](https://super.engineering)
 beside T3 Code. It is a desktop app on the manager that works on another

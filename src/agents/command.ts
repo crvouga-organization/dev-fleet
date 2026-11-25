@@ -7,7 +7,12 @@ import { homedir } from 'node:os';
 import { currentPlatform } from '../platform';
 import { registry, select } from './registry';
 import { agentRoot } from './render';
-import { convergeAgents, plan, publicPlan } from './converge';
+import {
+  convergeAgents,
+  plan,
+  publicPlan,
+  refreshProfileBatch,
+} from './converge';
 import { launchProfile } from './launch';
 import { verifyProvider } from './verify';
 
@@ -80,9 +85,23 @@ export function registerAgents(
         // and stops at the first that fails, which its line names.
         const tools =
           action === 'apply' ? options.tool.split(',') : [options.tool];
+        let reviewed: Promise<string> | undefined;
+        const selectedRevision = () =>
+          (reviewed ??= revision(['apply', 'run', 'verify'].includes(action)));
+        if (
+          tools.length > 1 &&
+          globals().yes &&
+          (await refreshBatch(options, tools, selectedRevision))
+        )
+          return;
         for (const tool of tools) {
           try {
-            await execute(action, args, { ...options, tool }, globals());
+            await execute(
+              action,
+              args,
+              { ...options, tool, revision: await selectedRevision() },
+              globals()
+            );
           } catch (error) {
             console.log(
               JSON.stringify({
@@ -102,10 +121,35 @@ export function registerAgents(
   }
 }
 
+async function refreshBatch(
+  options: AgentOptions,
+  tools: string[],
+  selectedRevision: () => Promise<string>
+): Promise<boolean> {
+  try {
+    const revision = await selectedRevision();
+    const root = agentRoot(homedir(), currentPlatform().name);
+    const results = await refreshProfileBatch(
+      tools.map((tool) => ({
+        root,
+        revision,
+        selection: select(options.node, tool, options.profile),
+      }))
+    );
+    if (!results) return false;
+    for (const [index, result] of results.entries())
+      console.log(JSON.stringify({ ok: true, tool: tools[index], ...result }));
+    return true;
+  } catch {
+    // Recheck under the lock one profile at a time for per-tool evidence.
+    return false;
+  }
+}
+
 async function execute(
   action: string,
   args: string[],
-  options: AgentOptions,
+  options: AgentOptions & { revision: string },
   global: GlobalOpts
 ) {
   const selection = select(options.node, options.tool, options.profile);
@@ -113,13 +157,14 @@ async function execute(
   const context = {
     root,
     selection,
-    revision: await revision(['apply', 'run', 'verify'].includes(action)),
+    revision: options.revision,
   };
   if (action === 'apply') {
     if (!global.yes) throw new AgentConfigurationError('Apply requires --yes.');
     console.log(
       JSON.stringify({
         ok: true,
+        tool: selection.tool,
         ...(await convergeAgents(context, options.adopt)),
       })
     );

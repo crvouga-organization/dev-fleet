@@ -23,9 +23,12 @@ import {
  * Resolved from the module URL: the published CLI loads this on Node, which has
  * no `import.meta.dir`.
  */
-const VERIFIER_SOURCES = ['fleet-verify.ts', 'verify.ts', 'round-trip.ts'].map(
-  (name) => fileURLToPath(new URL(name, import.meta.url))
-);
+const VERIFIER_SOURCES = [
+  'fleet-verify.ts',
+  'verify.ts',
+  'round-trip.ts',
+  'provider-errors.ts',
+].map((name) => fileURLToPath(new URL(name, import.meta.url)));
 
 /** Uses the selected gateway credential in this node's noninteractive environment.
  * Authentication/inference evidence does not certify native clients or paired T3.
@@ -69,7 +72,10 @@ export async function verifyFleetProviders(
   // Warm runs reuse recent passes, but always prove this node's key still
   // authenticates to the live gateway; if it does not, verify everything.
   const live = await gatewayAuthenticates(key);
-  const code = await sourceKey(VERIFIER_SOURCES);
+  const code = await sourceKey(
+    fileURLToPath(new URL('.', import.meta.url)),
+    VERIFIER_SOURCES
+  );
   // Providers are independent upstream accounts: verify them concurrently so
   // the slowest one, not their sum, bounds the step. Order stays stable.
   return Promise.all(

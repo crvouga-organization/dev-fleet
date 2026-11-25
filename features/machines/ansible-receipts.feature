@@ -29,6 +29,13 @@ Feature: An unchanged, verified playbook is not applied twice
       And Ansible ran 1 time in all
       And the receipt "site.json" does not contain '"a":1'
 
+    Scenario: A new checkout of the same policy reuses the verified apply
+      Given the playbook was applied with the variables '{"development_source":"/fleet/current"}'
+      And the policy moves unchanged to checkout "another-revision"
+      When the playbook is applied with the variables '{"development_source":"/fleet/current"}'
+      Then the playbook was skipped
+      And Ansible ran 1 time in all
+
   Rule: Anything that could change the result applies in full again
 
     Scenario: A source changed

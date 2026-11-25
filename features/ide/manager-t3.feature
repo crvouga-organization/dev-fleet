@@ -23,8 +23,8 @@ Feature: The manager runs the T3 release the workers run
     leaves these examples true.
 
     Scenario Outline: The manager running <running> <outcome>
-      Given T3 on the manager last started as "<running>"
-      When the T3 version of the manager is checked
+      Given the running desktop on the manager reports "<running>"
+      When the T3 desktop of the manager is checked
       Then the check "t3:version" <outcome>
 
       Examples:
@@ -32,6 +32,22 @@ Feature: The manager runs the T3 release the workers run
         | <pinned>                    | passes                            |
         | 0.1.9-nightly.20261111.4501 | warns with "T3_VERSION_SKEW"      |
         |                             | warns with "T3_VERSION_UNKNOWN"   |
+
+    Scenario: A sync stages the pinned desktop while an earlier release serves sessions
+      Given the running desktop on the manager reports "0.1.9-nightly.20261111.4501"
+      And the managed desktop is absent until its play succeeds
+      When the T3 desktop of the manager is applied
+      Then the check "t3:desktop-installed" passes
+      And the check "t3:version" warns with "T3_VERSION_SKEW"
+      And the remedy of the check "t3:version" mentions "When manager sessions have finished"
+      And no command with the word "kill" was run
+
+    @t3-desktop @slow
+    Scenario: macOS verifies the published desktop and a repeat sync reuses it
+      Given the pinned macOS desktop has been staged in a temporary directory
+      When the manager applies the same macOS desktop again
+      Then the check "t3:desktop-installed" passes
+      And macOS verified the installed app again without running the installer
 
     Scenario: A worker reports its version over SSH
       Given the worker "worker-one" says over SSH that its T3 last started as "0.1.9-nightly.20261111.4501"

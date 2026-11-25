@@ -312,6 +312,7 @@ export const HAND_OFF: {
   all: '--all',
   vaultPasswordLogin: '--vault-password-login',
   restartBusy: '--restart-busy',
+  failOnWarning: '--fail-on-warning',
   dryRun: '--dry-run',
   apply: '--apply',
   yes: '--yes',

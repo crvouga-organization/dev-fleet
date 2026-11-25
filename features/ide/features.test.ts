@@ -12,6 +12,9 @@ runFeatures({
   directory: import.meta.dir,
   steps: [ide],
   world: () => new IdeWorld(),
-  skip: (tags) => tags.includes('@posix') && process.platform === 'win32',
+  skip: (tags) =>
+    (tags.includes('@posix') && process.platform === 'win32') ||
+    (tags.includes('@t3-desktop') &&
+      !process.env['DEVFLEET_TEST_MANAGER_DESKTOP']),
   timeoutMs: 30_000,
 });

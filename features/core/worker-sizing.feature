@@ -141,8 +141,20 @@ Feature: A worker's disk and memory lines scale with the machine
         | agentpeakmaxmb    | 19000 |
         | agentpeaksummb    | 54000 |
       Then the check "worker:agent-sessions" warns
-      And the summary of the check "worker:agent-sessions" mentions "AGENTS_OVER_CAPACITY: 3 agent sessions running; the memory policy supports 11 at once on 60416 MiB (an estimated 4608 MiB each). Nothing refuses a session above that number. Measured: the 3 running now peaked at a median of 18000 MiB and at most 19000 MiB each, 54000 MiB added up, of the 52838 MiB the memory policy leaves agents;"
-      And the remedy of the check "worker:agent-sessions" mentions "took more memory at their peaks, added up, than the memory policy leaves agents"
+      And the summary of the check "worker:agent-sessions" mentions "AGENT_PEAK_PROJECTION: 3 agent sessions running; the memory policy supports 11 at once on 60416 MiB (an estimated 4608 MiB each). Nothing refuses a session above that number. Measured: the 3 running now peaked at a median of 18000 MiB and at most 19000 MiB each, 54000 MiB added up, of the 52838 MiB the memory policy leaves agents;"
+      And the remedy of the check "worker:agent-sessions" mentions "Inspect the aggregate memory peak"
+
+    Scenario Outline: The aggregate peak decides whether simultaneous memory use exceeded the budget
+      When a worker with 60416 MiB of memory and no declared limit measures:
+        | agentsessions   | 3       |
+        | agentpeaksummb  | 61253   |
+        | agentsreachedmb | <peak>  |
+      Then the check "worker:agent-sessions" <result>
+
+      Examples:
+        | peak  | result |
+        | 33353 | passes |
+        | 55000 | warns  |
 
     Scenario: What they took exactly fits
       When a worker with 60416 MiB of memory and no declared limit measures:

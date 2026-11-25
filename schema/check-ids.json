@@ -1649,6 +1649,14 @@
       }
     },
     {
+      "id": "t3:desktop-installed",
+      "meaning": "The manager has the signed desktop bundle for the pinned release.",
+      "severity": "required",
+      "repair": {
+        "manual": "Run fleet-sync to stage the verified manager desktop. Quit T3 after active sessions finish and open the staged copy."
+      }
+    },
+    {
       "id": "t3:end-to-end",
       "meaning": "T3 relay and peer access, which need an operator test.",
       "severity": "required",

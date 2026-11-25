@@ -99,6 +99,20 @@ Feature: Agent profiles
       And its receipt records the SHA-256 digest of "config.toml" as rendered
 
     @ansible @slow
+    Scenario: Unchanged files at a new revision need only their receipt advanced
+      Given the profile has been applied
+      And the selected revision advances to "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      When the profile is applied again
+      Then only the receipt task ran and its revision is "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+    @ansible @slow
+    Scenario: One play advances all receipts when only the revision changes
+      Given the profiles "codex,opencode" have been applied
+      When the owner refreshes the profiles "codex,opencode" at revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      Then the agents play was run 1 time
+      And each of the profiles "codex,opencode" records revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+
+    @ansible @slow
     Scenario: A managed file someone edited is refused, and what it holds is not reported
       Given the profile has been applied
       And "config.toml" has since been overwritten with "PRIVATE_SENTINEL"

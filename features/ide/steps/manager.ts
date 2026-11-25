@@ -1,15 +1,17 @@
+import { runCommand } from '../../../src/runner';
+import type { Runner } from '../../../src/types';
+import { managerDesktop } from '../../../src/t3/manager-desktop';
 import { expect } from 'bun:test';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from 'yaml';
 import { nativeT3Artifact } from '../../../bootstrap/native-t3';
 import {
-  managerVersion,
   STARTED_VERSION,
   updatesCheck,
   workerVersion,
 } from '../../../src/t3/version';
-import { succeeded } from '../../support/commands';
+import { failed, succeeded } from '../../support/commands';
 import { ide, ROOT, withPin, type IdeWorld } from './world';
 
 const { Given, When, Then } = ide;
@@ -17,6 +19,8 @@ const { Given, When, Then } = ide;
 type Play = { tasks: { [module: string]: Record<string, unknown> }[] };
 interface Manager {
   artifact?: { name: string; sha256: string; url: string } | null;
+  desktopRoot?: string;
+  desktopCommands?: string[];
   policy?: string;
   playbook?: Play[];
 }
@@ -58,20 +62,85 @@ Then('no archive is pinned', (world) => {
 });
 
 Given(
-  'T3 on the manager last started as {string}',
+  'the running desktop on the manager reports {string}',
   (world, version: string) => {
-    mkdirSync(join(world.t3Home, 'userdata'), { recursive: true });
-    if (version)
-      writeFileSync(
-        join(world.t3Home, STARTED_VERSION),
-        `${withPin(version)}\n`
-      );
+    world.commands.answer(
+      (argv) => argv[0] === '/usr/bin/osascript',
+      succeeded(version ? 'managed ' + withPin(version) : 'absent-or-ambiguous')
+    );
+    world.commands.answer(
+      (argv) => argv[0] === '/usr/bin/codesign',
+      succeeded()
+    );
   }
 );
 
-When('the T3 version of the manager is checked', async (world) => {
-  world.checks = [await managerVersion(world.t3Home, ROOT)];
+Given('the managed desktop is absent until its play succeeds', (world) => {
+  let staged = false;
+  world.commands.answer(
+    (argv) => argv[0] === '/usr/bin/codesign',
+    () => (staged ? succeeded() : failed())
+  );
+  world.commands.answer(
+    (argv) => argv.some((arg) => arg.endsWith('/ansible/macos/t3-desktop.yml')),
+    () => {
+      staged = true;
+      return succeeded();
+    }
+  );
 });
+
+When(
+  /^the T3 desktop of the manager is (checked|applied)$/,
+  async (world, mode: string) => {
+    world.checks = await managerDesktop({
+      id: 'manager',
+      workspace: ROOT,
+      apply: mode === 'applied',
+      run: world.run,
+    });
+  }
+);
+
+/** The opt-in macOS runner uses the real Apple tools and release asset,
+ * and stages the bundle only inside the scenario's temporary directory. */
+async function stagePublishedDesktop(world: IdeWorld) {
+  const commands: string[] = [];
+  const run: Runner = async (command, options) => {
+    commands.push(command[0]!);
+    const result = await runCommand(command, options);
+    if (command[0] === '/usr/bin/osascript') expect(result.ok).toBe(true);
+    return result;
+  };
+  world.checks = await managerDesktop(
+    { id: 'manager', workspace: ROOT, apply: true, run },
+    of(world).desktopRoot!
+  );
+  of(world).desktopCommands = commands;
+}
+
+Given(
+  'the pinned macOS desktop has been staged in a temporary directory',
+  async (world) => {
+    of(world).desktopRoot = world.directory('manager-desktop-');
+    await stagePublishedDesktop(world);
+    expect(
+      world.checks.find((check) => check.id === 't3:desktop-installed')?.status
+    ).toBe('pass');
+  }
+);
+
+When('the manager applies the same macOS desktop again', stagePublishedDesktop);
+
+Then(
+  'macOS verified the installed app again without running the installer',
+  (world) => {
+    expect(of(world).desktopCommands).toEqual([
+      '/usr/bin/codesign',
+      '/usr/bin/osascript',
+    ]);
+  }
+);
 
 Given(
   'the worker {string} says over SSH that its T3 last started as {string}',

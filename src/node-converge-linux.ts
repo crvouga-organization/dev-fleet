@@ -1,7 +1,12 @@
 import { workerReadiness } from './worker-readiness';
 import { runAnsible } from './platform/ansible';
 import { runAnsibleWithReceipt } from './platform/ansible-receipt';
-import { loadedT3Policy, stageT3Policy } from './platform/t3-policy';
+import {
+  loadedT3Policy,
+  stageT3Policy,
+  stablePath,
+  stableWorkspace,
+} from './platform/t3-policy';
 import { verifyUbuntuBoot } from './platform/ubuntu-verify';
 import { verifyResourceSafety } from './platform/resource-verify';
 import { convergeT3Route, T3_ROUTE } from './platform/t3-route';
@@ -162,6 +167,7 @@ async function baselineStep(
   ];
   let cached = false;
   let baseline = await attempt('ubuntu:baseline', async () => {
+    await stableWorkspace(root);
     const applied = await applyBaseline(root, run, false, node);
     cached = applied.cached;
     return applied.checks;
@@ -192,7 +198,7 @@ async function applyBaseline(
       cwd: ubuntu,
       timeoutMs: 900_000,
       input: JSON.stringify({
-        development_source: root,
+        development_source: stablePath(root),
         development_user: user.username,
         development_uid: user.uid,
         development_home: user.homedir,
@@ -372,7 +378,7 @@ async function installT3Desktop(
       cwd: root,
       timeoutMs: 600_000,
       input: JSON.stringify({
-        development_source: root,
+        development_source: stablePath(root),
         development_user: user.username,
         development_uid: user.uid,
         development_home: user.homedir,
@@ -428,7 +434,7 @@ async function installT3Headless(
       cwd: ubuntu,
       timeoutMs: 600_000,
       input: JSON.stringify({
-        development_source: root,
+        development_source: stablePath(root),
         development_user: user.username,
         development_uid: user.uid,
         development_home: user.homedir,
@@ -488,7 +494,7 @@ async function enableWorkerRecovery(
       cwd: root,
       timeoutMs: 60_000,
       input: JSON.stringify({
-        development_source: root,
+        development_source: stablePath(root),
         development_user: user.username,
         development_uid: user.uid,
         development_home: user.homedir,

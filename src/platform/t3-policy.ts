@@ -3,7 +3,7 @@ import { desired } from '../t3/desired';
 import policy from '../../ansible/ubuntu/t3/policy.json';
 import { deferralRemedy, restartDeferral } from './t3-service';
 import { basename, dirname, join, resolve } from 'node:path';
-import { rename, rm, symlink } from 'node:fs/promises';
+import { readlink, rename, rm, symlink } from 'node:fs/promises';
 import { userInfo } from 'node:os';
 import type { Runner, Check } from '../types';
 
@@ -160,9 +160,11 @@ export async function stableWorkspace(root: string): Promise<string> {
   const current = stablePath(root);
   if (current === root) return root;
   const revisions = dirname(resolve(root));
+  const target = join(basename(revisions), basename(resolve(root)));
+  if ((await readlink(current).catch(() => null)) === target) return current;
   const staged = `${current}.${process.pid}`;
   await rm(staged, { force: true });
-  await symlink(join(basename(revisions), basename(resolve(root))), staged);
+  await symlink(target, staged);
   await rename(staged, current);
   return current;
 }

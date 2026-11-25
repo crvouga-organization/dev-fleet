@@ -432,6 +432,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
   't3:service': 'The pinned T3 app runs.',
   't3:settings': 'T3 settings are readable.',
   't3:updates': "T3's own updater is off, as the fleet's policy declares.",
+  't3:desktop-installed':
+    'The manager has the signed desktop bundle for the pinned release.',
   't3:version': 'This machine runs the T3 version the fleet pins.',
   'tailscale:configuration': 'Tailscale is configured as declared.',
   'tailscale:device':

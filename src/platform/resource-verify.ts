@@ -427,7 +427,6 @@ export async function pressureEvents(run: Runner): Promise<Check> {
     '--since=24 hours ago',
     '--output=cat',
     '--grep="event": "agent_pressure"',
-    '--lines=1000',
   ]);
   // journalctl returns 1 when --grep found no entries. Avoid treating an
   // authorization or journal failure as evidence that no agents were stopped.
@@ -437,13 +436,30 @@ export async function pressureEvents(run: Runner): Promise<Check> {
       status: 'warn',
       summary: 'Recent pressure guard activity could not be read.',
     };
-  const count = events.stdout
-    .split('\n')
-    .filter((line) => line.includes('"event": "agent_pressure"')).length;
+  const { stops, dryRuns, unclassified } = pressureCounts(events.stdout);
+  const count = stops.io + stops.memory + stops.unknown;
+  const active = await run([
+    'test',
+    '-e',
+    '/run/personal-fleet-pressure-guard/active',
+  ]);
+  const warn = Boolean(count || unclassified || active.ok);
+  const pressure = active.ok
+    ? 'The guard currently reports sustained pressure.'
+    : 'The sustained-pressure marker is absent.';
   return {
     id,
-    status: count ? 'warn' : 'pass',
-    summary: `The pressure guard stopped ${count} workloads in the last 24 hours.`,
+    status: warn ? 'warn' : 'pass',
+    summary: `In the last 24 hours the pressure guard stopped ${count} workloads (I/O: ${stops.io}, memory: ${stops.memory}, unknown cause: ${stops.unknown}). Dry runs: ${dryRuns}. Unclassified historical records: ${unclassified}. ${pressure}`,
+    ...(warn
+      ? {
+          remedy: {
+            action:
+              'Inspect current I/O and memory stalls before changing capacity. The counts describe past interventions.',
+            command: 'cat /proc/pressure/io /proc/pressure/memory',
+          },
+        }
+      : {}),
   };
 }
 
@@ -504,4 +520,29 @@ export async function rendererCheck(run: Runner): Promise<Check> {
         'Apply fleet-sync and check the renderer subgroup after the desktop service next restarts and its recovery timer runs.',
     },
   };
+}
+
+function pressureCounts(output: string) {
+  const stops = { io: 0, memory: 0, unknown: 0 };
+  let dryRuns = 0;
+  let unclassified = 0;
+  for (const line of output.trim().split('\n').filter(Boolean)) {
+    try {
+      const event = JSON.parse(line);
+      if (event.event !== 'agent_pressure') continue;
+      if (event.dry_run === true) dryRuns++;
+      else if (event.dry_run === false)
+        stops[
+          event.reason === 'io'
+            ? 'io'
+            : event.reason === 'memory'
+              ? 'memory'
+              : 'unknown'
+        ]++;
+      else unclassified++;
+    } catch {
+      unclassified++;
+    }
+  }
+  return { stops, dryRuns, unclassified };
 }

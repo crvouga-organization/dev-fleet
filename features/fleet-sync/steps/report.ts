@@ -1,6 +1,11 @@
 import { expect } from 'bun:test';
 import { managerText, splitSummary } from '../../../src/cli/fleet-sync-output';
-import type { ManagerNode, ManagerReport } from '../../../src/manager-sync';
+import { applyAcceptance } from '../../../src/cli/fleet-sync-remote';
+import {
+  reconcileObservations,
+  type ManagerNode,
+  type ManagerReport,
+} from '../../../src/manager-sync';
 import type { DataTable } from '../../support/gherkin';
 import {
   checkFrom,
@@ -32,6 +37,7 @@ Given(
   'a fleet-sync report that applied the revision {string}, with the dashboard {string}',
   (world, revision: string, dashboardUrl: string) => {
     state(world).report = {
+      ok: true,
       desiredRevision: revision,
       applied: true,
       candidates: 0,
@@ -82,6 +88,42 @@ When(
       reportPath,
       durationMs,
     });
+  }
+);
+
+Given(
+  'convergence measures each worker again and reports:',
+  (world, table: DataTable) => {
+    for (const node of state(world).report!.nodes)
+      reconcileObservations(node, table.hashes().map(checkFrom));
+  }
+);
+
+When(
+  /^the report is accepted (with|without) the zero-warning policy$/,
+  (world, policy: string) => {
+    const report = state(world).report!;
+    applyAcceptance(report, policy === 'with');
+    state(world).printed = managerText(report);
+  }
+);
+
+Then(
+  'the applied report records {int} warnings and acceptance {word}',
+  (world, warnings: number, accepted: string) => {
+    const report = state(world).report!;
+    expect(report.applied).toBe(true);
+    expect(report.acceptance?.warnings).toBe(warnings);
+    expect(report.acceptance?.accepted).toBe(accepted === 'true');
+    expect(report.ok).toBe(accepted === 'true');
+  }
+);
+
+Then(
+  'each worker retains {int} earlier observations',
+  (world, count: number) => {
+    for (const node of state(world).report!.nodes)
+      expect(node.earlierChecks).toHaveLength(count);
   }
 );
 

@@ -100,7 +100,7 @@ export async function convergeManagerHub(
     },
     {
       name: 'beszel-hub',
-      sources: [monitoring],
+      sources: [monitoring, resolve(monitoring, '../macos/policy.json')],
       // Health is verified independently below on every run.
       verify: async () =>
         (

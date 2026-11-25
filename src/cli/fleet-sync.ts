@@ -133,6 +133,7 @@ export interface FleetSyncOptions {
    * turns run, which ends them; by default the restart waits for idle.
    */
   restartBusy?: boolean;
+  failOnWarning?: boolean;
   /** Opt-in: reboot each worker whose installed updates wait for a reboot,
    * one at a time, canary first, only while it runs no agent turn, and
    * verify it is ready before the next.
@@ -845,10 +846,20 @@ function validate(options: FleetSyncOptions): void {
     throw new FleetUsageError(
       '--restart-busy applies to one full sync: it takes neither --only nor --schedule.'
     );
+  validateAcceptance(options);
   validateMaintenance(options);
   if (options.dryRun && (options.apply || options.yes))
     throw new FleetUsageError(
       '--dry-run cannot be combined with apply confirmation.'
+    );
+}
+function validateAcceptance(options: FleetSyncOptions): void {
+  if (
+    options.failOnWarning &&
+    (options.only || options.schedule || options.measureMise)
+  )
+    throw new FleetUsageError(
+      '--fail-on-warning applies to a full sync or preview.'
     );
 }
 function validateUnmerged(options: FleetSyncOptions): void {

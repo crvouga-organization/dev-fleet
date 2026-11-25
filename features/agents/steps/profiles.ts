@@ -19,6 +19,7 @@ import {
   profileVariables,
   publicPlan,
   receiptFor,
+  refreshProfileBatch,
   type Context,
   type ProfilePlay,
   type ProfileVariables,
@@ -35,7 +36,12 @@ import { agentRoot, render } from '../../../src/agents/render';
 import type { PlatformName } from '../../../src/platform/types';
 import { steps, type DataTable } from '../../support/gherkin';
 import { part, type AgentsWorld } from './world';
-import { changedCount, lockedPlay, type PlayRun } from '../support/ansible';
+import {
+  changedCount,
+  lockedPlay,
+  lockedRunner,
+  type PlayRun,
+} from '../support/ansible';
 
 export const profiles = steps<AgentsWorld>();
 const { Given, When, Then } = profiles;
@@ -176,6 +182,82 @@ Given(
       revision,
       selection: select(machine, tool, name),
     };
+  }
+);
+
+Given(
+  'the selected revision advances to {string}',
+  (world, revision: string) => {
+    context(world).revision = revision;
+  }
+);
+
+Then(
+  'only the receipt task ran and its revision is {string}',
+  async (world, revision: string) => {
+    expect(world.refusal).toBeUndefined();
+    const runs = profile(world).runs;
+    expect(runs).toHaveLength(1);
+    expect(runs[0]!.result.stdout).toContain('Record the receipt');
+    expect(runs[0]!.result.stdout).not.toContain(
+      'Render the configuration files'
+    );
+    expect((await plan(context(world))).previous?.revision).toBe(revision);
+  }
+);
+
+Given(
+  'the profiles {string} have been applied',
+  async (world, tools: string) => {
+    const ctx = context(world);
+    for (const tool of tools.split(','))
+      await convergeAgents(
+        {
+          ...ctx,
+          selection: select(ctx.selection.node, tool, ctx.selection.profile),
+        },
+        false,
+        await play(world)
+      );
+  }
+);
+
+When(
+  'the owner refreshes the profiles {string} at revision {string}',
+  async (world, tools: string, revision: string) => {
+    const ctx = context(world);
+    const scratch = await mkdtemp(join(tmpdir(), 'profile-receipts-'));
+    world.defer(() => rm(scratch, { recursive: true, force: true }));
+    const runner = lockedRunner(scratch);
+    profile(world).runs.length = 0;
+    const refreshed = await refreshProfileBatch(
+      tools.split(',').map((tool) => ({
+        ...ctx,
+        revision,
+        selection: select(ctx.selection.node, tool, ctx.selection.profile),
+      })),
+      async (argv, options) => {
+        const result = await runner(argv, options);
+        profile(world).runs.push({ result, check: false });
+        return result;
+      },
+      scratch
+    );
+    expect(refreshed?.length).toBe(tools.split(',').length);
+  }
+);
+
+Then(
+  'each of the profiles {string} records revision {string}',
+  async (world, tools: string, revision: string) => {
+    const ctx = context(world);
+    for (const tool of tools.split(',')) {
+      const found = await plan({
+        ...ctx,
+        selection: select(ctx.selection.node, tool, ctx.selection.profile),
+      });
+      expect(found.previous?.revision).toBe(revision);
+    }
   }
 );
 

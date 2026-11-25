@@ -1,3 +1,5 @@
+import { readdir } from 'node:fs/promises';
+import { join } from 'node:path';
 import { expect } from 'bun:test';
 import {
   configureWorkspace,
@@ -110,5 +112,29 @@ When(
         })
       : await configureWorkspace(root, request(world), world.run);
     world.outcome = world.checks;
+  }
+);
+
+Then(
+  'the configuration receipts exist only for {string} out of {string}',
+  async (world, completed: string, selected: string) => {
+    const files = await readdir(
+      join(world.root!, 'node_modules/.fleet-configuration')
+    );
+    const requestInfo = request(world);
+    for (const tool of selected.split(','))
+      expect(
+        files.includes(
+          `${requestInfo.node}-${tool}-${requestInfo.profile}.json`
+        )
+      ).toBe(completed.split(',').includes(tool));
+  }
+);
+
+Then(
+  'the last configuration check fails and mentions {string}',
+  (world, message: string) => {
+    expect(world.checks.at(-1)?.status).toBe('fail');
+    expect(world.checks.at(-1)?.summary).toContain(message);
   }
 );

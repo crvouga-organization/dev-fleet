@@ -35,6 +35,8 @@ export interface ManagerNode extends NodeReport {
   appliedRevision: string | null;
   durationMs: number;
   diagnostics?: Diagnostic[];
+  /** Observations superseded by a later measurement during this run. */
+  earlierChecks?: Check[];
 }
 export interface ManagerReport {
   version: 3;
@@ -42,6 +44,7 @@ export interface ManagerReport {
   execution: 'manager-push';
   ok: boolean;
   applied: boolean;
+  acceptance?: { failOnWarning: boolean; warnings: number; accepted: boolean };
   desiredRevision: string | null;
   /** What selected the desired revision. */
   selectedBy?: RevisionSelection;
@@ -348,7 +351,7 @@ async function deployNode(
       input.revision
     );
     ran = true;
-    result.checks.push(...outcome.checks);
+    reconcileObservations(result, outcome.checks);
     if (!outcome.checks.length)
       result.checks.push({
         id: 'rollout:evidence',
@@ -369,6 +372,48 @@ async function deployNode(
   result.durationMs += Date.now() - started;
   if (!result.checks.some(blocking)) result.appliedRevision = input.revision;
   return ran;
+}
+
+/** Inspection measures single resources. Convergence may measure one again.
+ * Within convergence keep per-profile results sharing configuration:apply. */
+export function reconcileObservations(
+  result: ManagerNode,
+  final: Check[]
+): void {
+  const measured = new Set(final.map((check) => check.id));
+  const earlier = result.checks.filter((check) => measured.has(check.id));
+  result.checks = result.checks.filter((check) => !measured.has(check.id));
+  const identities = final.map(observationKey);
+  const last = new Map(identities.map((key, index) => [key, index]));
+  for (const [index, check] of final.entries()) {
+    if (last.get(identities[index]!) !== index) earlier.push(check);
+    else result.checks.push(check);
+  }
+  if (earlier.length) result.earlierChecks = earlier;
+}
+
+// These read-only measurements run after apply and again in final readiness.
+// An apply or a profile-specific result can also share an ID: retain distinct
+// outcomes there so a later success cannot mask a failed operation.
+const REMEASURED = new Set([
+  'ubuntu:disk-gc',
+  'ubuntu:resource-safety',
+  'ubuntu:lid-policy',
+  'ubuntu:boot-policy',
+  'worker:features',
+  't3:running-version',
+]);
+
+function observationKey(check: Check): string {
+  return REMEASURED.has(check.id) && check.summary !== 'REMOTE_PHASE_FAILED'
+    ? check.id
+    : JSON.stringify([
+        check.id,
+        check.status,
+        check.summary,
+        check.required,
+        check.remedy,
+      ]);
 }
 
 function connectionState(
