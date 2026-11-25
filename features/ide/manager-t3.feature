@@ -42,6 +42,13 @@ Feature: The manager runs the T3 release the workers run
       And the remedy of the check "t3:version" mentions "When manager sessions have finished"
       And no command with the word "kill" was run
 
+    @t3-desktop @slow
+    Scenario: macOS verifies the published desktop and a repeat sync reuses it
+      Given the pinned macOS desktop has been staged in a temporary directory
+      When the manager applies the same macOS desktop again
+      Then the check "t3:desktop-installed" passes
+      And macOS verified the installed app again without running the installer
+
     Scenario: A worker reports its version over SSH
       Given the worker "worker-one" says over SSH that its T3 last started as "0.1.9-nightly.20261111.4501"
       When the T3 version of the worker "worker-one" is checked

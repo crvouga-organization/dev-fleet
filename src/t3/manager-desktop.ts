@@ -21,7 +21,8 @@ function run(argv) {
 }`;
 
 export async function managerDesktop(
-  context: MachineContext
+  context: MachineContext,
+  home = homedir()
 ): Promise<Check[]> {
   const { vars } = Bun.TOML.parse(
     await readFile(join(context.workspace, 'mise.toml'), 'utf8')
@@ -34,7 +35,7 @@ export async function managerDesktop(
   )
     throw new Error('Invalid macOS desktop pin.');
   const parent = join(
-    homedir(),
+    home,
     'Applications/dev-fleet',
     version + '-' + digest.slice(0, 12)
   );

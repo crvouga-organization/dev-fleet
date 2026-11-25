@@ -1,3 +1,5 @@
+import { runCommand } from '../../../src/runner';
+import type { Runner } from '../../../src/types';
 import { managerDesktop } from '../../../src/t3/manager-desktop';
 import { expect } from 'bun:test';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -17,6 +19,8 @@ const { Given, When, Then } = ide;
 type Play = { tasks: { [module: string]: Record<string, unknown> }[] };
 interface Manager {
   artifact?: { name: string; sha256: string; url: string } | null;
+  desktopRoot?: string;
+  desktopCommands?: string[];
   policy?: string;
   playbook?: Play[];
 }
@@ -95,6 +99,46 @@ When(
       apply: mode === 'applied',
       run: world.run,
     });
+  }
+);
+
+/** The opt-in macOS runner uses the real Apple tools and release asset,
+ * and stages the bundle only inside the scenario's temporary directory. */
+async function stagePublishedDesktop(world: IdeWorld) {
+  const commands: string[] = [];
+  const run: Runner = async (command, options) => {
+    commands.push(command[0]!);
+    const result = await runCommand(command, options);
+    if (command[0] === '/usr/bin/osascript') expect(result.ok).toBe(true);
+    return result;
+  };
+  world.checks = await managerDesktop(
+    { id: 'manager', workspace: ROOT, apply: true, run },
+    of(world).desktopRoot!
+  );
+  of(world).desktopCommands = commands;
+}
+
+Given(
+  'the pinned macOS desktop has been staged in a temporary directory',
+  async (world) => {
+    of(world).desktopRoot = world.directory('manager-desktop-');
+    await stagePublishedDesktop(world);
+    expect(
+      world.checks.find((check) => check.id === 't3:desktop-installed')?.status
+    ).toBe('pass');
+  }
+);
+
+When('the manager applies the same macOS desktop again', stagePublishedDesktop);
+
+Then(
+  'macOS verified the installed app again without running the installer',
+  (world) => {
+    expect(of(world).desktopCommands).toEqual([
+      '/usr/bin/codesign',
+      '/usr/bin/osascript',
+    ]);
   }
 );
 
