@@ -73,15 +73,32 @@ export async function pairAndRecord(
   return pairingCheck(node.id, pairing);
 }
 
-/** fleet-sync's part: pairs a worker only when fleet-node-replace asked for
- * it. A worker enrolled for the first time is paired by a person.
+/** Reconcile requested replacements and explicitly authorized first links.
  */
 export async function pairIfRequested(
   node: FleetNode,
   services: Omit<PairingServices, 'context' | 'now'> &
-    Partial<Pick<PairingServices, 'context'>>
+    Partial<Pick<PairingServices, 'context'>> & {
+      authorizeFirstPairing?: () => boolean;
+    }
 ): Promise<Check | undefined> {
-  if (!readWorkerStates().workers[node.id]?.t3PairingRequestedAt) return;
+  if (!readWorkerStates().workers[node.id]?.t3PairingRequestedAt) {
+    if (
+      !node.tailscaleId ||
+      node.t3EnvironmentId ||
+      !services.authorizeFirstPairing?.()
+    )
+      return;
+    const result = await pairWorker(node, services.run, services.manager);
+    if ('paired' in result)
+      await rememberEnvironment(
+        services.roster,
+        node.id,
+        result.paired,
+        services.context
+      );
+    return pairingCheck(node.id, result);
+  }
   return pairAndRecord(node, {
     context: () => stateContext(services.run),
     ...services,

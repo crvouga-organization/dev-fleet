@@ -89,7 +89,7 @@ export function t3Ide(inputs: T3Inputs = {}): Ide {
       let linked = await verifyT3Linked(node, context.run, {
         reconnectMs: restarted ? 180_000 : 0,
       });
-      // A replaced worker: the manager pairs with its new environment.
+      // Reconcile a replacement or an authorized first pairing.
       const paired =
         linked.status === 'fail' && context.pair
           ? await context.pair(node)

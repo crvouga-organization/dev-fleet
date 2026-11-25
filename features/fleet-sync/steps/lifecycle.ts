@@ -36,6 +36,7 @@ import type { FleetNode } from '../../../src/types';
 const { Given, When, Then } = fleetSync;
 
 interface Lifecycle {
+  pairOnEnrollment?: boolean;
   directory: string;
   roster: string;
   /** What the token document of each worker holds: its accessor. */
@@ -799,6 +800,10 @@ Given(
   }
 );
 
+Given('the fleet authorizes first T3 pairing on enrollment', (world) => {
+  lifecycle(world).pairOnEnrollment = true;
+});
+
 When(
   'fleet-sync pairs the T3 of {string} if it was asked to',
   async (world, id: string) => {
@@ -809,6 +814,7 @@ When(
         roster: state.roster,
         run: world.commands.run,
         manager: services(world).t3(),
+        authorizeFirstPairing: () => lifecycle(world).pairOnEnrollment === true,
       })
     );
     world.checks = paired ? [paired] : [];

@@ -202,6 +202,17 @@ Feature: A worker is replaced or retired with one command
       And the session issued for the link was revoked
       And the pairing code appears in no command line, report, printed output or fleet state
 
+    Scenario: Declared first pairing is verified and remembered
+      Given the fleet authorizes first T3 pairing on enrollment
+      And the tailnet shows "worker-one" online as the new device "old-one"
+      And the T3 of "worker-one" runs the environment "7a7b7c7d-1111-4222-8333-444455556666"
+      And the manager's T3 links the environment it is handed a code for
+      When fleet-sync pairs the T3 of "worker-one" if it was asked to
+      Then fleet-sync reports:
+        | id      | status |
+        | t3:link | pass   |
+      And the roster records the T3 environment "7a7b7c7d-1111-4222-8333-444455556666" of "worker-one"
+
     Scenario: A worker nobody replaced is left to a person
       A worker's first pairing is approved by a person in the manager's T3.
       Given the T3 of "worker-one" runs the environment "7a7b7c7d-1111-4222-8333-444455556666"

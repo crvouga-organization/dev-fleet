@@ -156,7 +156,7 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 't3:*',
     manual:
-      'A worker’s first T3 pairing and its private route are approved by a person; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest.',
+      'Approve first T3 pairing in interactive fleet-sync or with t3.pairOnEnrollment; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest.',
   },
   {
     pattern: 'super:*',

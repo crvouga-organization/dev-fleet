@@ -13,6 +13,8 @@ export interface T3Definition {
    * projects, selected preferences. A key not named here stays local.
    */
   profile?: Record<string, unknown>;
+  /** Allow first pairing during sync; absent asks on an interactive terminal. */
+  pairOnEnrollment?: boolean;
   /** Models T3 must offer for every account of a tool, by tool. */
   requiredModels?: Record<string, string[]>;
 }
@@ -45,11 +47,16 @@ export function parseT3(value: unknown): T3Definition {
   if (
     !record(value) ||
     Object.keys(value).some(
-      (key) => !['profile', 'requiredModels'].includes(key)
+      (key) => !['profile', 'requiredModels', 'pairOnEnrollment'].includes(key)
     )
   )
-    invalid('t3 holds only profile and requiredModels.');
+    invalid('t3 holds only profile, requiredModels and pairOnEnrollment.');
   const result: T3Definition = {};
+  if (value['pairOnEnrollment'] !== undefined) {
+    if (typeof value['pairOnEnrollment'] !== 'boolean')
+      invalid('t3.pairOnEnrollment must be a boolean.');
+    result.pairOnEnrollment = value['pairOnEnrollment'];
+  }
   if (value['profile'] !== undefined) {
     const profile = value['profile'];
     if (

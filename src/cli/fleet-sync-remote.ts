@@ -1,3 +1,4 @@
+import { authorizeFirstPairing } from './fleet-sync-pairing';
 import { createHash } from 'node:crypto';
 import { previewSuperWorkspaces } from '../ide/super';
 import { stateContext } from '../state/sync';
@@ -452,6 +453,12 @@ function convergeWorker(
             roster: ui.roster,
             run,
             manager: managerT3(run),
+            authorizeFirstPairing: () =>
+              authorizeFirstPairing(
+                target.id,
+                canonical.t3?.pairOnEnrollment,
+                ui
+              ),
           }),
       }))
     );
