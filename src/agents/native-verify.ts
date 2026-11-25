@@ -63,7 +63,7 @@ export const NATIVE_AGENTS = [
     binary: 'antigravity',
     pin: 'http:antigravity',
     wrapper: 'antigravity-proxy.ts',
-    launcher: 'antigravity-proxy.ts',
+    launcher: 'bin/agy',
     args: [
       '-p',
       PROMPT,
@@ -282,7 +282,7 @@ export const ACCOUNT_LAUNCH: Record<
   },
   antigravity: {
     wrapper: 'antigravity-proxy.ts',
-    launcher: 'antigravity-proxy.ts',
+    launcher: 'bin/agy',
     args: [
       '-p',
       PROMPT,

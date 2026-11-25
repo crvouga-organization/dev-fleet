@@ -203,7 +203,7 @@ Feature: Native agents are verified on every machine
         | claude-proxy         |
         | codex-proxy.ts       |
         | grok-proxy.ts        |
-        | antigravity-proxy.ts |
+        | bin/agy              |
         | opencode-proxy.ts    |
 
     Scenario: A service whose PATH cannot find Bun fails every session without launching one

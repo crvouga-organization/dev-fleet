@@ -31,7 +31,7 @@ const isReinstall = (command: string[]): boolean => command[0] === 'mise';
  */
 const launcherOf = (command: string[]): string | undefined => {
   const path = command[0] === 'bun' ? command[1] : command[0];
-  return path?.includes('/agents/') ? path.split('/').pop() : undefined;
+  return path?.split('/agents/').at(1);
 };
 const isLaunch = (command: string[]): boolean =>
   launcherOf(command) !== undefined;
