@@ -838,6 +838,95 @@ def prune_stores(args, home, pressure):
     return freed
 
 
+def open_temp_paths(alias, proc):
+    """Inspect host processes before dropping privileges. The private mount
+    namespace may give a file a different name in the collector and its user."""
+    paths = set()
+
+    def record(path):
+        for root in ('/var/tmp', alias):
+            if path.startswith(root + '/'):
+                paths.add(path[len(root) + 1:])
+
+    try:
+        for process in os.scandir(proc):
+            if not process.name.isdigit():
+                continue
+            try:
+                record(os.readlink(process.path + '/cwd'))
+                for fd in os.scandir(process.path + '/fd'):
+                    try:
+                        record(os.readlink(fd.path))
+                    except FileNotFoundError:
+                        continue
+                with open(process.path + '/maps', 'rb') as maps:
+                    for line in maps:
+                        fields = line.rstrip(b'\n').split(None, 5)
+                        if len(fields) == 6:
+                            record(os.fsdecode(fields[5]))
+            except (FileNotFoundError, ProcessLookupError):
+                continue
+    except OSError:
+        return None
+    return sorted(paths)
+
+
+def collect_temp_files(root, busy, cutoff, dry_run):
+    """Only the worker user unlinks files. Walk relative to directory descriptors
+    without following symlinks, including when a directory is replaced mid-walk."""
+    if busy is None:
+        return 0
+    uid = os.getuid()
+    if uid == 0:
+        raise ValueError('host temporary files must be collected as the worker user')
+    names = {f'jest_{base36(uid)}',
+             'node-compile-cache', 'metro-cache', f'tsx-{uid}'}
+    protected = set(busy)
+    freed = 0
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    for name in sorted(names - protected):
+        try:
+            top = os.open(os.path.join(root, name), flags)
+        except OSError:
+            continue
+        try:
+            info = os.fstat(top)
+            if info.st_uid != uid:
+                continue
+            for directory, dirs, files, fd in os.fwalk('.', dir_fd=top):
+                prefix = os.path.normpath(os.path.join(name, directory))
+                current = os.fstat(fd)
+                if current.st_dev != info.st_dev or current.st_uid != uid or prefix in protected:
+                    dirs.clear()
+                    continue
+                for entry in files:
+                    if prefix + '/' + entry in protected:
+                        continue
+                    try:
+                        item = os.stat(entry, dir_fd=fd, follow_symlinks=False)
+                        if (stat.S_ISREG(item.st_mode) and item.st_uid == uid
+                                and max(item.st_atime, item.st_mtime) < cutoff):
+                            if not dry_run:
+                                os.unlink(entry, dir_fd=fd)
+                            if item.st_nlink == 1:
+                                freed += item.st_blocks * 512
+                    except OSError:
+                        continue
+        finally:
+            os.close(top)
+    return freed
+
+
+def base36(value):
+    """Jest names the user's cache with the uid encoded in base 36."""
+    digits = '0123456789abcdefghijklmnopqrstuvwxyz'
+    result = ''
+    while value:
+        value, digit = divmod(value, 36)
+        result = digits[digit] + result
+    return result or '0'
+
+
 def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('--home', required=True)
@@ -856,6 +945,8 @@ def main(argv):
     parser.add_argument('--cache-root', action='append', default=[])
     parser.add_argument('--exclude-cache', action='append', default=[])
     parser.add_argument('--store-cap', action='append', default=[], type=lambda text: pair(text, 'MIB'))
+    parser.add_argument('--host-var-tmp')
+    parser.add_argument('--mise-cache-mib', type=int)
     parser.add_argument('--user-caches-only', action='store_true')
     parser.add_argument('--no-docker', action='store_true')
     parser.add_argument('--pressure-cache', action='append', default=[])
@@ -902,11 +993,24 @@ def main(argv):
         return busy_roots(args.proc, args.lsof)
 
     if args.user_caches_only:
+        temporary = 0
+        if args.host_var_tmp:
+            temporary = collect_temp_files(args.host_var_tmp, json.load(sys.stdin),
+                                           now - idle, args.dry_run)
         caches = sum(cache_children(os.path.join(home, root), args.home_cache_mib * MIB,
                                     args.exclude_cache, pressure, idle, now, args.dry_run)
                      for root in cache_roots)
         stores = prune_stores(args, home, pressure)
-        log(cache_bytes=caches, store_bytes=stores)
+        mise_bytes = 0
+        if args.mise_cache_mib is not None:
+            directory = os.path.join(home, '.cache', 'mise')
+            before_cache = size_of(directory)
+            if before_cache > args.mise_cache_mib * MIB or pressure:
+                command(['env', f'MISE_CACHE_PRUNE_AGE={int(idle)}s', args.mise,
+                         'cache', 'prune'], args.dry_run, 'mise_cache')
+                mise_bytes = max(0, before_cache - size_of(directory))
+        log(cache_bytes=caches, store_bytes=stores, temporary_bytes=temporary,
+            mise_cache_bytes=mise_bytes)
         return
     categories = {}
     if args.home_cache_mib is not None:
@@ -914,10 +1018,15 @@ def main(argv):
         argv = [sys.executable, '-I', '-B', __file__, *sys.argv[1:], '--user-caches-only']
         if args.user:
             argv = ['runuser', '-u', args.user, '--', 'env', f'HOME={home}'] + argv
-        out = subprocess.run(argv, cwd=home, capture_output=True, timeout=3600)
+        opened = open_temp_paths(args.host_var_tmp, args.proc) if args.host_var_tmp else None
+        if args.host_var_tmp and opened is None:
+            log(event='host_temp_inspection_failed')
+        out = subprocess.run(argv, cwd=home, input=json.dumps(opened).encode(),
+                             capture_output=True, timeout=3600)
         if out.returncode == 0:
             evidence = json.loads(out.stdout.splitlines()[-1])
-            categories.update(cache=evidence['cache_bytes'], stores=evidence['store_bytes'])
+            categories.update(cache=evidence['cache_bytes'], stores=evidence['store_bytes'],
+                              host_temp=evidence['temporary_bytes'], mise_cache=evidence['mise_cache_bytes'])
         else:
             log(event='user_cache_cleanup_failed')
     freed = collect_checkouts(home, idle, args.max_depth, busy, now, args.dry_run)

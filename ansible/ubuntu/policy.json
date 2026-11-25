@@ -194,6 +194,7 @@
     "diskGcPressureDockerAgeHours": 24,
     "diskGcBuildCachePercent": 5,
     "diskGcHomeCacheMiB": 8192,
+    "diskGcMiseCacheMiB": 1024,
     "diskGcExcludedCaches": ["mise", "personal", "dev-fleet", "uv", "pip"],
     "diskGcStoreCapsMiB": {
       "pnpm": 4096,
