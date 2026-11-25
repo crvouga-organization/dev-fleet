@@ -185,6 +185,29 @@ Given(
   }
 );
 
+Given('old, open and recent files in the host temporary caches', (world) => {
+  const { home, proc, options } = collector(world);
+  const root = join(home, 'host-tmp');
+  const old = Date.now() / 1000 - 10 * DAY;
+  for (const file of [
+    'metro-cache/stale',
+    'node-compile-cache/open',
+    'metro-cache/new',
+    'other/keep',
+  ]) {
+    const path = join(root, file);
+    mkdirSync(dirname(path), { recursive: true });
+    writeFileSync(path, 'cache');
+    if (!file.endsWith('/new')) utimesSync(path, old, old);
+  }
+  symlinkSync(join(root, 'other'), join(root, 'metro-cache', 'link'));
+  mkdirSync(join(proc, '123', 'fd'), { recursive: true });
+  symlinkSync(home, join(proc, '123', 'cwd'));
+  symlinkSync('/var/tmp/node-compile-cache/open', join(proc, '123', 'fd', '3'));
+  writeFileSync(join(proc, '123', 'maps'), '');
+  options.push('--host-var-tmp', root, '--home-cache-mib', '32');
+});
+
 When(/^the disk GC runs( as a dry run)?$/, (world, dry: string | undefined) =>
   runCollector(world, Boolean(dry))
 );

@@ -149,6 +149,15 @@ Feature: The disk GC removes only what a node can rebuild
       When the disk GC runs with the stand-in for mise
       Then the stand-in for mise was run with "prune --yes"
 
+    Scenario: A worker expires stale host cache files and preserves active and unrelated files
+      Given old, open and recent files in the host temporary caches
+      When the disk GC runs
+      Then the cache child "host-tmp/metro-cache/stale" is removed
+      And the cache child "host-tmp/node-compile-cache/open" is kept
+      And the cache child "host-tmp/metro-cache/new" is kept
+      And the cache child "host-tmp/metro-cache/link" is kept
+      And the cache child "host-tmp/other/keep" is kept
+
     Scenario: A cache over the total budget loses rebuildable children while exclusions survive
       Given the cache ".cache/rebuildable" holds 3 files of 1 MiB, written an hour apart
       And the cache ".cache/mise" holds 2 files of 1 MiB, written an hour apart

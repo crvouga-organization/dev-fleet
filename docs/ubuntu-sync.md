@@ -504,6 +504,14 @@ reports reclaimed MiB by category, and the run leaves a report
 by category, and what the worktrees, the package stores and the tool installs
 hold, with the share that is hardlinked.
 
+On workers the timer also expires old files in recognized Jest, Node compile,
+Metro and tsx caches under the host `/var/tmp`. The process checks open files,
+working directories and memory mappings before the development user removes
+files. The usual idle period shortens under disk pressure. When mise’s cache
+exceeds `diskGcMiseCacheMiB` or the disk is under pressure, mise prunes
+its own cache using that idle period. The report records these passes under
+`host_temp` and `mise_cache`.
+
 `storage.disposable` in `fleet.json` chooses the policy of every node, workers
 and manager:
 
