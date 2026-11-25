@@ -1,8 +1,11 @@
 # GitHub on every node
 
 Every node, the manager and each worker, signs in to GitHub from a stored
-credential. Nobody runs `gh auth login` on a node, and no login directory is
-copied between machines.
+credential. When a fresh worker has no stored token, an interactive fleet-sync starts
+GitHub's device authorization flow on that worker. Approve the device as
+the declared fleet login in your browser. The worker stores its own login
+and sync verifies it in the same run. Other workers cannot reuse that
+device authorization. Unattended runs use existing credentials.
 
 ## Where the token is
 
