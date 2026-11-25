@@ -36,9 +36,11 @@ Feature: fleet-sync prints a short report that is the same every time
         | ubuntu:disk-gc | skip           | DISK_GC_NOT_REPORTED |
         | ubuntu:disk-gc | skip           | DISK_GC_NOT_REPORTED |
         | worker:browser | not-applicable | Web profile off.     |
+        | ubuntu:boot-policy | warn      | Pending during apply. |
+        | ubuntu:boot-policy | pass      | Ready after apply.    |
       When the report is accepted with the zero-warning policy
       Then the applied report records 0 warnings and acceptance true
-      And each worker retains 2 earlier observations
+      And each worker retains 3 earlier observations
       And the printed report names "DISK_GC_NOT_REPORTED" 1 time
       And the printed report contains "3 skipped   2 not applicable"
       And the printed report contains "Firmware settings unavailable on this hardware"

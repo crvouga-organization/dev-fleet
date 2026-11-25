@@ -383,14 +383,37 @@ export function reconcileObservations(
   const measured = new Set(final.map((check) => check.id));
   const earlier = result.checks.filter((check) => measured.has(check.id));
   result.checks = result.checks.filter((check) => !measured.has(check.id));
-  // Disk GC is measured both after the baseline and during final readiness.
-  // Other checks may share an ID across distinct resources (agent profiles).
-  const lastGc = final.map((check) => check.id).lastIndexOf('ubuntu:disk-gc');
+  const identities = final.map(observationKey);
+  const last = new Map(identities.map((key, index) => [key, index]));
   for (const [index, check] of final.entries()) {
-    if (check.id === 'ubuntu:disk-gc' && index !== lastGc) earlier.push(check);
+    if (last.get(identities[index]!) !== index) earlier.push(check);
     else result.checks.push(check);
   }
   if (earlier.length) result.earlierChecks = earlier;
+}
+
+// These read-only measurements run after apply and again in final readiness.
+// An apply or a profile-specific result can also share an ID: retain distinct
+// outcomes there so a later success cannot mask a failed operation.
+const REMEASURED = new Set([
+  'ubuntu:disk-gc',
+  'ubuntu:resource-safety',
+  'ubuntu:lid-policy',
+  'ubuntu:boot-policy',
+  'worker:features',
+  't3:running-version',
+]);
+
+function observationKey(check: Check): string {
+  return REMEASURED.has(check.id) && check.summary !== 'REMOTE_PHASE_FAILED'
+    ? check.id
+    : JSON.stringify([
+        check.id,
+        check.status,
+        check.summary,
+        check.required,
+        check.remedy,
+      ]);
 }
 
 function connectionState(
