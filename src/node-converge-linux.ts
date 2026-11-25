@@ -1,3 +1,4 @@
+import ubuntuPolicy from '../ansible/ubuntu/policy.json';
 import { workerReadiness } from './worker-readiness';
 import { runAnsible } from './platform/ansible';
 import { runAnsibleWithReceipt } from './platform/ansible-receipt';
@@ -254,6 +255,17 @@ async function baselineServicesActive(
     ...(features.containers ? ['docker.service'] : []),
   ]);
   if (!system.ok) return false;
+  if (features.containers) {
+    const image = await run([
+      'docker',
+      'image',
+      'inspect',
+      '--format',
+      '{{.Id}}',
+      ubuntuPolicy.dockerSmokeTest.image,
+    ]);
+    if (!image.ok) return false;
+  }
   const user = await run([
     'systemctl',
     '--user',
