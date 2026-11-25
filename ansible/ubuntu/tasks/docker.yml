@@ -97,6 +97,8 @@
       ]
   changed_when: false
   check_mode: false
+  # A fresh machine has no engine yet in a check-mode preview.
+  failed_when: docker_smoke_references.rc != 0 and not ansible_check_mode
   register: docker_smoke_references
 - name: Retain the current offline smoke image across disk cleanup
   vars:
@@ -119,12 +121,12 @@
             '{{ dockerSmokeTest.image }}',
             'true',
           ]
-      when: reference not in docker_smoke_references.stdout_lines
+      when: reference not in (docker_smoke_references.stdout_lines | default([]))
       changed_when: true
     - name: Retire stopped references to earlier fleet smoke images
       ansible.builtin.command:
         argv: [docker, container, rm, '{{ item }}']
-      loop: "{{ docker_smoke_references.stdout_lines | select('match', '^dev-fleet-smoke-[0-9a-f]{64}$') | reject('equalto', reference) | list }}"
+      loop: "{{ docker_smoke_references.stdout_lines | default([]) | select('match', '^dev-fleet-smoke-[0-9a-f]{64}$') | reject('equalto', reference) | list }}"
       changed_when: true
 - name: Run a container as the developer, offline (DOCKER_RUN_FAILED)
   ansible.builtin.command:
