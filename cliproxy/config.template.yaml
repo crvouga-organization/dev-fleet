@@ -21,6 +21,9 @@ oauth:
   # catalog ids; serve them from the Antigravity account's matching models.
   model-alias:
     antigravity:
+      - name: gemini-4-neon-xhigh
+        alias: gemini-4-neon
+        fork: true
       - name: gemini-3.8-flash-high
         alias: gemini-3.8-flash
         fork: true
