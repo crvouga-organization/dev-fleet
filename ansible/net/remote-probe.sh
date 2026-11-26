@@ -10,7 +10,8 @@ else
   if [ "${1:-}" = placement ]; then
     awk '{split($4,a,"/"); print "runnable=" (a[1]>0 ? a[1]-1 : 0)}' /proc/loadavg
     awk '/^some /{split($2,a,"="); print "cpupressure=" a[2]}' /proc/pressure/cpu
-    if curl --silent --fail --max-time 2 --output /dev/null http://127.0.0.1:3773/.well-known/t3/environment; then echo t3ready=1; fi
+    curl --silent --fail --max-time 2 http://127.0.0.1:3773/.well-known/t3/environment |
+      python3 -c 'import json,sys,uuid; print("environment=" + str(uuid.UUID(json.load(sys.stdin)["environmentId"])))' 2>/dev/null
   fi
   echo "load=$(cut -d' ' -f1 /proc/loadavg)"
   # Free inodes as a percentage: bytes can be free while every write fails.

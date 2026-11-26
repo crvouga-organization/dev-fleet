@@ -337,3 +337,15 @@ Feature: The disk GC removes only what a node can rebuild
         | worktrees       |
         | fleet_checkouts |
         | expired         |
+
+    Scenario: Under pressure the compatible pnpm prunes its generation and the other stays intact
+      Given a stand-in for mise that records how it is run
+      And pnpm can prune "v3" among the store generations "v3,v10"
+      And a disk with 20 MiB and 50% of its inodes free
+      When the disk GC runs with the stand-in for mise and these limits:
+        | --home-cache-mib | 32           |
+        | --store-cap      | pnpm=1       |
+        | --report         | disk-gc.json |
+      Then the report "disk-gc.json" gives "v3" the pnpm outcome "pruned"
+      And the report "disk-gc.json" gives "v10" the pnpm outcome "unsupported"
+      And the cache child ".local/share/pnpm/store/v10/blob" is kept

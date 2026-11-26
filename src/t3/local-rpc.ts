@@ -148,6 +148,18 @@ const webTransport: T3Transport = {
         try {
           const reply: unknown = JSON.parse(String(event.data));
           if (
+            record(message) &&
+            message['tag'] === 'subscribeServerConfig' &&
+            record(reply) &&
+            reply['requestId'] === id &&
+            reply['_tag'] === 'Chunk'
+          ) {
+            const sources = quotaUpdate(reply['values']);
+            if (sources) end(sources);
+            else socket.send(JSON.stringify({ _tag: 'Ack', requestId: id }));
+            return;
+          }
+          if (
             record(reply) &&
             reply['_tag'] === 'Exit' &&
             reply['requestId'] === id
@@ -162,3 +174,25 @@ const webTransport: T3Transport = {
     });
   },
 };
+
+function quotaUpdate(values: unknown): unknown[] | undefined {
+  if (!Array.isArray(values)) return;
+  for (const event of values) {
+    if (!record(event)) continue;
+    const config = event['config'];
+    if (
+      event['type'] === 'snapshot' &&
+      record(config) &&
+      Array.isArray(config['usageLimitSources'])
+    )
+      return config['usageLimitSources'];
+    const payload = event['payload'];
+    if (
+      event['type'] === 'usageLimitSourcesUpdated' &&
+      record(payload) &&
+      Array.isArray(payload['sources'])
+    )
+      return payload['sources'];
+  }
+  return undefined;
+}

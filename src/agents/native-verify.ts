@@ -341,12 +341,32 @@ function outcomeOf(summary: string): SessionOutcome {
  * - A session that ran into its deadline or found its account cooling down
  *   the last time gets a short one.
  */
+function accountLaunch(instance: Instance, live: Account[]) {
+  const spec = ACCOUNT_LAUNCH[instance.tool];
+  const neon =
+    instance.tool === 'antigravity' &&
+    live.some(
+      (account) =>
+        account.tool === instance.tool &&
+        account.email === instance.account &&
+        account.models.includes('gemini-4-neon')
+    );
+  return neon && spec
+    ? {
+        ...spec,
+        args: spec.args.map((arg) =>
+          arg === 'Gemini 3.8 Flash (High)' ? 'Gemini 4 Neon (High)' : arg
+        ),
+      }
+    : spec;
+}
+
 async function accountSession(
   instance: Instance,
   accounts: AccountContext,
   context: SessionContext
 ): Promise<SessionOutcome> {
-  const spec = ACCOUNT_LAUNCH[instance.tool];
+  const spec = accountLaunch(instance, accounts.live);
   if (!spec) return { result: 'failed' };
   const name = `account-${context.node}-${instance.tool}-${accountSlug(instance.account)}`;
   const key = cacheKey(

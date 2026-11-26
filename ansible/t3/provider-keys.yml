@@ -1,0 +1,24 @@
+---
+- name: Reconcile managed Antigravity credentials in the local T3 secret store
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Keep the per-user T3 secret store private
+      ansible.builtin.file:
+        path: '{{ t3_keys_dir }}'
+        state: directory
+        mode: '0700'
+    - name: Install the local proxy client credential for each declared instance
+      ansible.builtin.copy:
+        content: '{{ t3_client_key }}'
+        dest: '{{ t3_keys_dir }}/{{ item }}'
+        mode: '0600'
+      loop: '{{ t3_active_keys }}'
+      no_log: true
+      diff: false
+    - name: Forget retired managed instance credentials
+      ansible.builtin.file:
+        path: '{{ t3_keys_dir }}/{{ item }}'
+        state: absent
+      loop: '{{ t3_retired_keys }}'

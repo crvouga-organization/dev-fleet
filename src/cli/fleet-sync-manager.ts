@@ -3,6 +3,10 @@ import { disposableStorage, type FleetDefinition } from '../definition';
 import type { ManagerNode } from '../manager-sync';
 import { convergeProxy } from '../proxy-converge';
 import { attempt } from '../node-converge-shared';
+import { toolchainChecks } from '../toolchain-checks';
+import { pinnedT3Version, versionCheck } from '../t3/version';
+import { liveServerVersion } from '../platform/t3-service';
+import { managerQuotaCoverage } from '../t3/quota-coverage';
 import { quotaLimited, verifyFleetProviders } from '../agents/fleet-verify';
 import { verifyNativeAgents } from '../agents/native-verify';
 import { accountContext, nodeAccountChecks } from '../accounts/context';
@@ -160,6 +164,19 @@ async function managerMeasures(
       }),
     () => managerHealth(run),
   ]);
+  if (definition.softwarePolicy) {
+    rest.push(...(await toolchainChecks(input.workspace, run)));
+    if (idesOf(definition).includes('t3'))
+      rest.push({
+        ...versionCheck(
+          (await liveServerVersion(run)) ?? null,
+          await pinnedT3Version(input.workspace),
+          'the manager',
+          'Restart the manager server when its active turns finish.'
+        ),
+        id: 't3:running-version',
+      });
+  }
   return [...vault, ...rest];
 }
 
@@ -245,7 +262,12 @@ async function managerSessions(
       })
     )
   );
-  return [...providers, ...roster, ...sessions];
+  return [
+    ...providers,
+    ...roster,
+    ...sessions,
+    ...(await managerQuotaCoverage(accounts?.live ?? [], run)),
+  ];
 }
 
 function playbookPassed(cached: boolean): Check {

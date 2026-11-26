@@ -7,7 +7,6 @@ export type HealthSample = {
   readonly ncpu?: number;
   readonly cpuPressure?: number;
   readonly runnable?: number;
-  readonly t3Ready?: number;
   readonly load?: number;
   readonly memFreePct?: number;
   readonly swapPct?: number;
@@ -56,7 +55,6 @@ const PROBE_KEYS = {
   ncpu: 'ncpu',
   runnable: 'runnable',
   cpupressure: 'cpuPressure',
-  t3ready: 't3Ready',
   load: 'load',
   memfree: 'memFreePct',
   swap: 'swapPct',

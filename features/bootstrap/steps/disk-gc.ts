@@ -187,6 +187,9 @@ Given(
 
 Given('old, open and recent files in the host temporary caches', (world) => {
   const { home, proc, options } = collector(world);
+  const bin = world.directory('fixture-processes-');
+  writeFileSync(join(bin, 'ps'), '#!/bin/sh\necho idle', { mode: 0o755 });
+  collector(world).bin = bin;
   const root = join(home, 'host-tmp');
   const old = Date.now() / 1000 - 10 * DAY;
   for (const file of [
@@ -774,5 +777,40 @@ Then(
     ]);
     for (const event of steps)
       expect(event.until_hours ?? null).toBe(hours ? Number(hours) : null);
+  }
+);
+
+Given(
+  'pnpm can prune {string} among the store generations {string}',
+  (world, compatible: string, versions: string) => {
+    const state = collector(world);
+    const store = join(state.home, '.local/share/pnpm/store');
+    for (const version of versions.split(',')) {
+      mkdirSync(join(store, version), { recursive: true });
+      writeFileSync(join(store, version, 'blob'), Buffer.alloc(MIB, 1));
+    }
+    state.bin = world.directory('process-list-');
+    writeFileSync(join(state.bin, 'ps'), '#!/bin/sh\necho idle\n', {
+      mode: 0o755,
+    });
+    const folder = join(
+      state.home,
+      '.local/share/mise/installs/pnpm/8.0.0/bin'
+    );
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(
+      join(folder, 'pnpm'),
+      `#!/bin/sh\ncase "$4" in path) echo "$2/${compatible}" ;; prune) rm "$2/${compatible}/blob" ;; esac\n`,
+      { mode: 0o755 }
+    );
+  }
+);
+Then(
+  'the report {string} gives {string} the pnpm outcome {string}',
+  (world, file: string, version: string, expected: string) => {
+    const report = JSON.parse(
+      readFileSync(join(collector(world).home, file), 'utf8')
+    );
+    expect(report.pnpmStores[version]).toBe(expected);
   }
 );

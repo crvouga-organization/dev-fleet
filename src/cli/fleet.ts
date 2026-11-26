@@ -1,3 +1,4 @@
+import { enrolledRoster } from '../enrolled-roster';
 import { workerPlacement } from './worker-placement';
 import { meshChecks } from '../t3/mesh';
 import { selectNodes } from '../config';
@@ -89,8 +90,12 @@ async function placementCommand(
     );
   const roster = await readRoster(settings.config);
 
-  const eligible = activeNodes(resolveNodes(command, options, roster)).filter(
-    (n) => fleet.workers.some((w) => w.id === n.id)
+  const eligible = activeNodes(
+    resolveNodes(
+      command,
+      options,
+      roster ? enrolledRoster(fleet, roster) : null
+    )
   );
   const placement = await workerPlacement(eligible, services.run);
   return result(

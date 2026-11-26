@@ -1,3 +1,4 @@
+import { reconcileProviderKeys } from './provider-keys';
 import { mkdir, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { FleetUsageError } from '../errors';
@@ -7,7 +8,11 @@ import { ownership, planT3, readOwnership, type T3Paths } from './plan';
 export async function reconcileT3(
   paths: T3Paths,
   desired: Record<string, unknown>,
-  options: { apply: boolean; planHash?: string }
+  options: {
+    apply: boolean;
+    planHash?: string;
+    keys?: typeof reconcileProviderKeys;
+  }
 ) {
   if (!options.apply) return report(await planT3(paths, desired), false);
   return locked(paths, async () => {
@@ -20,6 +25,11 @@ export async function reconcileT3(
       throw new FleetUsageError(
         'T3 instance already exists without ownership. Review it and use devfleet t3-apply --import ID.'
       );
+    await (options.keys ?? reconcileProviderKeys)(
+      paths.settings,
+      desired,
+      plan.changes
+    );
     if (!plan.settingsChanged && !plan.stateChanged) return report(plan, true);
     await persist(paths, desired, plan);
     const verified = await planT3(paths, desired);

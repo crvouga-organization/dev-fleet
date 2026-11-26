@@ -40,6 +40,7 @@ Feature: Every reader of a secret answers a blocked read the same way
       | src/notify.ts                    | is blocked through the shared answer      |
       | src/screen-sharing.ts            | is blocked through the shared answer      |
       | src/t3/accounts.ts               | reports no check                          |
+      | src/t3/provider-keys.ts          | reports no check                          |
       | src/tailnet-cleanup.ts           | is blocked through the shared answer      |
       | src/tailnet-control.ts           | is blocked through the shared answer      |
       | src/worker-access-checks.ts      | is blocked through the shared answer      |

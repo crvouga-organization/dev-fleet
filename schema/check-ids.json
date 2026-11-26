@@ -435,6 +435,14 @@
       }
     },
     {
+      "id": "beszel:agent-version",
+      "meaning": "The hub observes the pinned release on the connected agent.",
+      "severity": "required",
+      "repair": {
+        "manual": "The monitoring hub and its accounts are converged by fleet-sync on the manager; follow the remedy, then run fleet-sync."
+      }
+    },
+    {
       "id": "beszel:api",
       "meaning": "The monitoring hub's API answers this account for this machine.",
       "severity": "required",
@@ -1771,6 +1779,14 @@
     {
       "id": "t3:providers",
       "meaning": "T3's provider instances are the declared ones.",
+      "severity": "required",
+      "repair": {
+        "manual": "Approve first T3 pairing in interactive fleet-sync or with t3.pairOnEnrollment; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest."
+      }
+    },
+    {
+      "id": "t3:quota-coverage",
+      "meaning": "The manager reads quota windows for each managed Antigravity account from its proxy.",
       "severity": "required",
       "repair": {
         "manual": "Approve first T3 pairing in interactive fleet-sync or with t3.pairOnEnrollment; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest."

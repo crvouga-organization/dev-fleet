@@ -666,6 +666,10 @@
         }
       }
     },
+    "softwarePolicy": {
+      "const": "latest-supported",
+      "description": "Require version parity across the manager and all declared workers at the channel pins of this published revision."
+    },
     "storage": {
       "type": "object",
       "additionalProperties": false,

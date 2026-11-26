@@ -837,7 +837,7 @@ def package_operation_active():
                               text=True, timeout=10, check=True).stdout.splitlines()
     except (OSError, subprocess.SubprocessError, UnicodeError):
         return True
-    return any(re.search(r'(?:^|[ /])(?:pnpm|npm|yarn|bun|bunx)(?:\.c?js)?\s+(?:install|add|i|ci|update|upgrade|remove|prune|store|x)(?:\s|$)', row)
+    return any(re.search(r'^\s*(?:\S*/)?(?:(?:node(?:-MainThread)?|bun)\s+(?:\S*/)?)?(?:pnpm|npm(?:-cli)?|yarn|bun)(?:\.c?js)?(?:\s+(?:install|add|i|ci|update|upgrade|remove|prune|store)(?:\s|$)|\s*$)', row)
                for row in rows)
 
 
@@ -850,11 +850,16 @@ def pnpm_stores(args, home, root, prune):
     if package_operation_active():
         return dict.fromkeys(generations, 'busy')
     generations = dict.fromkeys(generations, 'unsupported')
-    candidates = [[args.mise, 'exec', '--', 'pnpm']]
+    candidates = [[args.mise, 'exec', '--', 'pnpm']] if args.mise else []
     for folder in sorted(Path(home, '.local/share/mise/installs/pnpm').glob('*')):
         if not folder.is_symlink() and re.fullmatch(r'[0-9]+(?:\.[0-9]+){2}', folder.name):
             candidates.extend([[str(exe)] for exe in [folder / 'pnpm', folder / 'bin/pnpm']
-                               if exe.is_file())
+                               if exe.is_file()])
+    for pattern in ('.local/share/pnpm/.tools/pnpm/*/bin/pnpm',
+                    '.local/share/pnpm/.tools/pnpm/*/node_modules/pnpm/bin/pnpm.cjs',
+                    '.cache/node/corepack/v1/pnpm/*/bin/pnpm.cjs'):
+        candidates.extend([[str(exe)] for exe in sorted(Path(home).glob(pattern))
+                           if exe.is_file() and os.access(exe, os.X_OK)])
     env = {**os.environ, 'npm_config_store_dir': root, 'pnpm_config_store_dir': root,
            'npm_config_manage_package_manager_versions': 'false'}
     for cli in candidates:
@@ -965,13 +970,13 @@ def prune_stores(args, home, pressure):
     return freed, generations
 
 
-def open_temp_paths(alias, proc):
+def open_temp_paths(alias, proc, host_path='/var/tmp'):
     """Inspect host processes before dropping privileges. The private mount
     namespace may give a file a different name in the collector and its user."""
     paths = set()
 
     def record(path):
-        for root in ('/var/tmp', alias):
+        for root in (host_path, alias):
             if path.startswith(root + '/'):
                 paths.add(path[len(root) + 1:])
 
@@ -1074,6 +1079,7 @@ def main(argv):
     parser.add_argument('--exclude-cache', action='append', default=[])
     parser.add_argument('--store-cap', action='append', default=[], type=lambda text: pair(text, 'MIB'))
     parser.add_argument('--host-var-tmp')
+    parser.add_argument('--host-tmp')
     parser.add_argument('--mise-cache-mib', type=int)
     parser.add_argument('--user-caches-only', action='store_true')
     parser.add_argument('--no-docker', action='store_true')
@@ -1126,9 +1132,12 @@ def main(argv):
 
     if args.user_caches_only:
         temporary = staging = 0
+        inspected = json.load(sys.stdin) if args.host_var_tmp or args.host_tmp else {}
+        if args.host_tmp:
+            staging = collect_staging(args.host_tmp, inspected.get('tmp'), now - idle, args.dry_run)
         if args.host_var_tmp:
-            opened = json.load(sys.stdin)
-            staging = collect_staging(args.host_var_tmp, opened, now - idle, args.dry_run)
+            opened = inspected.get('var_tmp')
+            staging += collect_staging(args.host_var_tmp, opened, now - idle, args.dry_run)
             temporary = collect_temp_files(args.host_var_tmp, opened,
                                            now - idle, args.dry_run)
         caches = sum(cache_children(os.path.join(home, root), args.home_cache_mib * MIB,
@@ -1148,23 +1157,6 @@ def main(argv):
         return
     categories = {}
     generations = {}
-    if args.home_cache_mib is not None:
-        # Only the development user removes cache entries or runs package tools.
-        argv = [sys.executable, '-I', '-B', __file__, *sys.argv[1:], '--user-caches-only']
-        if args.user:
-            argv = ['runuser', '-u', args.user, '--', 'env', f'HOME={home}'] + argv
-        opened = open_temp_paths(args.host_var_tmp, args.proc) if args.host_var_tmp else None
-        if args.host_var_tmp and opened is None:
-            log(event='host_temp_inspection_failed')
-        out = subprocess.run(argv, cwd=home, input=json.dumps(opened).encode(),
-                             capture_output=True, timeout=3600)
-        if out.returncode == 0:
-            evidence = json.loads(out.stdout.splitlines()[-1])
-            generations = evidence['pnpm_generations']
-            categories.update(package_staging=evidence['staging_bytes'], cache=evidence['cache_bytes'], stores=evidence['store_bytes'],
-                              host_temp=evidence['temporary_bytes'], mise_cache=evidence['mise_cache_bytes'])
-        else:
-            log(event='user_cache_cleanup_failed')
     freed = collect_checkouts(home, idle, args.max_depth, busy, now, args.dry_run)
     categories['checkouts'] = freed
     reclaimed = 0
@@ -1197,6 +1189,23 @@ def main(argv):
     for directory, count in args.keep_newest:
         reclaimed += keep_newest(os.path.join(home, directory), count, args.dry_run)
     categories['limited_caches'] = reclaimed
+    if args.home_cache_mib is not None:
+        # Only the development user removes cache entries or runs package tools.
+        argv = [sys.executable, '-I', '-B', __file__, *sys.argv[1:], '--user-caches-only']
+        if args.user:
+            argv = ['runuser', '-u', args.user, '--', 'env', f'HOME={home}'] + argv
+        opened = open_temp_paths(args.host_var_tmp, args.proc) if args.host_var_tmp else None
+        if args.host_var_tmp and opened is None:
+            log(event='host_temp_inspection_failed')
+        out = subprocess.run(argv, cwd=home, input=json.dumps({'var_tmp': opened, 'tmp': open_temp_paths(args.host_tmp, args.proc, '/tmp') if args.host_tmp else None}).encode(),
+                             capture_output=True, timeout=3600)
+        if out.returncode == 0:
+            evidence = json.loads(out.stdout.splitlines()[-1])
+            generations = evidence['pnpm_generations']
+            categories.update(package_staging=evidence['staging_bytes'], cache=evidence['cache_bytes'], stores=evidence['store_bytes'],
+                              host_temp=evidence['temporary_bytes'], mise_cache=evidence['mise_cache_bytes'])
+        else:
+            log(event='user_cache_cleanup_failed')
     if args.mise:
         installs = os.path.join(home, '.local', 'share', 'mise', 'installs')
         before_mise = size_of(installs)

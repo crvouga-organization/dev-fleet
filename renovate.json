@@ -12,7 +12,7 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "The tunnel image of the monitoring hub, by tag and digest. The Beszel image moves with its agents' digests, by hand (docs/declared.md).",
+      "description": "The tunnel image of the monitoring hub, by tag and digest. The Beszel image moves with its agents' digests, in the Pins workflow.",
       "managerFilePatterns": ["/^ansible/monitoring/lock\\.json$/"],
       "matchStrings": [
         "\"tunnelImage\": \"(?<depName>[^:\"]+):(?<currentValue>[^@\"]+)@(?<currentDigest>sha256:[a-f0-9]{64})\""
@@ -41,6 +41,7 @@
     }
   ],
   "packageRules": [
+    { "matchPackageNames": ["henrygd/beszel"], "enabled": false },
     {
       "description": "A worker whose Tailscale is older than the pin stops with TAILSCALE_UPGRADE_PENDING, so the pin follows a release only once workers have had time to take it by themselves.",
       "matchPackageNames": ["tailscale/tailscale"],
