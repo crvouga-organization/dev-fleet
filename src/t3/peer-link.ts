@@ -1,6 +1,3 @@
-import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
-import { readFile } from 'node:fs/promises';
 import { record } from '../config';
 import { sshArgs } from '../ssh';
 import { observedIdentity } from '../t3-linked-check';
@@ -39,14 +36,8 @@ export interface ManagerT3 {
   link(request: LinkRequest): Promise<LinkOutcome>;
 }
 
-/** The two requests to the manager's T3 server, injected by scenarios. */
-export interface T3Transport {
-  /** POSTs to the server with the session as a bearer token; the JSON body. */
-  post(url: string, bearer: string): Promise<unknown>;
-  /** Sends one message on a WebSocket and answers with the first message
-   * that ends request `id`. */
-  call(url: string, message: object, id: string): Promise<unknown>;
-}
+export type { T3Transport } from './local-rpc';
+import { localRpc, type T3Transport } from './local-rpc';
 
 /** The access the manager's agents get on the worker: T3's default. */
 const ACCESS = 'approval-required';
@@ -59,8 +50,6 @@ const SESSION = [
   '--label',
   'dev-fleet pairing',
 ];
-/** The WebSocket protocol of the pinned T3 server. */
-const ORCHESTRATION_PROTOCOL = '2';
 const CODE = /^[A-Za-z0-9_-]{6,128}$/;
 const ENVIRONMENT =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -74,97 +63,18 @@ export function managerT3(
     read?: (path: string) => Promise<string>;
   } = {}
 ): ManagerT3 {
-  const home = resolve(
-    options.home ?? process.env['T3CODE_HOME'] ?? join(homedir(), '.t3')
-  );
-  const transport = options.transport ?? webTransport;
-  const read = options.read ?? ((path: string) => readFile(path, 'utf8'));
   return {
     async link(request) {
-      const origin = await loopbackOrigin(read, home);
-      if (!origin) return { refused: 'unavailable' };
-      const issued = await run(
-        ['t3', 'auth', 'session', 'issue', '--json', ...SESSION],
-        { timeoutMs: 30_000 }
+      return outcomeOf(
+        await localRpc(
+          run,
+          { tag: 'peerLinks.link', payload: { ...request, access: ACCESS } },
+          SESSION,
+          options
+        )
       );
-      const session = parseSession(issued.ok ? issued.stdout : '');
-      if (!session) return { refused: 'unavailable' };
-      try {
-        const ticket = await transport.post(
-          `${origin}/api/auth/websocket-ticket/rpc`,
-          session.token
-        );
-        if (!record(ticket) || typeof ticket['ticket'] !== 'string')
-          return { refused: 'unavailable' };
-        const socket = new URL('/ws', origin);
-        socket.protocol = socket.protocol === 'https:' ? 'wss:' : 'ws:';
-        socket.searchParams.set(
-          'orchestrationProtocol',
-          ORCHESTRATION_PROTOCOL
-        );
-        socket.searchParams.set('wsTicket', ticket['ticket']);
-        const reply = await transport.call(
-          socket.href,
-          {
-            _tag: 'Request',
-            id: '1',
-            tag: 'peerLinks.link',
-            payload: {
-              url: request.url,
-              pairingCode: request.pairingCode,
-              access: ACCESS,
-              expectedEnvironmentId: request.expectedEnvironmentId,
-            },
-            headers: [],
-          },
-          '1'
-        );
-        return outcomeOf(reply);
-      } catch {
-        return { refused: 'unavailable' };
-      } finally {
-        await run(['t3', 'auth', 'session', 'revoke', session.id], {
-          timeoutMs: 30_000,
-        });
-      }
     },
   };
-}
-
-/** The origin the manager's T3 server records for itself, when it is on
- * this machine: a code is never sent anywhere else. */
-async function loopbackOrigin(
-  read: (path: string) => Promise<string>,
-  home: string
-): Promise<string | undefined> {
-  try {
-    const runtime: unknown = JSON.parse(
-      await read(join(home, 'userdata/server-runtime.json'))
-    );
-    if (!record(runtime) || typeof runtime['origin'] !== 'string') return;
-    const origin = new URL(runtime['origin']);
-    return origin.protocol === 'http:' &&
-      ['127.0.0.1', 'localhost', '[::1]'].includes(origin.hostname)
-      ? origin.origin
-      : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-function parseSession(text: string): { id: string; token: string } | null {
-  try {
-    const value: unknown = JSON.parse(text);
-    return record(value) &&
-      typeof value['sessionId'] === 'string' &&
-      /^[A-Za-z0-9_-]{1,128}$/.test(value['sessionId']) &&
-      typeof value['token'] === 'string' &&
-      value['token'].length > 0
-      ? { id: value['sessionId'], token: value['token'] }
-      : null;
-  } catch {
-    return null;
-  }
 }
 
 /** The end of the call: the link T3 made, or why it refused. */
@@ -190,48 +100,6 @@ function refusal(cause: unknown): string {
     ? reason
     : 'unavailable';
 }
-
-const webTransport: T3Transport = {
-  async post(url, bearer) {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${bearer}` },
-      signal: AbortSignal.timeout(10_000),
-    });
-    return response.ok ? ((await response.json()) as unknown) : null;
-  },
-  call(url, message, id) {
-    return new Promise((resolve, reject) => {
-      const socket = new WebSocket(url);
-      const timer = setTimeout(() => {
-        socket.close();
-        reject(new Error('timeout'));
-      }, 60_000);
-      const end = (value: unknown, error?: Error) => {
-        clearTimeout(timer);
-        socket.close();
-        if (error) reject(error);
-        else resolve(value);
-      };
-      socket.onopen = () => socket.send(JSON.stringify(message));
-      socket.onmessage = (event) => {
-        try {
-          const reply: unknown = JSON.parse(String(event.data));
-          if (
-            record(reply) &&
-            reply['_tag'] === 'Exit' &&
-            reply['requestId'] === id
-          )
-            end(reply);
-        } catch {
-          // Not the reply; keep waiting.
-        }
-      };
-      socket.onerror = () => end(null, new Error('socket'));
-      socket.onclose = () => end(null, new Error('closed'));
-    });
-  },
-};
 
 /** Run on the worker, as its development user, over SSH: mints a pairing
  * code for the manager with the worker's own T3 (the CLI on PATH, or the

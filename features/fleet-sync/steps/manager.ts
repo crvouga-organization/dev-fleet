@@ -79,6 +79,11 @@ Given('T3 on the manager is configured with:', (world, settings: string) => {
   manager(world).t3Home = home;
 });
 
+const unchecked = new WeakMap<FleetSyncWorld, string>();
+Given('T3 cannot authenticate instance {string}', (world, id: string) => {
+  unchecked.set(world, id);
+});
+
 function providers(
   world: FleetSyncWorld,
   id: string,
@@ -88,6 +93,7 @@ function providers(
   return machineProviders(id, ROOT, apply, {
     t3Home: t3Home!,
     roster: async () => accounts,
+    refresh: async (instanceId) => instanceId !== unchecked.get(world),
   });
 }
 

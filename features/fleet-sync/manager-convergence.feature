@@ -36,6 +36,21 @@ Feature: The manager converges itself before any worker
       And the provider instance "personal_codex_a_example_com" is displayed as "Codex a@example.com"
       And the provider instances name "manager-mac"
 
+    Scenario: An existing provider must open an authenticated T3 session on every sync
+      Given the proxy has these accounts signed in:
+        | tool        | email         | prefix                    | models |
+        | antigravity | a@example.com | antigravity-a@example.com | gemini |
+        | antigravity | b@example.com | antigravity-b@example.com | gemini |
+      And T3 on the manager is configured with:
+        """
+        {"providerInstances":{"antigravity":{}}}
+        """
+      And the providers of "manager-mac" have been applied
+      And T3 cannot authenticate instance "personal_antigravity_b_example_com"
+      When the providers of "manager-mac" are applied
+      Then the check's status is "fail"
+      And the check's summary is "T3_ANTIGRAVITY_SESSION_UNVERIFIED: account positions 2 of 2."
+
     Scenario: Once applied, a plan has nothing left to do
       Given T3 on the manager is configured with:
         """
