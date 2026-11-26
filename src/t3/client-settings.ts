@@ -1,5 +1,10 @@
+import {
+  customizationDocument,
+  installCustomizations,
+  withCustomizations,
+} from './customizations';
 import { mkdir, mkdtemp, writeFile, rm } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { homedir, userInfo } from 'node:os';
 import {
   variablesDirectory,
@@ -67,7 +72,7 @@ export const clientFailure = (): Check => ({
   summary: 'T3_CLIENT_SETTINGS_UNVERIFIED',
   remedy: {
     action:
-      'Check that the T3 desktop client-settings.json is a readable settings object, the user session is available and the fleet state is accessible. Rerun fleet-sync.',
+      'Check that the T3 desktop settings and keybindings are readable, the pinned T3 CLI accepts the published themes, the user session is available and the fleet state is accessible. Rerun fleet-sync.',
   },
 });
 
@@ -77,12 +82,20 @@ export async function workerClientSettings(
   run: Runner
 ): Promise<Check> {
   try {
-    await installClientSettings(
-      body,
-      clientSettingsPath(),
-      desktop,
-      packagePlaybook(run)
-    );
+    const payload: unknown = JSON.parse(body);
+    const path = clientSettingsPath();
+    const play = packagePlaybook(run);
+    if (Array.isArray(payload)) {
+      const [settings, artifacts] = payload as unknown[];
+      if (payload.length !== 2 || typeof settings !== 'string')
+        throw new Error();
+      const files = customizationDocument(artifacts);
+      await withCustomizations(files, run, (stage) =>
+        installCustomizations(files, stage, { userdata: dirname(path) }, play)
+      );
+      body = settings;
+    }
+    await installClientSettings(body, path, desktop, play);
     return {
       id: 't3:client-settings',
       status: 'pass',

@@ -1,3 +1,4 @@
+import { managerCustomizations } from '../state/t3-customizations';
 import { managerClientSettings } from '../state/t3-client-settings';
 import { clientFailure } from '../t3/client-settings';
 import { measureParity } from '../version-parity';
@@ -159,9 +160,13 @@ export async function selected(
           payload.script.includes('read -r client_preferences')
         ) {
           try {
-            payload.clientSettings = await managerClientSettings(
-              stateContext(run)
-            );
+            const context = stateContext(run);
+            const settings = await managerClientSettings(context);
+            payload.clientSettings = payload.script.includes(
+              't3-customizations-v1'
+            )
+              ? JSON.stringify([settings, await managerCustomizations(context)])
+              : settings;
             result.checks.push({
               id: 't3:client-settings',
               status: 'pass',

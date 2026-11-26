@@ -25,6 +25,7 @@ export const OPTIONAL_DOCUMENTS = [
   'history',
   'workers',
   't3-client-settings',
+  't3-customizations',
 ] as const;
 export type DocumentName = (typeof DOCUMENTS)[number];
 /** Every document the fleet state may hold. */

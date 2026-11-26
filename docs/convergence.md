@@ -88,6 +88,9 @@ row of the table above moves into one of those roles.
 
 The manager snapshots T3 desktop preferences once per full sync. Workers apply
 `ansible/t3/client-settings.yml` under the worker operation lock and measure the
-installed preferences after restarting a changed desktop.
+installed preferences after restarting a changed desktop. T3 watches its keybindings
+and published themes. Workers install changed files and remove retired files
+with `ansible/t3/customizations.yml`. The manager uses the same playbook when
+recovering these files from fleet state.
 
 The manager switches a running desktop to its verified release with `ansible/macos/t3-activate.yml`.

@@ -156,7 +156,10 @@ mode, snapshot sounds, appearance and shortcuts, from
 `userdata/client-settings.json` in its T3 home. The fleet state keeps a copy
 for manager recovery. Workers receive the complete document, so changing or
 removing a preference on the manager reaches them on the next sync. A fresh
-manager with no saved preferences uses T3's defaults.
+manager with no saved preferences uses T3's defaults. Full sync also copies
+custom keybindings with their T3 migration history and published themes with
+their background images. Removing them on the manager removes them on workers.
+The pinned T3 CLI validates the themes before the fleet saves or installs them.
 
 To go back, run `npx devfleet fleet-sync --rollback` on the manager: it
 converges every machine to the revision applied before the approved one, which
