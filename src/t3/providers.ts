@@ -1,3 +1,4 @@
+import { checkedProviders, type refreshAntigravity } from './antigravity';
 import { T3DiagnosticError } from './diagnostics';
 import type { Check } from '../types';
 import { desired, nodeId, paths } from './desired';
@@ -17,7 +18,11 @@ export async function machineProviders(
   id: string,
   workspace: string,
   apply: boolean,
-  options: { t3Home?: string; roster?: Roster } = {}
+  options: {
+    t3Home?: string;
+    roster?: Roster;
+    refresh?: typeof refreshAntigravity;
+  } = {}
 ): Promise<Check> {
   const remedy = {
     action:
@@ -51,7 +56,9 @@ export async function machineProviders(
         summary: 'T3_PROVIDER_CONFLICT',
         remedy,
       };
-    return result.changed && !apply
+    if (apply)
+      return checkedProviders(instances, options.t3Home, options.refresh);
+    return result.changed
       ? {
           id: 't3:providers',
           status: 'warn',
