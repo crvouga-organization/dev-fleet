@@ -20,8 +20,11 @@
               const app = apps.objectAtIndex(0);
               if (ObjC.unwrap(app.bundleURL.path) === argv[1]) return;
               if (!app.forceTerminate) throw Error('Could not terminate T3');
-              for (let n = 0; n < 100 && !app.terminated; n++) delay(0.1);
-              if (!app.terminated) throw Error('T3 did not exit');
+              for (let n = 0; n < 100; n++) {
+                if (app.isTerminated) return;
+                delay(0.1);
+              }
+              throw Error('T3 did not exit');
             }
           - '{{ bundle_id }}'
           - '{{ desktop_path }}'
