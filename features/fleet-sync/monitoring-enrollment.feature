@@ -10,7 +10,7 @@ Feature: fleet-sync enrolls every machine on the manager's monitoring hub
       | worker-id  | worker-one  | worker-one.tail0a1b2c.ts.net    | linux | 100.64.0.2 | yes    | no            |
     And the roster entry "worker-one", with the workspace "/unused" and the Tailscale ID "worker-id"
     And the hub on the manager answers its health check
-    And the hub, at version "0.21.1" with the key "ssh-ed25519 fixture", accepts the fleet login as user "abcdefghijklmno"
+    And the hub, at version "0.21.2" with the key "ssh-ed25519 fixture", accepts the fleet login as user "abcdefghijklmno"
     And the hub has no system registered
     And every command on a worker answers with the check "beszel:service" as "pass" with the summary "ok"
 

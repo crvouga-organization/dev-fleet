@@ -376,7 +376,7 @@ const fetchHttp: ControlHttp = async (request) => {
     signal: AbortSignal.timeout(15_000),
   });
   const text = await response.text();
-  let body: unknown = null;
+  let body: unknown;
   try {
     body = text ? (JSON.parse(text) as unknown) : null;
   } catch {

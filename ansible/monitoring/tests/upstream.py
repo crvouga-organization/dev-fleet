@@ -20,10 +20,11 @@ import time
 import urllib.request
 import uuid
 
-VERSION = '0.21.1'
+LOCK = json.loads((Path(__file__).resolve().parents[1] / 'lock.json').read_text())
+VERSION = LOCK['version']
 ARTIFACTS = {
-    'beszel': '70857d0489cf790224167815c82f8807cc28134d27f209b58b1cd36e4082931a',
-    'beszel-agent': '3b6ee592632ec03b9a43312e99a40203a7b3d83fe40dd0c25acda1eb915ea7c0',
+    'beszel': LOCK['hubArchives']['linux-amd64'],
+    'beszel-agent': LOCK['agents']['amd64'],
 }
 
 
@@ -162,9 +163,9 @@ def main():
                 port_socket.bind(('127.0.0.1', 0))
                 isolated = f'http://127.0.0.1:{port_socket.getsockname()[1]}'
             start_hub(int(isolated.rsplit(':', 1)[1]), root / 'isolated-hub-data')
+            token = ''
             wait_healthy(isolated)
             # The isolated hub's own throwaway superuser, only to upload and restore.
-            token = ''
             other = secrets.token_urlsafe(32)
             request('/api/beszel/create-user', {'email': 'isolated@example.invalid', 'password': other}, base=isolated)
             token = request('/api/collections/_superusers/auth-with-password', {'identity': 'isolated@example.invalid', 'password': other}, base=isolated)['token']

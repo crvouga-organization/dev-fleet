@@ -51,7 +51,7 @@ export async function workerActivity(
 
 /** The JSON line of t3-idle.py --activity, or nothing known. */
 function activityLine(line: string | undefined): Record<string, unknown> {
-  let answer: unknown = null;
+  let answer: unknown;
   try {
     answer = JSON.parse(line ?? '');
   } catch {

@@ -9,15 +9,19 @@ min_version = "2026.11.12"
 lockfile = true
 lockfile_platforms = ["linux-x64", "linux-arm64", "macos-x64", "macos-arm64", "windows-x64"]
 
+[tool_alias]
+# Upstream no longer builds Delta for Intel macOS. Conda-forge ships all five platforms.
+delta = "conda:git-delta"
+
 [tools]
-gh = "2.105.0"
+gh = "2.106.0"
 shellcheck = "0.11.0"
 actionlint = "1.7.12"
 opentofu = "1.13.10"
 bun = "1.4.5"
 node = "26.13.1"
 atlas = { version = "1.4.0", os = ["linux", "macos"], lazy = true }
-azure-cli = { version = "2.91.0", lazy = true }
+azure-cli = { version = "2.93.0", lazy = true }
 # CLI proxy backups on the manager (cliproxy/scripts/install-dependencies).
 restic = { version = "0.20.0", os = ["linux", "macos"], lazy = true }
 # Replicates the fleet state database to the storage bucket (src/state).
@@ -26,7 +30,7 @@ pnpm = "12.23.0"
 "npm:@yarnpkg/cli-dist" = "4.19.0"
 deno = "2.9.8"
 python = "3.15.2"
-uv = "0.13.9"
+uv = "0.13.10"
 go = "1.27.4"
 jq = "1.8.2"
 yq = "4.54.3"
@@ -36,14 +40,14 @@ tmux = { version = "3.8", os = ["linux", "macos"] }
 fd = "10.5.2"
 fzf = "0.75.0"
 bat = "0.26.1"
-delta = "0.18.2"
+delta = "0.22.0"
 git-lfs = "3.8.1"
-docker-cli = "29.10.0"
-"npm:vercel" = "66.6.0"
+docker-cli = "29.10.1"
+"npm:vercel" = "67.0.0"
 "npm:wrangler" = "4.168.0"
-railway = "5.71.0"
+railway = "5.75.0"
 "aqua:anomalyco/opencode" = "1.19.6"
-vault = "2.2.1"
+vault = "2.2.2"
 claude = "2.1.330"
 codex = "0.171.0"
 gemini = { version = "0.71.1", allow_builds = ["@lydell/node-pty"] }
@@ -52,16 +56,16 @@ copilot = "1.0.114"
 "http:grok" = { version = "1.0.92", bin = "grok", platforms = { linux-x64 = { url = "https://x.ai/cli/grok-{{version}}-linux-x86_64" }, linux-arm64 = { url = "https://x.ai/cli/grok-{{version}}-linux-aarch64" }, macos-x64 = { url = "https://x.ai/cli/grok-{{version}}-macos-x86_64" }, macos-arm64 = { url = "https://x.ai/cli/grok-{{version}}-macos-aarch64" } }, os = ["linux", "macos"] }
 "http:antigravity" = { version = "1.5.14", bin = "antigravity", platforms = { linux-x64 = { url = "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.14-5302690847260672/linux-x64/cli_linux_x64.tar.gz" }, linux-arm64 = { url = "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.14-5302690847260672/linux-arm/cli_linux_arm64.tar.gz" }, macos-x64 = { url = "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.14-5302690847260672/darwin-x64/cli_mac_x64.tar.gz" }, macos-arm64 = { url = "https://storage.googleapis.com/antigravity-public/antigravity-cli/1.5.14-5302690847260672/darwin-arm/cli_mac_arm64.tar.gz" } }, os = ["linux", "macos"] }
 
-"aws" = { version = "2.42.2", os = ["linux", "macos"] }
+"aws" = { version = "2.42.4", os = ["linux", "macos"] }
 "rust" = "1.100.0"
-"cmake" = "4.4.5"
+"cmake" = "4.5.1"
 "ninja" = "1.13.2"
 "just" = "1.59.0"
 "gitleaks" = "8.30.1"
 "shfmt" = "3.14.1"
 "sops" = "3.13.3"
 "age" = "1.3.2"
-"kubectl" = "1.37.2"
+"kubectl" = "1.37.3"
 "helm" = "4.3.2"
 "xh" = "0.26.3"
 "usql" = "0.21.6"
@@ -73,7 +77,7 @@ copilot = "1.0.114"
 # were checked against pinojs/pino v9.14.0. Keep the exception version-specific.
 "npm:@modelcontextprotocol/inspector" = { version = "2.16.0", lazy = true, lazy_bins = ["mcp-inspector", "inspector", "mcpdo"], trust_policy_excludes = ["pino@9.14.0"] }
 "aws-cdk" = { version = "2.1149.0", lazy = true }
-"aws-sam" = { version = "1.174.0", lazy = true, os = ["linux", "macos"] }
+"aws-sam" = { version = "1.174.1", lazy = true, os = ["linux", "macos"] }
 
 # Keep self-updaters from bypassing the reviewed toolchain lock.
 [env]
@@ -113,7 +117,7 @@ t3_desktop_darwin_arm64_sha256 = "67ea227870abc7a8a70335a305c4bd506b34bc467c0612
 t3_desktop_amd64_sha256 = "167a47c94cde7881324970a336da3b2c95138f6492b563e1b928f34751827c7a"
 t3_desktop_arm64_sha256 = "66986a6501b0da8fd9e64e05de5e01e0c050ac208d1db86fac63a5343140812b"
 # Official AWS v2 Windows MSI, same version as tools.aws; checked before execution.
-aws_windows_msi_sha256 = "c7857d5981e68396852e8b7eca0b1772f1c99b34d4938075857d45ec9c232113"
+aws_windows_msi_sha256 = "65b82923074b154e3ec5375716b886e3c5bd5483714cc94ba1e67a04dfbb6715"
 # Docker Desktop supplies the macOS engine, Compose and Buildx as one vendor bundle.
 # Official release/checksums: https://docs.docker.com/desktop/release-notes/#4980
 docker_desktop_version = "4.98.0"

@@ -28,6 +28,8 @@ export async function runInteractive(
       display.write(
         'The interactive session could not continue safely. Use personal commands --json for noninteractive help.'
       );
+      // Keep the underlying error out of the operator-facing diagnostic.
+      // eslint-disable-next-line preserve-caught-error
       throw new Error('Interactive session failed safely.');
     }
   }

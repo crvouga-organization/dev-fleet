@@ -70,7 +70,7 @@ function workerState(value: unknown): WorkerState | null {
  * an unreadable pin pins nothing, so the worker is refused, never trusted.
  */
 export function parseWorkerStates(text: string | null): WorkerStates {
-  let value: unknown = null;
+  let value: unknown;
   try {
     value = text === null ? null : JSON.parse(text);
   } catch {

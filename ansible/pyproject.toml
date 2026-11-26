@@ -5,8 +5,8 @@
 [project]
 name = "dev-fleet-ansible"
 version = "0"
-requires-python = "==3.13.16"
-dependencies = ["ansible-core==2.19.9"]
+requires-python = "==3.15.2"
+dependencies = ["ansible-core==2.22.0"]
 
 [tool.uv]
 package = false
@@ -14,4 +14,4 @@ package = false
 # The linter CI runs on every playbook (`uv run --locked --group lint
 # ansible-lint`). A separate group: the manager never installs it.
 [dependency-groups]
-lint = ["ansible-lint==26.11.0"]
+lint = ["ansible-lint==26.11.1"]
