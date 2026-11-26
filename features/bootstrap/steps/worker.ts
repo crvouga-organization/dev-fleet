@@ -266,7 +266,7 @@ const marker = (world: BootstrapWorld): string =>
  * only record how they were called and answer as the scenario says, and an
  * installed app whose release is the one the scenario names.
  */
-function watch(world: BootstrapWorld): number {
+function watch(world: BootstrapWorld, apply = false): number {
   const state = watchdog(world);
   const { directory } = state;
   const stand = (name: string, body: string): void => {
@@ -282,6 +282,7 @@ function watch(world: BootstrapWorld): number {
     'systemctl',
     [
       'case "$*" in',
+      `  *"show app-com.t3tools.T3Code-fixture.scope -p ActiveState --value") if test -e "${directory}/stopped-scope"; then echo inactive; else echo deactivating; fi;;`,
       `  *"stop --no-block app-com.t3tools.T3Code-fixture.scope") touch "${directory}/stopped-scope";;`,
       `  *"t3code.service") case "$*" in *disable*) exit ${exit(state.retires)};; *) exit ${exit(state.headless)};; esac;;`,
       `  *"is-enabled --quiet t3code-headless.service") exit ${exit(state.server)};;`,
@@ -316,7 +317,11 @@ function watch(world: BootstrapWorld): number {
       `T3-Code-${state.installed}-amd64.deb`
     );
   const ran = Bun.spawnSync(
-    ['/bin/sh', join(checkout, 'ansible/ubuntu/t3-health.sh')],
+    [
+      '/bin/sh',
+      join(checkout, 'ansible/ubuntu/t3-health.sh'),
+      ...(apply ? ['--apply'] : []),
+    ],
     {
       env: {
         PATH: `${directory}:/usr/bin:/bin`,
@@ -421,6 +426,20 @@ Given('the desktop listener belongs to {string}', (world, owner: string) => {
 
 Given('another desktop handoff holds the recovery lock', (world) => {
   watchdog(world).locked = true;
+});
+
+Given(
+  'an interrupted handoff is stopping the former desktop scope after it released the port',
+  (world) => {
+    writeFileSync(
+      join(watchdog(world).directory, 'personal-t3-desktop-handoff'),
+      'app-com.t3tools.T3Code-fixture.scope\n'
+    );
+  }
+);
+
+When('sync resumes desktop recovery', (world) => {
+  world.exit = watch(world, true);
 });
 
 When('the watchdog runs', (world) => {
