@@ -37,6 +37,7 @@ import {
   workerFeatures,
   type WorkerFeatures,
 } from './worker-features';
+import { toolchainChecks } from './toolchain-checks';
 import { userInfo } from 'node:os';
 import { resolve } from 'node:path';
 import { auditUbuntu } from './platform/ubuntu-audit';
@@ -188,6 +189,7 @@ export async function convergeLinux(
   checks.push(
     ...(await attempt('worker:readiness', () => workerReadiness(run, node)))
   );
+  if (fleet.softwarePolicy) checks.push(...await toolchainChecks(root,run,workerSelection(fleet,node)));
   return checks;
 }
 

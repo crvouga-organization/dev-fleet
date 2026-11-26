@@ -93,6 +93,7 @@ function providers(
   return machineProviders(id, ROOT, apply, {
     t3Home: t3Home!,
     roster: async () => accounts,
+    keys: async () => {},
     refresh: async (instanceId) => instanceId !== unchecked.get(world),
   });
 }

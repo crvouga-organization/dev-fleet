@@ -10,7 +10,7 @@ export async function refreshAntigravity(id: string, home?: string) {
     runCommand,
     {
       tag: 'server.refreshProviders',
-      payload: { instanceId: id, refreshModels: true },
+      payload: { instanceId: id, refreshModels: true, reloadSecrets: true },
     },
     [
       '--scope',

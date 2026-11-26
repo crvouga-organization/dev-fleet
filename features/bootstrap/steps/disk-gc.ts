@@ -187,6 +187,9 @@ Given(
 
 Given('old, open and recent files in the host temporary caches', (world) => {
   const { home, proc, options } = collector(world);
+  const bin = world.directory('fixture-processes-');
+  writeFileSync(join(bin, 'ps'), '#!/bin/sh\necho idle', { mode: 0o755 });
+  collector(world).bin = bin;
   const root = join(home, 'host-tmp');
   const old = Date.now() / 1000 - 10 * DAY;
   for (const file of [

@@ -1,3 +1,4 @@
+import { measureParity } from '../version-parity';
 import { meshChecks } from '../t3/mesh';
 import { authorizeFirstPairing } from './fleet-sync-pairing';
 import { createHash } from 'node:crypto';
@@ -173,6 +174,10 @@ export async function selected(
         run
       ))
     );
+  }
+  if (canonical.softwarePolicy) {
+    report.versionParity = measureParity(canonical,report);
+    if (!report.versionParity.complete) report.ok = false;
   }
   if (settle) report.checks.push(await settle(report));
   applyAcceptance(report, options.failOnWarning === true);

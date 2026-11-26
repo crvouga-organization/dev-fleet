@@ -837,7 +837,7 @@ def package_operation_active():
                               text=True, timeout=10, check=True).stdout.splitlines()
     except (OSError, subprocess.SubprocessError, UnicodeError):
         return True
-    return any(re.search(r'(?:^|[ /])(?:pnpm|npm|yarn|bun|bunx)(?:\.c?js)?\s+(?:install|add|i|ci|update|upgrade|remove|prune|store|x)(?:\s|$)', row)
+    return any(re.search(r'^\s*(?:\S*/)?(?:(?:node(?:-MainThread)?|bun)\s+(?:\S*/)?)?(?:pnpm|npm(?:-cli)?|yarn|bun)(?:\.c?js)?(?:\s+(?:install|add|i|ci|update|upgrade|remove|prune|store)(?:\s|$)|\s*$)', row)
                for row in rows)
 
 
@@ -854,7 +854,7 @@ def pnpm_stores(args, home, root, prune):
     for folder in sorted(Path(home, '.local/share/mise/installs/pnpm').glob('*')):
         if not folder.is_symlink() and re.fullmatch(r'[0-9]+(?:\.[0-9]+){2}', folder.name):
             candidates.extend([[str(exe)] for exe in [folder / 'pnpm', folder / 'bin/pnpm']
-                               if exe.is_file())
+                               if exe.is_file()])
     env = {**os.environ, 'npm_config_store_dir': root, 'pnpm_config_store_dir': root,
            'npm_config_manage_package_manager_versions': 'false'}
     for cli in candidates:

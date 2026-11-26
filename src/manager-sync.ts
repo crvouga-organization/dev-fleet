@@ -44,6 +44,7 @@ export interface ManagerReport {
   execution: 'manager-push';
   ok: boolean;
   applied: boolean;
+  versionParity?: {revision:string|null; complete:boolean; nodes:{node:string;pending:string[]}[]};
   acceptance?: { failOnWarning: boolean; warnings: number; accepted: boolean };
   desiredRevision: string | null;
   /** What selected the desired revision. */

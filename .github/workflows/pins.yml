@@ -29,6 +29,8 @@ jobs:
           [
             mise,
             t3,
+            beszel,
+            ubuntu,
             codex,
             claude,
             gemini,
@@ -59,6 +61,8 @@ jobs:
           PIN: ${{ matrix.pin }}
         run: |
           case "$PIN" in
+            ubuntu) summary=$(python3 ansible/ubuntu/tests/snapshot-pins.py --advance); bun install --frozen-lockfile; bunx --no-install prettier --write ansible/ubuntu/policy.json ;;
+            beszel) summary=$(python3 .github/scripts/beszel-pin.py) ;;
             mise|t3) summary=$(bun bootstrap/pins.ts "$PIN") ;;
             *) summary=$(python3 .github/scripts/provider-pin.py "$PIN") ;;
           esac

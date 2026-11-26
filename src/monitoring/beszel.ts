@@ -163,6 +163,18 @@ async function verifySample(
       'Inspect agent service, private hub connectivity and node-specific token; preserve its DATA_DIR.'
     )
   );
+  const info = record['info'];
+  const agent = object(info) ? info['v'] : null;
+  result.checks.push(
+    check(
+      'beszel:agent-version',
+      agent === lock.version ? 'pass' : 'warn',
+      agent === lock.version
+        ? `The connected agent reports ${lock.version}.`
+        : `BESZEL_AGENT_VERSION_PENDING: target ${lock.version}, reported ${typeof agent === 'string' && /^\d+\.\d+\.\d+$/.test(agent) ? agent : 'unknown'}.`,
+      'Run fleet-sync and check the connected agent after its next sample.'
+    )
+  );
   await checkFreshness(id, result, request, now);
 }
 async function checkFreshness(

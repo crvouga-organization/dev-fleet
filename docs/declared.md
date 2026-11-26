@@ -96,18 +96,20 @@ judge like any change, unless it says below why a person moves it.
 
 The repository runs Renovate hourly with its tracked configuration; it opens at most two pull requests an hour. The Pins workflow owns provider CLI versions, resolves stable releases and opens one pull request per provider with platform integrity locks. A failed resolution fails Pins and is tracked in its CI failure issue. A consumer adopts the published revision by updating its dev-fleet dependency and running fleet-sync. Existing agent processes pick up a new executable on their next launch. Its dependency dashboard records pending updates. Renovate takes security advisories from the public OSV database, not from Dependabot alerts, which the workflow's token cannot read. That token may not change files under `.github/workflows` either, so updates to the actions and images there need the `PINS_TOKEN` secret (contents, issues, pull requests and workflows write); without it each Renovate run warns.
 
-| Pin                                      | Moved by                                                                                      |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------- |
-| Tools in `mise.toml` and `mise.lock`     | Renovate (`mise`), one pull request per tool                                                  |
-| JavaScript and Python dependencies       | Renovate, with lock file maintenance                                                          |
-| Actions and CI service images            | Renovate, each action at a commit                                                             |
-| mise itself                              | The [Pins workflow](../.github/workflows/pins.yml): `bun bootstrap/pins.ts mise`, weekly      |
-| T3 Code (nightly)                        | The Pins workflow: `bun bootstrap/pins.ts t3`, weekly, every artifact hashed                  |
-| The tunnel image of the monitoring hub   | Renovate, by tag and digest (a custom manager in `renovate.json`)                             |
-| Tailscale on workers                     | Renovate, a release once it is 14 days old (a custom manager in `renovate.json`)              |
-| Beszel (hub image and agents)            | A person, because the agents' binary digests need the archives unpacked; `pins.ts` cannot yet |
-| Docker Desktop on the manager            | A person, because a person installs it and dev-fleet only measures the version                |
-| The Ubuntu snapshot and package versions | A person, because a new snapshot moves every package at once and each needs its exact version |
+| Pin                                      | Moved by                                                                                            |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Tools in `mise.toml` and `mise.lock`     | Renovate (`mise`), one pull request per tool                                                        |
+| JavaScript and Python dependencies       | Renovate, with lock file maintenance                                                                |
+| Actions and CI service images            | Renovate, each action at a commit                                                                   |
+| mise itself                              | The [Pins workflow](../.github/workflows/pins.yml): `bun bootstrap/pins.ts mise`, weekly            |
+| T3 Code (nightly)                        | The Pins workflow: `bun bootstrap/pins.ts t3`, weekly, every artifact hashed                        |
+| The tunnel image of the monitoring hub   | Renovate, by tag and digest (a custom manager in `renovate.json`)                                   |
+| Tailscale on workers                     | Renovate, a release once it is 14 days old (a custom manager in `renovate.json`)                    |
+| Beszel (hub image and agents)            | The Pins workflow resolves the stable release and verifies the platform archives and binary digests |
+| Docker Desktop on the manager            | A person, because a person installs it and dev-fleet only measures the version                      |
+| The Ubuntu snapshot and package versions | The Pins workflow compares the supported architectures in each Ubuntu release and advances the snapshot and package versions together       |
+
+Set `"softwarePolicy": "latest-supported"` in fleet.json to require fleet-wide version verification. The consumer's package revision fixes the rollout target. Pins and Renovate check upstream channels before publication. During sync, `versionParity.nodes[].pending` lists missing or mismatched checks, including workers omitted from this run. A later sync of the same revision measures them again. A newer Ubuntu security package stays installed and counts as pending until its release pin catches up.
 
 Tailscale's pin is a minimum that workers pass by themselves: a worker takes a
 newer Tailscale through its own updates and keeps it, and `worker:package:tailscale`

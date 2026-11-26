@@ -182,6 +182,7 @@ export interface FleetDefinition {
   /** Parking and idle reporting (docs/topology.md). */
   parking?: ParkingPolicy;
   /** How the disk GC of every node treats what is on its disk. */
+  softwarePolicy?: 'latest-supported';
   storage?: StoragePolicy;
 }
 /** disposable: every node disk is a cache (work lives on remotes and in the
@@ -686,6 +687,7 @@ export function parseDefinition(value: unknown): FleetDefinition {
       'nativeSsh',
       'tailnet',
       'parking',
+      'softwarePolicy',
       'storage',
     ],
     '$'
@@ -815,9 +817,10 @@ function operations(
   fields: Record<string, unknown>
 ): Pick<
   FleetDefinition,
-  'github' | 'parking' | 'tailnet' | 'storage' | 'nativeSsh'
+  'github' | 'parking' | 'tailnet' | 'storage' | 'nativeSsh' | 'softwarePolicy'
 > {
   return {
+    ...(fields['softwarePolicy'] === undefined ? {} : { softwarePolicy: constant(fields['softwarePolicy'], 'latest-supported' as const, '$.softwarePolicy') }),
     ...(fields['nativeSsh'] === undefined
       ? {}
       : {

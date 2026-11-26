@@ -41,12 +41,14 @@ Feature: The health of the workers includes what the dashboard knows of them
         | beszel:version      | pass   |
         | beszel:registration | pass   |
         | beszel:connection   | pass   |
+        | beszel:agent-version | pass   |
         | beszel:freshness    | pass   |
       And the health report of "worker-two.tail0a1b2c.ts.net" has exactly these checks:
         | check               | status |
         | beszel:version      | pass   |
         | beszel:registration | pass   |
         | beszel:connection   | pass   |
+        | beszel:agent-version | pass   |
         | beszel:freshness    | pass   |
 
     Scenario: A system that matches no declared worker is a leftover
