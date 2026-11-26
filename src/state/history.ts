@@ -124,7 +124,7 @@ function scheduleRecord(value: unknown): value is ScheduleRecord {
  * describes the past, and the next run starts it again.
  */
 export function parseHistory(text: string | null): History {
-  let value: unknown = null;
+  let value: unknown;
   try {
     value = text === null ? null : JSON.parse(text);
   } catch {

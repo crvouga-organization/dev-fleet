@@ -6,7 +6,7 @@ Feature: A machine is enrolled in the hub once
   never adopted.
 
   Background:
-    Given a hub of release "0.21.1" whose key is "ssh-ed25519 fixture"
+    Given a hub of release "0.21.2" whose key is "ssh-ed25519 fixture"
     And the manager is signed in to the hub "https://hub.example.ts.net:8443" as the user "abcdefghijklmno"
 
   Scenario: A failure while the fingerprint is stored interrupts the enrollment

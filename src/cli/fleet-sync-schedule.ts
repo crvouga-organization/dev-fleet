@@ -49,7 +49,7 @@ export interface Release extends PackageInfo {
 }
 
 export function release(root = PACKAGE_ROOT): Release {
-  let bin: unknown = null;
+  let bin: unknown;
   try {
     const manifest = JSON.parse(
       readFileSync(join(root, 'package.json'), 'utf8')

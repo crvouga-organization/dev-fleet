@@ -90,6 +90,8 @@ if (import.meta.main) {
     report(phase, 'passed');
   } catch (error) {
     report(phase, 'failed', setupFailureCode(error));
+    // Subprocess errors may contain credentials.
+    // eslint-disable-next-line preserve-caught-error
     throw new Error(
       `Shared toolchain phase ${phase} failed; inspect the declared installer prerequisites and retry.`
     );

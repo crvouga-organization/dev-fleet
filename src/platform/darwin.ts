@@ -123,7 +123,7 @@ export class DarwinPlatform implements Platform {
     ];
     const names = new Set<string>();
     for (const dir of dirs) {
-      let entries: string[] = [];
+      let entries: string[];
       try {
         entries = readdirSync(dir);
       } catch {

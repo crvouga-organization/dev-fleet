@@ -28,7 +28,7 @@ Feature: The health of the workers includes what the dashboard knows of them
         | worker-one.tail0a1b2c.ts.net |
         | worker-two.tail0a1b2c.ts.net |
       And the hub and its public address answer their health checks
-      And the hub, at version "0.21.1" with the key "ssh-ed25519 x", accepts the fleet login
+      And the hub, at version "0.21.2" with the key "ssh-ed25519 x", accepts the fleet login
       And the hub knows every machine as the system "aaaaaaaaaaaaaaa" with the status "up", and has just received a sample
       When the evidence of the dashboard is added to the health reports
       Then the dashboard is at "https://manager-mac-1.tail0a1b2c.ts.net:8443"
@@ -56,7 +56,7 @@ Feature: The health of the workers includes what the dashboard knows of them
         | worker-one.tail0a1b2c.ts.net |
         | worker-two.tail0a1b2c.ts.net |
       And the hub and its public address answer their health checks
-      And the hub, at version "0.21.1" with the key "ssh-ed25519 x", accepts the fleet login
+      And the hub, at version "0.21.2" with the key "ssh-ed25519 x", accepts the fleet login
       And the hub knows every machine as the system "aaaaaaaaaaaaaaa" with the status "up", and has just received a sample
       And the hub also watches a system named "worker-gone"
       When the evidence of the dashboard is added to the health reports

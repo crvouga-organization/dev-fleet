@@ -300,7 +300,7 @@ When(
     world.machine = machine;
     const first = bootstrap(machine);
     const deadline = Date.now() + 60_000;
-    let held = false;
+    let held: boolean;
     while (!(held = await lockHeld(machine)) && Date.now() < deadline)
       await Bun.sleep(100);
     // The second run starts only once the first is known to hold the lock.
