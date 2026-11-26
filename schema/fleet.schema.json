@@ -258,6 +258,19 @@
           "origin": {
             "const": "records",
             "description": "Written by dev-fleet for a worker read from workerRecords, in the copy it installs and stores; do not write it."
+          },
+          "screenSharing": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["port"],
+            "properties": {
+              "port": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 65535
+              }
+            },
+            "description": "Share the existing GNOME desktop on this tailnet-only RDP port using the per-worker rdp-password secret."
           }
         }
       }
@@ -985,6 +998,22 @@
                     }
                   },
                   "description": "Only with tailnet: an API credential of the tailnet's control plane that creates single-use auth keys for new workers. It stays on the manager."
+                },
+                "rdp-password": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["path", "field"],
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9._/-]+$"
+                    },
+                    "field": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_]+$"
+                    }
+                  },
+                  "description": "Password for desktop sharing. Read the per-worker variant of this field."
                 }
               },
               "description": "Required for every secret except github-token, which defaults to the field GITHUB_TOKEN beside proxy-client-key."
@@ -1112,7 +1141,9 @@
           "additionalProperties": false,
           "required": ["api", "tag"],
           "properties": {
-            "api": { "const": "tailscale" },
+            "api": {
+              "const": "tailscale"
+            },
             "url": {
               "type": "string",
               "pattern": "^https://[A-Za-z0-9.-]{1,253}(:[0-9]{1,5})?$",
@@ -1130,7 +1161,9 @@
           "additionalProperties": false,
           "required": ["api", "url", "tag", "user"],
           "properties": {
-            "api": { "const": "headscale" },
+            "api": {
+              "const": "headscale"
+            },
             "url": {
               "type": "string",
               "pattern": "^https://[A-Za-z0-9.-]{1,253}(:[0-9]{1,5})?$",
@@ -1164,6 +1197,10 @@
           }
         }
       }
+    },
+    "nativeSsh": {
+      "type": "boolean",
+      "description": "Opt in to native Tailscale SSH on the manager and enrolled workers, validated with fresh unattended SSH in both directions."
     }
   }
 }

@@ -541,3 +541,52 @@ Linux, clonefile on macOS). npm cannot link, so it is left alone. Hardlinks
 cannot cross filesystems: `ubuntu:disk-gc` and `manager:disk-gc` warn
 `PACKAGE_STORE_OTHER_FILESYSTEM` when a store and the worktrees are on
 different ones.
+
+### Manager keychain
+
+When a worker starts a sync and the macOS login keychain requires interaction,
+the Git and GitHub checks fail with `GITHUB_KEYCHAIN_INACCESSIBLE`. A
+configured helper without a usable credential reports
+`GIT_CREDENTIAL_UNAVAILABLE`.
+
+For a worker-initiated sync with the manager's desktop credentials, first run
+`devfleet fleet-sync --schedule enable --apply --yes` in the signed-in manager
+session with the desired release. Confirm its scheduled run can read the fleet
+state and passes both the GitHub principal and Git credential checks. From a
+worker with verified SSH access, trigger that same manager-owned job:
+
+```sh
+ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$manager" \
+  'launchctl kickstart "gui/$(id -u)/personal-fleet-sync"'
+```
+
+Here `manager` names the enrolled manager account and tailnet address.
+`kickstart` starts the job asynchronously. Check the new run's timestamp,
+revision and result with `devfleet fleet-sync --schedule status`. The schedule
+uses its installed revision and options. Keep the manager desktop signed in.
+
+### Native Tailscale SSH
+
+Set `nativeSsh` to true for a fleet with an open-source macOS tailscaled
+manager, passwordless authorization for changing its Tailscale preferences,
+and explicit tailnet SSH accept rules in both directions. Enroll with ordinary
+verified OpenSSH first. The first adoption checks the existing account and
+host key in each direction, then verifies port 22 with SSH authentication
+methods disabled so only native tailnet authorization can succeed. A worker
+arms a local rollback timer during adoption. Each sync repeats the checks.
+
+### GNOME desktop sharing
+
+Set `screenSharing` to `{"port":3389}` on a desktop worker with a declared
+network. Set its `rdp-password-<worker-id>` in the fleet secrets provider
+(for Vault, configure the `rdp-password` location and use its per-worker
+field). When adopting an existing desktop, use its current password. In
+Windows App enter the worker's declared tailnet name and port, its declared
+network user and that password. Compare the certificate fingerprint shown
+by the client with the worker certificate in `fleet-status --workers --json`.
+
+The worker seals the password with systemd credentials and publishes the RDP
+item in the volatile session keyring at startup. Its encrypted login keyring
+can stay locked. The desktop service shares the existing primary display.
+The manager checks pre-authentication negotiation and the certificate.
+A client login is needed to confirm authenticated control.

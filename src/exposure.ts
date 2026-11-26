@@ -116,8 +116,24 @@ export function workerExposure(
   node: string
 ): WorkerExposure {
   const machine = definition.workers.find((entry) => entry.id === node);
+  const policy = effectiveExposure(
+    definition.worker?.exposure,
+    machine?.exposure
+  );
+  const sharing = machine?.screenSharing;
+  if (
+    sharing &&
+    !policy.tailnetOnlyPorts.some(
+      (p) => p.protocol === 'tcp' && p.port === sharing.port
+    )
+  ) {
+    policy.tailnetOnlyPorts = [
+      ...policy.tailnetOnlyPorts,
+      { protocol: 'tcp', port: sharing.port },
+    ];
+  }
   return {
-    policy: effectiveExposure(definition.worker?.exposure, machine?.exposure),
+    policy,
     sshPort: machine?.network?.sshPort ?? 22,
     t3Port: machine?.network?.t3Port ?? 3773,
   };

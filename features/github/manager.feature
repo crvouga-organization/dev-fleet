@@ -30,6 +30,14 @@ Feature: The manager's GitHub sign-in is checked like every worker's
     Then the check "github:principal" fails
     And the check "github:principal" says "GITHUB_LOGIN_MISMATCH"
 
+  Scenario: A worker handoff cannot read the active manager login without keychain interaction
+    Given the manager was reached over SSH on macOS
+    And the store gives the manager no "github-token"
+    And the command "/usr/bin/swift -" prints -25308
+    When the GitHub sign-in job runs on the manager
+    Then the result on "manager-mac" is "GITHUB_KEYCHAIN_INACCESSIBLE"
+    And no command line contains "auth login"
+
   Rule: A token the manager could not read is blocked by the manager's login, not missing
     The manager reads the token with its own Vault session. A session that
     lapsed, or a Vault that does not answer, has one owner; the GitHub checks

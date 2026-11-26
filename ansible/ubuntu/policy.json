@@ -4,7 +4,12 @@
     {
       "release": "26.04",
       "codename": "resolute",
-      "architectures": ["amd64", "arm64"]
+      "architectures": ["amd64", "arm64"],
+      "screenSharingPackages": {
+        "gnome-remote-desktop": "50.2-0ubuntu0.1",
+        "gir1.2-secret-1": "0.21.7-2build1",
+        "python3-gi": "3.56.2-1"
+      }
     },
     {
       "release": "24.04",
@@ -52,6 +57,11 @@
         "libxfixes3": "1:6.0.0-2build1",
         "libxkbcommon0": "1.6.0-1build1",
         "libxrandr2": "2:1.5.2-2build1"
+      },
+      "screenSharingPackages": {
+        "gnome-remote-desktop": "46.3-0ubuntu1.2",
+        "gir1.2-secret-1": "0.21.4-1build3",
+        "python3-gi": "3.48.2-1"
       }
     }
   ],

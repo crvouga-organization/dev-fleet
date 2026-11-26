@@ -1,3 +1,4 @@
+import { desktopChecks } from './screen-sharing';
 import {
   pressureEvents,
   rendererCheck,
@@ -25,6 +26,9 @@ export async function workerReadiness(
 ): Promise<Check[]> {
   const features = workerFeatures(fleet, nodeId);
   const exposure = workerExposure(fleet, nodeId);
+  const sharing = fleet.workers.find(
+    (entry) => entry.id === nodeId
+  )?.screenSharing;
   const results = await Promise.all([
     UBUNTU_WORKER.hostChecks(
       userInfo().username,
@@ -35,6 +39,7 @@ export async function workerReadiness(
     workerAccessChecks(run, nodeId),
     singletonCheck(run, nodeId),
     exposureCheck(exposure, run),
+    sharing ? desktopChecks(sharing.port, run) : [],
     gitChecks(fleet.git, run),
     pressureEvents(run),
     features.session === 'desktop' ? rendererCheck(run) : [],

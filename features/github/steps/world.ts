@@ -29,6 +29,7 @@ export class GithubWorld extends CommandWorld {
   /** Results of the one When, by node. */
   readonly results = new Map<string, unknown>();
   readonly workflows: WorkflowResult[] = [];
+  remoteMac = false;
   now = new Date();
   tasks: (Record<string, unknown> & { vars?: Record<string, number> })[] = [];
   policy: GithubPolicy | undefined;

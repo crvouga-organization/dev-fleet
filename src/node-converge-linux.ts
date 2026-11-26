@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { applyScreenSharing } from './screen-sharing';
 import ubuntuPolicy from '../ansible/ubuntu/policy.json';
 import { workerReadiness } from './worker-readiness';
 import { runAnsible } from './platform/ansible';
@@ -83,9 +85,50 @@ export async function convergeLinux(
     ]))
   );
   const features = workerFeatures(fleet, node);
+  const machine = fleet.workers.find((entry) => entry.id === node);
+  if (
+    !machine?.screenSharing &&
+    existsSync('/etc/systemd/system/devfleet-rdp-credential.service')
+  ) {
+    const user = userInfo();
+    const retired = await runAnsible(
+      run,
+      resolve(root, 'ansible/ubuntu/retire-screen-sharing.yml'),
+      {
+        input: JSON.stringify({
+          development_user: user.username,
+          development_uid: user.uid,
+          development_home: user.homedir,
+        }),
+        timeoutMs: 120_000,
+      }
+    );
+    if (!retired.ok)
+      return [
+        ...checks,
+        {
+          id: 'worker:screen-sharing-policy',
+          status: 'fail',
+          summary: 'RDP_RETIREMENT_FAILED',
+          remedy: {
+            action:
+              'Restore the enrolled user session and rerun fleet-sync before changing the firewall.',
+          },
+        },
+      ];
+  }
   const before = await presentParts(run, userInfo().username, features);
   const { baseline, verified } = await baselineStep(root, run, node);
   checks.push(...baseline, ...verified);
+  if (
+    machine?.screenSharing &&
+    baseline.every((check) => check.status === 'pass')
+  )
+    checks.push(
+      ...(await attempt('worker:screen-sharing-policy', async () => [
+        await applyScreenSharing(root, machine, run),
+      ]))
+    );
   checks.push(
     featuresCheck(
       features,

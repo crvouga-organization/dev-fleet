@@ -16,6 +16,17 @@ Feature: The fleet tells someone when a worker becomes unhealthy
 
   Rule: A notification is sent on a transition only
 
+    Scenario: Losing the desktop credential degrades a worker until it is readable again
+      When the watcher runs at these times, while fleet-status sees these failing checks:
+        | time                 | worker-a              | worker-b |
+        | 2026-11-11T00:00:00Z |                       |          |
+        | 2026-11-11T00:15:00Z | worker:rdp-credential |          |
+        | 2026-11-11T00:30:00Z |                       |          |
+      Then the webhook receiver got, in order:
+        | event     | node     | checks                |
+        | degraded  | worker-a | worker:rdp-credential |
+        | recovered | worker-a |                       |
+
     Scenario: Stopping a worker sends one notification, and recovering one more
       When the watcher runs at these times, while fleet-status sees these failing checks:
         | time                 | worker-a                                       | worker-b |

@@ -1,3 +1,4 @@
+import { inaccessibleGithubKeychain, KEYCHAIN_REMEDY } from './github/keychain';
 import { homedir } from 'node:os';
 import { resolve } from 'node:path';
 import { runAnsible, variablesDirectory } from './platform/ansible';
@@ -136,6 +137,37 @@ export async function gitIdentityCheck(
   };
 }
 
+async function missingPushCredential(run: Runner, id: string): Promise<Check> {
+  const helpers = await effectiveGitConfig(
+    run,
+    'credential.https://github.com.helper'
+  );
+  if (helpers && asksOnlyGh(helpers)) {
+    const locked = await inaccessibleGithubKeychain(run);
+    return {
+      id,
+      status: 'fail',
+      summary: locked
+        ? 'GITHUB_KEYCHAIN_INACCESSIBLE'
+        : 'GIT_CREDENTIAL_UNAVAILABLE',
+      remedy: {
+        action: locked
+          ? KEYCHAIN_REMEDY
+          : 'The configured gh helper returned no credential. Check the GitHub principal in this session and the github:sync result.',
+      },
+    };
+  }
+  return {
+    id,
+    status: 'fail',
+    summary: 'GIT_CREDENTIAL_HELPER_MISSING',
+    remedy: {
+      action:
+        'Git has no credential for github.com, so an agent cannot push over HTTPS. Rerun fleet-sync, which declares gh as the credential helper; if gh is signed out, the worker signs in again from its own Vault session (auth:github).',
+    },
+  };
+}
+
 /** A push is authorized through git itself, never through gh: Git's
  * credential helper must answer for github.com, and the declared repository
  * must answer an authenticated listing. The credential is read and dropped;
@@ -151,16 +183,9 @@ export async function gitPushAuthCheck(
     env: QUIET,
     timeoutMs: 20_000,
   });
-  if (!fill.ok || !/^password=./m.test(fill.stdout))
-    return {
-      id,
-      status: 'fail',
-      summary: 'GIT_CREDENTIAL_HELPER_MISSING',
-      remedy: {
-        action:
-          'Git has no credential for github.com, so an agent cannot push over HTTPS. Rerun fleet-sync, which declares gh as the credential helper; if gh is signed out, the worker signs in again from its own Vault session (auth:github).',
-      },
-    };
+  if (!fill.ok || !/^password=./m.test(fill.stdout)) {
+    return missingPushCredential(run, id);
+  }
   if (git?.verifyRepository) {
     const listed = await run(
       ['git', 'ls-remote', '--heads', git.verifyRepository],

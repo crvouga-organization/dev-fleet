@@ -1,0 +1,174 @@
+---
+- name: Share the enrolled GNOME desktop over the tailnet
+  hosts: localhost
+  connection: local
+  become: true
+  gather_facts: true
+  vars_files: [policy.json]
+  vars:
+    rdp_blob: /etc/personal-fleet/rdp-password.cred
+    rdp_unit: devfleet-rdp-credential.service
+    rdp_directory: '{{ development_home }}/.local/share/gnome-remote-desktop'
+    rdp_bus:
+      XDG_RUNTIME_DIR: '/run/user/{{ development_uid }}'
+      DBUS_SESSION_BUS_ADDRESS: 'unix:path=/run/user/{{ development_uid }}/bus'
+      HOME: '{{ development_home }}'
+  tasks:
+    - name: Identify the Ubuntu release
+      ansible.builtin.import_tasks: tasks/release.yml
+    - name: Require the tailnet firewall before enabling a listener
+      ansible.builtin.command:
+        argv: [nft, list, chain, inet, personal_fleet, input]
+      register: rdp_firewall
+      check_mode: false
+      changed_when: false
+      failed_when: >-
+        rdp_firewall.rc != 0 or
+        ('tcp dport ' ~ rdp_port ~ ' drop comment "tailnet-only"') not in rdp_firewall.stdout
+    - name: Install this release's desktop sharing packages
+      ansible.builtin.include_tasks: tasks/install.yml
+      vars:
+        install_pins: '{{ ubuntu_release.screenSharingPackages }}'
+    - name: Install the session credential publisher
+      ansible.builtin.copy:
+        src: screen-sharing-credential.py
+        dest: /etc/personal-fleet/screen-sharing-credential.py
+        owner: root
+        group: root
+        mode: '0644'
+    - name: Check the existing encrypted desktop credential
+      ansible.builtin.command:
+        argv:
+          [systemd-creds, decrypt, '--name=rdp-password', '{{ rdp_blob }}', '-']
+        strip_empty_ends: false
+      register: rdp_current
+      check_mode: false
+      changed_when: false
+      failed_when: false
+      no_log: true
+    - name: Seal the per-worker password for its systemd service
+      ansible.builtin.command:
+        argv:
+          [systemd-creds, encrypt, '--name=rdp-password', '-', '{{ rdp_blob }}']
+        stdin: '{{ rdp_password }}'
+        stdin_add_newline: false
+      when: rdp_current.rc != 0 or rdp_current.stdout != rdp_password
+      changed_when: true
+      no_log: true
+    - name: Declare the credential publisher for each user manager startup
+      ansible.builtin.copy:
+        dest: '/etc/systemd/system/{{ rdp_unit }}'
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          # Managed by dev-fleet screen sharing
+          [Unit]
+          Description=Publish the fleet desktop sharing credential in the session keyring
+          After=user@{{ development_uid }}.service
+          PartOf=user@{{ development_uid }}.service
+          [Service]
+          Type=oneshot
+          User={{ development_user }}
+          Environment=XDG_RUNTIME_DIR=/run/user/{{ development_uid }}
+          Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/{{ development_uid }}/bus
+          LoadCredentialEncrypted=rdp-password:{{ rdp_blob }}
+          ExecStart=/usr/bin/python3 /etc/personal-fleet/screen-sharing-credential.py
+          [Install]
+          WantedBy=user@{{ development_uid }}.service
+    - name: Provide the credential to this session and future sessions
+      ansible.builtin.systemd_service:
+        name: '{{ rdp_unit }}'
+        enabled: true
+        daemon_reload: true
+        state: started
+    - name: Configure the existing graphical desktop
+      become: true
+      become_user: '{{ development_user }}'
+      environment: '{{ rdp_bus }}'
+      block:
+        - name: Create the private desktop identity directory
+          ansible.builtin.file:
+            path: '{{ rdp_directory }}'
+            state: directory
+            mode: '0700'
+        - name: Read the desktop certificate and private key settings
+          ansible.builtin.command:
+            argv:
+              [
+                gsettings,
+                get,
+                org.gnome.desktop.remote-desktop.rdp,
+                '{{ item }}',
+              ]
+          loop: [tls-cert, tls-key]
+          register: rdp_paths
+          check_mode: false
+          changed_when: false
+        - name: Preserve an existing configured identity
+          ansible.builtin.set_fact:
+            rdp_cert: '{{ (rdp_paths.results[0].stdout | trim("''")) or (rdp_directory ~ ''/devfleet.crt'') }}'
+            rdp_key: '{{ (rdp_paths.results[1].stdout | trim("''")) or (rdp_directory ~ ''/devfleet.key'') }}'
+        - name: Inspect both parts of the desktop identity
+          ansible.builtin.stat:
+            path: '{{ item }}'
+          loop: ['{{ rdp_cert }}', '{{ rdp_key }}']
+          register: rdp_files
+        - name: Refuse to replace half an identity
+          ansible.builtin.assert:
+            that: rdp_files.results[0].stat.exists == rdp_files.results[1].stat.exists
+        - name: Create the worker TLS identity on first enrollment
+          ansible.builtin.command:
+            argv:
+              [
+                openssl,
+                req,
+                -new,
+                -x509,
+                -newkey,
+                'rsa:3072',
+                -nodes,
+                -days,
+                '3650',
+                -subj,
+                '/CN={{ rdp_host }}',
+                -addext,
+                'subjectAltName=DNS:{{ rdp_host }}',
+                -keyout,
+                '{{ rdp_key }}',
+                -out,
+                '{{ rdp_cert }}',
+              ]
+            creates: '{{ rdp_cert }}'
+        - name: Read current RDP settings
+          ansible.builtin.command:
+            argv:
+              [
+                gsettings,
+                get,
+                org.gnome.desktop.remote-desktop.rdp,
+                '{{ item.key }}',
+              ]
+          loop: "{{ {'tls-cert': rdp_cert, 'tls-key': rdp_key, 'port': rdp_port | string, 'negotiate-port': 'false', 'screen-share-mode': 'mirror-primary', 'view-only': 'false', 'enable': 'true'} | dict2items }}"
+          check_mode: false
+          changed_when: false
+          register: rdp_settings
+        - name: Repair changed desktop settings
+          ansible.builtin.command:
+            argv:
+              [
+                gsettings,
+                set,
+                org.gnome.desktop.remote-desktop.rdp,
+                '{{ item.item.key }}',
+                '{{ item.item.value }}',
+              ]
+          when: (item.stdout | regex_replace('^uint16 ', '') | trim("'")) != item.item.value
+          loop: '{{ rdp_settings.results }}'
+          changed_when: true
+        - name: Start the sharing service in the user session
+          ansible.builtin.systemd_service:
+            scope: user
+            name: gnome-remote-desktop.service
+            enabled: true
+            state: started

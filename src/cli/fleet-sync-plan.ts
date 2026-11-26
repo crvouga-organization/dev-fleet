@@ -1,3 +1,4 @@
+import { record } from '../config';
 import { join } from 'node:path';
 import policy from '../../ansible/ubuntu/policy.json';
 import type { Standing } from '../state/sync';
@@ -39,6 +40,7 @@ export interface SyncPlan {
   nodes: { node: string; from: string | null; to: string; changes: boolean }[];
   /** What a sync removes from a worker because the fleet configuration
    * turned one of its features off since it was last applied. */
+  screenSharing?: { node: string; port: number }[];
   removals: { node: string; removes: string[] }[];
 }
 
@@ -200,16 +202,34 @@ export async function syncPlan(
       to: input.to,
       changes: differs,
     })),
-    removals: input.definitions ? removals(input.nodes, input.definitions) : [],
+    screenSharing: sharingPlan(input.nodes, input.definitions?.selected),
+    removals: removals(input.nodes, input.definitions),
   };
+}
+
+function sharingPlan(nodes: string[], definition: unknown) {
+  if (!record(definition) || !Array.isArray(definition['workers'])) return [];
+  return definition['workers'].flatMap((entry: unknown) => {
+    if (
+      !record(entry) ||
+      typeof entry['id'] !== 'string' ||
+      !nodes.includes(entry['id'])
+    )
+      return [];
+    const sharing = entry['screenSharing'];
+    return record(sharing) && typeof sharing['port'] === 'number'
+      ? [{ node: entry['id'], port: sharing['port'] }]
+      : [];
+  });
 }
 
 /** Per worker, what turning its features off removes. Nothing is known to
  * be removed from a worker the applied configuration does not name. */
 function removals(
   nodes: string[],
-  definitions: { applied: unknown; selected: unknown }
+  definitions?: { applied: unknown; selected: unknown }
 ): SyncPlan['removals'] {
+  if (!definitions) return [];
   const workers = (definition: unknown): Record<string, unknown>[] => {
     const list =
       typeof definition === 'object' && definition !== null
@@ -262,6 +282,10 @@ export function planText(plan: SyncPlan): string {
     );
   for (const restart of plan.restarts)
     lines.push(`  Restarts ${restart.service}: ${restart.reason}`);
+  for (const sharing of plan.screenSharing ?? [])
+    lines.push(
+      `  Verify or configure GNOME desktop sharing on ${sharing.node}, tailnet-only TCP ${sharing.port}, with its persistent TLS identity and per-worker credential.`
+    );
   for (const removal of plan.removals ?? [])
     lines.push(`  Removes from ${removal.node}: ${removal.removes.join(', ')}`);
   return lines.join('\n');

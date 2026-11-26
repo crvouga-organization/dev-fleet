@@ -35,6 +35,10 @@ const MANAGER = fleet.manager.id;
 
 // ── The fleet ────────────────────────────────────────────────────────────
 
+Given('the manager was reached over SSH on macOS', (world) => {
+  world.remoteMac = true;
+});
+
 Given('the fleet login is {string}', (world, login: string) => {
   // The example configuration declares it; the scenario says which it is.
   expect(world.definition.worker?.githubLogin).toBe(login);
@@ -158,6 +162,7 @@ async function signIn(world: GithubWorld, node: string): Promise<void> {
     ),
     login: target.login!,
     apply: target.managed,
+    remoteMac: world.remoteMac,
   });
   world.results.set(node, result);
 }

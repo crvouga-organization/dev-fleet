@@ -1,0 +1,153 @@
+---
+- name: Adopt native SSH using the enrolled SSH identities
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Add the enrolled worker using its verified transport
+      ansible.builtin.add_host:
+        name: devfleet_ssh_worker
+        ansible_connection: ssh
+        ansible_host: '{{ target }}'
+        ansible_ssh_args: -o ControlMaster=no -o ControlPath=none
+        ansible_ssh_common_args: '{{ ssh_options }}'
+        ansible_user: '{{ login | default(omit, true) }}'
+      check_mode: false
+      changed_when: false
+    - name: Inspect the manager Tailscale distribution
+      ansible.builtin.command:
+        argv: [tailscale, version, '--json']
+      register: native_distribution
+      check_mode: false
+      changed_when: false
+    - name: Require a macOS distribution that supports the SSH server
+      ansible.builtin.assert:
+        that: (native_distribution.stdout | from_json).osVariant | default('') == 'darwin'
+        fail_msg: TAILSCALE_SSH_MACOS_UNSUPPORTED
+    - name: Verify the worker's existing strict path to the manager
+      ansible.builtin.command:
+        argv: '{{ manager_probe }}'
+      delegate_to: devfleet_ssh_worker
+      register: native_handoff
+      check_mode: false
+      changed_when: false
+      failed_when: native_handoff.rc != 0 or native_handoff.stdout | trim != manager_user
+      timeout: 30
+    - name: Verify the existing enrolled worker account and host key
+      ansible.builtin.command:
+        argv: '{{ worker_probe }}'
+      register: native_enrolled
+      check_mode: false
+      changed_when: false
+      failed_when: native_enrolled.rc != 0 or native_enrolled.stdout | trim != worker_user
+      timeout: 30
+    - name: Check that both nodes are running and authorized for native SSH
+      ansible.builtin.command:
+        argv: [tailscale, status, '--json']
+      delegate_to: '{{ item }}'
+      loop: [localhost, devfleet_ssh_worker]
+      register: native_status
+      check_mode: false
+      changed_when: false
+      no_log: true
+      failed_when: >-
+        native_status.rc != 0 or (native_status.stdout | from_json).BackendState != 'Running' or
+        'https://tailscale.com/cap/ssh' not in ((native_status.stdout | from_json).Self.CapMap | default({}))
+    - name: Require a tailnet SSH policy on each destination
+      ansible.builtin.command:
+        argv: [tailscale, debug, netmap]
+      delegate_to: '{{ item }}'
+      loop: [localhost, devfleet_ssh_worker]
+      register: native_map
+      check_mode: false
+      changed_when: false
+      no_log: true
+      failed_when: >-
+        native_map.rc != 0 or
+        ((native_map.stdout | from_json).SSHPolicy.rules | default([]) | length == 0)
+    - name: Read the manager SSH preference
+      ansible.builtin.command:
+        argv: [tailscale, debug, prefs]
+      register: manager_prefs
+      check_mode: false
+      changed_when: false
+      no_log: true
+    - name: Read the worker SSH preference
+      ansible.builtin.command:
+        argv: [tailscale, debug, prefs]
+      delegate_to: devfleet_ssh_worker
+      register: worker_prefs
+      check_mode: false
+      changed_when: false
+      no_log: true
+    - name: Remember which preferences this adoption changes
+      ansible.builtin.set_fact:
+        native_change_manager: '{{ not (manager_prefs.stdout | from_json).RunSSH }}'
+        native_change_worker: '{{ not (worker_prefs.stdout | from_json).RunSSH }}'
+    - name: Require local manager adoption while its own SSH transport changes
+      ansible.builtin.assert:
+        that: not native_change_manager or lookup('ansible.builtin.env', 'SSH_CONNECTION') == ''
+        fail_msg: Enable the manager from its local session once before handing sync off over SSH.
+    - name: Adopt one route at a time and prove fresh unattended access
+      block:
+        - name: Enable native SSH on the manager
+          ansible.builtin.command:
+            argv: [tailscale, set, '--ssh=true', '--accept-risk=lose-ssh']
+          when: native_change_manager
+          changed_when: true
+        - name: Prove native worker to manager handoff with the original host key
+          ansible.builtin.command:
+            argv: '{{ manager_native_probe }}'
+          delegate_to: devfleet_ssh_worker
+          register: native_manager_login
+          check_mode: false
+          changed_when: false
+          failed_when: native_manager_login.rc != 0 or native_manager_login.stdout | trim != manager_user
+          timeout: 30
+        - name: Arm a worker-local rollback in case access is lost during adoption
+          delegate_to: devfleet_ssh_worker
+          become: true
+          ansible.builtin.command:
+            argv:
+              [
+                systemd-run,
+                '--unit=devfleet-ssh-rollback',
+                '--on-active=2min',
+                '--collect',
+                /usr/bin/tailscale,
+                set,
+                '--ssh=false',
+              ]
+          when: native_change_worker
+          changed_when: true
+        - name: Enable native SSH on the worker
+          become: true
+          ansible.builtin.command:
+            argv: [tailscale, set, '--ssh=true', '--accept-risk=lose-ssh']
+          delegate_to: devfleet_ssh_worker
+          when: native_change_worker
+          changed_when: true
+        - name: Prove the manager reaches the native server as the enrolled account
+          ansible.builtin.command:
+            argv: '{{ worker_native_probe }}'
+          register: native_worker_login
+          check_mode: false
+          changed_when: false
+          failed_when: native_worker_login.rc != 0 or native_worker_login.stdout | trim != worker_user
+          timeout: 30
+        - name: Keep the working SSH preference
+          delegate_to: devfleet_ssh_worker
+          become: true
+          ansible.builtin.systemd_service:
+            name: devfleet-ssh-rollback.timer
+            state: stopped
+          when: native_change_worker
+      rescue:
+        - name: Restore the previous manager preference after a failed adoption
+          ansible.builtin.command:
+            argv: [tailscale, set, '--ssh=false']
+          when: native_change_manager
+          changed_when: true
+        - name: Report that the two unattended routes did not verify
+          ansible.builtin.fail:
+            msg: TAILSCALE_SSH_VERIFICATION_FAILED

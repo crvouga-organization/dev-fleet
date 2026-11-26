@@ -489,6 +489,18 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'worker:desired-source': 'The worker runs the declared revision.',
   'worker:docker-run':
     'A container starts and exits on a worker whose containers feature is on.',
+  'tailscale:native-ssh':
+    'The enrolled accounts can reach both native Tailscale SSH servers unattended.',
+  'worker:rdp-service': 'The GNOME desktop sharing service is running.',
+  'worker:rdp-session':
+    'The graphical session provides remote desktop control.',
+  'worker:rdp-port': 'The stable RDP port is configured and listening.',
+  'worker:rdp-credential': 'The desktop session can read its RDP credential.',
+  'worker:rdp-certificate': 'The worker reports its configured TLS identity.',
+  'worker:rdp-endpoint':
+    'The manager verifies RDP negotiation and the worker certificate.',
+  'worker:screen-sharing-policy':
+    'The worker applied its declared desktop sharing policy.',
   'worker:exposure':
     'Nothing listens on the worker beyond loopback and the tailnet but what the declared exposure policy allows, and the fleet firewall that closes the rest is loaded; not applicable without an address outside the tailnet.',
   'worker:features':
