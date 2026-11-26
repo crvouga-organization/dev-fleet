@@ -236,6 +236,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'beszel:service': 'The monitoring agent service runs.',
   'beszel:system':
     "The monitoring hub's system for a replaced worker watches the new machine, or a retired worker's system is gone.",
+  'beszel:agent-version':
+    'The hub observes the pinned release on the connected agent.',
   'beszel:version': 'The monitoring hub runs the pinned Beszel release.',
   'bootstrap:attached':
     "The manager followed this machine's running operation of the same revision and reports its result.",
@@ -430,6 +432,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
     'The proxy account roster can be read without changing providers.',
   't3:reconciliation':
     'T3 reconciliation can read and validate its local inputs.',
+  't3:quota-coverage':
+    'The manager reads quota windows for each managed Antigravity account from its proxy.',
   't3:providers': "T3's provider instances are the declared ones.",
   't3:running-version':
     'The running T3 server is the installed release and no restart of it is pending; a pending restart waits for running agent turns, until its deadline.',

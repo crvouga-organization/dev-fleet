@@ -5,6 +5,8 @@ import { threshold } from './worker-sizing';
 /** Machine health sample parsed from `net/remote-probe.sh` output. */
 export type HealthSample = {
   readonly ncpu?: number;
+  readonly cpuPressure?: number;
+  readonly runnable?: number;
   readonly load?: number;
   readonly memFreePct?: number;
   readonly swapPct?: number;
@@ -51,6 +53,8 @@ export type HealthSample = {
 
 const PROBE_KEYS = {
   ncpu: 'ncpu',
+  runnable: 'runnable',
+  cpupressure: 'cpuPressure',
   load: 'load',
   memfree: 'memFreePct',
   swap: 'swapPct',

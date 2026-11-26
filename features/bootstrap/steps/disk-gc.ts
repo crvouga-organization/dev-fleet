@@ -76,7 +76,7 @@ function collectorOn(world: BootstrapWorld): string {
     [
       'import os, types',
       'DISK = types.SimpleNamespace(',
-      `    f_frsize=4096, f_blocks=${size}, f_bavail=${blocks},`,
+      `    f_frsize=4096, f_blocks=${size}, f_bavail=${blocks}, f_bfree=${blocks},`,
       `    f_files=1000000, f_favail=${Math.round(disk.inodesFreePercent * 10000)})`,
       'os.statvfs = lambda path: DISK',
       `exec(compile(open(${JSON.stringify(gc)}).read(), ${JSON.stringify(gc)}, 'exec'))`,
@@ -187,6 +187,9 @@ Given(
 
 Given('old, open and recent files in the host temporary caches', (world) => {
   const { home, proc, options } = collector(world);
+  const bin = world.directory('fixture-processes-');
+  writeFileSync(join(bin, 'ps'), '#!/bin/sh\necho idle', { mode: 0o755 });
+  collector(world).bin = bin;
   const root = join(home, 'host-tmp');
   const old = Date.now() / 1000 - 10 * DAY;
   for (const file of [
@@ -199,6 +202,28 @@ Given('old, open and recent files in the host temporary caches', (world) => {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, 'cache');
     if (!file.endsWith('/new')) utimesSync(path, old, old);
+  }
+  for (const [suffix, packageName] of [
+    ['native', 'native'],
+    ['project', 'different'],
+    ['manifest-only', 'manifest-only'],
+  ]) {
+    const dir = join(root, '.123abc-1.' + suffix);
+    mkdirSync(dir);
+    const manifest = join(dir, 'package.json');
+    writeFileSync(
+      manifest,
+      JSON.stringify({ name: packageName, version: '1.0.0' })
+    );
+    if (suffix !== 'manifest-only') {
+      const executable = join(dir, 'tool');
+      writeFileSync(executable, Buffer.from([0x7f, 69, 76, 70, 0]), {
+        mode: 0o755,
+      });
+      utimesSync(executable, old, old);
+    }
+    utimesSync(manifest, old, old);
+    utimesSync(dir, old, old);
   }
   symlinkSync(join(root, 'other'), join(root, 'metro-cache', 'link'));
   mkdirSync(join(proc, '123', 'fd'), { recursive: true });
@@ -760,5 +785,40 @@ Then(
     ]);
     for (const event of steps)
       expect(event.until_hours ?? null).toBe(hours ? Number(hours) : null);
+  }
+);
+
+Given(
+  'pnpm can prune {string} among the store generations {string}',
+  (world, compatible: string, versions: string) => {
+    const state = collector(world);
+    const store = join(state.home, '.local/share/pnpm/store');
+    for (const version of versions.split(',')) {
+      mkdirSync(join(store, version), { recursive: true });
+      writeFileSync(join(store, version, 'blob'), Buffer.alloc(MIB, 1));
+    }
+    state.bin = world.directory('process-list-');
+    writeFileSync(join(state.bin, 'ps'), '#!/bin/sh\necho idle\n', {
+      mode: 0o755,
+    });
+    const folder = join(
+      state.home,
+      '.local/share/mise/installs/pnpm/8.0.0/bin'
+    );
+    mkdirSync(folder, { recursive: true });
+    writeFileSync(
+      join(folder, 'pnpm'),
+      `#!/bin/sh\ncase "$4" in path) echo "$2/${compatible}" ;; prune) rm "$2/${compatible}/blob" ;; esac\n`,
+      { mode: 0o755 }
+    );
+  }
+);
+Then(
+  'the report {string} gives {string} the pnpm outcome {string}',
+  (world, file: string, version: string, expected: string) => {
+    const report = JSON.parse(
+      readFileSync(join(collector(world).home, file), 'utf8')
+    );
+    expect(report.pnpmStores[version]).toBe(expected);
   }
 );

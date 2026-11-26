@@ -22,6 +22,25 @@
     "execution": { "const": "manager-push" },
     "ok": { "type": "boolean" },
     "applied": { "type": "boolean" },
+    "versionParity": {
+      "type": "object",
+      "required": ["revision", "complete", "nodes"],
+      "properties": {
+        "revision": { "type": ["string", "null"] },
+        "complete": { "type": "boolean" },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["node", "pending"],
+            "properties": {
+              "node": { "type": "string" },
+              "pending": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
     "acceptance": {
       "description": "Acceptance after recording deployment and checking the fleet state.",
       "type": "object",

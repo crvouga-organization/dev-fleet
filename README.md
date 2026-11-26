@@ -123,6 +123,13 @@ The CLI runs on [Bun](https://bun.sh), which the package brings as a
 dependency. If your package manager does not run dependency install scripts,
 allow Bun's or install Bun yourself; the CLI uses the one on `PATH`.
 
+For a new remote T3 turn, clients can run `devfleet fleet-status --placement --json`.
+Pass eligible worker IDs with `--node`, including only the pinned worker when
+the caller chose an environment. The reply names a preferred environment or
+says to queue, and gives the measurements behind each decision. Concurrent
+callers sample in proportion to available capacity. T3 must perform admission
+when it starts a turn and retry placement if another start took the last slot.
+
 ## The version
 
 Every release of `@crvouga/dev-fleet` is published from one commit and names

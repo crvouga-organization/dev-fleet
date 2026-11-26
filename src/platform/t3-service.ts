@@ -333,7 +333,11 @@ async function installedRelease(
   )?.[1];
 }
 
-export async function liveServerVersion(run: Runner, transport: string[] = []) {
+export async function liveServerVersion(
+  run: Runner,
+  transport: string[] = [],
+  origin = 'http://127.0.0.1:3773'
+) {
   const server = await run(
     [
       ...transport,
@@ -342,7 +346,7 @@ export async function liveServerVersion(run: Runner, transport: string[] = []) {
       '--silent',
       '--max-time',
       '10',
-      'http://127.0.0.1:3773/.well-known/t3/environment',
+      origin + '/.well-known/t3/environment',
     ],
     { timeoutMs: 15_000 }
   );

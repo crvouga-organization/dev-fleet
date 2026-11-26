@@ -38,6 +38,7 @@ is missing from it.
 | `ansible/macos/worker-host-key.yml`        | A worker's pinned SSH host key in the manager's known_hosts                        |
 | `ansible/macos/vault-renew.yml`            | The launch agent that renews the manager's own Vault session                       |
 | `ansible/github/git.yml`                   | The Git identity and GitHub credentials of every node                              |
+| `ansible/t3/provider-keys.yml`             | Install and retire local T3 client-key slots for managed Antigravity providers     |
 | `ansible/agents/agents.yml`                | Each agent CLI's dedicated profile, rendered from `ansible/agents/templates/`      |
 | `ansible/agents/receipts.yml`              | Advance revision evidence for unchanged, verified profiles in one run              |
 | `ansible/agents/commands.yml`              | The link that makes a worker's agent commands the fleet's launchers (`agents/bin`) |

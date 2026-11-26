@@ -1,3 +1,5 @@
+import { workerPlacement } from '../../../src/cli/worker-placement';
+import type { Runner } from '../../../src/types';
 import { expect } from 'bun:test';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir, userInfo } from 'node:os';
@@ -260,3 +262,44 @@ Then('the capacity probe prints these lines:', (world, table: DataTable) => {
   const printed = need(world, world.text, 'what the probe printed').split('\n');
   for (const line of table.list()) expect(printed).toContain(line);
 });
+
+When(
+  'two clients request placement with worker samples aged {int} seconds',
+  async (world, age: number) => {
+    const nodes = ['worker-a', 'worker-b'].map((id) => ({
+      ...NODE,
+      id,
+      ssh: id,
+    }));
+    const run: Runner = async (command) =>
+      succeeded(
+        [
+          'ncpu=8',
+          'runnable=1',
+          'load=1',
+          'cpupressure=1',
+          'memfree=85',
+          'memtotalmb=32768',
+          'epoch=' + String(1000 - age),
+          'environment=00000000-0000-0000-0000-00000000000' +
+            (command.includes('worker-a') ? '1' : '2'),
+        ].join('\n')
+      );
+    const answers = await Promise.all(
+      [false, true].map((last) =>
+        workerPlacement(
+          nodes,
+          run,
+          () => 1000000,
+          (total) => (last ? total - 1 : 0)
+        )
+      )
+    );
+    world.text = answers
+      .map((answer) => [answer.decision, answer.node].filter(Boolean).join(':'))
+      .join(',');
+  }
+);
+Then('their placement decisions are {string}', (world, expected: string) =>
+  expect(world.text).toBe(expected)
+);

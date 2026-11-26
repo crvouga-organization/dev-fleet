@@ -42,6 +42,9 @@ const TOOLS: Record<
     label: 'AntiGravity',
     config: {
       binaryPath: '${workspace}/agents/bin/agy',
+      authMethod: 'gemini-api-key',
+      // T3 materializes its secret-store slot when it sees its redaction marker.
+      apiKey: '••••••',
     },
   },
 };

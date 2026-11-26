@@ -6,6 +6,8 @@ import type { Check, Runner } from './types';
  */
 export interface DiskGcReport {
   finished: number;
+  targetUsedPercent?: number;
+  usedPercentAfter?: number;
   disposable: boolean;
   reclaimedMiB: number;
   categoriesMiB: Record<string, number>;
@@ -59,6 +61,12 @@ export async function readDiskGcReport(
   const same = value['sameFilesystem'];
   return {
     finished: value['finished'] as number,
+    ...(number(value['usedPercentAfter']) && number(value['targetUsedPercent'])
+      ? {
+          usedPercentAfter: value['usedPercentAfter'],
+          targetUsedPercent: value['targetUsedPercent'],
+        }
+      : {}),
     disposable: value['disposable'] === true,
     reclaimedMiB: value['reclaimedMiB'] as number,
     categoriesMiB: categories,
@@ -97,6 +105,23 @@ export function diskGcReportCheck(
   now: number
 ): Check {
   const summary = describeDiskGc(report, now);
+  if (
+    report.usedPercentAfter !== undefined &&
+    report.targetUsedPercent !== undefined &&
+    report.usedPercentAfter > report.targetUsedPercent
+  )
+    return {
+      id,
+      status: 'warn',
+      summary: `DISK_TARGET_UNMET: ${report.usedPercentAfter.toFixed(2)}% used after safe collection, above the ${report.targetUsedPercent}% target. ${summary}`,
+      remedy: {
+        action:
+          'Inspect the remaining protected data and the GC service result. Add disk capacity if live data exceeds the target.' +
+          (report.sameFilesystem === false
+            ? ' ' + STORE_FILESYSTEM_REMEDY
+            : ''),
+      },
+    };
   return report.sameFilesystem === false
     ? {
         id,

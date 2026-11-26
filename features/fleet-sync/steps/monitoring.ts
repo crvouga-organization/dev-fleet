@@ -179,7 +179,11 @@ function access(world: FleetSyncWorld) {
             })),
           };
         if (path.includes('/systems/'))
-          return { items: described.system ? [described.system] : [] };
+          return {
+            items: described.system
+              ? [{ ...described.system, info: { v: described.version } }]
+              : [],
+          };
         if (path.includes('/fingerprints/')) return { items: [] };
         // The newest sample of a system.
         return { items: [{ status: 'up', updated: now(), created: now() }] };

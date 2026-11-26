@@ -176,6 +176,8 @@ Feature: What a machine becomes is declared, once
         | pin  |
         | mise |
         | t3   |
+        | beszel |
+        | ubuntu |
         | codex |
         | claude |
         | gemini |
@@ -208,6 +210,4 @@ Feature: What a machine becomes is declared, once
 
       Examples:
         | pin                                      |
-        | Beszel (hub image and agents)            |
         | Docker Desktop on the manager            |
-        | The Ubuntu snapshot and package versions |

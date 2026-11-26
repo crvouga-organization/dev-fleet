@@ -10,7 +10,7 @@ Feature: What the hub knows about a machine is read, never changed
       Given the hub "https://home.example.ts.net:8443" answers:
         | request                                | answer                                                                          |
         | /api/beszel/info                       | {"v":"0.21.2","key":"never-output-key"}                                         |
-        | /api/collections/systems/records…      | {"items":[{"id":"abcdefghijklmno","status":"up","token":"never-output-token"}]} |
+        | /api/collections/systems/records…      | {"items":[{"id":"abcdefghijklmno","status":"up","info":{"v":"0.21.2"},"token":"never-output-token"}]} |
         | /api/collections/system_stats/records… | {"items":[{"created":"2026-11-06T11:59:59.000Z"}]}                              |
       And the manager's clock reads "2026-11-06T12:00:00Z"
 
@@ -42,7 +42,7 @@ Feature: What the hub knows about a machine is read, never changed
       Examples:
         | how many | records                                                                                                                                             | summary               |
         | no       | {"items":[]}                                                                                                                                        | BESZEL_NODE_MISSING   |
-        | two      | {"items":[{"id":"abcdefghijklmno","status":"up","token":"never-output-token"},{"id":"abcdefghijklmno","status":"up","token":"never-output-token"}]} | BESZEL_DUPLICATE_NODE |
+        | two      | {"items":[{"id":"abcdefghijklmno","status":"up","info":{"v":"0.21.2"},"token":"never-output-token"},{"id":"abcdefghijklmno","status":"up","info":{"v":"0.21.2"},"token":"never-output-token"}]} | BESZEL_DUPLICATE_NODE |
 
   Rule: An outage is evidence too, bounded and redacted
 

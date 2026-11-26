@@ -1,5 +1,6 @@
 import { managerClientSettings } from '../state/t3-client-settings';
 import { clientFailure } from '../t3/client-settings';
+import { measureParity } from '../version-parity';
 import { meshChecks } from '../t3/mesh';
 import { authorizeFirstPairing } from './fleet-sync-pairing';
 import { createHash } from 'node:crypto';
@@ -204,9 +205,20 @@ export async function selected(
       ))
     );
   }
+  enforceParity(canonical, report, Boolean(options.apply));
   if (settle) report.checks.push(await settle(report));
   applyAcceptance(report, options.failOnWarning === true);
   return outcome(report, planFingerprint, started);
+}
+
+function enforceParity(
+  definition: FleetDefinition,
+  report: ManagerReport,
+  apply: boolean
+) {
+  if (!definition.softwarePolicy) return;
+  report.versionParity = measureParity(definition, report);
+  if (apply && !report.versionParity.complete) report.ok = false;
 }
 
 /** Called after recording deployment and the bucket's final evidence. */
