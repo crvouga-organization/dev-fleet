@@ -48,13 +48,55 @@ export async function convergeT3Service(
     );
   const preparation = await prepare();
   if (preparation.length) return preparation;
+  const installed = await install();
+  return measureService(run, session, installed);
+}
+
+async function measureService(
+  run: Runner,
+  session: Session,
+  installed: boolean
+): Promise<Check[]> {
   const words = SESSION_WORDS[session];
-  if (!(await install())) return pending(...words.installFailed);
   const unit = t3Unit(session);
   const active = await userctl(run, 'is-active', unit);
+  if (!active.ok && session === 'desktop') {
+    const blocked = await desktopPrerequisite(run);
+    if (blocked) return blocked;
+  }
+  if (!installed) return pending(...words.installFailed);
   const enabled = await userctl(run, 'is-enabled', unit);
   if (!active.ok || !enabled.ok) return pending(...words.stopped(unit));
   return [{ id: 't3:service', status: 'pass', summary: words.running }];
+}
+
+async function desktopPrerequisite(run: Runner): Promise<Check[] | undefined> {
+  const graphical = await userctl(run, 'is-active', 'graphical-session.target');
+  if (['inactive', 'failed'].includes(graphical.stdout.trim()))
+    return pending(
+      'T3_NO_GRAPHICAL_SESSION',
+      'Establish the declared graphical login. The recovery timer will start T3 in that session.'
+    );
+  const listener = await run([
+    'python3',
+    '-I',
+    '-B',
+    '/usr/local/lib/personal-fleet/t3-listener.py',
+  ]);
+  if (listener.ok && listener.stdout.trim() === 'unknown')
+    return pending(
+      'T3_LISTENER_OWNER_UNKNOWN',
+      'Inspect the process listening on port 3773 before starting the managed desktop.'
+    );
+  if (
+    listener.ok &&
+    /^app-com\.t3tools\.T3Code-.*\.scope$/.test(listener.stdout.trim())
+  )
+    return pending(
+      'T3_DESKTOP_HANDOFF_PENDING',
+      'Let the active turns finish. The recovery timer rechecks ownership and hands the listener to the managed desktop.'
+    );
+  return undefined;
 }
 
 /** How a worker's T3 restarts for a new release or policy, as the manager's

@@ -19,6 +19,7 @@
     mode: '0755'
   loop:
     - t3-health.sh
+    - t3-listener.py
     - t3-idle.py
     - t3-renderers.py
     - t3-local-only.py

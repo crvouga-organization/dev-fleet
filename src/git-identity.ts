@@ -89,7 +89,7 @@ async function effective(run: Runner, key: string): Promise<string> {
  * same pattern as `git_gh_helper_pattern` in `ansible/github/git.yml`.
  */
 export const GH_CREDENTIAL_HELPER =
-  /^!(\S*\/|'[^']*\/)?gh'? auth git-credential$/;
+  /^!(?:cd \/ && exec )?(\S*\/|'[^']*\/)?gh'? auth git-credential$/;
 
 /** Git asks every helper after the last empty one, in order: each must be gh. */
 export function asksOnlyGh(helpers: string[]): boolean {

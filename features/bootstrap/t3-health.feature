@@ -249,3 +249,35 @@ Feature: The watchdog keeps a worker's T3 up, responsive and on its installed re
       And T3 runs no agent turn
       When the watchdog runs
       Then it runs "systemctl --user restart t3code-headless.service"
+
+  Rule: The managed desktop starts only after a known listener owner releases the port
+
+    Scenario: A busy desktop in an application scope keeps its turn and its pending restart
+      Given the T3 desktop service is stopped
+      And the desktop listener belongs to "app-com.t3tools.T3Code-fixture.scope"
+      And T3 runs an agent turn
+      When the watchdog runs 2 times
+      Then it says "T3_RESTART_PENDING"
+      And the pending restart is kept
+      And it does not run "systemctl --user stop app-com.t3tools.T3Code-fixture.scope"
+      And it starts and restarts nothing
+
+    Scenario: An idle desktop releases the listener before the managed desktop starts
+      Given the T3 desktop service is stopped
+      And the desktop listener belongs to "app-com.t3tools.T3Code-fixture.scope"
+      And T3 runs no agent turn
+      When the watchdog runs
+      Then it runs "systemctl --user stop app-com.t3tools.T3Code-fixture.scope" before "systemctl --user start t3code-desktop.service"
+      And the pending restart is cleared
+
+    Scenario: Recovery preserves a listener whose owner cannot be established
+      Given the desktop listener belongs to "unknown"
+      When the watchdog runs
+      Then it says "T3_LISTENER_OWNER_UNKNOWN"
+      And it starts and restarts nothing
+
+    Scenario: An overlapping recovery leaves the active handoff to finish
+      Given another desktop handoff holds the recovery lock
+      When the watchdog runs
+      Then it says "T3_RECOVERY_IN_PROGRESS"
+      And it starts and restarts nothing

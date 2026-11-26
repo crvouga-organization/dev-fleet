@@ -38,3 +38,8 @@ Feature: The declared Git configuration holds beside a person's ~/.gitconfig
       | sets another author                      | [user]␊name = Someone Else                                          |
       | asks a credential store after gh         | [credential "https://github.com"]␊helper = store                     |
       | clears the helpers and names a store     | [credential "https://github.com"]␊helper =␊helper = store          |
+
+  Scenario: Git obtains its credential noninteractively inside an untrusted checkout
+    Given the fleet gh shim refuses to run inside a project containing mise.toml
+    When the Git identity "Example User" <example-user@users.noreply.github.com> is converged on the node
+    Then Git obtains the fixture credential inside the untrusted checkout

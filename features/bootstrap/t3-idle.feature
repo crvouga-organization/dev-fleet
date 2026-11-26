@@ -16,6 +16,7 @@ Feature: A worker's T3 is idle only when it runs no agent turn
       | all completed            | completed | completed   | idle   | 0    |
       | completed or interrupted | completed | interrupted | idle   | 0    |
       | one still running        | completed | running     | busy   | 1    |
+      | one awaiting a response  | completed | waiting     | busy   | 1    |
 
   Scenario: A database T3 keeps no runs in counts as busy
     Given T3 keeps its state in a database without runs

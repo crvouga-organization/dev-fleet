@@ -89,3 +89,46 @@ Then(/^the node's ~\/\.gitconfig is as it was$/, async (world) => {
     at.gitconfig!
   );
 });
+
+Given(
+  'the fleet gh shim refuses to run inside a project containing mise.toml',
+  async (world) => {
+    const { home } = await node(world);
+    const shims = join(home, '.local/share/mise/shims');
+    await mkdir(shims, { recursive: true });
+    await writeFile(
+      join(shims, 'gh'),
+      `#!/bin/sh
+test ! -f mise.toml && test "$*" = 'auth git-credential get' || exit 1
+echo username=fixture
+echo password=fixture-password
+`,
+      { mode: 0o755 }
+    );
+    const cwd = join(home, 'checkout');
+    await mkdir(cwd);
+    await writeFile(join(cwd, 'mise.toml'), '[tools]\n');
+    expect((await runCommand(['git', 'init', '--quiet'], { cwd })).ok).toBe(
+      true
+    );
+  }
+);
+
+Then(
+  'Git obtains the fixture credential inside the untrusted checkout',
+  async (world) => {
+    const { home } = await node(world);
+    const result = await runCommand(['git', 'credential', 'fill'], {
+      cwd: join(home, 'checkout'),
+      env: {
+        HOME: home,
+        XDG_CONFIG_HOME: join(home, '.config'),
+        GIT_CONFIG_NOSYSTEM: '1',
+        GIT_TERMINAL_PROMPT: '0',
+      },
+      input: 'protocol=https\nhost=github.com\n\n',
+    });
+    expect(result.ok).toBe(true);
+    expect(result.stdout).toContain('password=fixture-password');
+  }
+);

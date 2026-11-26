@@ -348,7 +348,7 @@ When('the recovery unit runs', (world) => {
   const bin = join(world.directory, 'bin');
   mkdirSync(bin, { recursive: true });
   // A healthy desktop app in a graphical session.
-  for (const name of ['systemctl', 'curl']) {
+  for (const name of ['systemctl', 'curl', 'flock']) {
     writeFileSync(join(bin, name), '#!/bin/sh\nexit 0\n');
     chmodSync(join(bin, name), 0o755);
   }

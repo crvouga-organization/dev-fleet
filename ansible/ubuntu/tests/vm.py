@@ -463,7 +463,8 @@ def test_desktop(ssh, t3):
     package = ROOT / name
     download(f'https://github.com/pingdotgg/t3code/releases/download/v{version}/{name}', package, desktop_sha)
     run(ssh + ['sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes ubuntu-desktop-minimal'])
-    applied = play(ssh, 't3-desktop.yml', t3_desktop_url=f'https://github.com/pingdotgg/t3code/releases/download/v{version}/{name}', t3_desktop_name=name, t3_desktop_sha256=desktop_sha)
+    desktop = dict(t3_desktop_url=f'https://github.com/pingdotgg/t3code/releases/download/v{version}/{name}', t3_desktop_name=name, t3_desktop_sha256=desktop_sha)
+    applied = play(ssh, 't3-desktop.yml', **desktop)
     (ROOT / 't3-desktop-first.log').write_text(applied.stdout + applied.stderr)
     run(ssh + [f'! test -e ~/.config/systemd/user/{SERVER} && test "$(cat ~/.t3/fleet-test-preserved)" = preserved'])
     # The app serves on loopback only whatever its desktop settings say.
@@ -481,6 +482,22 @@ def test_desktop(ssh, t3):
     policy = json.loads(Path('/workspace/ansible/ubuntu/policy.json').read_text())
     ceiling = policy['resourceSafety']['rendererMaxMiB'] * 1024**2
     run(ssh + [f'test "$(cat {renderers}/memory.max)" = {ceiling}'])
+    # Reproduce a manually launched Electron app owning the socket in a
+    # graphical application scope. The outer transient service supplies the
+    # graphical session environment to the scope, even though we use SSH.
+    user(ssh, f'systemctl --user stop personal-worker-recovery.timer {APP}')
+    scope = 'app-com.t3tools.T3Code-fixture.scope'
+    user(ssh, f'systemd-run --user --quiet systemd-run --user --scope --unit={scope} "/opt/T3 Code (Nightly)/t3code" --ozone-platform=x11')
+    owner = 'python3 -I -B /usr/local/lib/personal-fleet/t3-listener.py'
+    wait_for(ssh, f'test "$({owner})" = {scope}', 120, 'unmanaged app did not acquire the listener')
+    play(ssh, 't3-desktop.yml', **desktop)
+    wait_for(ssh, answers(APP), 150, 'managed app did not take over the idle desktop')
+    pid = main_pid(ssh, APP)
+    for _ in range(2):
+        play(ssh, 't3-desktop.yml', **desktop)
+    user(ssh, 'systemctl --user start personal-worker-recovery.service')
+    assert pid != '0' and main_pid(ssh, APP) == pid
+    run(ssh + [f'test "$({owner})" = managed && {answers(APP)}'])
     # The recovery check may see the app stopping and start it again, which
     # cancels the stop job: that is the recovery this measures.
     user(ssh, f'systemctl --user stop {APP} 2>&1 | grep -v "^Job for {APP} canceled" || true')

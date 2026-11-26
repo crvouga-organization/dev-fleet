@@ -245,6 +245,8 @@ const watchdog = part((world) => ({
   retires: true,
   session: true,
   desktop: false,
+  owner: 'free',
+  locked: false,
   healthy: false,
   running: '',
   installed: '',
@@ -280,6 +282,7 @@ function watch(world: BootstrapWorld): number {
     'systemctl',
     [
       'case "$*" in',
+      `  *"stop app-com.t3tools.T3Code-fixture.scope") touch "${directory}/stopped-scope";;`,
       `  *"t3code.service") case "$*" in *disable*) exit ${exit(state.retires)};; *) exit ${exit(state.headless)};; esac;;`,
       `  *"is-enabled --quiet t3code-headless.service") exit ${exit(state.server)};;`,
       `  *"show --property=ExecStart --value t3code-headless.service") echo "{ path=/home/dev/.local/share/personal/tools/t3-${state.installed}-linux-x64/t3 ; argv[]=/home/dev/.local/share/personal/tools/t3-${state.installed}-linux-x64/t3 serve --mode web ; }";;`,
@@ -295,7 +298,15 @@ function watch(world: BootstrapWorld): number {
       : 'exit 28'
   );
   stand('sudo', '');
-  stand('python3', `exit ${state.idle ? 0 : 1}`);
+  stand('flock', `exit ${state.locked ? 1 : 0}`);
+  stand(
+    'python3',
+    `case "$*" in
+    *t3-listener.py) if test -e "${directory}/stopped-scope"; then echo free; else echo '${state.owner}'; fi ;;
+    *) exit ${state.idle ? 0 : 1};;
+  esac`
+  );
+
   const app = join(directory, 'app');
   mkdirSync(app, { recursive: true });
   if (state.installed)
@@ -401,6 +412,14 @@ Given(
 
 Given(/^the watchdog has run (\d+) times?$/, (world, times: number) => {
   for (let run = 0; run < Number(times); run++) watch(world);
+});
+
+Given('the desktop listener belongs to {string}', (world, owner: string) => {
+  watchdog(world).owner = owner;
+});
+
+Given('another desktop handoff holds the recovery lock', (world) => {
+  watchdog(world).locked = true;
 });
 
 When('the watchdog runs', (world) => {

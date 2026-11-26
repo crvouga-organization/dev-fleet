@@ -87,7 +87,8 @@ Feature: A worker runs one T3: the pinned desktop app
       | t3 --version                                       | prints t3 v0.1.7 |
       | systemctl --user is-active t3code-desktop.service  | fails            |
       | systemctl --user is-enabled t3code-desktop.service | succeeds         |
+      | systemctl --user is-active graphical-session.target | prints inactive  |
       | systemctl --user is-active t3code.service          | fails            |
       | systemctl --user is-enabled t3code.service         | fails            |
     When the worker's T3 desktop app is converged
-    Then the summary of the check is "T3_DESKTOP_STOPPED"
+    Then the summary of the check is "T3_NO_GRAPHICAL_SESSION"
