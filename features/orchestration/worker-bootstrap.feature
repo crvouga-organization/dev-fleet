@@ -85,9 +85,26 @@ Feature: A worker is bootstrapped over SSH with one verified revision
         """
       And the bootstrap was fed no bundle
 
+    Scenario: Desktop preferences travel privately before the source bundle
+      Given the bootstrap script of the payload is:
+        """
+        IFS= read -r tailnet_key
+        IFS= read -r client_preferences
+        """
+      And the manager sends these desktop preferences:
+        """
+        {"snapShotSound":"camera-shutter"}
+        """
+      And the worker answers that it does not hold the revision
+      And the bootstrap on the worker succeeds, printing:
+        """
+        { "version": 1, "checks": [ { "id": "fixture:configuration", "status": "pass", "summary": "Verified fixture" } ] }
+        """
+      When the worker is bootstrapped
+      Then the SSH input carries those preferences after the enrolment key and before the bundle
+
     Scenario Outline: The bootstrap tells the worker whether its T3 may restart while agent turns run (<request>)
-      A worker's T3 restarts for a new release or policy only while it runs
-      no agent turn, unless fleet-sync was given --restart-busy.
+      The bootstrap understands older requests that explicitly keep turns.
       Given the sync <request>
       And the worker answers that it holds the revision
       And the bootstrap on the worker succeeds, printing:
@@ -117,7 +134,7 @@ Feature: A worker is bootstrapped over SSH with one verified revision
 
       Examples:
         | request                                        | last                 |
-        | keeps a newer mise                             | keep-turns           |
+        | keeps a newer mise                             | restart-busy           |
         | may downgrade mise (--allow-mise-downgrade)    | allow-mise-downgrade |
 
     Scenario: A worker held by another fleet operation reports the lock, and nothing else is claimed

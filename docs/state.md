@@ -376,3 +376,5 @@ The historical directory and owner marker remain, so a live command from an
 older release is still refused. Finish commands from older releases before
 upgrading: they do not acquire the new guard. Worker probes and launchers
 continue to use Node; only the Bun CLI imports the locking module.
+
+The optional `t3-client-settings` document holds the manager’s T3 desktop preferences. Full sync updates it before applying the snapshot on workers. A manager missing its client-settings.json recovers the saved preferences on its next full sync.

@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 478 codes; 100 need a person.
+There are 482 codes; 100 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -340,6 +340,10 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_PRIVATE_ROUTE_CONFLICT`: t3 private route conflict.
 - `T3_PRIVATE_ROUTE_REQUIRED`: t3 private route required.
 - `T3_PRIVATE_ROUTE_UNVERIFIED`: t3 private route unverified.
+- `T3_CLIENT_SETTINGS_UNVERIFIED`: check the manager’s T3 client-settings.json, fleet state availability and the worker desktop service, then rerun fleet-sync. A pending desktop restart is retried.
+- `T3_DESKTOP_ACTIVATION_FAILED`: open the verified manager bundle named in the remedy and rerun fleet-sync.
+- `T3_CLIENT_SETTINGS_INVALID`: repair the manager’s client-settings.json so its settings are a JSON object.
+- `T3_CLIENT_SETTINGS_TOO_LARGE`: the desktop preferences exceed the fleet state's 1 MiB document limit. Reduce the document on the manager and rerun fleet-sync.
 - `T3_PROFILE_CONFLICT`: t3 profile conflict.
 - `T3_PROFILE_PENDING`: t3 profile pending.
 - `T3_PROFILE_RECORD_INVALID`: t3 profile record invalid.
@@ -363,7 +367,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_SERVER_STOPPED`: t3 server stopped: the lingering `t3code-headless.service` of a headless worker is not running.
 - `T3_SETTINGS_BUSY`: t3 settings busy.
 - `T3_VERSION_UNKNOWN`: a warning of `t3:version`: T3 on the machine the check names has not recorded the version it runs, so it cannot be compared with the pin. Start T3 there once, then run `devfleet fleet-sync`.
-- `T3_VERSION_SKEW`: a warning of `t3:version`: T3 on the machine the check names runs another release than the fleet pins; the remedy names both. `devfleet fleet-sync` installs the pinned release on a worker and restarts T3. On the manager, fleet-sync stages the signed desktop alongside the running app. Once sessions finish, quit the app and open the verified copy named in the remedy.
+- `T3_VERSION_SKEW`: a warning of `t3:version`: T3 on the machine the check names runs another release than the fleet pins; the remedy names both. `devfleet fleet-sync` installs the pinned release on a worker and restarts T3. On the manager, fleet-sync switches a running desktop to the verified bundle.
 - `T3_UPDATES_UNMANAGED`: a warning of `t3:updates`: the administrator policy of T3 on the manager does not turn its own updater off, so T3 may update itself away from the pinned release. Stage the fleet's policy once, as an administrator, with the command the remedy prints. **Needs a person.**
 - `T3_RUNNING_VERSION_UNKNOWN`: `t3:running-version` could not read the version of the running server from its local API, or the release installed on the worker. Read `worker:t3-health`, then run `devfleet fleet-sync`, which reinstalls the pinned T3.
 - `T3_RUNNING_VERSION_MISMATCH`: logged by `personal-worker-recovery` on the worker: T3 was restarted once for the installed release and still reports another version. It is not restarted again for that release and the run fails (`WORKER_RECOVERY_LAST_RUN_FAILED`). Run `devfleet fleet-sync`, which reinstalls the pinned T3.

@@ -1,3 +1,5 @@
+import { managerClientSettings } from '../state/t3-client-settings';
+import { clientFailure } from '../t3/client-settings';
 import { measureParity } from '../version-parity';
 import { meshChecks } from '../t3/mesh';
 import { authorizeFirstPairing } from './fleet-sync-pairing';
@@ -120,7 +122,10 @@ export async function selected(
         checkout: settings.workspace,
       })
     : null;
-  const payload = prepared && { ...prepared, ...requested(options) };
+  const payload: BootstrapPayload | null = prepared && {
+    ...prepared,
+    ...requested(options),
+  };
   const started = Date.now();
   const report = await synchronizeManager(
     {
@@ -132,8 +137,8 @@ export async function selected(
       ...serial(options, canonical),
       progress: (node, phase) => ui.progress.step(node, phase),
       finished: (node) => ui.progress.finished(node),
-      manager: () =>
-        convergeManager(
+      manager: async () => {
+        const result = await convergeManager(
           canonical,
           {
             revision: options.revision!,
@@ -143,7 +148,32 @@ export async function selected(
               ui.progress.step(canonical.manager.id, `Manager: ${step}`),
           },
           run
-        ),
+        );
+        if (
+          payload &&
+          idesOf(canonical).includes('t3') &&
+          result.checks.some(
+            (check) =>
+              check.id === 'manager:identity' && check.status === 'pass'
+          ) &&
+          payload.script.includes('read -r client_preferences')
+        ) {
+          try {
+            payload.clientSettings = await managerClientSettings(
+              stateContext(run)
+            );
+            result.checks.push({
+              id: 't3:client-settings',
+              status: 'pass',
+              summary:
+                'Captured the manager’s desktop preferences for this sync.',
+            });
+          } catch {
+            result.checks.push(clientFailure());
+          }
+        }
+        return result;
+      },
     },
     run,
     deployWithMonitoring(payload, canonical, run, {

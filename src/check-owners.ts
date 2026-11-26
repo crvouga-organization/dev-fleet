@@ -156,7 +156,7 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 't3:desktop-installed',
     manual:
-      'Run fleet-sync to stage the verified manager desktop. Quit T3 after active sessions finish and open the staged copy.',
+      'Run fleet-sync to install the verified desktop and switch a running manager desktop to that release.',
   },
   {
     pattern: 't3:*',

@@ -35,9 +35,10 @@ export interface BootstrapPayload {
   /** The fleet configuration every node keeps at ~/.config/dev-fleet/fleet.json. */
   config?: string;
   /** `fleet-sync --restart-busy`: a worker's T3 restarts for a new release or
-   * policy even while agent turns run. By default it waits for idle.
+   * policy even while agent turns run. This is the default.
    */
   restartBusy?: boolean;
+  clientSettings?: string;
   /** `fleet-sync --allow-mise-downgrade`: the worker's bootstrap installs the
    * mise the revision pins even when the worker runs a newer one.
    */
@@ -150,8 +151,8 @@ export async function bootstrapRemote(
     node.id,
     transfer.mode,
     UBUNTU_RELEASES.map((entry) => entry.release).join(' '),
-    T3_RESTART_MODES[payload.restartBusy ? 1 : 0],
-    ...(payload.allowMiseDowngrade ? [WORKER_MISE_DOWNGRADE] : []),
+    T3_RESTART_MODES[payload.restartBusy === false ? 0 : 1],
+    ...bootstrapFlags(payload),
   ]
     .map(shellQuote)
     .join(' ');
@@ -162,13 +163,26 @@ export async function bootstrapRemote(
       command,
       input: bootstrapInput(
         payload.config,
-        transfer.bundle,
+        payload.clientSettings
+          ? Buffer.from(payload.clientSettings).toString('base64') +
+              '\n' +
+              transfer.bundle
+          : transfer.bundle,
         readsTailnetKey(payload.script) ? (tailnetKey ?? '') : null
       ),
     },
     { run, follow: { ...follow, clock, earlier: held.earlier } }
   );
   return { node: node.id, checks };
+}
+
+function bootstrapFlags(payload: BootstrapPayload): string[] {
+  return [
+    ...(payload.allowMiseDowngrade || payload.clientSettings
+      ? [payload.allowMiseDowngrade ? WORKER_MISE_DOWNGRADE : '']
+      : []),
+    ...(payload.clientSettings ? ['client-preferences'] : []),
+  ];
 }
 
 /** Opens the bootstrap session, and again after a lost one unless the

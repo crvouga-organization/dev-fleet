@@ -1,6 +1,5 @@
 import { record } from '../config';
 import { join } from 'node:path';
-import policy from '../../ansible/ubuntu/policy.json';
 import type { Standing } from '../state/sync';
 import type { Runner } from '../types';
 import { featureRemovals, workerFeatures } from '../worker-features';
@@ -40,6 +39,7 @@ export interface SyncPlan {
   nodes: { node: string; from: string | null; to: string; changes: boolean }[];
   /** What a sync removes from a worker because the fleet configuration
    * turned one of its features off since it was last applied. */
+  desktopPreferences?: boolean;
   screenSharing?: { node: string; port: number }[];
   removals: { node: string; removes: string[] }[];
 }
@@ -94,31 +94,14 @@ export function toolChanges(
     }));
 }
 
-/** What restarts follow from the changes, as the playbooks and the toolchain
- * setup act on them. A worker's T3 restarts only while it runs no agent turn
- * (`ansible/ubuntu/tasks/t3-restart.yml`) unless `--restart-busy` asks for it
- * anyway, which ends running turns at once. A restart that waits is applied
- * at its deadline (`t3RestartMaxDeferralHours`), and ends the turns that
- * still run then.
- */
-const deadlineHours = policy.t3RestartMaxDeferralHours;
-
-export function restarts(
-  tools: ToolChange[],
-  files: string[],
-  restartBusy = false
-): Restart[] {
+export function restarts(tools: ToolChange[], files: string[]): Restart[] {
   const found: Restart[] = [];
-  const when = restartBusy
-    ? 'at once (--restart-busy): its running agent turns end.'
-    : `once it runs no agent turn: running turns keep going and the restart is pending until then, for ${deadlineHours} hours at most. Turns still running at that deadline end.`;
-  const waits = restartBusy ? {} : { deadlineHours };
+  const when = 'at once, ending running agent turns.';
   if (tools.some((change) => change.tool === 't3'))
     found.push({
       service: 't3',
       reason: `T3 is upgraded on every worker and restarted ${when}`,
-      endsRunningTurns: restartBusy,
-      ...waits,
+      endsRunningTurns: true,
     });
   else if (
     files.some((file) =>
@@ -128,8 +111,7 @@ export function restarts(
     found.push({
       service: 't3',
       reason: `The managed T3 policy may change: a T3 that has not loaded it is restarted ${when}`,
-      endsRunningTurns: restartBusy,
-      ...waits,
+      endsRunningTurns: true,
     });
   const agents = tools.filter((change) => AGENT_TOOLS.includes(change.tool));
   if (agents.length)
@@ -161,8 +143,7 @@ export async function syncPlan(
     state: Standing;
     nodes: string[];
     sources: string[];
-    /** `--restart-busy`: a T3 restart does not wait for idle. */
-    restartBusy?: boolean;
+    desktopPreferences?: boolean;
     /** The fleet configuration last applied (from the fleet state), when
      * there is one, and the one this sync applies. */
     definitions?: { applied: unknown; selected: unknown };
@@ -193,15 +174,14 @@ export async function syncPlan(
     revision: { from: input.from, to: input.to },
     known: changes !== null,
     tools: changes?.tools ?? [],
-    restarts: changes
-      ? restarts(changes.tools, changes.files, input.restartBusy === true)
-      : [],
+    restarts: changes ? restarts(changes.tools, changes.files) : [],
     nodes: input.nodes.map((node) => ({
       node,
       from: input.from,
       to: input.to,
       changes: differs,
     })),
+    desktopPreferences: Boolean(input.desktopPreferences),
     screenSharing: sharingPlan(input.nodes, input.definitions?.selected),
     removals: removals(input.nodes, input.definitions),
   };
@@ -282,11 +262,21 @@ export function planText(plan: SyncPlan): string {
     );
   for (const restart of plan.restarts)
     lines.push(`  Restarts ${restart.service}: ${restart.reason}`);
+  if (plan.desktopPreferences)
+    lines.push(
+      '  Sync the manager’s current T3 desktop preferences. A changed worker desktop restarts immediately, ending running turns.'
+    );
+  lines.push(...workerPlanText(plan));
+  return lines.join('\n');
+}
+
+function workerPlanText(plan: SyncPlan): string[] {
+  const lines: string[] = [];
   for (const sharing of plan.screenSharing ?? [])
     lines.push(
       `  Verify or configure GNOME desktop sharing on ${sharing.node}, tailnet-only TCP ${sharing.port}, with its persistent TLS identity and per-worker credential.`
     );
   for (const removal of plan.removals ?? [])
     lines.push(`  Removes from ${removal.node}: ${removal.removes.join(', ')}`);
-  return lines.join('\n');
+  return lines;
 }

@@ -1,0 +1,51 @@
+---
+- name: Install the manager's T3 desktop preferences
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Create the private T3 settings directory
+      ansible.builtin.file:
+        path: '{{ client_path | dirname }}'
+        state: directory
+        mode: '0700'
+    - name: Measure the installed preferences
+      ansible.builtin.stat:
+        path: '{{ client_path }}'
+        checksum_algorithm: sha256
+      register: client_file
+    - name: Refuse to replace a nonregular preferences file
+      ansible.builtin.assert:
+        that: not client_file.stat.exists or client_file.stat.isreg
+    - name: Record a required desktop restart before changing preferences
+      ansible.builtin.copy:
+        dest: '{{ client_path }}.restart-pending'
+        content: "dev-fleet\n"
+        mode: '0600'
+      when:
+        - desktop_service | bool
+        - client_file.stat.checksum | default('') != client_checksum
+    - name: Install the complete desktop preferences
+      ansible.builtin.copy:
+        dest: '{{ client_path }}'
+        src: '{{ client_source }}'
+        mode: '0600'
+      no_log: true
+      diff: false
+    - name: Check for a pending restart
+      ansible.builtin.stat:
+        path: '{{ client_path }}.restart-pending'
+      register: restart_pending
+    - name: Restart the desktop to load its preferences
+      environment:
+        XDG_RUNTIME_DIR: '{{ runtime_directory }}'
+      ansible.builtin.systemd_service:
+        scope: user
+        name: t3code-desktop.service
+        state: restarted
+      when: desktop_service | bool and restart_pending.stat.exists
+    - name: Clear the completed restart
+      ansible.builtin.file:
+        path: '{{ client_path }}.restart-pending'
+        state: absent
+      when: restart_pending.stat.exists

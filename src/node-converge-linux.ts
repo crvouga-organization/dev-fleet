@@ -1,3 +1,4 @@
+import { workerClientSettings } from './t3/client-settings';
 import { FIREWALL_TABLE, parseFirewall } from './worker-exposure';
 import { existsSync } from 'node:fs';
 import { applyScreenSharing } from './screen-sharing';
@@ -60,7 +61,12 @@ import type { Check, Runner } from './types';
  */
 export async function convergeLinux(
   root: string,
-  target: { node: string; revision: string; restartBusy?: boolean },
+  target: {
+    node: string;
+    revision: string;
+    restartBusy?: boolean;
+    clientSettings?: string;
+  },
   run: Runner
 ): Promise<Check[]> {
   const { node, revision } = target;
@@ -139,7 +145,7 @@ export async function convergeLinux(
     )
   );
   checks.push(
-    ...(await t3AfterBaseline(root, { node, baseline, run, restartBusy }))
+    ...(await t3AfterBaseline(root, { ...target, baseline, run, restartBusy }))
   );
   checks.push(
     ...(await attempt('workstation:configuration', () =>
@@ -389,7 +395,10 @@ async function convergeT3(
   root: string,
   node: string,
   run: Runner,
-  restartBusy: boolean
+  {
+    restartBusy,
+    clientSettings,
+  }: { restartBusy: boolean; clientSettings?: string }
 ): Promise<Check[]> {
   const artifact = managedT3();
   const { session } = workerFeatures(fleet, node);
@@ -408,16 +417,20 @@ async function convergeT3(
         : installT3Desktop(root, run, restartBusy),
     session,
   });
+  const serviceReady = checks.some(
+    (check) => check.id === 't3:service' && check.status === 'pass'
+  );
+  if (!serviceReady) return checks;
+  if (clientSettings)
+    checks.push(
+      await workerClientSettings(clientSettings, session !== 'headless', run)
+    );
   if (checks.every((check) => check.status === 'pass'))
     checks.push(
       await loadedT3Policy(artifact.path, run, {
         restarted: startedAt !== (await t3StartedAt(run, session)),
       })
     );
-  const serviceReady = checks.some(
-    (check) => check.id === 't3:service' && check.status === 'pass'
-  );
-  if (!serviceReady) return checks;
   // Settings are watched by T3: providers, names and the profile apply
   // without a restart.
   checks.push(
@@ -559,9 +572,10 @@ async function t3AfterBaseline(
     baseline: Check[];
     run: Runner;
     restartBusy: boolean;
+    clientSettings?: string;
   }
 ): Promise<Check[]> {
-  const { node, baseline, run, restartBusy } = context;
+  const { node, baseline, run } = context;
   if (baseline.some((check) => check.status !== 'pass'))
     return [
       {
@@ -574,7 +588,7 @@ async function t3AfterBaseline(
         },
       },
     ];
-  return attempt('t3:service', () => convergeT3(root, node, run, restartBusy));
+  return attempt('t3:service', () => convergeT3(root, node, run, context));
 }
 
 async function enableWorkerRecovery(

@@ -21,7 +21,11 @@ export const DOCUMENTS = ['definition', 'roster', 'enrollment'] as const;
  * `workers` what the manager knows of each worker beyond fleet.json: its
  * pinned SSH host key and whether it is parked (src/state/workers.ts).
  */
-export const OPTIONAL_DOCUMENTS = ['history', 'workers'] as const;
+export const OPTIONAL_DOCUMENTS = [
+  'history',
+  'workers',
+  't3-client-settings',
+] as const;
 export type DocumentName = (typeof DOCUMENTS)[number];
 /** Every document the fleet state may hold. */
 export type StoredName = DocumentName | (typeof OPTIONAL_DOCUMENTS)[number];

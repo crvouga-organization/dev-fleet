@@ -229,7 +229,7 @@ function registerSync({ program, defaults, complete }: Registration) {
     )
     .option(
       '--restart-busy',
-      'Restart a worker T3 for a new release or policy even while agent turns run, which ends them; by default the restart waits until T3 is idle'
+      'Restart a worker T3 for a new release or policy even while agent turns run, which ends them (the default)'
     )
     .option(
       '--allow-unmerged',

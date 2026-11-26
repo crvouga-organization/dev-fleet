@@ -130,7 +130,7 @@ export interface FleetSyncOptions {
   /** Take the manager lease from another manager before it expired. */
   takeOver?: boolean;
   /** Restart a worker's T3 for a new release or policy even while agent
-   * turns run, which ends them; by default the restart waits for idle.
+   * turns run, which ends them (the default).
    */
   restartBusy?: boolean;
   failOnWarning?: boolean;
@@ -618,7 +618,7 @@ async function preview(
         .map((node) => node.node)
         .filter((node): node is string => typeof node === 'string'),
       sources: planSources(settings.workspace, context.root),
-      restartBusy: options.restartBusy === true,
+      desktopPreferences: (canonicalDefinition.ides ?? ['t3']).includes('t3'),
       definitions: {
         applied: appliedDefinition(),
         selected: canonicalDefinition,

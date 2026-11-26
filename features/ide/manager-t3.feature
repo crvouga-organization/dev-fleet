@@ -33,14 +33,13 @@ Feature: The manager runs the T3 release the workers run
         | 0.1.9-nightly.20261111.4501 | warns with "T3_VERSION_SKEW"      |
         |                             | warns with "T3_VERSION_UNKNOWN"   |
 
-    Scenario: A sync stages the pinned desktop while an earlier release serves sessions
+    Scenario: A sync switches the running manager to its verified desktop
       Given the running desktop on the manager reports "0.1.9-nightly.20261111.4501"
       And the managed desktop is absent until its play succeeds
+      And the activation play opens the verified desktop
       When the T3 desktop of the manager is applied
       Then the check "t3:desktop-installed" passes
-      And the check "t3:version" warns with "T3_VERSION_SKEW"
-      And the remedy of the check "t3:version" mentions "When manager sessions have finished"
-      And no command with the word "kill" was run
+      And the check "t3:version" passes
 
     @t3-desktop @slow
     Scenario: macOS verifies the published desktop and a repeat sync reuses it

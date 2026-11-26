@@ -147,19 +147,16 @@ the first reachable worker, or the one `canary` in `fleet.json` (or
 `--canary`) names when it is reachable. An offline worker never holds the
 others back.
 
-A sync itself never ends a running agent turn. A worker's T3 that must
-restart for a new release or provider policy restarts only once it runs no
-agent turn; until then the restart is pending and the worker's recovery timer
-applies it at the first idle check. The wait has a deadline, because a worker that
-always runs a turn would otherwise never converge: 24 hours after the restart
-was first deferred (`t3RestartMaxDeferralHours` in
-`ansible/ubuntu/policy.json`) the recovery timer restarts T3 although turns
-run, and those turns end. T3 Code has no way to stop accepting turns first.
-Until then `t3:running-version` warns with how long the restart has waited
-and when the deadline falls; afterwards `worker:t3-deadline-restarts` warns
-for a day that turns ended. `fleet-sync --restart-busy` restarts it at once
-and ends those turns, and `fleet-sync --dry-run` (with or without the flag)
-says which of the two a sync would do, and the deadline.
+During a full sync, a worker's T3 restarts immediately when a new release,
+policy or desktop preference requires it. A restart ends running agent turns.
+Existing commands that pass `--restart-busy` continue to work.
+
+Each sync snapshots the manager's T3 desktop preferences, including notification
+mode, snapshot sounds, appearance and shortcuts, from
+`userdata/client-settings.json` in its T3 home. The fleet state keeps a copy
+for manager recovery. Workers receive the complete document, so changing or
+removing a preference on the manager reaches them on the next sync. A fresh
+manager with no saved preferences uses T3's defaults.
 
 To go back, run `npx devfleet fleet-sync --rollback` on the manager: it
 converges every machine to the revision applied before the approved one, which
@@ -381,8 +378,7 @@ and what the manager measures of each worker. Enabling one is `ides` in
 On the macOS manager, sync stages the checksum-pinned T3 desktop under
 `~/Applications/dev-fleet/`. Its installed signature and version appear as
 `t3:desktop-installed`. The separate `t3:version` check measures the running
-app. During a maintenance window, finish active sessions, quit the old app
-and use the `open` command in the remedy to activate the verified copy.
+app. When a single running T3 desktop needs replacing, sync restarts it from the verified bundle and checks the running release.
 
 `"ides": ["t3", "super"]` adds [super.engineering](https://super.engineering)
 beside T3 Code. It is a desktop app on the manager that works on another
