@@ -752,3 +752,13 @@ When(
     ];
   }
 );
+
+Then(
+  'the desktop check {string} passes saying {string}',
+  (world, id: string, summary: string) => {
+    expect(world.checks.find((check) => check.id === id)).toMatchObject({
+      status: 'pass',
+      summary,
+    });
+  }
+);

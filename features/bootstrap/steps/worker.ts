@@ -245,6 +245,8 @@ const watchdog = part((world) => ({
   retires: true,
   session: true,
   desktop: false,
+  owner: 'free',
+  locked: false,
   healthy: false,
   running: '',
   installed: '',
@@ -264,7 +266,7 @@ const marker = (world: BootstrapWorld): string =>
  * only record how they were called and answer as the scenario says, and an
  * installed app whose release is the one the scenario names.
  */
-function watch(world: BootstrapWorld): number {
+function watch(world: BootstrapWorld, apply = false): number {
   const state = watchdog(world);
   const { directory } = state;
   const stand = (name: string, body: string): void => {
@@ -280,11 +282,14 @@ function watch(world: BootstrapWorld): number {
     'systemctl',
     [
       'case "$*" in',
+      `  *"show app-com.t3tools.T3Code-fixture.scope -p ActiveState --value") if test -e "${directory}/stopped-scope"; then echo inactive; else echo deactivating; fi;;`,
+      `  *"stop --no-block app-com.t3tools.T3Code-fixture.scope") touch "${directory}/stopped-scope";;`,
       `  *"t3code.service") case "$*" in *disable*) exit ${exit(state.retires)};; *) exit ${exit(state.headless)};; esac;;`,
       `  *"is-enabled --quiet t3code-headless.service") exit ${exit(state.server)};;`,
       `  *"show --property=ExecStart --value t3code-headless.service") echo "{ path=/home/dev/.local/share/personal/tools/t3-${state.installed}-linux-x64/t3 ; argv[]=/home/dev/.local/share/personal/tools/t3-${state.installed}-linux-x64/t3 serve --mode web ; }";;`,
       `  *"is-active --quiet graphical-session.target") exit ${exit(state.session)};;`,
-      `  *is-active*) exit ${exit(state.desktop)};;`,
+      `  *"start t3code-"*) touch "${directory}/service-started";;`,
+      `  *is-active*) test -e "${directory}/service-started" || exit ${exit(state.desktop)};;`,
       'esac',
     ].join('\n')
   );
@@ -295,7 +300,15 @@ function watch(world: BootstrapWorld): number {
       : 'exit 28'
   );
   stand('sudo', '');
-  stand('python3', `exit ${state.idle ? 0 : 1}`);
+  stand('flock', `exit ${state.locked ? 1 : 0}`);
+  stand(
+    'python3',
+    `case "$*" in
+    *t3-listener.py) if test -e "${directory}/stopped-scope"; then echo free; else echo '${state.owner}'; fi ;;
+    *) exit ${state.idle ? 0 : 1};;
+  esac`
+  );
+
   const app = join(directory, 'app');
   mkdirSync(app, { recursive: true });
   if (state.installed)
@@ -304,7 +317,11 @@ function watch(world: BootstrapWorld): number {
       `T3-Code-${state.installed}-amd64.deb`
     );
   const ran = Bun.spawnSync(
-    ['/bin/sh', join(checkout, 'ansible/ubuntu/t3-health.sh')],
+    [
+      '/bin/sh',
+      join(checkout, 'ansible/ubuntu/t3-health.sh'),
+      ...(apply ? ['--apply'] : []),
+    ],
     {
       env: {
         PATH: `${directory}:/usr/bin:/bin`,
@@ -401,6 +418,28 @@ Given(
 
 Given(/^the watchdog has run (\d+) times?$/, (world, times: number) => {
   for (let run = 0; run < Number(times); run++) watch(world);
+});
+
+Given('the desktop listener belongs to {string}', (world, owner: string) => {
+  watchdog(world).owner = owner;
+});
+
+Given('another desktop handoff holds the recovery lock', (world) => {
+  watchdog(world).locked = true;
+});
+
+Given(
+  'an interrupted handoff is stopping the former desktop scope after it released the port',
+  (world) => {
+    writeFileSync(
+      join(watchdog(world).directory, 'personal-t3-desktop-handoff'),
+      'app-com.t3tools.T3Code-fixture.scope\n'
+    );
+  }
+);
+
+When('sync resumes desktop recovery', (world) => {
+  world.exit = watch(world, true);
 });
 
 When('the watchdog runs', (world) => {
@@ -742,6 +781,7 @@ Then('it reports:', (world, text: string) => {
 const DESKTOP_GROUP = '/app.slice/t3code-desktop.service';
 const renderers = part((world) => ({
   cgroups: world.directory('t3-cgroups-'),
+  mainPid: '',
   proc: world.directory('t3-proc-'),
 }));
 const desktopUnit = (world: BootstrapWorld) =>
@@ -780,6 +820,23 @@ Given(
   }
 );
 
+Given(
+  'GNOME moved the managed desktop with main PID {int} into its application scope',
+  (world, pid: number) => {
+    const state = renderers(world);
+    state.mainPid = String(pid);
+    const group = `/app.slice/app-com.t3tools.T3Code-${pid}.scope`;
+    const directory = join(state.cgroups, group);
+    mkdirSync(directory, { recursive: true });
+    const original = join(desktopUnit(world), 'app/cgroup.procs');
+    const members = readFileSync(original, 'utf8');
+    writeFileSync(original, '');
+    writeFileSync(join(directory, 'cgroup.procs'), members);
+    for (const member of members.trim().split('\n'))
+      writeFileSync(join(state.proc, member, 'cgroup'), `0::${group}\n`);
+  }
+);
+
 When(
   'the renderer limits of {int} MiB high and {int} MiB max are applied',
   (world, high: number, maximum: number) => {
@@ -796,6 +853,8 @@ When(
         renderers(world).cgroups,
         '--proc',
         renderers(world).proc,
+        '--main-pid',
+        renderers(world).mainPid,
       ],
       { encoding: 'utf8' }
     );

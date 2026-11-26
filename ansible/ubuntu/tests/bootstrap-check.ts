@@ -24,8 +24,19 @@ await writeFile(
   ].join('\n') + '\n',
   { mode: 0o600 }
 );
+const config = loadDefinition('/workspace/examples/fleet.json');
+if (!config.worker) throw new Error('Fixture needs declared worker policy.');
+config.worker.features = { containers: true, session: 'headless' };
+config.services.proxy.endpoint = 'https://localhost';
+config.secrets = { provider: 'file' };
+config.git = { name: 'Fixture', email: 'fixture@example.test', signing: 'ssh' };
 const result = await bootstrapRemote(
-  { id: 'fixture-vm', ssh: 'fixture-vm', workspace: '/unused', required: [] },
+  {
+    id: config.workers[0]!.id,
+    ssh: 'fixture-vm',
+    workspace: '/unused',
+    required: [],
+  },
   {
     revision,
     digest: createHash('sha256').update(bundle).digest('hex'),
@@ -33,9 +44,7 @@ const result = await bootstrapRemote(
     script: await readFile(join(source, 'bootstrap.sh'), 'utf8'),
     // The fleet configuration travels beside the code, as fleet-sync sends
     // it: the example fleet of the repository mounted at /workspace.
-    config: installedDefinition(
-      loadDefinition('/workspace/examples/fleet.json')
-    ),
+    config: installedDefinition(config),
   },
   (args, options) =>
     runCommand(
@@ -48,8 +57,22 @@ process.stdout.write(
 );
 // Missing live auth is expected. Reaching node-level convergence establishes that
 // source transfer, exact checkout and shared tool/dependency bootstrap completed.
-process.exitCode = result.checks.some(
-  (check) => check.id === 'ubuntu:baseline' && check.status === 'pass'
-)
-  ? 0
-  : 1;
+const blocked = process.argv[4] === 'without-roster';
+const required = [
+  'ubuntu:baseline',
+  'git:configuration',
+  ...(blocked ? [] : ['t3:service']),
+];
+process.exitCode =
+  (!blocked ||
+    result.checks.some(
+      (check) =>
+        check.id === 't3:account-roster' &&
+        check.summary === 'T3_ACCOUNT_ROSTER_UNAVAILABLE' &&
+        check.status === 'fail'
+    )) &&
+  required.every((id) =>
+    result.checks.some((check) => check.id === id && check.status === 'pass')
+  )
+    ? 0
+    : 1;

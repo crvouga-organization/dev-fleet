@@ -30,7 +30,8 @@ def running_turns(state):
     connection = connect(state)
     try:
         (count,) = connection.execute(
-            "SELECT count(*) FROM orchestration_v2_projection_runs WHERE status = 'running'"
+            "SELECT count(*) FROM orchestration_v2_projection_runs WHERE status IN ("
+            + ','.join('?' for _ in UNDER_WAY) + ')', UNDER_WAY
         ).fetchone()
         return count
     finally:

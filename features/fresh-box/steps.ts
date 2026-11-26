@@ -27,6 +27,7 @@ export class FreshBoxWorld extends World {
   revision = '';
   bootstrap!: Bootstrap;
   worktree = '';
+  installedTools = new Map<string, string>();
   /** MiB measured on the machine, by what was measured. */
   measured: Record<string, number> = {};
 
@@ -87,6 +88,28 @@ When(
   bootstrapped
 );
 Given('the manager has bootstrapped the machine', bootstrapped);
+
+async function toolFile(world: FreshBoxWorld, tool: string): Promise<string> {
+  const result = await world.pinned(
+    tool,
+    `sh -ec 'stat -Lc "%d:%i %s %z" "$(command -v ${tool})"'`
+  );
+  expect(result.ok).toBe(true);
+  return result.stdout;
+}
+
+Given(
+  'the installed files of {string}, {string} and {string} have been measured',
+  async (world, first: string, second: string, third: string) => {
+    for (const tool of [first, second, third])
+      world.installedTools.set(tool, await toolFile(world, tool));
+  }
+);
+
+Then('those installed tool files are unchanged', async (world) => {
+  for (const [tool, first] of world.installedTools)
+    expect(await toolFile(world, tool)).toBe(first);
+});
 
 When('the manager bootstraps the machine again', async (world) => {
   world.bootstrap = await bootstrap(world.machine);

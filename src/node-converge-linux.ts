@@ -408,6 +408,10 @@ async function convergeT3(
         restarted: startedAt !== (await t3StartedAt(run, session)),
       })
     );
+  const serviceReady = checks.some(
+    (check) => check.id === 't3:service' && check.status === 'pass'
+  );
+  if (!serviceReady) return checks;
   // Settings are watched by T3: providers, names and the profile apply
   // without a restart.
   checks.push(
@@ -418,19 +422,18 @@ async function convergeT3(
       run,
     }))
   );
-  const serviceReady = checks.some(
-    (check) => check.id === 't3:service' && check.status === 'pass'
+  const version = await runningVersionCheck(
+    run,
+    userInfo().uid,
+    Date.now(),
+    session
   );
-  if (serviceReady)
-    checks.push(
-      await runningVersionCheck(run, userInfo().uid, Date.now(), session)
-    );
-  if (serviceReady)
+  checks.push(version);
+  if (version.status !== 'fail')
     checks.push(
       ...(await convergeT3Route(run, () => publishT3Route(root, run)))
     );
-  if (serviceReady)
-    checks.push(...(await enableWorkerRecovery(root, run, session)));
+  checks.push(...(await enableWorkerRecovery(root, run, session)));
   return checks;
 }
 
@@ -490,7 +493,15 @@ async function installT3Desktop(
             '--quiet',
             't3code-desktop.service',
           ])
-        ).ok,
+        ).ok &&
+        (
+          await run([
+            'python3',
+            '-I',
+            '-B',
+            '/usr/local/lib/personal-fleet/t3-listener.py',
+          ])
+        ).stdout.trim() === 'managed',
     }
   );
   return result.ok;

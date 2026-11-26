@@ -66,7 +66,18 @@
       failed_when: false
       when: t3_desktop_active.rc == 0
     - name: Restart T3 when it is idle
-      ansible.builtin.import_tasks: tasks/t3-restart.yml
+      become: true
+      become_user: '{{ development_user }}'
+      environment:
+        XDG_RUNTIME_DIR: '/run/user/{{ development_uid }}'
+      ansible.builtin.command:
+        argv:
+          - /bin/sh
+          - '{{ playbook_dir }}/t3-health.sh'
+          - --apply
+          - --stage
+          - "{{ '--force' if t3_restart_busy | default(false) | bool else '--keep-turns' }}"
+      changed_when: true
       when:
         - t3_desktop_active.rc == 0
         - t3_policy_loaded.stdout is not search('loaded this policy\.\s*$')

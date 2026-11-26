@@ -48,13 +48,68 @@ export async function convergeT3Service(
     );
   const preparation = await prepare();
   if (preparation.length) return preparation;
+  if (!(await install()))
+    return pending(...SESSION_WORDS[session].installFailed);
+  return measureService(run, session);
+}
+
+async function measureService(run: Runner, session: Session): Promise<Check[]> {
   const words = SESSION_WORDS[session];
-  if (!(await install())) return pending(...words.installFailed);
   const unit = t3Unit(session);
   const active = await userctl(run, 'is-active', unit);
+  if (session === 'desktop') {
+    const blocked = await desktopPrerequisite(run, active.ok);
+    if (blocked) return blocked;
+  }
   const enabled = await userctl(run, 'is-enabled', unit);
   if (!active.ok || !enabled.ok) return pending(...words.stopped(unit));
   return [{ id: 't3:service', status: 'pass', summary: words.running }];
+}
+
+async function desktopPrerequisite(
+  run: Runner,
+  active: boolean
+): Promise<Check[] | undefined> {
+  if (!active) {
+    const graphical = await userctl(
+      run,
+      'is-active',
+      'graphical-session.target'
+    );
+    if (['inactive', 'failed'].includes(graphical.stdout.trim()))
+      return pending(
+        'T3_NO_GRAPHICAL_SESSION',
+        'Establish the declared graphical login. The recovery timer will start T3 in that session.'
+      );
+  }
+  const listener = await run([
+    'python3',
+    '-I',
+    '-B',
+    '/usr/local/lib/personal-fleet/t3-listener.py',
+  ]);
+  const owner = listener.ok ? listener.stdout.trim() : 'unknown';
+  if (active && owner === 'exposed')
+    return pending(
+      'T3_RESTART_PENDING',
+      'The managed desktop serves beyond loopback. Recovery restores local-only mode at the next idle check.'
+    );
+  if (active && owner === 'free')
+    return pending(
+      'T3_DESKTOP_STOPPED',
+      'The desktop unit has started but its local listener is unavailable. Check the graphical login and the recovery timer.'
+    );
+  if (owner === 'unknown')
+    return pending(
+      'T3_LISTENER_OWNER_UNKNOWN',
+      'Inspect the process listening on port 3773 before starting the managed desktop.'
+    );
+  if (/^app-com\.t3tools\.T3Code-.*\.scope$/.test(owner))
+    return pending(
+      'T3_DESKTOP_HANDOFF_PENDING',
+      'Let the active turns finish. The recovery timer rechecks ownership and hands the listener to the managed desktop.'
+    );
+  return undefined;
 }
 
 /** How a worker's T3 restarts for a new release or policy, as the manager's

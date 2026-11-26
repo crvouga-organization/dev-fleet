@@ -2,6 +2,7 @@ import { fingerprint, writeReceipt } from './fingerprint';
 import { configureWorkspace } from './configure';
 import { stableWorkspace } from './platform/t3-policy';
 import { convergeGithub } from './github/converge';
+import { T3DiagnosticError } from './t3/diagnostics';
 import { secretVia } from './fleet-config';
 import type { Check, Runner } from './types';
 
@@ -15,7 +16,9 @@ export async function attempt(
     const checks = await operation();
     const phaseDurationMs = Date.now() - started;
     return checks.map((check) => ({ ...check, phaseDurationMs }));
-  } catch {
+  } catch (error) {
+    if (error instanceof T3DiagnosticError)
+      return [{ ...error.check, phaseDurationMs: Date.now() - started }];
     return [
       {
         id,

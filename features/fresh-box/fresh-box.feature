@@ -72,9 +72,11 @@ Feature: A fresh Ubuntu machine becomes a worker over SSH
 
   Scenario: Bootstrapping the machine again is quick and transfers nothing
     Given the manager has bootstrapped the machine
+    And the installed files of "bun", "node" and "gh" have been measured
     When the manager bootstraps the machine again
     Then the bootstrap reaches node convergence
     And the commit was not sent again
+    And those installed tool files are unchanged
     And it took less than 120 seconds
 
   Rule: What dev-fleet installs takes no more disk than the Ubuntu policy budgets

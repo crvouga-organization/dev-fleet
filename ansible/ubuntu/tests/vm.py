@@ -101,7 +101,7 @@ group = Path('/sys/fs/cgroup' + Path('/proc/self/cgroup').read_text().strip().sp
 def stalled():
     line = (group / 'memory.pressure').read_text().splitlines()[-1]
     return int(line.split('total=')[1]) / 1000000
-end = time.monotonic() + 65
+end = time.monotonic() + 65 if sys.argv[1:] == ["paced"] else float("inf")
 with tempfile.TemporaryFile() as f:
     f.truncate(160 * 1024 * 1024)
     with mmap.mmap(f.fileno(), 0) as pages:
@@ -140,8 +140,8 @@ with tempfile.TemporaryFile() as f:
             (ROOT / 'last-failure.log').write_bytes(evidence.read_bytes())
             raise RuntimeError('A test session under paced pressure failed; inspect private artifact last-failure.log')
         start = run(ssh + ['date +%s']).stdout.strip()
-        run(ssh + [launch + 'python3 pressure-fixture.py'])
-        # One thrashing session measures about 52-56% full PSI, below the
+        run(ssh + [launch + 'python3 pressure-fixture.py bounded'])
+        # Pace this sustained run too: unpaced reclaim can exceed the
         # 60% oomd limit: oomd is a last resort here. What must hold under
         # sustained overload is that SSH answers, the quiet session lives and
         # the hard cap contains the runaway session.
@@ -269,16 +269,40 @@ ssh_keys:
             run(ssh + ['! command -v node && ! command -v bun && ! command -v mise && ! command -v git'])
             print('fresh target has no Node, Bun, mise or Git; invoking production SSH bootstrap', flush=True)
             run(ssh + ['mkdir -p work && printf preserved > work/uncommitted'])
-            result = subprocess.run(['/verification/bootstrap', str(ROOT), '/bootstrap'], capture_output=True, text=True, timeout=5500)
+            result = subprocess.run(['/verification/bootstrap', str(ROOT), '/bootstrap', 'without-roster'], capture_output=True, text=True, timeout=5500)
             (ROOT / 'bootstrap-result.json').write_text(result.stdout)
             assert result.returncode == 0, 'production bootstrap did not reach node convergence; inspect redacted bootstrap-result.json'
-            evidence = 'sha256sum work/uncommitted /etc/ssh/ssh_host_ed25519_key.pub; stat -c %Y /etc/systemd/logind.conf.d/60-personal-fleet.conf /etc/ssh/sshd_config.d/60-personal-fleet.conf'
+            run(ssh + ['test ! -e ~/.config/systemd/user/t3code-headless.service'])
+            # A local HTTPS model list lets policy staging resume without any
+            # provider account. The private key and fixture credential stay in
+            # the disposable guest and are never passed through argv.
+            run(ssh + ["""set -eu
+umask 077
+mkdir -p roster/v1 ~/.config/dev-fleet/secrets
+openssl rand -hex 32 > ~/.config/dev-fleet/secrets/proxy-client-key
+printf '{"data":[]}' > roster/v1/models
+openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=localhost -addext subjectAltName=DNS:localhost -keyout fixture.key -out fixture.crt 2>/dev/null
+sudo install -m 0644 fixture.crt /usr/local/share/ca-certificates/devfleet-fixture.crt
+sudo update-ca-certificates >/dev/null
+sudo systemd-run --unit=fixture-roster --working-directory="$HOME/roster" openssl s_server -accept 127.0.0.1:443 -cert "$HOME/fixture.crt" -key "$HOME/fixture.key" -WWW -quiet"""])
+            result = subprocess.run(['/verification/bootstrap', str(ROOT), '/bootstrap'], capture_output=True, text=True, timeout=5500)
+            (ROOT / 'bootstrap-retry-result.json').write_text(result.stdout)
+            assert result.returncode == 0, 'restoring the missing account roster did not unblock T3'
+            evidence = ('set -e; sha256sum work/uncommitted /etc/ssh/ssh_host_ed25519_key.pub '
+                        '~/.ssh/dev-fleet-git-signing.pub; stat -c "%i %y" '
+                        '/etc/systemd/logind.conf.d/60-personal-fleet.conf /etc/ssh/sshd_config.d/60-personal-fleet.conf; '
+                        'systemctl --user show t3code-headless.service -p MainPID -p ActiveEnterTimestampMonotonic; '
+                        'stat -Lc "%i %z" "$(~/.local/bin/mise which bun)"')
             before = run(ssh + [evidence]).stdout
-            repeated = subprocess.run(['/verification/bootstrap', str(ROOT), '/bootstrap'], capture_output=True, text=True, timeout=5500)
-            (ROOT / 'bootstrap-repeat-result.json').write_text(repeated.stdout)
-            assert repeated.returncode == 0, 'repeated bootstrap did not pass the baseline'
-            assert run(ssh + [evidence]).stdout == before, 'repeat changed work, SSH identity or unchanged managed files'
-            print('production remote bootstrap and repeat passed the baseline; live auth remains unverified', flush=True)
+            for phase in ('repeat', 'repair', 'after-repair'):
+                if phase == 'repair':
+                    run(ssh + ['sed -i "s/name = .*$/name = drift/" ~/.config/git/config && test "$(git config user.name)" = drift'])
+                repeated = subprocess.run(['/verification/bootstrap', str(ROOT), '/bootstrap'], capture_output=True, text=True, timeout=5500)
+                (ROOT / f'bootstrap-{phase}-result.json').write_text(repeated.stdout)
+                assert repeated.returncode == 0, f'{phase} failed to converge the enrolled worker'
+                assert run(ssh + [evidence]).stdout == before, f'{phase} replaced a healthy service, tool, key or managed file'
+                run(ssh + [f'test "$(git config user.name)" = Fixture && {answers(SERVER)}'])
+            print('production bootstrap, second apply, repair and post-repair apply preserved the T3 process, tool and identities', flush=True)
             return
         # The baseline-only run applies Ansible directly, which first boot
         # installs (packages above): it waits for first boot itself.
@@ -463,7 +487,8 @@ def test_desktop(ssh, t3):
     package = ROOT / name
     download(f'https://github.com/pingdotgg/t3code/releases/download/v{version}/{name}', package, desktop_sha)
     run(ssh + ['sudo DEBIAN_FRONTEND=noninteractive apt-get install --yes ubuntu-desktop-minimal'])
-    applied = play(ssh, 't3-desktop.yml', t3_desktop_url=f'https://github.com/pingdotgg/t3code/releases/download/v{version}/{name}', t3_desktop_name=name, t3_desktop_sha256=desktop_sha)
+    desktop = dict(t3_desktop_url=f'https://github.com/pingdotgg/t3code/releases/download/v{version}/{name}', t3_desktop_name=name, t3_desktop_sha256=desktop_sha)
+    applied = play(ssh, 't3-desktop.yml', **desktop)
     (ROOT / 't3-desktop-first.log').write_text(applied.stdout + applied.stderr)
     run(ssh + [f'! test -e ~/.config/systemd/user/{SERVER} && test "$(cat ~/.t3/fleet-test-preserved)" = preserved'])
     # The app serves on loopback only whatever its desktop settings say.
@@ -481,6 +506,54 @@ def test_desktop(ssh, t3):
     policy = json.loads(Path('/workspace/ansible/ubuntu/policy.json').read_text())
     ceiling = policy['resourceSafety']['rendererMaxMiB'] * 1024**2
     run(ssh + [f'test "$(cat {renderers}/memory.max)" = {ceiling}'])
+    # Reproduce a manually launched Electron app owning the socket in a
+    # graphical application scope. The transient service supplies the
+    # graphical environment. GNOME names the new scope after the actual PID.
+    user(ssh, f'systemctl --user stop personal-worker-recovery.timer {APP}')
+    run(ssh + ['python3 -'], input="""import json
+from pathlib import Path
+path = Path.home() / '.t3/userdata/desktop-settings.json'
+settings = json.loads(path.read_text())
+settings['serverExposureMode'] = 'network-accessible'
+path.write_text(json.dumps(settings))
+""")
+    user(ssh, 'systemd-run --user --quiet --unit=fixture-desktop "/opt/T3 Code (Nightly)/t3code" --ozone-platform=x11')
+    owner = 'python3 -I -B /usr/local/lib/personal-fleet/t3-listener.py'
+    wait_for(ssh, f'{owner} | grep -Eq "^app-com[.]t3tools[.]T3Code-.*[.]scope$"', 120, 'unmanaged app did not acquire the listener')
+    scope = run(ssh + [owner]).stdout.strip()
+    # Use a disposable activity database so the application can continue to
+    # own its real state. Both actors inspect a real listener and systemd scope.
+    run(ssh + ['mkdir -p busy/userdata && python3 -'], input="""import sqlite3
+with sqlite3.connect('busy/userdata/statev2.sqlite') as db:
+    db.execute("CREATE TABLE IF NOT EXISTS orchestration_v2_projection_runs (status TEXT)")
+    db.execute("DELETE FROM orchestration_v2_projection_runs")
+    db.execute("INSERT INTO orchestration_v2_projection_runs VALUES ('running')")
+""")
+    health = 'T3CODE_HOME=$HOME/busy /bin/sh /usr/local/lib/personal-fleet/t3-health.sh'
+    marker = '/run/user/1000/personal-t3-restart-pending'
+    assert 'T3_RESTART_PENDING' in user(ssh, health).stdout
+    first_deferred = run(ssh + [f'cat {marker}']).stdout
+    user(ssh, health + ' --apply')
+    assert run(ssh + [f'cat {marker}']).stdout == first_deferred
+    run(ssh + [f'test "$({owner})" = {scope}'])
+    # The real timer and the apply now see the application's idle database.
+    # Either may do the handoff. Both must leave one managed listener.
+    tick = subprocess.Popen(ssh + ['systemctl --user start personal-worker-recovery.service'])
+    try:
+        play(ssh, 't3-desktop.yml', **desktop)
+    finally:
+        assert tick.wait(timeout=120) == 0
+    wait_for(ssh, answers(APP), 150, 'managed app did not take over the idle desktop')
+    pid = main_pid(ssh, APP)
+    for _ in range(2):
+        play(ssh, 't3-desktop.yml', **desktop)
+    user(ssh, 'systemctl --user start personal-worker-recovery.service')
+    assert pid != '0' and main_pid(ssh, APP) == pid
+    run(ssh + [f'test "$({owner})" = managed && {answers(APP)}'])
+    properties = user(ssh, f'systemctl --user show {APP} -p UnitFileState -p Restart -p NRestarts').stdout.splitlines()
+    assert {'UnitFileState=enabled', 'Restart=always', 'NRestarts=0'} <= set(properties)
+    assert exposure(ssh, publicSsh=True)['status'] == 'pass'
+
     # The recovery check may see the app stopping and start it again, which
     # cancels the stop job: that is the recovery this measures.
     user(ssh, f'systemctl --user stop {APP} 2>&1 | grep -v "^Job for {APP} canceled" || true')
@@ -515,6 +588,26 @@ def test_screen_sharing(ssh):
     run(ssh + ['systemctl --user stop gnome-remote-desktop.service && gsettings set org.gnome.desktop.remote-desktop.rdp port 3397'])
     run(ssh + [apply])
     run(ssh + [apply])
+    # Observe the compositor's actual pointer in the disposable session.
+    # This works with a keyring prompt on screen: authentication and control
+    # must succeed while unrelated login secrets stay locked.
+    extension = '.local/share/gnome-shell/extensions/rdp-observer@example.test'
+    major = run(ssh + ['gnome-shell --version']).stdout.split()[-1].split('.')[0]
+    run(ssh + [f'mkdir -p {extension} && cat > {extension}/metadata.json'],
+        input=json.dumps({'uuid': 'rdp-observer@example.test', 'name': 'Test pointer observer',
+                          'description': 'Disposable RDP control test', 'shell-version': [major]}))
+    run(ssh + [f'cat > {extension}/extension.js'], input="""import GLib from 'gi://GLib';
+export default class Observer {
+    enable() {
+        this.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+            const [x, y] = global.get_pointer();
+            GLib.file_set_contents(GLib.get_user_runtime_dir() + '/rdp-pointer', x + ' ' + y);
+            return GLib.SOURCE_CONTINUE;
+        });
+    }
+    disable() { GLib.Source.remove(this.timer); }
+}
+""")
     for _ in range(2):
         reboot(ssh)
         wait_for(ssh, cert_probe, 90, 'RDP did not recover unattended')
@@ -522,10 +615,10 @@ def test_screen_sharing(ssh):
         assert holds_tailnet_only(ssh)
         locked = run(ssh + ['gdbus call --session --dest org.freedesktop.secrets --object-path /org/freedesktop/secrets/collection/login --method org.freedesktop.DBus.Properties.Get org.freedesktop.Secret.Collection Locked']).stdout
         assert 'true' in locked, 'unrelated login keyring was unlocked'
-        # Launch the client on a separate X display. Send a keystroke through
+        # Launch the client on a separate X display. Move the pointer through
         # that client and observe its effect on the shared GNOME desktop.
         run(ssh + [f"""set -eu
-rm -f rdp-controlled
+gnome-extensions enable rdp-observer@example.test
 export RDP_PIN={fingerprint.replace(':', '')}
 xvfb-run -a bash -se <<'CLIENT'
 client=$(command -v xfreerdp3 || command -v xfreerdp)
@@ -540,17 +633,20 @@ for i in $(seq 1 45); do
 done
 test -n "$window"
 xdotool windowfocus --sync "$window"
-# The exact monitoring handshake must leave the active client connected.
+# Move the pointer on the shared desktop before and after the manager's probe.
+move_pointer() {{
+  for i in $(seq 1 20); do
+    xdotool mousemove --window "$window" "$1" "$2"
+    sleep 0.3
+    test "$(cat "$XDG_RUNTIME_DIR/rdp-pointer" 2>/dev/null)" != "$1 $2" || return 0
+    kill -0 "$pid"
+  done
+  return 1
+}}
+move_pointer 140 170
 python3 rdp-probe.py 127.0.0.1 {TAILNET_ONLY_PORT} >/dev/null
-xdotool key alt+F2
-sleep 1
-xdotool type 'touch /home/fleettest/rdp-controlled'
-xdotool key Return
-for i in $(seq 1 15); do
-  test ! -f rdp-controlled || break
-  sleep 1
-done
-test -f rdp-controlled && kill -0 "$pid"
+move_pointer 230 250
+kill -0 "$pid"
 CLIENT"""])
     print('RDP desktop control verified after drift repair and two reboots with the login keyring locked; the TLS probe preserved the connected client', flush=True)
 

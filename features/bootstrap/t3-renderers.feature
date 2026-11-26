@@ -24,3 +24,13 @@ Feature: A desktop worker's T3 renderers run under a memory ceiling of their own
     But process 101 now runs in the application scope of the app
     When the renderer limits of 6144 MiB high and 8192 MiB max are applied
     Then the renderers subgroup holds no process
+
+  Scenario: The supervised application's renderers keep their limits after GNOME moves it into a scope
+    Given the desktop app's subgroup holds these processes:
+      | pid | arguments                                     |
+      | 100 | /opt/T3 Code (Nightly)/t3code --ozone-platform=x11 |
+      | 101 | /opt/T3 Code (Nightly)/t3code --type=renderer |
+      | 102 | /opt/T3 Code (Nightly)/t3code --type=renderer |
+    And GNOME moved the managed desktop with main PID 100 into its application scope
+    When the renderer limits of 6144 MiB high and 8192 MiB max are applied
+    Then the renderers subgroup holds 101 and 102

@@ -11,13 +11,13 @@
   gather_facts: false
   vars:
     git_config: '{{ git_home }}/.config/git/config'
-    # gh answers for GitHub through the pinned toolchain's shim, so any
-    # session's PATH works.
-    git_credential_helper: "!'{{ git_home }}/.local/share/mise/shims/gh' auth git-credential"
+    # Run the fleet shim outside the caller's checkout. It sees only the
+    # machine configuration and never evaluates an untrusted project pin.
+    git_credential_helper: "!cd / && exec '{{ git_home }}/.local/share/mise/shims/gh' auth git-credential"
     # A helper that asks gh by any path is the same credential source: the
     # one `gh auth setup-git` writes in ~/.gitconfig may stay. The same
     # pattern as GH_CREDENTIAL_HELPER in src/git-identity.ts.
-    git_gh_helper_pattern: "^!(\\S*/|'[^']*/)?gh'? auth git-credential$"
+    git_gh_helper_pattern: "^!(cd / && exec )?(\\S*/|'[^']*/)?gh'? auth git-credential$"
     # Git's configuration as a session outside any repository sees it:
     # ~/.config/git/config, then ~/.gitconfig, the later winning. Not
     # --global, which some Git builds read from ~/.gitconfig alone when it

@@ -208,6 +208,7 @@
           # Serve on loopback only: the route is tailscale serve to 127.0.0.1.
           # The running app rewrites its settings, so they are set before it
           # starts; a failure never keeps T3 from starting (worker:exposure).
+          ExecCondition=/usr/bin/python3 -I -B /usr/local/lib/personal-fleet/t3-listener.py --free
           ExecStartPre=-/usr/bin/python3 -I -B /usr/local/lib/personal-fleet/t3-local-only.py --home %h/.t3
           # Native Wayland hangs before the first window on Asahi (16K pages);
           # XWayland works on every GNOME worker, so use it everywhere.
@@ -268,35 +269,29 @@
       failed_when: false
     # Starting needs the auto-login graphical session, which a machine has only
     # after its first reboot; the running state is measured after this play.
-    - name: Start the desktop app without restarting a running one
+    - name: Reconcile the desktop listener with the recovery timer
       become: true
       become_user: '{{ development_user }}'
       environment:
         XDG_RUNTIME_DIR: '/run/user/{{ development_uid }}'
-      ansible.builtin.systemd_service:
-        scope: user
-        name: t3code-desktop.service
-        state: started
-      failed_when: false
-    # The app reads its exposure only when it starts (ExecStartPre above): a
-    # running app that serves beyond loopback is restarted like an update.
-    - name: Read the addresses the T3 server listens on
       ansible.builtin.command:
-        argv: [ss, -H, -l, -n, -t, 'sport = :3773']
-      register: t3_desktop_listeners
-      changed_when: false
-      check_mode: false
-      failed_when: false
-    # A running app keeps the files of its release: restart it into the one
-    # just installed, only while it runs no agent turn. Otherwise
-    # personal-worker-recovery restarts it at the first idle check, and
-    # t3:running-version reports T3_RESTART_PENDING until then.
-    - name: Restart T3 when it is idle
-      ansible.builtin.import_tasks: tasks/t3-restart.yml
-      when:
-        - t3_desktop_was_active.rc == 0
-        - >-
-          t3_desktop_updated is changed or
-          (t3_desktop_listeners.stdout_lines
-          | select('match', '^\S+\s+\S+\s+\S+\s+(?!\s|127\.0\.0\.1:|\[::1\]:)')
-          | list | length > 0)
+        argv:
+          - /bin/sh
+          - /usr/local/lib/personal-fleet/t3-health.sh
+          - --apply
+          - >-
+            {{ '--stage' if t3_desktop_was_active.rc == 0 and t3_desktop_updated is changed
+            else '--check' }}
+          - "{{ '--force' if t3_restart_busy | default(false) | bool else '--keep-turns' }}"
+      register: t3_recovery
+      changed_when: "'T3_HANDOFF' in t3_recovery.stdout or 'starting it' in t3_recovery.stdout"
+    - name: Wait for a newly started desktop to answer locally
+      ansible.builtin.uri:
+        url: http://127.0.0.1:3773/.well-known/t3/environment
+        use_proxy: false
+        return_content: false
+      register: t3_desktop_api
+      until: t3_desktop_api.status == 200 and t3_desktop_api.json.environmentId is defined
+      retries: 20
+      delay: 1
+      when: "'starting it' in t3_recovery.stdout | default('')"

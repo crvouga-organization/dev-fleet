@@ -26,21 +26,35 @@ if [ -f /run/personal-fleet-pressure-guard/active ]; then
   exit 0
 fi
 url=http://127.0.0.1:3773/.well-known/t3/environment
+runtime="${XDG_RUNTIME_DIR:?}"
+failures="$runtime/personal-t3-health-failures"
+no_session="$runtime/personal-t3-no-session"
+display_restarts="$runtime/personal-t3-display-restarts"
+pending="$runtime/personal-t3-restart-pending"
+handoff="$runtime/personal-t3-desktop-handoff"
+restarted="$runtime/personal-t3-restarted-for"
+installed="${T3_DESKTOP_DIR:-/opt/T3 Code (Nightly)}/.personal-fleet-version"
+here=$(dirname "$0")
+limit=3
+# Both the installed timer and the play hold this lock through handoff/start.
+exec 9>"$runtime/personal-t3-recovery.lock"
+if [ "${1:-}" = --apply ]; then
+  flock -w 120 9 || { echo "T3_RECOVERY_IN_PROGRESS"; exit 1; }
+elif ! flock -n 9; then
+  echo "T3_RECOVERY_IN_PROGRESS"
+  exit 0
+fi
 unit=t3code-desktop.service
 headless=
 if systemctl --user is-enabled --quiet t3code-headless.service; then
   unit=t3code-headless.service
   headless=1
 fi
-runtime="${XDG_RUNTIME_DIR:?}"
-failures="$runtime/personal-t3-health-failures"
-no_session="$runtime/personal-t3-no-session"
-display_restarts="$runtime/personal-t3-display-restarts"
-pending="$runtime/personal-t3-restart-pending"
-restarted="$runtime/personal-t3-restarted-for"
-installed="${T3_DESKTOP_DIR:-/opt/T3 Code (Nightly)}/.personal-fleet-version"
-here=$(dirname "$0")
-limit=3
+stage=${2:-}
+force=${3:-}
+record_pending() {
+  [ -s "$pending" ] || date +%s > "$pending"
+}
 
 count() {
   n=$(($(cat "$1" 2>/dev/null || echo 0) + 1))
@@ -59,6 +73,10 @@ fi
 
 if [ -z "$headless" ] && ! systemctl --user is-active --quiet graphical-session.target; then
   rm -f "$failures"
+  if [ "${1:-}" = --apply ]; then
+    echo "T3_NO_GRAPHICAL_SESSION"
+    exit 0
+  fi
   seen=$(count "$no_session")
   echo "T3_NO_GRAPHICAL_SESSION ($seen/$limit)."
   if [ "$seen" -ge "$limit" ]; then
@@ -75,19 +93,85 @@ if [ -z "$headless" ] && ! systemctl --user is-active --quiet graphical-session.
 fi
 rm -f "$no_session" "$display_restarts"
 
+if [ -z "$headless" ]; then
+  owner=$(python3 -I -B "$here/t3-listener.py") || exit 1
+  case "$owner" in
+    managed)
+      # A previous invocation may have stopped after systemd started the
+      # replacement. The new managed process already loaded the staged files.
+      if [ -f "$handoff" ]; then rm -f "$pending" "$handoff"; fi
+      ;;
+    free)
+      # Electron may close its socket before releasing its single-instance
+      # lock. Wait for systemd to finish the outstanding scope stop.
+      previous=$(cat "$handoff" 2>/dev/null)
+      case "$previous" in
+        app-com.t3tools.T3Code-*.scope)
+          state=$(systemctl --user show "$previous" -p ActiveState --value)
+          case "$state" in
+            deactivating)
+              [ "${1:-}" = --apply ] || exit 0
+              systemctl --user stop "$previous" || exit 1
+              [ "$(python3 -I -B "$here/t3-listener.py")" = free ] || exit 0
+              ;;
+            active | activating) exit 0 ;;
+          esac
+          ;;
+      esac
+      ;;
+    exposed) record_pending ;;
+    app-com.t3tools.T3Code-*.scope)
+      if [ "$(cat "$handoff" 2>/dev/null)" != "$owner" ]; then
+        printf '%s\n' "$owner" > "$handoff" || exit 1
+      fi
+      if [ "$force" != --force ] && ! python3 -I -B "$here/t3-idle.py" --state "${T3CODE_HOME:-$HOME/.t3}/userdata/statev2.sqlite"; then
+        record_pending
+        echo "T3_RESTART_PENDING: desktop handoff waits for active turns."
+        exit 0
+      fi
+      # Remeasure after the idle probe. An interrupted handoff resumes from
+      # the listener that actually exists on the next invocation.
+      [ "$(python3 -I -B "$here/t3-listener.py")" = "$owner" ] || exit 1
+      echo "T3_HANDOFF: stopping the idle desktop scope."
+      record_pending
+      if [ "${1:-}" = --apply ]; then
+        systemctl --user stop "$owner" || exit 1
+      else
+        systemctl --user stop --no-block "$owner" || exit 1
+      fi
+      # The application may spend its full stop timeout flushing state.
+      # Leave the stop job in systemd and resume on the next observation.
+      [ "$(python3 -I -B "$here/t3-listener.py")" = free ] || exit 0
+      state=$(systemctl --user show "$owner" -p ActiveState --value)
+      case "$state" in active | activating | deactivating) exit 0 ;; esac
+      ;;
+    *)
+      echo "T3_LISTENER_OWNER_UNKNOWN"
+      [ "${1:-}" = --apply ] && exit 0
+      exit 1
+      ;;
+  esac
+fi
 if ! systemctl --user is-active --quiet "$unit"; then
   # A T3 that starts loads everything staged: no restart is pending after it.
-  rm -f "$failures" "$pending"
+  rm -f "$failures"
   echo "T3 is not running; starting it."
   systemctl --user reset-failed "$unit" 2>/dev/null
-  exec systemctl --user start "$unit"
+  systemctl --user start "$unit" || exit 1
+  systemctl --user is-active --quiet "$unit" || exit 1
+  rm -f "$pending" "$handoff"
+  exit 0
 fi
+[ "$stage" != --stage ] || record_pending
 if [ -z "$headless" ] && [ -n "${T3_RENDERER_HIGH_MIB:-}" ]; then
   group=$(systemctl --user show "$unit" --property=ControlGroup --value)
-  python3 -I -B "$here/t3-renderers.py" "$group" "$T3_RENDERER_HIGH_MIB" "$T3_RENDERER_MAX_MIB" ||
+  main_pid=$(systemctl --user show "$unit" --property=MainPID --value)
+  python3 -I -B "$here/t3-renderers.py" --main-pid "$main_pid" "$group" "$T3_RENDERER_HIGH_MIB" "$T3_RENDERER_MAX_MIB" ||
     echo "T3 renderer limits could not be applied."
 fi
 if ! environment=$(curl --fail --silent --max-time 10 "$url"); then
+  # Only timed observations count toward the unresponsive threshold.
+  [ "${1:-}" != --apply ] || exit 0
   failed=$(count "$failures")
   echo "T3 local API did not answer ($failed/$limit)."
   if [ "$failed" -ge "$limit" ]; then
@@ -122,13 +206,14 @@ else
 fi
 [ -z "$reason" ] && exit 0
 restart() {
-  rm -f "$pending"
-  [ "$reason" = "release $release" ] && echo "$release" > "$restarted"
   echo "$1"
   systemctl --user reset-failed "$unit" 2>/dev/null
-  exec systemctl --user restart "$unit"
+  systemctl --user restart "$unit" || exit 1
+  rm -f "$pending"
+  [ "$reason" != "release $release" ] || echo "$release" > "$restarted"
+  exit 0
 }
-if python3 -I -B "$here/t3-idle.py" --state "${T3CODE_HOME:-$HOME/.t3}/userdata/statev2.sqlite"; then
+if [ "$force" = --force ] || python3 -I -B "$here/t3-idle.py" --state "${T3CODE_HOME:-$HOME/.t3}/userdata/statev2.sqlite"; then
   restart "T3 runs no agent turn; restarting it to load $reason."
 fi
 # The deadline counts from the second the restart was first deferred: the

@@ -23,3 +23,7 @@ Feature: An enrolled desktop can be controlled over its declared tailnet port
   Scenario: The manager rejects an unexpected endpoint certificate
     When the manager compares the endpoint certificate "AB:CD" with the enrolled certificate "12:34"
     Then the desktop check "worker:rdp-endpoint" fails with "RDP_TLS_IDENTITY_MISMATCH"
+
+  Scenario: A matching TLS identity verifies negotiation while leaving desktop login unverified
+    When the manager compares the endpoint certificate "ab:cd" with the enrolled certificate "AB:CD"
+    Then the desktop check "worker:rdp-endpoint" passes saying "The manager negotiated RDP and verified the worker TLS certificate. Authenticated desktop access is unverified."
