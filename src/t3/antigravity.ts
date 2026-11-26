@@ -1,13 +1,17 @@
-import type { Check } from '../types';
+import type { Check, Runner } from '../types';
 import { record } from '../config';
 import { runCommand } from '../runner';
-import { localRpc, MISSING_T3_CLI } from './local-rpc';
+import { localRpc, missingT3Cli, type T3Transport } from './local-rpc';
 
 /** An explicit model refresh opens a disposable ACP session using this
  * instance's launcher, and publishes its sign-in status in T3 Settings. */
-export async function refreshAntigravity(id: string, home?: string) {
+export async function refreshAntigravity(
+  id: string,
+  home?: string,
+  options: { run?: Runner; transport?: T3Transport } = {}
+) {
   const reply = await localRpc(
-    runCommand,
+    options.run ?? runCommand,
     {
       tag: 'server.refreshProviders',
       payload: { instanceId: id, refreshModels: true, reloadSecrets: true },
@@ -20,9 +24,12 @@ export async function refreshAntigravity(id: string, home?: string) {
       '--label',
       'dev-fleet provider check',
     ],
-    home ? { home } : {}
+    {
+      ...(home ? { home } : {}),
+      ...(options.transport ? { transport: options.transport } : {}),
+    }
   );
-  if (reply === MISSING_T3_CLI) return MISSING_T3_CLI;
+  if (reply === missingT3Cli) return missingT3Cli;
   if (!record(reply) || reply['_tag'] !== 'Exit') return false;
   const exit = reply['exit'];
   if (!record(exit) || exit['_tag'] !== 'Success' || !record(exit['value']))
@@ -53,18 +60,18 @@ export async function checkedProviders(
   );
   const failed: number[] = [];
   for (const [index, [instanceId]] of managed.entries()) {
-    const status = await refresh(instanceId, home);
-    if (status === MISSING_T3_CLI)
+    const result = await refresh(instanceId, home);
+    if (result === missingT3Cli)
       return {
         id: 't3:providers',
         status: 'fail',
-        summary: 'T3_CLI_MISSING: the local T3 CLI could not be started.',
+        summary: 'T3_CLI_MISSING',
         remedy: {
           action:
-            'Restore the T3 CLI in the T3 user bin directory and rerun fleet-sync.',
+            'Restore the T3 CLI in the user installation or on the fleet-sync PATH, then rerun fleet-sync.',
         },
       };
-    if (!status) failed.push(index + 1);
+    if (!result) failed.push(index + 1);
   }
   if (failed.length)
     return {

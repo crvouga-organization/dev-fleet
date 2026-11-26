@@ -51,6 +51,18 @@ Feature: The manager converges itself before any worker
       Then the check's status is "fail"
       And the check's summary is "T3_ANTIGRAVITY_SESSION_UNVERIFIED: account positions 2 of 2."
 
+    Scenario Outline: A worker refreshes its provider when the sync PATH omits the T3 CLI
+      Given the worker's T3 CLI is <installation>
+      When the worker verifies its Antigravity provider session
+      Then the check's status is "<status>"
+      And the check's summary is "<summary>"
+      And the managed T3 CLI revoked <count> sessions
+
+      Examples:
+        | installation                         | status | summary                                                                   | count |
+        | available only in its user install   | pass   | T3 reconciled its managed providers and authenticated all 1 Antigravity account sessions. | 1 |
+        | missing from the user install too    | fail   | T3_CLI_MISSING                                                            | 0 |
+
     Scenario: Once applied, a plan has nothing left to do
       Given T3 on the manager is configured with:
         """
