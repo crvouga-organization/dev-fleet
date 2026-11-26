@@ -1,0 +1,33 @@
+---
+- name: Install T3 keybindings and published themes
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Create private customization directories
+      ansible.builtin.file:
+        path: '{{ item }}'
+        state: directory
+        mode: '0700'
+      loop:
+        - '{{ userdata }}'
+        - '{{ userdata }}/themes'
+    - name: Install changed customization files
+      ansible.builtin.copy:
+        src: '{{ customization_source }}/{{ item }}'
+        dest: '{{ userdata }}/{{ item }}'
+        mode: '0600'
+      loop: '{{ changed_files }}'
+      no_log: true
+      diff: false
+    - name: Remove retired customizations
+      ansible.builtin.file:
+        path: '{{ userdata }}/{{ item }}'
+        state: absent
+      loop: '{{ removed_files }}'
+    - name: Record that this manager has recovered its customization snapshot
+      ansible.builtin.copy:
+        dest: '{{ manager_marker }}'
+        content: '{{ marker_body }}'
+        mode: '0600'
+      when: manager_marker | length > 0

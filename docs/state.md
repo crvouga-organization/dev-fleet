@@ -378,3 +378,5 @@ upgrading: they do not acquire the new guard. Worker probes and launchers
 continue to use Node; only the Bun CLI imports the locking module.
 
 The optional `t3-client-settings` document holds the manager’s T3 desktop preferences. Full sync updates it before applying the snapshot on workers. A manager missing its client-settings.json recovers the saved preferences on its next full sync.
+
+The optional `t3-customizations` document holds the manager’s keybindings, keybinding migration record, and published theme files (including background images). The encoded snapshot shares the 1 MiB per-document limit. Full sync restores it on a replacement manager before accepting local edits. A disposable marker in T3 userdata distinguishes that first restore from a later intentional removal.

@@ -150,6 +150,7 @@ IFS= read -r configuration || configuration=''
 # Held in this shell only (never exported, never an argument) until it is
 # written to a root-only file for the Tailscale play.
 IFS= read -r tailnet_key || tailnet_key=''
+# t3-customizations-v1: the preferences line also accepts a settings and customizations pair.
 client_preferences=''
 if [ "${8:-}" = client-preferences ]; then
   IFS= read -r client_preferences || die CONFIGURATION_INSTALL_FAILED

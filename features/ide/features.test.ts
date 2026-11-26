@@ -3,6 +3,7 @@ import { IdeWorld, ide } from './steps/world';
 import './steps/seam';
 import './steps/profile';
 import './steps/client-settings';
+import './steps/customizations';
 import './steps/models';
 import './steps/manager';
 import './steps/pairing';
