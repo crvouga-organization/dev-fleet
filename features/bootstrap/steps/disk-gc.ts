@@ -206,6 +206,7 @@ Given('old, open and recent files in the host temporary caches', (world) => {
   for (const [suffix, packageName] of [
     ['native', 'native'],
     ['project', 'different'],
+    ['manifest-only', 'manifest-only'],
   ]) {
     const dir = join(root, '.123abc-1.' + suffix);
     mkdirSync(dir);
@@ -214,6 +215,13 @@ Given('old, open and recent files in the host temporary caches', (world) => {
       manifest,
       JSON.stringify({ name: packageName, version: '1.0.0' })
     );
+    if (suffix !== 'manifest-only') {
+      const executable = join(dir, 'tool');
+      writeFileSync(executable, Buffer.from([0x7f, 69, 76, 70, 0]), {
+        mode: 0o755,
+      });
+      utimesSync(executable, old, old);
+    }
     utimesSync(manifest, old, old);
     utimesSync(dir, old, old);
   }

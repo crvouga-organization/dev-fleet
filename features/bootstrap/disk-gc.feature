@@ -149,6 +149,7 @@ Feature: The disk GC removes only what a node can rebuild
       When the disk GC runs with the stand-in for mise
       Then the stand-in for mise was run with "prune --yes"
 
+    @linux
     Scenario: A worker expires stale host cache files and preserves active and unrelated files
       Given old, open and recent files in the host temporary caches
       When the disk GC runs
@@ -159,6 +160,7 @@ Feature: The disk GC removes only what a node can rebuild
       And the cache child "host-tmp/other/keep" is kept
       And the cache child "host-tmp/.123abc-1.native" is removed
       And the cache child "host-tmp/.123abc-1.project" is kept
+      And the cache child "host-tmp/.123abc-1.manifest-only" is kept
 
     Scenario: A cache over the total budget loses rebuildable children while exclusions survive
       Given the cache ".cache/rebuildable" holds 3 files of 1 MiB, written an hour apart
@@ -308,6 +310,15 @@ Feature: The disk GC removes only what a node can rebuild
 
   Rule: Each run leaves a report fleet-status reads
 
+    Scenario: An under-target disposable disk reports that it reached its target
+      Given a disk of 100000 MiB with 45000 MiB free
+      When the disk GC runs with these limits:
+        | --target-used-percent | 60           |
+        | --report              | disk-gc.json |
+      Then the report "disk-gc.json" says:
+        | usedPercentAfter | 55   |
+        | targetReached    | true |
+
     Scenario: A protected disk above the disposable target reports the measured shortfall
       Given a disk of 100000 MiB with 34000 MiB free
       When the disk GC runs with these limits:
@@ -315,6 +326,7 @@ Feature: The disk GC removes only what a node can rebuild
         | --report              | disk-gc.json |
       Then the report "disk-gc.json" says:
         | pressure          | true |
+        | targetReached     | false |
         | usedPercentBefore | 66   |
         | usedPercentAfter  | 66   |
         | targetUsedPercent | 60   |

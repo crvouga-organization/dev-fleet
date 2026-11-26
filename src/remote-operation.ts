@@ -1,5 +1,5 @@
 import { record } from './config';
-import { cleanCheck, validCheck } from './protocol';
+import { cleanCheck, validCheck, MAX_CONVERGENCE_CHECKS } from './protocol';
 import { sshArgs, sshFailure } from './ssh';
 import type { Check, CommandResult, FleetNode, Runner } from './types';
 
@@ -99,7 +99,7 @@ function evidence(value: unknown): Check[] | null {
     value['version'] === 1 &&
     Array.isArray(value['checks']) &&
     value['checks'].length > 0 &&
-    value['checks'].length <= 200 &&
+    value['checks'].length <= MAX_CONVERGENCE_CHECKS &&
     value['checks'].every(validCheck)
     ? value['checks'].map(cleanCheck)
     : null;

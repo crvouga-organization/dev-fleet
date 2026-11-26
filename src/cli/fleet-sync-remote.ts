@@ -175,16 +175,20 @@ export async function selected(
       ))
     );
   }
-  enforceParity(canonical, report);
+  enforceParity(canonical, report, Boolean(options.apply));
   if (settle) report.checks.push(await settle(report));
   applyAcceptance(report, options.failOnWarning === true);
   return outcome(report, planFingerprint, started);
 }
 
-function enforceParity(definition: FleetDefinition, report: ManagerReport) {
+function enforceParity(
+  definition: FleetDefinition,
+  report: ManagerReport,
+  apply: boolean
+) {
   if (!definition.softwarePolicy) return;
   report.versionParity = measureParity(definition, report);
-  if (!report.versionParity.complete) report.ok = false;
+  if (apply && !report.versionParity.complete) report.ok = false;
 }
 
 /** Called after recording deployment and the bucket's final evidence. */

@@ -22,7 +22,7 @@ import {
 } from './remote-operation';
 import { record } from './config';
 import { installedDefinition, type FleetDefinition } from './definition';
-import { cleanCheck, validCheck } from './protocol';
+import { cleanCheck, validCheck, MAX_CONVERGENCE_CHECKS } from './protocol';
 import { UBUNTU_RELEASES } from './platform/ubuntu-release';
 import { T3_RESTART_MODES } from './platform/t3-service';
 
@@ -286,7 +286,7 @@ function parseEvidence(result: {
       value['version'] === 1 &&
       Array.isArray(value['checks']) &&
       value['checks'].length > 0 &&
-      value['checks'].length <= 200 &&
+      value['checks'].length <= MAX_CONVERGENCE_CHECKS &&
       value['checks'].every(validCheck)
     ) {
       const checks = value['checks'].map(cleanCheck);

@@ -2,6 +2,9 @@ import { record } from './config';
 import { FINGERPRINT_FILES } from './input-hashes';
 import type { Check, Snapshot } from './types';
 
+// A worker apply can include the full toolchain and per-account measurements.
+export const MAX_CONVERGENCE_CHECKS = 512;
+
 const STATUSES = ['pass', 'warn', 'fail', 'skip', 'not-applicable'];
 
 export function validCheck(value: unknown): value is Check {

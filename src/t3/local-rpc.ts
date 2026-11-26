@@ -87,9 +87,9 @@ async function issueSession(run: Runner, sessionArgs: string[]) {
 
 /** The origin the manager's T3 server records for itself, when it is on
  * this machine: a code is never sent anywhere else. */
-async function loopbackOrigin(
-  read: (path: string) => Promise<string>,
-  home: string
+export async function loopbackOrigin(
+  read: (path: string) => Promise<string> = (path) => readFile(path, 'utf8'),
+  home = resolve(process.env['T3CODE_HOME'] ?? join(homedir(), '.t3'))
 ): Promise<string | undefined> {
   try {
     const runtime: unknown = JSON.parse(

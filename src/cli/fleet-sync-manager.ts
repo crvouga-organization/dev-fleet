@@ -6,6 +6,7 @@ import { attempt } from '../node-converge-shared';
 import { toolchainChecks } from '../toolchain-checks';
 import { pinnedT3Version, versionCheck } from '../t3/version';
 import { liveServerVersion } from '../platform/t3-service';
+import { loopbackOrigin } from '../t3/local-rpc';
 import { managerQuotaCoverage } from '../t3/quota-coverage';
 import { quotaLimited, verifyFleetProviders } from '../agents/fleet-verify';
 import { verifyNativeAgents } from '../agents/native-verify';
@@ -166,16 +167,18 @@ async function managerMeasures(
   ]);
   if (definition.softwarePolicy) {
     rest.push(...(await toolchainChecks(input.workspace, run)));
-    if (idesOf(definition).includes('t3'))
+    if (idesOf(definition).includes('t3')) {
+      const origin = await loopbackOrigin();
       rest.push({
         ...versionCheck(
-          (await liveServerVersion(run)) ?? null,
+          origin ? ((await liveServerVersion(run, [], origin)) ?? null) : null,
           await pinnedT3Version(input.workspace),
           'the manager',
           'Restart the manager server when its active turns finish.'
         ),
         id: 't3:running-version',
       });
+    }
   }
   return [...vault, ...rest];
 }

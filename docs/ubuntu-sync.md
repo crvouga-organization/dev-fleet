@@ -487,6 +487,14 @@ a process could be using). On the manager it also trims `~/Library/Caches`,
 and its pressure mode starts where `manager:disk` warns
 (`disk.warnFreeMiB` in `ansible/macos/policy.json`).
 
+On workers the collector recognizes Bun’s native-package extraction layout under
+the host temporary directories. It requires the nonce and package-name suffix,
+a matching package manifest and an executable ELF file. Recent, open, mounted,
+linked or foreign-owned entries are kept. The GC report includes the reclaimed
+space in `categoriesMiB.package_staging`. Its `pnpmStores` field records the
+native prune result for each store generation, including generations for which
+no compatible installed pnpm was found.
+
 It limits Docker build cache to a share of the root disk. Under pressure it
 also prunes unused images, build cache and anonymous dangling volumes. It
 trims older children of the development user's cache directories, excluding

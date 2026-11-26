@@ -890,8 +890,20 @@ def collect_staging(root, busy, cutoff, dry_run):
         return 0
     flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
     freed = 0
+    # A bind mount can point elsewhere on the same device. A nested mount
+    # excludes the entire candidate, even when its root is user-owned.
+    try:
+        with open('/proc/self/mountinfo', encoding='utf-8', errors='surrogateescape') as mounts:
+            prefix = os.path.realpath(root) + '/'
+            mounted = set()
+            for line in mounts:
+                mount = re.sub(r'\\([0-7]{3})', lambda m: chr(int(m[1], 8)), line.split()[4])
+                if mount.startswith(prefix):
+                    mounted.add(mount[len(prefix):].split('/', 1)[0])
+    except (OSError, IndexError):
+        return 0
     with os.scandir(root) as entries:
-        names = [entry.name for entry in entries if entry.is_dir(follow_symlinks=False)]
+        names = [entry.name for entry in entries if entry.is_dir(follow_symlinks=False) and entry.name not in mounted]
     parent = os.open(root, flags)
     try:
         for name in names:
@@ -922,6 +934,7 @@ def staging_size(fd, basename, cutoff):
     if top.st_uid != uid or top.st_mtime >= cutoff:
         return None
     size = 0
+    executable = False
     def unreadable(error):
         raise error
     for _, dirs, files, directory in os.fwalk('.', dir_fd=fd, onerror=unreadable):
@@ -933,9 +946,16 @@ def staging_size(fd, basename, cutoff):
             if stat.S_ISREG(info.st_mode):
                 if info.st_atime >= cutoff or info.st_nlink != 1:
                     return None
+                if info.st_mode & 0o111 and not executable:
+                    flags = os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_NOATIME
+                    binary = os.open(name, flags, dir_fd=directory)
+                    with os.fdopen(binary, 'rb') as stream:
+                        executable = os.path.samestat(info, os.fstat(binary)) and stream.read(4) == b'\x7fELF'
                 size += info.st_blocks * 512
             elif not stat.S_ISDIR(info.st_mode):
                 return None
+    if not executable:
+        return None
     manifest = os.open('package.json', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
     with os.fdopen(manifest, 'rb') as stream:
         if not stat.S_ISREG(os.fstat(manifest).st_mode):
@@ -1246,6 +1266,7 @@ def main(argv):
         reclaimed_mib=reclaimed_mib, dry_run=args.dry_run,
         free_mib={p: v // MIB for p, v in after.items()})
     if args.report and not args.dry_run:
+        final_used = max(used_percent(p) for p in paths) if target else None
         write_report(os.path.join(home, args.report), {
             'version': 1,
             'finished': int(time.time()),
@@ -1255,7 +1276,7 @@ def main(argv):
             'categoriesMiB': categories_mib,
             'pnpmStores': generations,
             **({'targetUsedPercent': target, 'usedPercentBefore': initial_used,
-                'usedPercentAfter': max(used_percent(p) for p in paths)} if target else {}),
+                'usedPercentAfter': final_used, 'targetReached': final_used <= target} if target else {}),
             **measure(home, args.worktree_root),
         })
 
