@@ -13,6 +13,8 @@ export interface T3Transport {
   call(url: string, message: object, id: string): Promise<unknown>;
 }
 
+export const missingT3Cli = Symbol('missing T3 CLI');
+
 const ORCHESTRATION_PROTOCOL = '2';
 
 export async function localRpc(
@@ -32,11 +34,8 @@ export async function localRpc(
   const read = options.read ?? ((path: string) => readFile(path, 'utf8'));
   const origin = await loopbackOrigin(read, home);
   if (!origin) return null;
-  const issued = await run(
-    ['t3', 'auth', 'session', 'issue', '--json', ...sessionArgs],
-    { timeoutMs: 30_000 }
-  );
-  const session = parseSession(issued.ok ? issued.stdout : '');
+  const { cli, session } = await issueSession(run, sessionArgs);
+  if (session === missingT3Cli) return missingT3Cli;
   if (!session) return null;
   try {
     const ticket = await transport.post(
@@ -62,10 +61,28 @@ export async function localRpc(
   } catch {
     return null;
   } finally {
-    await run(['t3', 'auth', 'session', 'revoke', session.id], {
+    await run([cli, 'auth', 'session', 'revoke', session.id], {
       timeoutMs: 30_000,
     });
   }
+}
+
+async function issueSession(run: Runner, sessionArgs: string[]) {
+  let cli = 't3';
+  const issue = () =>
+    run([cli, 'auth', 'session', 'issue', '--json', ...sessionArgs], {
+      timeoutMs: 30_000,
+    });
+  let issued = await issue();
+  if (issued.reason === 'missing') {
+    cli = join(homedir(), '.t3', 'bin', 't3');
+    issued = await issue();
+  }
+  const session =
+    issued.reason === 'missing'
+      ? missingT3Cli
+      : parseSession(issued.ok ? issued.stdout : '');
+  return { cli, session } as const;
 }
 
 /** The origin the manager's T3 server records for itself, when it is on
