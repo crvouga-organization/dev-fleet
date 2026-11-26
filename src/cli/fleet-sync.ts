@@ -618,7 +618,7 @@ async function preview(
         .map((node) => node.node)
         .filter((node): node is string => typeof node === 'string'),
       sources: planSources(settings.workspace, context.root),
-      restartBusy: options.restartBusy === true,
+      desktopPreferences: (canonicalDefinition.ides ?? ['t3']).includes('t3'),
       definitions: {
         applied: appliedDefinition(),
         selected: canonicalDefinition,

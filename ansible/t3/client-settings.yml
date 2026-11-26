@@ -37,6 +37,8 @@
         path: '{{ client_path }}.restart-pending'
       register: restart_pending
     - name: Restart the desktop to load its preferences
+      environment:
+        XDG_RUNTIME_DIR: '{{ runtime_directory }}'
       ansible.builtin.systemd_service:
         scope: user
         name: t3code-desktop.service

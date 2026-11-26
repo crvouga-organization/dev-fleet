@@ -1661,7 +1661,7 @@
       "meaning": "The manager has the signed desktop bundle for the pinned release.",
       "severity": "required",
       "repair": {
-        "manual": "Run fleet-sync to stage the verified manager desktop. Quit T3 after active sessions finish and open the staged copy."
+        "manual": "Run fleet-sync to install the verified desktop and switch a running manager desktop to that release."
       }
     },
     {

@@ -39,6 +39,7 @@ export interface SyncPlan {
   nodes: { node: string; from: string | null; to: string; changes: boolean }[];
   /** What a sync removes from a worker because the fleet configuration
    * turned one of its features off since it was last applied. */
+  desktopPreferences?: boolean;
   screenSharing?: { node: string; port: number }[];
   removals: { node: string; removes: string[] }[];
 }
@@ -142,8 +143,7 @@ export async function syncPlan(
     state: Standing;
     nodes: string[];
     sources: string[];
-    /** `--restart-busy`: a T3 restart does not wait for idle. */
-    restartBusy?: boolean;
+    desktopPreferences?: boolean;
     /** The fleet configuration last applied (from the fleet state), when
      * there is one, and the one this sync applies. */
     definitions?: { applied: unknown; selected: unknown };
@@ -181,6 +181,7 @@ export async function syncPlan(
       to: input.to,
       changes: differs,
     })),
+    desktopPreferences: Boolean(input.desktopPreferences),
     screenSharing: sharingPlan(input.nodes, input.definitions?.selected),
     removals: removals(input.nodes, input.definitions),
   };
@@ -261,11 +262,21 @@ export function planText(plan: SyncPlan): string {
     );
   for (const restart of plan.restarts)
     lines.push(`  Restarts ${restart.service}: ${restart.reason}`);
+  if (plan.desktopPreferences)
+    lines.push(
+      '  Sync the manager’s current T3 desktop preferences. A changed worker desktop restarts immediately, ending running turns.'
+    );
+  lines.push(...workerPlanText(plan));
+  return lines.join('\n');
+}
+
+function workerPlanText(plan: SyncPlan): string[] {
+  const lines: string[] = [];
   for (const sharing of plan.screenSharing ?? [])
     lines.push(
       `  Verify or configure GNOME desktop sharing on ${sharing.node}, tailnet-only TCP ${sharing.port}, with its persistent TLS identity and per-worker credential.`
     );
   for (const removal of plan.removals ?? [])
     lines.push(`  Removes from ${removal.node}: ${removal.removes.join(', ')}`);
-  return lines.join('\n');
+  return lines;
 }

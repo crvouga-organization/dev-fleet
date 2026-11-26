@@ -11,7 +11,7 @@ import { ide } from './world';
 
 const { Given, When, Then } = ide;
 const play: PackagePlaybook = async (name, vars) => {
-  expect(name).toBe('t3-client-settings.yml');
+  expect(name).toBe('t3/client-settings.yml');
   const { client_path, client_source } = vars as {
     client_path: string;
     client_source: string;

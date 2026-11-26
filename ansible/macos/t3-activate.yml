@@ -46,6 +46,7 @@
             }
           - '{{ bundle_id }}'
           - '{{ desktop_path }}'
+      when: not ansible_check_mode
       register: launched
       retries: 15
       delay: 1

@@ -496,3 +496,20 @@ Then('the bundle nowhere contains {string}', async (world, text: string) => {
     (await readFile(need(world.bundle.file, 'a bundle'))).includes(text)
   ).toBe(false);
 });
+
+Given('the manager sends these desktop preferences:', (world, raw: string) => {
+  need(world.bootstrap.payload, 'a payload').clientSettings = raw;
+});
+
+Then(
+  'the SSH input carries those preferences after the enrolment key and before the bundle',
+  (world) => {
+    const payload = need(world.bootstrap.payload, 'a payload');
+    const encoded = Buffer.from(payload.clientSettings!).toString('base64');
+    for (const { command, options } of bootstraps(world)) {
+      expect(options?.input).toBe(`\n\n${encoded}\n${payload.bundle}`);
+      expect(command.join(' ')).not.toContain(encoded);
+      expect(command.join(' ')).not.toContain(payload.clientSettings!);
+    }
+  }
+);

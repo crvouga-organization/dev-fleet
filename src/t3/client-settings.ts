@@ -1,6 +1,6 @@
 import { mkdir, mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { homedir } from 'node:os';
+import { homedir, userInfo } from 'node:os';
 import {
   variablesDirectory,
   packagePlaybook,
@@ -44,12 +44,13 @@ export async function installClientSettings(
   try {
     await writeFile(source, body, { mode: 0o600, flag: 'wx' });
     const result = await play(
-      't3-client-settings.yml',
+      't3/client-settings.yml',
       {
         client_path: path,
         client_source: source,
         client_checksum: hash(body),
         desktop_service: desktopService,
+        runtime_directory: `/run/user/${userInfo().uid}`,
       },
       120_000
     );

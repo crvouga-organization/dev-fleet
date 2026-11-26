@@ -93,14 +93,8 @@ Given('no repository on the manager holds an older revision', (world) => {
 });
 
 When(
-  /^the plan from "([^"]*)" to "([^"]*)" is made for the machines "([^"]*)"(, restarting a busy T3)?$/,
-  async (
-    world,
-    from: string,
-    to: string,
-    machines: string,
-    busy?: string | null
-  ) => {
+  /^the plan from "([^"]*)" to "([^"]*)" is made for the machines "([^"]*)"(?:, restarting a busy T3)?$/,
+  async (world, from: string, to: string, machines: string) => {
     const made = await syncPlan(
       {
         from,
@@ -108,7 +102,6 @@ When(
         state: 'in-sync',
         nodes: machines.split(',').map((node) => node.trim()),
         sources: ['/checkout'],
-        restartBusy: Boolean(busy),
         ...(definitions.has(world)
           ? { definitions: definitions.get(world)! }
           : {}),
