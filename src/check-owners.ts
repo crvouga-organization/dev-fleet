@@ -35,6 +35,11 @@ export const CHECK_OWNERS: CheckOwner[] = [
   { pattern: 'auth:workstation', manual: IDENTITY },
   { pattern: 't3:settings', repair: 't3' },
   { pattern: 't3:api', repair: 't3' },
+  {
+    pattern: 't3:mesh-*',
+    manual:
+      'Verify the enrolled identities and their tailnet connections, then run fleet-sync to reconcile the directed grants declared by t3.meshAccess.',
+  },
   // The checks that fail when a machine breaks.
   { pattern: 'worker:service-recovery', repair: 'recovery' },
   { pattern: 'worker:capacity', repair: 'disk' },

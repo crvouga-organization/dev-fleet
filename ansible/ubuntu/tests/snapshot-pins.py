@@ -65,6 +65,7 @@ def main():
     for release in policy['releases']:
         # The same merge src/platform/ubuntu-release.ts makes.
         pins = {
+            **release['screenSharingPackages'],
             **policy['packages'], **release.get('packages', {}),
             **policy['browser']['packages'], **release.get('browserPackages', {}),
         }

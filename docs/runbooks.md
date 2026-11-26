@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 451 codes; 95 need a person.
+There are 467 codes; 99 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -687,3 +687,31 @@ write `1` to that agent scope’s `cgroup.kill`.
 ## Local command lock
 
 - `SQLITE_BUSY`: SQLite reports that another command holds the local guard. The CLI translates this into a locked message. Wait for that command to finish and retry; do not delete `sync.guard.sqlite` while commands are running. See [local command locking](state.md#local-command-locking).
+
+## Desktop sharing and unattended access
+
+Read the worker checks in `devfleet fleet-status --workers --json`. Compare the
+service, session, credential and endpoint findings before starting a client.
+See the GNOME desktop sharing and manager keychain procedures in
+[Ubuntu sync](ubuntu-sync.md).
+
+- `GITHUB_KEYCHAIN_INACCESSIBLE`: the SSH session cannot read the manager login. Trigger the authorized manager LaunchAgent or run the requested sync from the manager desktop. **Needs a person.**
+- `GIT_CREDENTIAL_UNAVAILABLE`: Git has the gh helper configured. Check the GitHub principal in the same session.
+- `RDP_ACCOUNT_MISMATCH`: check that the enrolled account is the desktop user. **Needs a person.**
+- `RDP_CERTIFICATE_UNAVAILABLE`: verify the GNOME TLS certificate and the desktop user's read access.
+- `RDP_CREDENTIAL_UNAVAILABLE`: check the per-worker secret and the session credential publisher, then rerun sync.
+- `RDP_DESKTOP_UNAVAILABLE`: confirm automatic graphical login starts GNOME and Mutter on the worker.
+- `RDP_ENDPOINT_UNVERIFIED`: check that the manager sees the tailnet peer and the worker reported its certificate.
+- `RDP_NEGOTIATION_FAILED`: check the declared port and service. Verify the worker accepts RDP negotiation from the manager.
+- `RDP_POLICY_INCOMPLETE`: verify the firewall, session bus and credential publisher, then rerun sync.
+- `RDP_PORT_MISMATCH`: restore the declared port and check for another listener occupying it.
+- `RDP_RETIREMENT_FAILED`: restore the enrolled user session and confirm ownership of the managed credential service.
+- `RDP_SERVICE_STOPPED`: check the desktop login and rerun sync to start the sharing service.
+- `RDP_TLS_IDENTITY_MISMATCH`: verify the endpoint and certificate from the enrolled worker before using the saved connection. **Needs a person.**
+- `TAILSCALE_SSH_MACOS_UNSUPPORTED`: use a supported open-source macOS tailscaled installation for native SSH. **Needs a person.**
+- `TAILSCALE_SSH_NETWORK_REQUIRED`: declare the worker's tailnet name and account and verify its enrolled SSH route.
+- `TAILSCALE_SSH_VERIFICATION_FAILED`: confirm both devices have tailnet SSH authorization, the expected host keys, and unconditional access for the enrolled accounts. Check the manager distribution and the sudo privileges of the accounts applying the change.
+
+### Directed T3 grants
+
+To authorize every enrolled environment's agents to work with full access on every other enrolled environment, set `t3.meshAccess` to `"full-access"` in fleet.json. Preview with `devfleet fleet-sync --dry-run`. Each `t3:mesh-link` names the source, destination and measured grant. An unreachable environment or changed identity is reported by `t3:mesh-member`. Restore its T3 service and enrolled tailnet connection, then run fleet-sync. Sync adopts healthy grants in place and replaces incorrect grants or grants expiring within seven days. Scheduled sync retries outstanding pairs. Use `devfleet fleet-status` to measure the links from their sources.

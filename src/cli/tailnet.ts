@@ -1,3 +1,4 @@
+import { desktopEndpoint } from '../screen-sharing';
 import { workerHealthText } from './worker-health-output';
 import { fleetReference } from './fleet-reference';
 import {
@@ -6,7 +7,7 @@ import {
   appendDashboardEvidence,
 } from './managed-health';
 import { discoverTailnet, type Tailnet } from '../tailscale';
-import type { FleetNode, NodeReport } from '../types';
+import type { FleetNode, NodeReport, Runner } from '../types';
 import { appendPublicReachability } from '../public-reachability';
 import { tailnetHealth } from '../tailnet-health';
 import { makeReport, renderReport, reportExitCode } from '../report';
@@ -64,7 +65,10 @@ export async function executeTailnet(
   if (options.managed)
     await appendManagerLinks(nodes, registered, services.run);
   // From the manager, outside the tailnet: optional, it never blocks readiness.
-  if (options.workers) await appendPublicReachability(nodes, services.run);
+  if (options.workers) {
+    await appendPublicReachability(nodes, services.run);
+    await appendDesktopEndpoints(nodes, discovered, services.run);
+  }
   // The hub runs on the manager, which worker scope deliberately filters out of
   // `tailnet`; its visibility comes from the unfiltered discovery.
   const dashboard = options.workers
@@ -157,4 +161,28 @@ async function healthContext(
     registered: managed === null ? registered : managed.nodes,
     coverage,
   };
+}
+
+async function appendDesktopEndpoints(
+  nodes: NodeReport[],
+  discovered: Tailnet,
+  run: Runner
+) {
+  for (const machine of fleet.workers) {
+    if (!machine.screenSharing || !machine.network) continue;
+    const name = machine.network.tailscaleName;
+    const peer = discovered.computers.find(
+      (p) => p.dns.toLowerCase() === name.toLowerCase()
+    );
+    const report = nodes.find((n) => n.node === machine.id || n.node === name);
+    if (report)
+      report.checks.push(
+        await desktopEndpoint(
+          peer?.ips[0],
+          machine.screenSharing.port,
+          report.checks,
+          run
+        )
+      );
+  }
 }

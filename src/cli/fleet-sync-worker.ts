@@ -1,3 +1,5 @@
+import { sshArgs } from '../ssh';
+import { playbookAddress } from '../worker-reboot';
 import type { FleetDefinition } from '../definition';
 import {
   TailnetControlError,
@@ -98,6 +100,14 @@ export async function deployWorker(
     if (reboot.status === 'pass')
       result = await deployment.converge(target, revision);
     maintenance.push(reboot);
+  }
+  if (
+    deployment.definition.nativeSsh &&
+    !result.checks.some(
+      (c) => c.id.startsWith('bootstrap:') && c.status === 'fail'
+    )
+  ) {
+    result.checks.push(await nativeSsh(target, deployment));
   }
   result.checks.unshift(...before, ...maintenance);
   return result;
@@ -212,5 +222,86 @@ async function rootOnly(
       ssh: `${user}@${node.ssh}`,
       workspace: `/home/${user}/.local/share/personal/fleet`,
     },
+  };
+}
+
+async function nativeSsh(
+  node: FleetNode,
+  deployment: WorkerDeployment
+): Promise<Check> {
+  const id = 'tailscale:native-ssh';
+  const manager = deployment.definition.manager;
+  const worker = deployment.definition.workers.find(
+    (entry) => entry.id === node.id
+  );
+  const address = playbookAddress(node);
+  const remedy = {
+    action:
+      'Use the open-source tailscaled distribution on macOS with noninteractive authorization for its SSH preference. Verify the enrolled SSH host keys and authorize unconditional SSH access between the two declared accounts in the tailnet policy. Rerun fleet-sync.',
+  };
+  if (!address || !worker?.network)
+    return {
+      id,
+      status: 'fail',
+      summary: 'TAILSCALE_SSH_NETWORK_REQUIRED',
+      remedy,
+    };
+  const managerArgs = sshArgs({
+    id: manager.id,
+    ssh: manager.network.user + '@' + manager.network.tailscaleName,
+  });
+  const workerArgs = sshArgs(node);
+  const native = (args: string[], host: string, user: string) => [
+    'ssh',
+    '-o',
+    'Hostname=' + host,
+    '-o',
+    'User=' + user,
+    '-o',
+    'Port=22',
+    '-o',
+    'PreferredAuthentications=none',
+    '-o',
+    'ProxyCommand=none',
+    '-o',
+    'ProxyJump=none',
+    ...args.slice(1),
+    'id -un',
+  ];
+  const result = await deployment.playbook(
+    'ubuntu/native-ssh.yml',
+    {
+      ...address,
+      worker_user: worker.network.user,
+      manager_user: manager.network.user,
+      worker_probe: [...workerArgs, 'id -un'],
+      manager_probe: [...managerArgs, 'id -un'],
+      worker_native_probe: native(
+        workerArgs,
+        worker.network.tailscaleName,
+        worker.network.user
+      ),
+      manager_native_probe: native(
+        managerArgs,
+        manager.network.tailscaleName,
+        manager.network.user
+      ),
+    },
+    210_000
+  );
+  if (result.ok)
+    return {
+      id,
+      status: 'pass',
+      summary:
+        'Native Tailscale SSH is enabled. Fresh strict SSH connections reached both enrolled accounts without interactive authorization.',
+    };
+  return {
+    id,
+    status: 'fail',
+    summary: result.stdout.includes('TAILSCALE_SSH_MACOS_UNSUPPORTED')
+      ? 'TAILSCALE_SSH_MACOS_UNSUPPORTED'
+      : 'TAILSCALE_SSH_VERIFICATION_FAILED',
+    remedy,
   };
 }

@@ -1,3 +1,4 @@
+import { inaccessibleGithubKeychain } from './keychain';
 import type { CommandResult, Runner } from '../types';
 
 /** What GitHub sign-in on a node came to. Each failure names the system to
@@ -6,6 +7,7 @@ import type { CommandResult, Runner } from '../types';
  * (`UNREACHABLE`).
  */
 export type GithubCode =
+  | 'GITHUB_KEYCHAIN_INACCESSIBLE'
   | 'GITHUB_OK'
   | 'GITHUB_TOKEN_MISSING'
   | 'GITHUB_TOKEN_REJECTED'
@@ -26,6 +28,7 @@ export const GITHUB_STEP_TIMEOUT_MS = 30_000;
 
 export interface GithubSyncInput {
   run: Runner;
+  remoteMac?: boolean;
   /** The stored credential of this node, through the fleet's secrets provider. */
   token: () => Promise<string | null>;
   /** The login the node must be signed in as. */
@@ -67,6 +70,19 @@ function refused(result: CommandResult): GithubCode {
     : 'GITHUB_UNREACHABLE';
 }
 
+async function withoutFleetToken(
+  input: GithubSyncInput,
+  current: CommandResult
+): Promise<GithubCode> {
+  if (current.ok)
+    return current.stdout.trim() === input.login
+      ? 'GITHUB_OK'
+      : 'GITHUB_LOGIN_MISMATCH';
+  return (await inaccessibleGithubKeychain(input.run, input.remoteMac))
+    ? 'GITHUB_KEYCHAIN_INACCESSIBLE'
+    : 'GITHUB_TOKEN_MISSING';
+}
+
 /** Brings this node's GitHub sign-in to the stored credential, or with
  * `apply: false` says what doing so would find. A token that differs from the
  * one gh holds is adopted while the old one still works, so a rotation never
@@ -82,7 +98,7 @@ export async function syncGithub(
   const token = ((await input.token()) ?? '').trim();
   if (!TOKEN.test(token))
     return {
-      code: signedIn ? 'GITHUB_OK' : 'GITHUB_TOKEN_MISSING',
+      code: await withoutFleetToken(input, current),
       adopted: false,
     };
   if (signedIn && (await activeToken(run)) === token)

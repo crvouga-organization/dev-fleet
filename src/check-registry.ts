@@ -415,6 +415,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
   't3:manager-origin': "The manager's T3 origin is configured.",
   't3:models':
     'T3 offers only the declared models for every account instance the fleet manages.',
+  't3:mesh-member': 'Enrolled mesh member identity and availability.',
+  't3:mesh-link': 'Directed T3 access to an enrolled environment.',
   't3:paired-access': "The manager's T3 is linked to this worker.",
   't3:policy-loaded': 'The running T3 loaded the managed policy.',
   't3:policy-staged': 'The managed T3 policy is installed.',
@@ -489,6 +491,18 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'worker:desired-source': 'The worker runs the declared revision.',
   'worker:docker-run':
     'A container starts and exits on a worker whose containers feature is on.',
+  'tailscale:native-ssh':
+    'The enrolled accounts can reach both native Tailscale SSH servers unattended.',
+  'worker:rdp-service': 'The GNOME desktop sharing service is running.',
+  'worker:rdp-session':
+    'The graphical session provides remote desktop control.',
+  'worker:rdp-port': 'The stable RDP port is configured and listening.',
+  'worker:rdp-credential': 'The desktop session can read its RDP credential.',
+  'worker:rdp-certificate': 'The worker reports its configured TLS identity.',
+  'worker:rdp-endpoint':
+    'The manager verifies RDP negotiation and the worker certificate.',
+  'worker:screen-sharing-policy':
+    'The worker applied its declared desktop sharing policy.',
   'worker:exposure':
     'Nothing listens on the worker beyond loopback and the tailnet but what the declared exposure policy allows, and the fleet firewall that closes the rest is loaded; not applicable without an address outside the tailnet.',
   'worker:features':

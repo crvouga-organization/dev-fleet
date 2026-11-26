@@ -106,6 +106,7 @@ Every failure code is in [the runbooks](runbooks.md).
 | `monitoring-tunnel-token`      | yes                          | `DEVFLEET_SECRET_MONITORING_TUNNEL_TOKEN`      | `~/.config/dev-fleet/secrets/monitoring-tunnel-token`      |
 | `proxy-tunnel-token`           | yes                          | `DEVFLEET_SECRET_PROXY_TUNNEL_TOKEN`           | `~/.config/dev-fleet/secrets/proxy-tunnel-token`           |
 | `github-token`                 | when its feature is declared | `DEVFLEET_SECRET_GITHUB_TOKEN`                 | `~/.config/dev-fleet/secrets/github-token`                 |
+| `rdp-password`                 | when its feature is declared | `DEVFLEET_SECRET_RDP_PASSWORD`                 | `~/.config/dev-fleet/secrets/rdp-password`                 |
 | `monitoring-backup-access-key` | when its feature is declared | `DEVFLEET_SECRET_MONITORING_BACKUP_ACCESS_KEY` | `~/.config/dev-fleet/secrets/monitoring-backup-access-key` |
 | `monitoring-backup-secret-key` | when its feature is declared | `DEVFLEET_SECRET_MONITORING_BACKUP_SECRET_KEY` | `~/.config/dev-fleet/secrets/monitoring-backup-secret-key` |
 | `notify-webhook-url`           | when its feature is declared | `DEVFLEET_SECRET_NOTIFY_WEBHOOK_URL`           | `~/.config/dev-fleet/secrets/notify-webhook-url`           |
@@ -130,6 +131,7 @@ Every failure code is in [the runbooks](runbooks.md).
 | `worker:git-signing`          | `src/definition.ts`, `src/git-identity.ts`          |
 | `worker:github-sync`          | `src/worker-access-checks.ts`                       |
 | `worker:proxy-authentication` | `src/worker-access-checks.ts`                       |
+| `worker:rdp-credential`       | `src/screen-sharing.ts`                             |
 | `worker:vault-renewal`        | `src/worker-access-checks.ts`                       |
 
 <!-- end: checks -->

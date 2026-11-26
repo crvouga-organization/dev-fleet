@@ -1,3 +1,4 @@
+import { KEYCHAIN_REMEDY } from './keychain';
 import type { Check, Runner } from '../types';
 import type { GithubCode } from './sync';
 import type { SecretsProvider } from '../secrets';
@@ -5,6 +6,7 @@ import { secretsLoginOwner, unreadSecret } from '../secrets-blocked';
 
 const CODES: GithubCode[] = [
   'GITHUB_OK',
+  'GITHUB_KEYCHAIN_INACCESSIBLE',
   'GITHUB_TOKEN_MISSING',
   'GITHUB_TOKEN_REJECTED',
   'GITHUB_LOGIN_MISMATCH',
@@ -13,6 +15,7 @@ const CODES: GithubCode[] = [
 ];
 
 const REMEDIES: Record<Exclude<GithubCode, 'GITHUB_OK'>, string> = {
+  GITHUB_KEYCHAIN_INACCESSIBLE: KEYCHAIN_REMEDY,
   GITHUB_TOKEN_MISSING:
     'Store the fleet GitHub token in the secrets provider under github-token (github-token-<node> with github.credential "per-node"), then run fleet-sync again.',
   GITHUB_TOKEN_REJECTED:

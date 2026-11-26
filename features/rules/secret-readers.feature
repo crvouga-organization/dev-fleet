@@ -38,6 +38,7 @@ Feature: Every reader of a secret answers a blocked read the same way
       | src/monitoring/manager-hub.ts    | is blocked through the shared answer      |
       | src/node-converge-shared.ts      | is answered by the reader it hands it to  |
       | src/notify.ts                    | is blocked through the shared answer      |
+      | src/screen-sharing.ts            | is blocked through the shared answer      |
       | src/t3/accounts.ts               | reports no check                          |
       | src/tailnet-cleanup.ts           | is blocked through the shared answer      |
       | src/tailnet-control.ts           | is blocked through the shared answer      |

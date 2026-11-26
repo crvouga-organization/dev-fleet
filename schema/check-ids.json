@@ -1689,6 +1689,22 @@
       }
     },
     {
+      "id": "t3:mesh-link",
+      "meaning": "Directed T3 access to an enrolled environment.",
+      "severity": "required",
+      "repair": {
+        "manual": "Verify the enrolled identities and their tailnet connections, then run fleet-sync to reconcile the directed grants declared by t3.meshAccess."
+      }
+    },
+    {
+      "id": "t3:mesh-member",
+      "meaning": "Enrolled mesh member identity and availability.",
+      "severity": "required",
+      "repair": {
+        "manual": "Verify the enrolled identities and their tailnet connections, then run fleet-sync to reconcile the directed grants declared by t3.meshAccess."
+      }
+    },
+    {
       "id": "t3:models",
       "meaning": "T3 offers only the declared models for every account instance the fleet manages.",
       "severity": "advisory",
@@ -1884,6 +1900,14 @@
     {
       "id": "tailscale:membership",
       "meaning": "A registered machine is in the visible tailnet.",
+      "severity": "required",
+      "repair": {
+        "manual": "Signing a machine in to the tailnet and approving it is a person’s; the daemon itself is repaired by the network recipe."
+      }
+    },
+    {
+      "id": "tailscale:native-ssh",
+      "meaning": "The enrolled accounts can reach both native Tailscale SSH servers unattended.",
       "severity": "required",
       "repair": {
         "manual": "Signing a machine in to the tailnet and approving it is a person’s; the daemon itself is repaired by the network recipe."
@@ -2391,6 +2415,54 @@
       "requirement": true
     },
     {
+      "id": "worker:rdp-certificate",
+      "meaning": "The worker reports its configured TLS identity.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
+      "id": "worker:rdp-credential",
+      "meaning": "The desktop session can read its RDP credential.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
+      "id": "worker:rdp-endpoint",
+      "meaning": "The manager verifies RDP negotiation and the worker certificate.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
+      "id": "worker:rdp-port",
+      "meaning": "The stable RDP port is configured and listening.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
+      "id": "worker:rdp-service",
+      "meaning": "The GNOME desktop sharing service is running.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
+      "id": "worker:rdp-session",
+      "meaning": "The graphical session provides remote desktop control.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
       "id": "worker:readiness",
       "meaning": "The worker readiness checks could run.",
       "severity": "required",
@@ -2410,6 +2482,14 @@
     {
       "id": "worker:reboot-pending",
       "meaning": "The worker needs no reboot to finish an update.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
+      "id": "worker:screen-sharing-policy",
+      "meaning": "The worker applied its declared desktop sharing policy.",
       "severity": "required",
       "repair": {
         "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."

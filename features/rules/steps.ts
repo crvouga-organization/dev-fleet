@@ -123,6 +123,8 @@ const KEYWORDS = new Set([
   'vars',
   'become',
   'become_user',
+  'delegate_to',
+  'timeout',
   'changed_when',
   'check_mode',
   'failed_when',

@@ -1,3 +1,4 @@
+import { meshChecks } from '../t3/mesh';
 import { selectNodes } from '../config';
 import { doctor } from '../manager';
 import { FleetUsageError } from '../errors';
@@ -165,8 +166,12 @@ async function diagnose(
     skipsFleet(options, settings)
   );
   // Devices tagged as workers that are no declared worker (#123).
-  if (!skipsFleet(options, settings))
+  if (!skipsFleet(options, settings)) {
     await appendTailnetLeftovers(reports, fleet, services.tailnet, nodes);
+    reports[0]!.checks.push(
+      ...(await meshChecks(fleet, active, services.run, false))
+    );
+  }
   const report = {
     ...makeReport('doctor', reports),
     ...(usage ?? {}),

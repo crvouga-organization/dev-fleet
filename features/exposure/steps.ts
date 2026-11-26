@@ -1,3 +1,4 @@
+import { desktopChecks, desktopEndpoint } from '../../src/screen-sharing';
 import { expect } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -705,5 +706,49 @@ Then(
       table.list().map((line) => `'${line}' in ssh_verified.stdout_lines`)
     );
     expect(String(assertion['fail_msg'])).toStartWith(`${code};`);
+  }
+);
+
+Given(
+  '{string} shares its desktop on port {int}',
+  (world, id: string, port: number) => {
+    const workers = world.written!['workers'] as Record<string, unknown>[];
+    workers.find((entry) => entry['id'] === id)!['screenSharing'] = { port };
+  }
+);
+
+When(
+  'the worker measures desktop sharing on port {int}',
+  async (world, port: number) => {
+    world.checks = await desktopChecks(port, world.run);
+  }
+);
+Then(
+  'the desktop check {string} fails with {string}',
+  (world, id: string, summary: string) => {
+    const check = world.checks.find((entry) => entry.id === id);
+    expect(check?.status).toBe('fail');
+    expect(check?.summary).toBe(summary);
+    expect(check?.remedy?.action.length).toBeGreaterThan(0);
+  }
+);
+When(
+  'the manager compares the endpoint certificate {string} with the enrolled certificate {string}',
+  async (world, actual: string, expected: string) => {
+    world.commands.answer('rdp-probe.py', succeeded(actual));
+    world.checks = [
+      await desktopEndpoint(
+        '100.64.0.2',
+        3389,
+        [
+          {
+            id: 'worker:rdp-certificate',
+            status: 'pass',
+            summary: 'SHA256 ' + expected,
+          },
+        ],
+        world.run
+      ),
+    ];
   }
 );

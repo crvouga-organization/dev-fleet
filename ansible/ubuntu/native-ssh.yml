@@ -1,0 +1,18 @@
+---
+- name: Adopt native SSH using the enrolled SSH identities
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Inspect the manager Tailscale distribution
+      ansible.builtin.command:
+        argv: [tailscale, version, '--json']
+      register: native_distribution
+      check_mode: false
+      changed_when: false
+    - name: Require a macOS distribution that supports the SSH server
+      ansible.builtin.assert:
+        that: (native_distribution.stdout | from_json).osVariant | default('') == 'darwin'
+        fail_msg: TAILSCALE_SSH_MACOS_UNSUPPORTED
+    - name: Validate and converge the two enrolled accounts
+      ansible.builtin.import_tasks: tasks/native-ssh.yml

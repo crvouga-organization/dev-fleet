@@ -14,6 +14,7 @@ import { syncGithub, type GithubSyncResult } from '../src/github/sync';
 /** The exit status of each outcome, so the unit's result names it too. */
 export const EXIT_CODES: Record<GithubSyncResult['code'], number> = {
   GITHUB_OK: 0,
+  GITHUB_KEYCHAIN_INACCESSIBLE: 15,
   GITHUB_TOKEN_MISSING: 10,
   GITHUB_TOKEN_REJECTED: 11,
   GITHUB_LOGIN_MISMATCH: 12,

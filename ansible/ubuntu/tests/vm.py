@@ -317,6 +317,7 @@ ssh_keys:
         test_exposure(ssh)
         if t3 and DESKTOP:
             test_desktop(ssh, t3)
+            test_screen_sharing(ssh)
         verification = Path('/verification/verify')
         if verification.exists():
             subprocess.run(ssh + ['cat > verify && chmod 700 verify'], input=verification.read_bytes(), capture_output=True, check=True, timeout=60)
@@ -486,6 +487,72 @@ def test_desktop(ssh, t3):
     took = wait_for(ssh, answers(APP), 150, 'the recovery timer did not start the stopped desktop app')
     run(ssh + ['test "$(cat ~/.t3/fleet-test-preserved)" = preserved'])
     print(f'desktop T3 app: switched from headless keeping ~/.t3, auto-login after reboot, stopped app started by the timer in {took:.0f} s', flush=True)
+
+
+
+def test_screen_sharing(ssh):
+    """Use a full RDP client against the disposable auto-login desktop."""
+    import secrets
+    password = secrets.token_urlsafe(32)
+    config = variables(rdp_host='desktop.example.test', rdp_port=TAILNET_ONLY_PORT,
+                       rdp_password=password)
+    # The fixture password travels only over stdin and in owner-only files
+    # inside the disposable guest. Neither ssh nor the client receives it in argv.
+    run(ssh + ['umask 077; cat > rdp-vars.json'], input=config)
+    run(ssh + ['umask 077; cat > rdp-password'], input=password + '\n')
+    apply = 'cd baseline && ansible-playbook screen-sharing.yml --extra-vars @../rdp-vars.json'
+    run(ssh + [apply])
+    run(ssh + ['sudo apt-get install -y freerdp3-x11 xvfb xdotool xauth'])
+    probe = Path('/workspace/bootstrap/rdp-probe.py').read_text()
+    run(ssh + ['cat > rdp-probe.py'], input=probe)
+    cert_probe = f'python3 rdp-probe.py 127.0.0.1 {TAILNET_ONLY_PORT}'
+    wait_for(ssh, cert_probe, 45, 'RDP did not negotiate TLS')
+    fingerprint = run(ssh + [cert_probe]).stdout.strip()
+    # Set a password on the disposable login keyring, then let the next
+    # automatic login leave it locked. The unrelated keyring is checked
+    # through D-Bus metadata only after each reboot.
+    run(ssh + ['gnome-keyring-daemon --unlock >/dev/null'], input=secrets.token_urlsafe(32))
+    run(ssh + ['systemctl --user stop gnome-remote-desktop.service && gsettings set org.gnome.desktop.remote-desktop.rdp port 3397'])
+    run(ssh + [apply])
+    run(ssh + [apply])
+    for _ in range(2):
+        reboot(ssh)
+        wait_for(ssh, cert_probe, 90, 'RDP did not recover unattended')
+        assert run(ssh + [cert_probe]).stdout.strip() == fingerprint
+        assert holds_tailnet_only(ssh)
+        locked = run(ssh + ['gdbus call --session --dest org.freedesktop.secrets --object-path /org/freedesktop/secrets/collection/login --method org.freedesktop.DBus.Properties.Get org.freedesktop.Secret.Collection Locked']).stdout
+        assert 'true' in locked, 'unrelated login keyring was unlocked'
+        # Launch the client on a separate X display. Send a keystroke through
+        # that client and observe its effect on the shared GNOME desktop.
+        run(ssh + [f"""set -eu
+rm -f rdp-controlled
+export RDP_PIN={fingerprint.replace(':', '')}
+xvfb-run -a bash -se <<'CLIENT'
+client=$(command -v xfreerdp3 || command -v xfreerdp)
+"$client" /v:127.0.0.1:{TAILNET_ONLY_PORT} /u:fleettest /from-stdin:force /cert:fingerprint:sha256:$RDP_PIN <rdp-password >rdp-client.log 2>&1 &
+pid=$!
+trap 'kill "$pid" 2>/dev/null || true' EXIT
+for i in $(seq 1 45); do
+  window=$(xdotool search --onlyvisible --pid "$pid" 2>/dev/null | head -1)
+  test -z "$window" || break
+  kill -0 "$pid"
+  sleep 1
+done
+test -n "$window"
+xdotool windowfocus --sync "$window"
+# The exact monitoring handshake must leave the active client connected.
+python3 rdp-probe.py 127.0.0.1 {TAILNET_ONLY_PORT} >/dev/null
+xdotool key alt+F2
+sleep 1
+xdotool type 'touch /home/fleettest/rdp-controlled'
+xdotool key Return
+for i in $(seq 1 15); do
+  test ! -f rdp-controlled || break
+  sleep 1
+done
+test -f rdp-controlled && kill -0 "$pid"
+CLIENT"""])
+    print('RDP desktop control verified after drift repair and two reboots with the login keyring locked; the TLS probe preserved the connected client', flush=True)
 
 
 def holds_tailnet_only(ssh):

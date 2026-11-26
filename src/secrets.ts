@@ -19,6 +19,7 @@ export const SECRET_NAMES = [
  */
 export const OPTIONAL_SECRET_NAMES = [
   'github-token',
+  'rdp-password',
   // The off-machine storage of the monitoring hub's backups
   // (services.monitoring.backups).
   'monitoring-backup-access-key',

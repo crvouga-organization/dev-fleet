@@ -7,6 +7,7 @@ import {
 import type { ToolProfile } from '../bootstrap/worker-tools';
 import {
   featuresFault,
+  workerFeatures,
   type Preset,
   type Session,
 } from '../bootstrap/worker-features';
@@ -50,6 +51,7 @@ export interface MachineDefinition {
   /** This worker's exposure, over the fleet-wide one (src/exposure.ts). */
   exposure?: ExposureDeclaration;
   /** This worker's features, over the fleet-wide `worker.features`. */
+  screenSharing?: { port: number };
   features?: FeaturesDefinition;
   /** This worker's limit on agent sessions, over the fleet-wide
    * `worker.agentSessionLimit` (src/agent-session-limit.ts). */
@@ -175,6 +177,7 @@ export interface FleetDefinition {
   /** The tailnet control plane new workers are enrolled with, unattended.
    * Absent, a worker joins the tailnet through its own login.
    */
+  nativeSsh?: boolean;
   tailnet?: TailnetConfig;
   /** Parking and idle reporting (docs/topology.md). */
   parking?: ParkingPolicy;
@@ -457,6 +460,11 @@ function port(value: unknown, path: string): number {
     return fail(path, 'a port from 1 to 65535', value);
   return value as number;
 }
+function screenSharing(value: unknown, path: string): { port: number } {
+  const fields = object(value, path);
+  keys(fields, ['port'], path);
+  return { port: port(fields['port'], path + '.port') };
+}
 function worker(value: unknown, path: string): MachineDefinition {
   const fields = object(value, path);
   keys(
@@ -467,6 +475,7 @@ function worker(value: unknown, path: string): MachineDefinition {
       'os',
       'network',
       'toolProfiles',
+      'screenSharing',
       'exposure',
       'features',
       'agentSessionLimit',
@@ -508,6 +517,14 @@ function worker(value: unknown, path: string): MachineDefinition {
               'a list of known tool profiles, each once',
               fields['toolProfiles']
             ),
+        }),
+    ...(fields['screenSharing'] === undefined
+      ? {}
+      : {
+          screenSharing: screenSharing(
+            fields['screenSharing'],
+            path + '.screenSharing'
+          ),
         }),
     ...(fields['exposure'] === undefined
       ? {}
@@ -648,6 +665,7 @@ export function parseDefinition(value: unknown): FleetDefinition {
       'git',
       'notify',
       'github',
+      'nativeSsh',
       'tailnet',
       'parking',
       'storage',
@@ -715,6 +733,24 @@ export function parseDefinition(value: unknown): FleetDefinition {
   // A worker's list replaces the fleet-wide one of the same name only: its
   // other list still comes from worker.exposure.
   workers.forEach((entry, index) => {
+    if (entry.screenSharing) {
+      const policy = effectiveExposure(
+        definition.worker?.exposure,
+        entry.exposure
+      );
+      const port = entry.screenSharing.port;
+      if (
+        !entry.network ||
+        workerFeatures(definition, entry.id).session !== 'desktop' ||
+        [22, entry.network.sshPort, entry.network.t3Port].includes(port) ||
+        policy.publicPorts.some((p) => p.protocol === 'tcp' && p.port === port)
+      )
+        fail(
+          `$.workers[${index}].screenSharing`,
+          'a desktop worker with a declared network and a dedicated tailnet-only TCP port',
+          entry.screenSharing
+        );
+    }
     if (
       entry.exposure &&
       portInBothLists(
@@ -759,8 +795,20 @@ function superProjects(value: unknown): { projects: string[] } {
 
 function operations(
   fields: Record<string, unknown>
-): Pick<FleetDefinition, 'github' | 'parking' | 'tailnet' | 'storage'> {
+): Pick<
+  FleetDefinition,
+  'github' | 'parking' | 'tailnet' | 'storage' | 'nativeSsh'
+> {
   return {
+    ...(fields['nativeSsh'] === undefined
+      ? {}
+      : {
+          nativeSsh:
+            typeof fields['nativeSsh'] === 'boolean'
+              ? fields['nativeSsh']
+              : fail('$.nativeSsh', 'a boolean', fields['nativeSsh']),
+        }),
+
     ...(fields['github'] === undefined
       ? {}
       : {
