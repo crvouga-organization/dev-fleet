@@ -20,10 +20,10 @@ import time
 import urllib.request
 import uuid
 
-VERSION = '0.21.1'
+VERSION = '0.21.2'
 ARTIFACTS = {
-    'beszel': '70857d0489cf790224167815c82f8807cc28134d27f209b58b1cd36e4082931a',
-    'beszel-agent': '3b6ee592632ec03b9a43312e99a40203a7b3d83fe40dd0c25acda1eb915ea7c0',
+    'beszel': '7d0b8d9547e36aa05230763fed3d9b75fb5a72e37b9d813712ba1c0c21fed045',
+    'beszel-agent': '0359a4c3b9d800ba865b2be4081c7f0df8ba29a8c5c0ac76e72f490f28496909',
 }
 
 

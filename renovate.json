@@ -73,6 +73,20 @@
         "github/copilot-cli"
       ],
       "enabled": false
+    },
+    {
+      "description": "Keep the Ubuntu 24.04 test image on its supported release and refresh its digest.",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["ubuntu"],
+      "matchCurrentValue": "24.04",
+      "allowedVersions": "/^24\\.04$/"
+    },
+    {
+      "description": "Keep the Ubuntu 26.04 test image on its supported release and refresh its digest.",
+      "matchManagers": ["dockerfile"],
+      "matchPackageNames": ["ubuntu"],
+      "matchCurrentValue": "26.04",
+      "allowedVersions": "/^26\\.04$/"
     }
   ]
 }
