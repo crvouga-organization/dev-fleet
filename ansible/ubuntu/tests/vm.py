@@ -101,7 +101,7 @@ group = Path('/sys/fs/cgroup' + Path('/proc/self/cgroup').read_text().strip().sp
 def stalled():
     line = (group / 'memory.pressure').read_text().splitlines()[-1]
     return int(line.split('total=')[1]) / 1000000
-end = time.monotonic() + 65
+end = time.monotonic() + 65 if sys.argv[1:] == ["paced"] else float("inf")
 with tempfile.TemporaryFile() as f:
     f.truncate(160 * 1024 * 1024)
     with mmap.mmap(f.fileno(), 0) as pages:
@@ -140,8 +140,8 @@ with tempfile.TemporaryFile() as f:
             (ROOT / 'last-failure.log').write_bytes(evidence.read_bytes())
             raise RuntimeError('A test session under paced pressure failed; inspect private artifact last-failure.log')
         start = run(ssh + ['date +%s']).stdout.strip()
-        run(ssh + [launch + 'python3 pressure-fixture.py'])
-        # One thrashing session measures about 52-56% full PSI, below the
+        run(ssh + [launch + 'python3 pressure-fixture.py bounded'])
+        # Pace this sustained run too: unpaced reclaim can exceed the
         # 60% oomd limit: oomd is a last resort here. What must hold under
         # sustained overload is that SSH answers, the quiet session lives and
         # the hard cap contains the runaway session.
@@ -269,9 +269,25 @@ ssh_keys:
             run(ssh + ['! command -v node && ! command -v bun && ! command -v mise && ! command -v git'])
             print('fresh target has no Node, Bun, mise or Git; invoking production SSH bootstrap', flush=True)
             run(ssh + ['mkdir -p work && printf preserved > work/uncommitted'])
-            result = subprocess.run(['/verification/bootstrap', str(ROOT), '/bootstrap'], capture_output=True, text=True, timeout=5500)
+            result = subprocess.run(['/verification/bootstrap', str(ROOT), '/bootstrap', 'without-roster'], capture_output=True, text=True, timeout=5500)
             (ROOT / 'bootstrap-result.json').write_text(result.stdout)
             assert result.returncode == 0, 'production bootstrap did not reach node convergence; inspect redacted bootstrap-result.json'
+            run(ssh + ['test ! -e ~/.config/systemd/user/t3code-headless.service'])
+            # A local HTTPS model list lets policy staging resume without any
+            # provider account. The private key and fixture credential stay in
+            # the disposable guest and are never passed through argv.
+            run(ssh + ["""set -eu
+umask 077
+mkdir -p roster/v1 ~/.config/dev-fleet/secrets
+openssl rand -hex 32 > ~/.config/dev-fleet/secrets/proxy-client-key
+printf '{"data":[]}' > roster/v1/models
+openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=localhost -addext subjectAltName=DNS:localhost -keyout fixture.key -out fixture.crt 2>/dev/null
+sudo install -m 0644 fixture.crt /usr/local/share/ca-certificates/devfleet-fixture.crt
+sudo update-ca-certificates >/dev/null
+sudo systemd-run --unit=fixture-roster --working-directory="$HOME/roster" openssl s_server -accept 127.0.0.1:443 -cert "$HOME/fixture.crt" -key "$HOME/fixture.key" -WWW -quiet"""])
+            result = subprocess.run(['/verification/bootstrap', str(ROOT), '/bootstrap'], capture_output=True, text=True, timeout=5500)
+            (ROOT / 'bootstrap-retry-result.json').write_text(result.stdout)
+            assert result.returncode == 0, 'restoring the missing account roster did not unblock T3'
             evidence = ('set -e; sha256sum work/uncommitted /etc/ssh/ssh_host_ed25519_key.pub '
                         '~/.ssh/dev-fleet-git-signing.pub; stat -c "%i %y" '
                         '/etc/systemd/logind.conf.d/60-personal-fleet.conf /etc/ssh/sshd_config.d/60-personal-fleet.conf; '
@@ -498,7 +514,27 @@ def test_desktop(ssh, t3):
     user(ssh, f'systemd-run --user --quiet systemd-run --user --scope --unit={scope} "/opt/T3 Code (Nightly)/t3code" --ozone-platform=x11')
     owner = 'python3 -I -B /usr/local/lib/personal-fleet/t3-listener.py'
     wait_for(ssh, f'test "$({owner})" = {scope}', 120, 'unmanaged app did not acquire the listener')
-    play(ssh, 't3-desktop.yml', **desktop)
+    # Use a disposable activity database so the application can continue to
+    # own its real state. Both actors inspect a real listener and systemd scope.
+    run(ssh + ['mkdir -p busy/userdata && python3 -'], input="""import sqlite3
+with sqlite3.connect('busy/userdata/statev2.sqlite') as db:
+    db.execute("CREATE TABLE orchestration_v2_projection_runs (status TEXT)")
+    db.execute("INSERT INTO orchestration_v2_projection_runs VALUES ('running')")
+""")
+    health = 'T3CODE_HOME=$HOME/busy /bin/sh /usr/local/lib/personal-fleet/t3-health.sh'
+    marker = '/run/user/1000/personal-t3-restart-pending'
+    assert 'T3_RESTART_PENDING' in user(ssh, health).stdout
+    first_deferred = run(ssh + [f'cat {marker}']).stdout
+    user(ssh, health + ' --apply')
+    assert run(ssh + [f'cat {marker}']).stdout == first_deferred
+    run(ssh + [f'test "$({owner})" = {scope}'])
+    # The real timer and the apply now see the application's idle database.
+    # Either may do the handoff. Both must leave one managed listener.
+    tick = subprocess.Popen(ssh + ['systemctl --user start personal-worker-recovery.service'])
+    try:
+        play(ssh, 't3-desktop.yml', **desktop)
+    finally:
+        assert tick.wait(timeout=120) == 0
     wait_for(ssh, answers(APP), 150, 'managed app did not take over the idle desktop')
     pid = main_pid(ssh, APP)
     for _ in range(2):
@@ -506,6 +542,10 @@ def test_desktop(ssh, t3):
     user(ssh, 'systemctl --user start personal-worker-recovery.service')
     assert pid != '0' and main_pid(ssh, APP) == pid
     run(ssh + [f'test "$({owner})" = managed && {answers(APP)}'])
+    properties = user(ssh, f'systemctl --user show {APP} -p UnitFileState -p Restart -p NRestarts').stdout.splitlines()
+    assert {'UnitFileState=enabled', 'Restart=always', 'NRestarts=0'} <= set(properties)
+    assert exposure(ssh, publicSsh=True)['status'] == 'pass'
+
     # The recovery check may see the app stopping and start it again, which
     # cancels the stop job: that is the recovery this measures.
     user(ssh, f'systemctl --user stop {APP} 2>&1 | grep -v "^Job for {APP} canceled" || true')

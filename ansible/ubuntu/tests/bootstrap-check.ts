@@ -25,10 +25,18 @@ await writeFile(
   { mode: 0o600 }
 );
 const config = loadDefinition('/workspace/examples/fleet.json');
+if (!config.worker) throw new Error('Fixture needs declared worker policy.');
 config.worker.features = { containers: true, session: 'headless' };
+config.services.proxy.endpoint = 'https://localhost';
+config.secrets = { provider: 'file' };
 config.git = { name: 'Fixture', email: 'fixture@example.test', signing: 'ssh' };
 const result = await bootstrapRemote(
-  { id: 'fixture-vm', ssh: 'fixture-vm', workspace: '/unused', required: [] },
+  {
+    id: config.workers[0]!.id,
+    ssh: 'fixture-vm',
+    workspace: '/unused',
+    required: [],
+  },
   {
     revision,
     digest: createHash('sha256').update(bundle).digest('hex'),
@@ -49,9 +57,22 @@ process.stdout.write(
 );
 // Missing live auth is expected. Reaching node-level convergence establishes that
 // source transfer, exact checkout and shared tool/dependency bootstrap completed.
-const required = ['ubuntu:baseline', 't3:service', 'git:configuration'];
-process.exitCode = required.every((id) =>
-  result.checks.some((check) => check.id === id && check.status === 'pass')
-)
-  ? 0
-  : 1;
+const blocked = process.argv[4] === 'without-roster';
+const required = [
+  'ubuntu:baseline',
+  'git:configuration',
+  ...(blocked ? [] : ['t3:service']),
+];
+process.exitCode =
+  (!blocked ||
+    result.checks.some(
+      (check) =>
+        check.id === 't3:account-roster' &&
+        check.summary === 'T3_ACCOUNT_ROSTER_UNAVAILABLE' &&
+        check.status === 'fail'
+    )) &&
+  required.every((id) =>
+    result.checks.some((check) => check.id === id && check.status === 'pass')
+  )
+    ? 0
+    : 1;

@@ -26,17 +26,12 @@ if [ -f /run/personal-fleet-pressure-guard/active ]; then
   exit 0
 fi
 url=http://127.0.0.1:3773/.well-known/t3/environment
-unit=t3code-desktop.service
-headless=
-if systemctl --user is-enabled --quiet t3code-headless.service; then
-  unit=t3code-headless.service
-  headless=1
-fi
 runtime="${XDG_RUNTIME_DIR:?}"
 failures="$runtime/personal-t3-health-failures"
 no_session="$runtime/personal-t3-no-session"
 display_restarts="$runtime/personal-t3-display-restarts"
 pending="$runtime/personal-t3-restart-pending"
+handoff="$runtime/personal-t3-desktop-handoff"
 restarted="$runtime/personal-t3-restarted-for"
 installed="${T3_DESKTOP_DIR:-/opt/T3 Code (Nightly)}/.personal-fleet-version"
 here=$(dirname "$0")
@@ -44,6 +39,12 @@ limit=3
 # Both the installed timer and the play hold this lock through handoff/start.
 exec 9>"$runtime/personal-t3-recovery.lock"
 flock -w 45 9 || { echo "T3_RECOVERY_IN_PROGRESS"; exit 1; }
+unit=t3code-desktop.service
+headless=
+if systemctl --user is-enabled --quiet t3code-headless.service; then
+  unit=t3code-headless.service
+  headless=1
+fi
 stage=${2:-}
 force=${3:-}
 record_pending() {
@@ -90,9 +91,15 @@ rm -f "$no_session" "$display_restarts"
 if [ -z "$headless" ]; then
   owner=$(python3 -I -B "$here/t3-listener.py") || exit 1
   case "$owner" in
-    managed | free) ;;
+    managed)
+      # A previous invocation may have stopped after systemd started the
+      # replacement. The new managed process already loaded the staged files.
+      if [ -f "$handoff" ]; then rm -f "$pending" "$handoff"; fi
+      ;;
+    free) ;;
     exposed) record_pending ;;
     app-com.t3tools.T3Code-*.scope)
+      touch "$handoff" || exit 1
       if [ "$force" != --force ] && ! python3 -I -B "$here/t3-idle.py" --state "${T3CODE_HOME:-$HOME/.t3}/userdata/statev2.sqlite"; then
         record_pending
         echo "T3_RESTART_PENDING: desktop handoff waits for active turns."
@@ -105,10 +112,11 @@ if [ -z "$headless" ]; then
       systemctl --user stop "$owner" || exit 1
       [ "$(python3 -I -B "$here/t3-listener.py")" = free ] || exit 1
       ;;
-    *) echo "T3_LISTENER_OWNER_UNKNOWN"
+    *)
+      echo "T3_LISTENER_OWNER_UNKNOWN"
       [ "${1:-}" = --apply ] && exit 0
-      exit 1 ;;
-
+      exit 1
+      ;;
   esac
 fi
 if ! systemctl --user is-active --quiet "$unit"; then
@@ -118,7 +126,7 @@ if ! systemctl --user is-active --quiet "$unit"; then
   systemctl --user reset-failed "$unit" 2>/dev/null
   systemctl --user start "$unit" || exit 1
   systemctl --user is-active --quiet "$unit" || exit 1
-  rm -f "$pending"
+  rm -f "$pending" "$handoff"
   exit 0
 fi
 [ "$stage" != --stage ] || record_pending
@@ -128,6 +136,8 @@ if [ -z "$headless" ] && [ -n "${T3_RENDERER_HIGH_MIB:-}" ]; then
     echo "T3 renderer limits could not be applied."
 fi
 if ! environment=$(curl --fail --silent --max-time 10 "$url"); then
+  # Only timed observations count toward the unresponsive threshold.
+  [ "${1:-}" != --apply ] || exit 0
   failed=$(count "$failures")
   echo "T3 local API did not answer ($failed/$limit)."
   if [ "$failed" -ge "$limit" ]; then

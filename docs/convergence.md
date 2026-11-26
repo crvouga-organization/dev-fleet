@@ -48,6 +48,14 @@ in it says when it changes something and runs, or is skipped, in a dry run
 systemd machine to report no change on a second run and in `--check`, and to
 report drift, and only that drift (`features/monitoring/agent-lifecycle.feature`).
 
+The fresh-box scenarios exercise the production SSH bootstrap, including interrupted
+package, checkout and toolchain phases. An unchanged second apply compares the
+installed Bun, Node and gh files. In the bootstrap VM, a headless worker receives
+a Git signing identity. The test changes its Git author, runs the production
+bootstrap again, and compares the T3 process start, public signing key, SSH host
+key, Bun binary and baseline files across repair and the following apply.
+The desktop VM also exercises graphical login, listener handoff and recovery.
+
 ## Not Ansible yet
 
 | Step                                                                                    | Where                                                                                       | Why it is not a task yet                                                                                                    |
