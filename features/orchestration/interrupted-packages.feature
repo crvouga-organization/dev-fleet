@@ -13,6 +13,17 @@ Feature: The bootstrap finishes an interrupted package run before it installs it
   bootstrap/fleet-remote-bootstrap.sh in a real POSIX shell, with stand-ins
   for sudo, dpkg and apt-get.
 
+  Scenario Outline: The diagnostic names the stage that exceeded its deadline
+    Given the bootstrap package "unzip" is not installed
+    And APT exceeds its deadline during <stage>
+    When the prerequisites step runs
+    Then the bootstrap stops its prerequisites with "<code>"
+
+    Examples:
+      | stage   | code                |
+      | update  | APT_UPDATE_TIMEOUT  |
+      | install | APT_INSTALL_TIMEOUT |
+
   Scenario: A sync cut off while it upgraded one of the bootstrap's own packages is finished, and nothing is installed again
     Given the package "python3" was unpacked and not configured when the run was cut off
     And dpkg finishes configuring what is unpacked

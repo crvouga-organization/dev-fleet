@@ -195,8 +195,9 @@ Then(
     const path = state(world).installed[0]?.env['PATH'] ?? '';
     for (const entry of path.split(':'))
       expect(entry).toMatch(
-        /(\/\.local\/share\/mise\/shims|\/\.local\/bin|^\/opt\/homebrew\/bin|^\/usr\/local\/bin|^\/usr\/bin|^\/bin)$/
+        /(\/\.local\/share\/mise\/shims|\/\.local\/bin|^\/opt\/homebrew\/bin|^\/usr\/local\/bin|^\/usr\/sbin|^\/usr\/bin|^\/bin)$/
       );
+    expect(path.split(':')).toContain('/usr/sbin');
     expect(path).not.toContain('node_modules');
   }
 );

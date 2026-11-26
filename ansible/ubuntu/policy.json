@@ -228,7 +228,7 @@
     "diskGcDisposable": {
       "idleHours": 6,
       "worktreeIdleHours": 6,
-      "pressureFreePercent": 25,
+      "targetUsedPercent": 60,
       "intervalMinutes": 15
     },
     "dockerLogMaxSize": "50m",

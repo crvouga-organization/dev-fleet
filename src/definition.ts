@@ -189,6 +189,7 @@ export interface FleetDefinition {
  * (docs/ubuntu-sync.md). Absent or false, the default policy. */
 export interface StoragePolicy {
   disposable?: boolean;
+  targetUsedPercent?: number;
 }
 /** Whether the fleet treats every node disk as a cache. */
 export const disposableStorage = (
@@ -430,12 +431,29 @@ function idleHours(
 function storage(value: unknown): StoragePolicy {
   const path = '$.storage';
   const fields = object(value, path);
-  keys(fields, ['disposable'], path);
+  keys(fields, ['disposable', 'targetUsedPercent'], path);
+  const target = fields['targetUsedPercent'];
+  if (
+    target !== undefined &&
+    (fields['disposable'] !== true ||
+      typeof target !== 'number' ||
+      !Number.isInteger(target) ||
+      target < 1 ||
+      target > 99)
+  )
+    fail(
+      `${path}.targetUsedPercent`,
+      'an integer from 1 to 99 with disposable storage enabled',
+      target
+    );
   const disposable = fields['disposable'];
   if (disposable === undefined) return {};
   if (typeof disposable !== 'boolean')
     fail(`${path}.disposable`, 'true or false', disposable);
-  return { disposable: disposable as boolean };
+  return {
+    disposable: disposable as boolean,
+    ...(target === undefined ? {} : { targetUsedPercent: target as number }),
+  };
 }
 function parking(value: unknown): ParkingPolicy {
   const path = '$.parking';

@@ -523,7 +523,7 @@ and manager:
 | Branch deleted on its remote, or merged  | no effect                                            | the worktree goes at once, whatever its age (deleted: every commit was on the remote branch; merged: work was committed on it) |
 | Ignored build output of an idle checkout | after 7 days (`diskGcIdleDays`)                      | after 6 hours                                                                                                                  |
 | Unused Docker images and build cache     | older than 168 hours; build cache kept to 5% of disk | all of it, every run                                                                                                           |
-| Pressure mode                            | below the `diskGcPressure` threshold of the disk     | also below 25% of the disk free                                                                                                |
+| Pressure mode                            | below the `diskGcPressure` threshold of the disk     | also above `storage.targetUsedPercent` effective disk use (default 60%, excluding reserved blocks from available capacity)     |
 
 A worktree a process runs in is kept by both, and so is its branch: only the
 worktree goes. A pull request closed without its branch being deleted is not

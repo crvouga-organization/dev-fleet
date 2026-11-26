@@ -7,6 +7,11 @@ if [ "$(uname)" = Darwin ]; then
   sysctl -n vm.swapusage | awk '{t=$3; u=$6; gsub("M","",t); gsub("M","",u); if (t>0) print "swap=" int(u*100/t); else print "swap=0"}'
 else
   echo "ncpu=$(nproc)"
+  if [ "${1:-}" = placement ]; then
+    awk '{split($4,a,"/"); print "runnable=" (a[1]>0 ? a[1]-1 : 0)}' /proc/loadavg
+    awk '/^some /{split($2,a,"="); print "cpupressure=" a[2]}' /proc/pressure/cpu
+    if curl --silent --fail --max-time 2 --output /dev/null http://127.0.0.1:3773/.well-known/t3/environment; then echo t3ready=1; fi
+  fi
   echo "load=$(cut -d' ' -f1 /proc/loadavg)"
   # Free inodes as a percentage: bytes can be free while every write fails.
   df -Pi "$HOME" | awk 'NR==2 && $2>0{print "inodefree=" int($4*100/$2)}'

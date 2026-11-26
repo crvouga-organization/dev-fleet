@@ -259,6 +259,7 @@ async function applyBaseline(
         worker_agent_session_limit: agentSessionLimit(fleet, node) ?? 0,
         // The disk GC's policy (tasks/resources.yml, storage.disposable).
         fleet_storage_disposable: disposableStorage(fleet),
+        fleet_storage_target_used_percent: fleet.storage?.targetUsedPercent,
       }),
     },
     {

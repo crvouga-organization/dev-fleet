@@ -108,6 +108,7 @@ export function scheduledEnvironment(home = homedir()): Record<string, string> {
       join(home, '.local/bin'),
       '/opt/homebrew/bin',
       '/usr/local/bin',
+      '/usr/sbin',
       '/usr/bin',
       '/bin',
     ].join(':'),

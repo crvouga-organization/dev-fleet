@@ -36,7 +36,8 @@ function segment(name: string): string {
 
 const STAND_INS: Record<string, string> = {
   sudo: 'echo used >>"$S/sudo"\n[ "$1" = -n ] && shift\nexec "$@"',
-  timeout: 'shift\nexec "$@"',
+  timeout:
+    'shift\nfor arg; do [ "$arg" != "$(cat "$S/timeout-stage" 2>/dev/null)" ] || exit 124; done\nexec "$@"',
   sleep: 'echo "$*" >>"$S/slept"',
   'dpkg-query':
     'for a; do pkg=$a; done\ncat "$S/status/$pkg" 2>/dev/null || printf installed',
@@ -142,6 +143,10 @@ Given('an earlier revision left its installation marker', (world) => {
     join(packages(world).state, 'root', 'prerequisites-pending'),
     ''
   );
+});
+
+Given('APT exceeds its deadline during {word}', (world, stage: string) => {
+  writeFileSync(join(packages(world).state, 'timeout-stage'), stage);
 });
 
 When('the prerequisites step runs', (world) => {

@@ -157,6 +157,8 @@ Feature: The disk GC removes only what a node can rebuild
       And the cache child "host-tmp/metro-cache/new" is kept
       And the cache child "host-tmp/metro-cache/link" is kept
       And the cache child "host-tmp/other/keep" is kept
+      And the cache child "host-tmp/.123abc-1.native" is removed
+      And the cache child "host-tmp/.123abc-1.project" is kept
 
     Scenario: A cache over the total budget loses rebuildable children while exclusions survive
       Given the cache ".cache/rebuildable" holds 3 files of 1 MiB, written an hour apart
@@ -305,6 +307,17 @@ Feature: The disk GC removes only what a node can rebuild
         | 40000 | not under it    | kept    |
 
   Rule: Each run leaves a report fleet-status reads
+
+    Scenario: A protected disk above the disposable target reports the measured shortfall
+      Given a disk of 100000 MiB with 34000 MiB free
+      When the disk GC runs with these limits:
+        | --target-used-percent | 60           |
+        | --report              | disk-gc.json |
+      Then the report "disk-gc.json" says:
+        | pressure          | true |
+        | usedPercentBefore | 66   |
+        | usedPercentAfter  | 66   |
+        | targetUsedPercent | 60   |
 
     Scenario: The report says what was reclaimed and what the worktrees and package stores hold
       Given the checkout has a remote that holds its commits

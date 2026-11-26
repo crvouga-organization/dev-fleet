@@ -49,6 +49,9 @@ There are 472 codes; 100 need a person.
 - `APT_REPOSITORY_UNAVAILABLE`: apt repository unavailable.
 - `APT_STATE_BROKEN`: apt state broken. **Needs a person.**
 - `DPKG_INTERRUPTED`: dpkg interrupted. **Needs a person.**
+- `DISK_TARGET_UNMET`: the collector finished above its disk-use target. Inspect protected data and available capacity.
+- `APT_UPDATE_TIMEOUT`: the worker reached the update deadline while refreshing package indexes. Check archive connectivity and contention before retrying.
+- `APT_INSTALL_TIMEOUT`: the worker reached the install deadline while fetching or configuring bootstrap packages. Inspect dpkg and retry fleet-sync.
 - `APT_UPDATE_FAILED`: `apt-get update` for the bootstrap packages failed, and not for a reason that has a code of its own (a held lock, a full disk, DNS, the archive, an interrupted dpkg). On the worker run `sudo apt-get update` to see the error, correct it, then run `devfleet fleet-sync`. **Needs a person.**
 - `APT_INSTALL_FAILED`: the same for installing the bootstrap packages: install them by hand on the worker to see the error, then run `devfleet fleet-sync`. **Needs a person.**
 
@@ -344,6 +347,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_PROVIDERS_PENDING`: t3 providers pending.
 - `T3_RECONCILIATION_UNAVAILABLE`: a local reconciliation precondition failed. Follow the stage-specific remedy to inspect the receipt, installed definition or T3 settings and ownership record locally. Restore a valid backup or correct permissions, then retry `devfleet t3-apply --dry-run`. Never share raw file contents.
 - `T3_ACCOUNT_ROSTER_UNAVAILABLE`: the proxy account roster could not be read. Run `devfleet fleet-accounts` on the affected machine to verify proxy access and the proxy-client-key secret, then retry `devfleet t3-apply --dry-run`. Existing providers are preserved. If access still fails, report this code without credentials.
+- `T3_CLI_MISSING`: restore the T3 CLI under the T3 user bin directory and rerun fleet-sync.
 - `T3_ANTIGRAVITY_SESSION_UNVERIFIED`: T3 could not open an authenticated ACP session for the reported account positions. Check that T3 is running on this machine, refresh those instances in Settings > Providers, and compare their proxy account session checks before rerunning fleet-sync.
 - `T3_PROVIDERS_UNVERIFIED`: t3 providers unverified.
 - `T3_PROVIDER_CONFLICT`: t3 provider conflict.

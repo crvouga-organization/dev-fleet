@@ -486,6 +486,8 @@ export async function convergeManagerPolicy(
         fleet_watch_minutes: scheduleIntervals(definition.manager).watchMinutes,
         // The disk GC's policy (storage.disposable in fleet.json).
         fleet_storage_disposable: disposableStorage(definition),
+        fleet_storage_target_used_percent:
+          definition.storage?.targetUsedPercent,
       }),
     },
     {

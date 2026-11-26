@@ -1,3 +1,4 @@
+import { workerPlacement } from './worker-placement';
 import { meshChecks } from '../t3/mesh';
 import { selectNodes } from '../config';
 import { doctor } from '../manager';
@@ -56,6 +57,8 @@ export async function executeFleet(
   services: FleetServices = SERVICES
 ): Promise<CommandOutcome> {
   validateOptions(command, options);
+  if (options.placement)
+    return placementCommand(command, options, settings, services);
   if (['repair', 'repairs'].includes(command))
     return executeRepairCommand(command, options, settings, services);
   if (['discover', 'health'].includes(command))
@@ -71,6 +74,30 @@ export async function executeFleet(
     options,
     { ...settings, missingRoster: !roster },
     services
+  );
+}
+
+async function placementCommand(
+  command: string,
+  options: CliOptions,
+  settings: Settings,
+  services: FleetServices
+) {
+  if (command !== 'doctor' || options.local || options.all || options.require)
+    throw new FleetUsageError(
+      '--placement accepts --node to restrict the eligible workers.'
+    );
+  const roster = await readRoster(settings.config);
+
+  const eligible = activeNodes(resolveNodes(command, options, roster)).filter(
+    (n) => fleet.workers.some((w) => w.id === n.id)
+  );
+  const placement = await workerPlacement(eligible, services.run);
+  return result(
+    placement,
+    placement.node
+      ? `Prefer ${placement.node} for the new turn.`
+      : 'Queue the new turn until an eligible worker has capacity.'
   );
 }
 

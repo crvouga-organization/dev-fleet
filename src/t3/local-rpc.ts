@@ -13,7 +13,23 @@ export interface T3Transport {
   call(url: string, message: object, id: string): Promise<unknown>;
 }
 
+export const MISSING_T3_CLI = Symbol('missing T3 CLI');
+
 const ORCHESTRATION_PROTOCOL = '2';
+
+async function issueSession(run: Runner, sessionArgs: string[], home: string) {
+  const issue = (cli: string) =>
+    run([cli, 'auth', 'session', 'issue', '--json', ...sessionArgs], {
+      timeoutMs: 30_000,
+    });
+  let cli = 't3';
+  let issued = await issue(cli);
+  if (issued.reason === 'missing') {
+    cli = join(home, 'bin', 't3');
+    issued = await issue(cli);
+  }
+  return { cli, issued };
+}
 
 export async function localRpc(
   run: Runner,
@@ -32,11 +48,9 @@ export async function localRpc(
   const read = options.read ?? ((path: string) => readFile(path, 'utf8'));
   const origin = await loopbackOrigin(read, home);
   if (!origin) return null;
-  const issued = await run(
-    ['t3', 'auth', 'session', 'issue', '--json', ...sessionArgs],
-    { timeoutMs: 30_000 }
-  );
-  const session = parseSession(issued.ok ? issued.stdout : '');
+  const { cli, issued } = await issueSession(run, sessionArgs, home);
+  if (issued.reason === 'missing') return MISSING_T3_CLI;
+  const session = parseSession(issued);
   if (!session) return null;
   try {
     const ticket = await transport.post(
@@ -62,7 +76,7 @@ export async function localRpc(
   } catch {
     return null;
   } finally {
-    await run(['t3', 'auth', 'session', 'revoke', session.id], {
+    await run([cli, 'auth', 'session', 'revoke', session.id], {
       timeoutMs: 30_000,
     });
   }
@@ -89,9 +103,12 @@ async function loopbackOrigin(
   }
 }
 
-function parseSession(text: string): { id: string; token: string } | null {
+function parseSession(
+  issued: Awaited<ReturnType<Runner>>
+): { id: string; token: string } | null {
   try {
-    const value: unknown = JSON.parse(text);
+    if (!issued.ok) return null;
+    const value: unknown = JSON.parse(issued.stdout);
     return record(value) &&
       typeof value['sessionId'] === 'string' &&
       /^[A-Za-z0-9_-]{1,128}$/.test(value['sessionId']) &&

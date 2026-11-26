@@ -105,6 +105,10 @@ function registerStatus(registration: Registration) {
       'Check this computer and registered nodes without changing them'
     )
   )
+    .option(
+      '--placement',
+      'Recommend capacity for one new T3 turn among enrolled workers (--node restricts eligible environments)'
+    )
     .option('--all', 'Explicit spelling of the default roster scope')
     .option(
       '--tailnet',

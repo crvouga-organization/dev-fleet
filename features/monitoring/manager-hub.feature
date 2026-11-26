@@ -126,6 +126,13 @@ Feature: The hub runs on the manager, and only there
       When the hub is converged on the manager
       Then the summary of the check is "BESZEL_TAILSCALE_REQUIRED"
 
+    Scenario: A healthy hub on an older image needs a verified backup before upgrading
+      Given the command "… hub-darwin.yml …" fails printing BESZEL_HUB_UPGRADE_PENDING private-output
+      When the hub is converged on the manager
+      Then the summary of the check is "BESZEL_HUB_UPGRADE_PENDING"
+      And the remedy of the check contains "verify a hub backup"
+      And the checks do not contain "private-output"
+
     Scenario: A fresh hub receives the fleet login, so it can create the account itself
       Given the manager holds the fleet login "fleet@example.test" with the password "x"
       When the hub is converged on the manager

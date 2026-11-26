@@ -319,7 +319,8 @@ const runner =
   (world: BootstrapWorld): Runner =>
   (command) => {
     const { prints, otherwise } = doctor(world);
-    const output = prints.get(command[0]!) ?? otherwise;
+    const output =
+      prints.get(command.join(' ')) ?? prints.get(command[0]!) ?? otherwise;
     return output === undefined
       ? { ok: false, output: '' }
       : { ok: true, output };

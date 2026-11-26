@@ -104,6 +104,12 @@ def free_bytes(path):
     return st.f_bavail * st.f_frsize
 
 
+def used_percent(path):
+    disk = os.statvfs(path)
+    used = disk.f_blocks - disk.f_bfree
+    return 100 * used / max(1, used + disk.f_bavail)
+
+
 def free_inodes_percent(path):
     """Free inodes as a percentage; None on a filesystem without a fixed count."""
     st = os.statvfs(path)
@@ -824,7 +830,125 @@ STORES = {
 }
 
 
+def package_operation_active():
+    """Skip collection while a package manager is installing, linking or pruning."""
+    try:
+        rows = subprocess.run(['ps', '-A', '-o', 'args='], capture_output=True,
+                              text=True, timeout=10, check=True).stdout.splitlines()
+    except (OSError, subprocess.SubprocessError, UnicodeError):
+        return True
+    return any(re.search(r'(?:^|[ /])(?:pnpm|npm|yarn|bun|bunx)(?:\.c?js)?\s+(?:install|add|i|ci|update|upgrade|remove|prune|store|x)(?:\s|$)', row)
+               for row in rows)
+
+
+def pnpm_stores(args, home, root, prune):
+    """Ask each installed CLI which store it manages. Never remove store files ourselves."""
+    generations = {entry.name: 'below-cap' for entry in os.scandir(root)
+                   if re.fullmatch(r'v[0-9]+', entry.name) and entry.is_dir(follow_symlinks=False)}
+    if not prune or not generations:
+        return generations
+    if package_operation_active():
+        return dict.fromkeys(generations, 'busy')
+    generations = dict.fromkeys(generations, 'unsupported')
+    candidates = [[args.mise, 'exec', '--', 'pnpm']]
+    for folder in sorted(Path(home, '.local/share/mise/installs/pnpm').glob('*')):
+        if not folder.is_symlink() and re.fullmatch(r'[0-9]+(?:\.[0-9]+){2}', folder.name):
+            candidates.extend([[str(exe)] for exe in [folder / 'pnpm', folder / 'bin/pnpm']
+                               if exe.is_file())
+    env = {**os.environ, 'npm_config_store_dir': root, 'pnpm_config_store_dir': root,
+           'npm_config_manage_package_manager_versions': 'false'}
+    for cli in candidates:
+        try:
+            cmd = cli + ['--store-dir', root, 'store']
+            reply = subprocess.run(cmd + ['path'], env=env, cwd=home, capture_output=True,
+                                   text=True, timeout=30, check=True).stdout.strip()
+            generation = os.path.basename(reply)
+            if (generation not in generations or generations[generation] != 'unsupported'
+                    or reply != os.path.join(root, generation)):
+                continue
+            if args.dry_run:
+                generations[generation] = 'would-prune'
+            else:
+                result = subprocess.run(cmd + ['prune'], env=env, cwd=home,
+                                        capture_output=True, timeout=1800)
+                generations[generation] = 'pruned' if result.returncode == 0 else 'failed'
+        except (OSError, subprocess.SubprocessError, UnicodeError):
+            continue
+    return generations
+
+
+def collect_staging(root, busy, cutoff, dry_run):
+    """Bun names extracted tarballs .<nonce>-<counter>.<unscoped package basename>.
+    Accept only complete matching package layouts with no mounted, linked,
+    foreign, active or recent entry. All inspection is descriptor-relative."""
+    if busy is None or os.getuid() == 0 or package_operation_active():
+        return 0
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    freed = 0
+    with os.scandir(root) as entries:
+        names = [entry.name for entry in entries if entry.is_dir(follow_symlinks=False)]
+    parent = os.open(root, flags)
+    try:
+        for name in names:
+            match = re.fullmatch(r'\.[a-fA-F0-9]{1,16}-[a-fA-F0-9]{1,16}\.([a-zA-Z0-9_.-]{1,32})', name)
+            if not match or any(p == name or p.startswith(name + '/') for p in busy):
+                continue
+            try:
+                fd = os.open(name, flags, dir_fd=parent)
+                try:
+                    size = staging_size(fd, match[1], cutoff)
+                    if size is None or not os.path.samestat(os.fstat(fd), os.stat(name, dir_fd=parent, follow_symlinks=False)):
+                        continue
+                    if not dry_run:
+                        shutil.rmtree(name, dir_fd=parent)
+                    freed += size
+                finally:
+                    os.close(fd)
+            except (OSError, ValueError, UnicodeError):
+                continue
+    finally:
+        os.close(parent)
+    return freed
+
+
+def staging_size(fd, basename, cutoff):
+    top = os.fstat(fd)
+    uid = os.getuid()
+    if top.st_uid != uid or top.st_mtime >= cutoff:
+        return None
+    size = 0
+    def unreadable(error):
+        raise error
+    for _, dirs, files, directory in os.fwalk('.', dir_fd=fd, onerror=unreadable):
+        for name in dirs + files:
+            info = os.stat(name, dir_fd=directory, follow_symlinks=False)
+            if (info.st_dev != top.st_dev or info.st_uid != uid or info.st_mtime >= cutoff
+                    or name in ('.git', 'node_modules') or stat.S_ISLNK(info.st_mode)):
+                return None
+            if stat.S_ISREG(info.st_mode):
+                if info.st_atime >= cutoff or info.st_nlink != 1:
+                    return None
+                size += info.st_blocks * 512
+            elif not stat.S_ISDIR(info.st_mode):
+                return None
+    manifest = os.open('package.json', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=fd)
+    with os.fdopen(manifest, 'rb') as stream:
+        if not stat.S_ISREG(os.fstat(manifest).st_mode):
+            return None
+        content = stream.read(262145)
+    if len(content) > 262144:
+        return None
+    value = json.loads(content)
+    if not isinstance(value, dict) or not isinstance(value.get('version'), str):
+        return None
+    package = value.get('name')
+    if isinstance(package, str) and package.rsplit('/', 1)[-1][:32] == basename:
+        return size
+    return None
+
+
 def prune_stores(args, home, pressure):
+    generations = {}
     freed = 0
     for name, cap in args.store_cap:
         relative, argv = STORES[name]
@@ -832,10 +956,13 @@ def prune_stores(args, home, pressure):
         if not is_real_dir(path):
             continue
         before = size_of(path)
-        if pressure or before > cap * MIB:
+        if name == 'pnpm':
+            generations = pnpm_stores(args, home, path, pressure or before > cap * MIB)
+            freed += max(0, before - size_of(path))
+        elif pressure or before > cap * MIB:
             command([args.mise, 'exec', '--'] + argv, args.dry_run, name + '_store')
             freed += max(0, before - size_of(path))
-    return freed
+    return freed, generations
 
 
 def open_temp_paths(alias, proc):
@@ -933,6 +1060,7 @@ def main(argv):
     parser.add_argument('--path', action='append', default=[])
     parser.add_argument('--idle-days', type=float, default=7)
     parser.add_argument('--pressure-mib', type=int, default=15360)
+    parser.add_argument('--target-used-percent', type=int, choices=range(1, 100))
     parser.add_argument('--pressure-percent', type=float, default=0)
     parser.add_argument('--pressure-inode-percent', type=float, default=0)
     parser.add_argument('--pressure-idle-hours', type=float, default=12)
@@ -978,6 +1106,10 @@ def main(argv):
     before = {p: free_bytes(p) for p in paths}
     pressure = under_pressure(paths, args.pressure_mib * MIB,
                               args.pressure_inode_percent, args.pressure_percent)
+    target = args.target_used_percent
+    initial_used = max(used_percent(p) for p in paths) if target else None
+    if target and initial_used > target:
+        pressure = True
     # Pressure only ever shortens a limit: a disposable fleet's is shorter
     # than the pressure one already.
     idle = args.idle_days * 24 * HOUR
@@ -993,14 +1125,16 @@ def main(argv):
         return busy_roots(args.proc, args.lsof)
 
     if args.user_caches_only:
-        temporary = 0
+        temporary = staging = 0
         if args.host_var_tmp:
-            temporary = collect_temp_files(args.host_var_tmp, json.load(sys.stdin),
+            opened = json.load(sys.stdin)
+            staging = collect_staging(args.host_var_tmp, opened, now - idle, args.dry_run)
+            temporary = collect_temp_files(args.host_var_tmp, opened,
                                            now - idle, args.dry_run)
         caches = sum(cache_children(os.path.join(home, root), args.home_cache_mib * MIB,
                                     args.exclude_cache, pressure, idle, now, args.dry_run)
                      for root in cache_roots)
-        stores = prune_stores(args, home, pressure)
+        stores, generations = prune_stores(args, home, pressure)
         mise_bytes = 0
         if args.mise_cache_mib is not None:
             directory = os.path.join(home, '.cache', 'mise')
@@ -1009,10 +1143,11 @@ def main(argv):
                 command(['env', f'MISE_CACHE_PRUNE_AGE={int(idle)}s', args.mise,
                          'cache', 'prune'], args.dry_run, 'mise_cache')
                 mise_bytes = max(0, before_cache - size_of(directory))
-        log(cache_bytes=caches, store_bytes=stores, temporary_bytes=temporary,
+        log(pnpm_generations=generations, staging_bytes=staging, cache_bytes=caches, store_bytes=stores, temporary_bytes=temporary,
             mise_cache_bytes=mise_bytes)
         return
     categories = {}
+    generations = {}
     if args.home_cache_mib is not None:
         # Only the development user removes cache entries or runs package tools.
         argv = [sys.executable, '-I', '-B', __file__, *sys.argv[1:], '--user-caches-only']
@@ -1025,7 +1160,8 @@ def main(argv):
                              capture_output=True, timeout=3600)
         if out.returncode == 0:
             evidence = json.loads(out.stdout.splitlines()[-1])
-            categories.update(cache=evidence['cache_bytes'], stores=evidence['store_bytes'],
+            generations = evidence['pnpm_generations']
+            categories.update(package_staging=evidence['staging_bytes'], cache=evidence['cache_bytes'], stores=evidence['store_bytes'],
                               host_temp=evidence['temporary_bytes'], mise_cache=evidence['mise_cache_bytes'])
         else:
             log(event='user_cache_cleanup_failed')
@@ -1108,6 +1244,9 @@ def main(argv):
             'disposable': args.disposable,
             'reclaimedMiB': reclaimed_mib,
             'categoriesMiB': categories_mib,
+            'pnpmStores': generations,
+            **({'targetUsedPercent': target, 'usedPercentBefore': initial_used,
+                'usedPercentAfter': max(used_percent(p) for p in paths)} if target else {}),
             **measure(home, args.worktree_root),
         })
 

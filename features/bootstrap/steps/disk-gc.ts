@@ -76,7 +76,7 @@ function collectorOn(world: BootstrapWorld): string {
     [
       'import os, types',
       'DISK = types.SimpleNamespace(',
-      `    f_frsize=4096, f_blocks=${size}, f_bavail=${blocks},`,
+      `    f_frsize=4096, f_blocks=${size}, f_bavail=${blocks}, f_bfree=${blocks},`,
       `    f_files=1000000, f_favail=${Math.round(disk.inodesFreePercent * 10000)})`,
       'os.statvfs = lambda path: DISK',
       `exec(compile(open(${JSON.stringify(gc)}).read(), ${JSON.stringify(gc)}, 'exec'))`,
@@ -199,6 +199,20 @@ Given('old, open and recent files in the host temporary caches', (world) => {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, 'cache');
     if (!file.endsWith('/new')) utimesSync(path, old, old);
+  }
+  for (const [suffix, packageName] of [
+    ['native', 'native'],
+    ['project', 'different'],
+  ]) {
+    const dir = join(root, '.123abc-1.' + suffix);
+    mkdirSync(dir);
+    const manifest = join(dir, 'package.json');
+    writeFileSync(
+      manifest,
+      JSON.stringify({ name: packageName, version: '1.0.0' })
+    );
+    utimesSync(manifest, old, old);
+    utimesSync(dir, old, old);
   }
   symlinkSync(join(root, 'other'), join(root, 'metro-cache', 'link'));
   mkdirSync(join(proc, '123', 'fd'), { recursive: true });

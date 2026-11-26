@@ -1,7 +1,7 @@
 import type { Check } from '../types';
 import { record } from '../config';
 import { runCommand } from '../runner';
-import { localRpc } from './local-rpc';
+import { localRpc, MISSING_T3_CLI } from './local-rpc';
 
 /** An explicit model refresh opens a disposable ACP session using this
  * instance's launcher, and publishes its sign-in status in T3 Settings. */
@@ -22,6 +22,7 @@ export async function refreshAntigravity(id: string, home?: string) {
     ],
     home ? { home } : {}
   );
+  if (reply === MISSING_T3_CLI) return MISSING_T3_CLI;
   if (!record(reply) || reply['_tag'] !== 'Exit') return false;
   const exit = reply['exit'];
   if (!record(exit) || exit['_tag'] !== 'Success' || !record(exit['value']))
@@ -52,7 +53,18 @@ export async function checkedProviders(
   );
   const failed: number[] = [];
   for (const [index, [instanceId]] of managed.entries()) {
-    if (!(await refresh(instanceId, home))) failed.push(index + 1);
+    const status = await refresh(instanceId, home);
+    if (status === MISSING_T3_CLI)
+      return {
+        id: 't3:providers',
+        status: 'fail',
+        summary: 'T3_CLI_MISSING: the local T3 CLI could not be started.',
+        remedy: {
+          action:
+            'Restore the T3 CLI in the T3 user bin directory and rerun fleet-sync.',
+        },
+      };
+    if (!status) failed.push(index + 1);
   }
   if (failed.length)
     return {

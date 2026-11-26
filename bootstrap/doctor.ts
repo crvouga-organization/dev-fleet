@@ -43,6 +43,7 @@ const COMMANDS: Record<string, string> = {
   'http:antigravity': 'antigravity',
 };
 const VERSION_ARGS: Record<string, string[]> = {
+  tmux: ['-V'],
   go: ['version'],
   gitleaks: ['version'],
   kubectl: ['version', '--client=true', '--output=json'],
