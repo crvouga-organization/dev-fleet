@@ -272,13 +272,21 @@ ssh_keys:
             result = subprocess.run(['/verification/bootstrap', str(ROOT), '/bootstrap'], capture_output=True, text=True, timeout=5500)
             (ROOT / 'bootstrap-result.json').write_text(result.stdout)
             assert result.returncode == 0, 'production bootstrap did not reach node convergence; inspect redacted bootstrap-result.json'
-            evidence = 'sha256sum work/uncommitted /etc/ssh/ssh_host_ed25519_key.pub; stat -c %Y /etc/systemd/logind.conf.d/60-personal-fleet.conf /etc/ssh/sshd_config.d/60-personal-fleet.conf'
+            evidence = ('set -e; sha256sum work/uncommitted /etc/ssh/ssh_host_ed25519_key.pub '
+                        '~/.ssh/dev-fleet-git-signing.pub; stat -c "%i %y" '
+                        '/etc/systemd/logind.conf.d/60-personal-fleet.conf /etc/ssh/sshd_config.d/60-personal-fleet.conf; '
+                        'systemctl --user show t3code-headless.service -p MainPID -p ActiveEnterTimestampMonotonic; '
+                        'stat -Lc "%i %z" "$(~/.local/bin/mise which bun)"')
             before = run(ssh + [evidence]).stdout
-            repeated = subprocess.run(['/verification/bootstrap', str(ROOT), '/bootstrap'], capture_output=True, text=True, timeout=5500)
-            (ROOT / 'bootstrap-repeat-result.json').write_text(repeated.stdout)
-            assert repeated.returncode == 0, 'repeated bootstrap did not pass the baseline'
-            assert run(ssh + [evidence]).stdout == before, 'repeat changed work, SSH identity or unchanged managed files'
-            print('production remote bootstrap and repeat passed the baseline; live auth remains unverified', flush=True)
+            for phase in ('repeat', 'repair', 'after-repair'):
+                if phase == 'repair':
+                    run(ssh + ['sed -i "s/name = .*$/name = drift/" ~/.config/git/config && test "$(git config user.name)" = drift'])
+                repeated = subprocess.run(['/verification/bootstrap', str(ROOT), '/bootstrap'], capture_output=True, text=True, timeout=5500)
+                (ROOT / f'bootstrap-{phase}-result.json').write_text(repeated.stdout)
+                assert repeated.returncode == 0, f'{phase} failed to converge the enrolled worker'
+                assert run(ssh + [evidence]).stdout == before, f'{phase} replaced a healthy service, tool, key or managed file'
+                run(ssh + [f'test "$(git config user.name)" = Fixture && {answers(SERVER)}'])
+            print('production bootstrap, second apply, repair and post-repair apply preserved the T3 process, tool and identities', flush=True)
             return
         # The baseline-only run applies Ansible directly, which first boot
         # installs (packages above): it waits for first boot itself.

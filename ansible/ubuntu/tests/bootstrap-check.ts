@@ -24,6 +24,9 @@ await writeFile(
   ].join('\n') + '\n',
   { mode: 0o600 }
 );
+const config = loadDefinition('/workspace/examples/fleet.json');
+config.worker.features = { containers: true, session: 'headless' };
+config.git = { name: 'Fixture', email: 'fixture@example.test', signing: 'ssh' };
 const result = await bootstrapRemote(
   { id: 'fixture-vm', ssh: 'fixture-vm', workspace: '/unused', required: [] },
   {
@@ -33,9 +36,7 @@ const result = await bootstrapRemote(
     script: await readFile(join(source, 'bootstrap.sh'), 'utf8'),
     // The fleet configuration travels beside the code, as fleet-sync sends
     // it: the example fleet of the repository mounted at /workspace.
-    config: installedDefinition(
-      loadDefinition('/workspace/examples/fleet.json')
-    ),
+    config: installedDefinition(config),
   },
   (args, options) =>
     runCommand(
@@ -48,8 +49,9 @@ process.stdout.write(
 );
 // Missing live auth is expected. Reaching node-level convergence establishes that
 // source transfer, exact checkout and shared tool/dependency bootstrap completed.
-process.exitCode = result.checks.some(
-  (check) => check.id === 'ubuntu:baseline' && check.status === 'pass'
+const required = ['ubuntu:baseline', 't3:service', 'git:configuration'];
+process.exitCode = required.every((id) =>
+  result.checks.some((check) => check.id === id && check.status === 'pass')
 )
   ? 0
   : 1;

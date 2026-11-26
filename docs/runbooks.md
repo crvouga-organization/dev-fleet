@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 467 codes; 99 need a person.
+There are 471 codes; 100 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -310,6 +310,10 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_CACHE_DRIFT`: t3 cache drift.
 - `T3_CHECKSUM_MISMATCH`: t3 checksum mismatch.
 - `T3_DESKTOP_INSTALL_FAILED`: t3 desktop install failed.
+- `T3_DESKTOP_HANDOFF_PENDING`: a desktop launched in the graphical session owns the listener. The timer checks for idle turns before handing it over to the managed service.
+- `T3_HANDOFF`: the recovery log records the orderly stop of the idle application scope.
+- `T3_LISTENER_OWNER_UNKNOWN`: inspect the listener on port 3773 and its user unit. Resolve the conflicting process before retrying. **Needs a person.**
+- `T3_RECOVERY_IN_PROGRESS`: another recovery holds the lock. The next timer tick remeasures the service.
 - `T3_DESKTOP_STOPPED`: t3 desktop stopped.
 - `T3_DOWNLOAD_UNAVAILABLE`: t3 download unavailable.
 - `T3_ENVIRONMENT_IDENTITY_CHANGED`: t3 environment identity changed.

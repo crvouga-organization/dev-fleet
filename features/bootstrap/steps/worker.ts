@@ -287,7 +287,8 @@ function watch(world: BootstrapWorld): number {
       `  *"is-enabled --quiet t3code-headless.service") exit ${exit(state.server)};;`,
       `  *"show --property=ExecStart --value t3code-headless.service") echo "{ path=/home/dev/.local/share/personal/tools/t3-${state.installed}-linux-x64/t3 ; argv[]=/home/dev/.local/share/personal/tools/t3-${state.installed}-linux-x64/t3 serve --mode web ; }";;`,
       `  *"is-active --quiet graphical-session.target") exit ${exit(state.session)};;`,
-      `  *is-active*) exit ${exit(state.desktop)};;`,
+      `  *"start t3code-"*) touch "${directory}/service-started";;`,
+      `  *is-active*) test -e "${directory}/service-started" || exit ${exit(state.desktop)};;`,
       'esac',
     ].join('\n')
   );

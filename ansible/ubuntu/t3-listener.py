@@ -19,7 +19,8 @@ def scope():
             units = [part for part in group.split('/') if part.endswith(('.service', '.scope'))]
             unit = units[-1] if units else ''
             if unit == 't3code-desktop.service':
-                owners.add('managed')
+                owners.add('managed' if row.split()[3].rsplit(':', 1)[0] in
+                           ('127.0.0.1', '[::1]') else 'exposed')
             elif re.fullmatch(r'app-com\.t3tools\.T3Code-[A-Za-z0-9_-]+\.scope', unit):
                 # Verify the session manager resolves this name to this exact
                 # group and that the installed desktop is running inside it.
@@ -40,6 +41,8 @@ def scope():
                 owners.add(unit)
             else:
                 return 'unknown'
+    if owners == {'managed', 'exposed'}:
+        return 'exposed'
     return owners.pop() if len(owners) == 1 else 'unknown'
 
 

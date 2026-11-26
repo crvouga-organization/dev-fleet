@@ -91,6 +91,7 @@ if [ -z "$headless" ]; then
   owner=$(python3 -I -B "$here/t3-listener.py") || exit 1
   case "$owner" in
     managed | free) ;;
+    exposed) record_pending ;;
     app-com.t3tools.T3Code-*.scope)
       if [ "$force" != --force ] && ! python3 -I -B "$here/t3-idle.py" --state "${T3CODE_HOME:-$HOME/.t3}/userdata/statev2.sqlite"; then
         record_pending
@@ -104,7 +105,10 @@ if [ -z "$headless" ]; then
       systemctl --user stop "$owner" || exit 1
       [ "$(python3 -I -B "$here/t3-listener.py")" = free ] || exit 1
       ;;
-    *) echo "T3_LISTENER_OWNER_UNKNOWN"; exit 1 ;;
+    *) echo "T3_LISTENER_OWNER_UNKNOWN"
+      [ "${1:-}" = --apply ] && exit 0
+      exit 1 ;;
+
   esac
 fi
 if ! systemctl --user is-active --quiet "$unit"; then
@@ -113,6 +117,7 @@ if ! systemctl --user is-active --quiet "$unit"; then
   echo "T3 is not running; starting it."
   systemctl --user reset-failed "$unit" 2>/dev/null
   systemctl --user start "$unit" || exit 1
+  systemctl --user is-active --quiet "$unit" || exit 1
   rm -f "$pending"
   exit 0
 fi
@@ -157,11 +162,12 @@ else
 fi
 [ -z "$reason" ] && exit 0
 restart() {
-  rm -f "$pending"
-  [ "$reason" = "release $release" ] && echo "$release" > "$restarted"
   echo "$1"
   systemctl --user reset-failed "$unit" 2>/dev/null
-  exec systemctl --user restart "$unit"
+  systemctl --user restart "$unit" || exit 1
+  rm -f "$pending"
+  [ "$reason" != "release $release" ] || echo "$release" > "$restarted"
+  exit 0
 }
 if [ "$force" = --force ] || python3 -I -B "$here/t3-idle.py" --state "${T3CODE_HOME:-$HOME/.t3}/userdata/statev2.sqlite"; then
   restart "T3 runs no agent turn; restarting it to load $reason."

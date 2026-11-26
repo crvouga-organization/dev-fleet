@@ -490,7 +490,15 @@ async function installT3Desktop(
             '--quiet',
             't3code-desktop.service',
           ])
-        ).ok,
+        ).ok &&
+        (
+          await run([
+            'python3',
+            '-I',
+            '-B',
+            '/usr/local/lib/personal-fleet/t3-listener.py',
+          ])
+        ).stdout.trim() === 'managed',
     }
   );
   return result.ok;

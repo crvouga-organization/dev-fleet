@@ -18,7 +18,7 @@
       ansible.builtin.import_tasks: tasks/release.yml
     - name: Require the tailnet firewall before enabling a listener
       ansible.builtin.command:
-        argv: [nft, list, chain, inet, personal_fleet, input]
+        argv: [nft, -n, list, chain, inet, personal_fleet, input]
       register: rdp_firewall
       check_mode: false
       changed_when: false

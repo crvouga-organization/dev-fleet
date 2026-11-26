@@ -72,6 +72,8 @@ Feature: A worker runs one T3: the pinned desktop app
       | systemctl --user is-enabled t3code-desktop.service | succeeds         |
       | systemctl --user is-active t3code.service          | fails            |
       | systemctl --user is-enabled t3code.service         | succeeds         |
+    And the command "systemctl --user is-active graphical-session.target" prints active
+    And the command "python3 -I -B /usr/local/lib/personal-fleet/t3-listener.py" prints free
     When the worker's T3 desktop app is converged
     Then the summary of the check is "T3_DESKTOP_STOPPED"
     And no command with any of these words was run:

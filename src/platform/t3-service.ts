@@ -48,15 +48,12 @@ export async function convergeT3Service(
     );
   const preparation = await prepare();
   if (preparation.length) return preparation;
-  const installed = await install();
-  return measureService(run, session, installed);
+  if (!(await install()))
+    return pending(...SESSION_WORDS[session].installFailed);
+  return measureService(run, session);
 }
 
-async function measureService(
-  run: Runner,
-  session: Session,
-  installed: boolean
-): Promise<Check[]> {
+async function measureService(run: Runner, session: Session): Promise<Check[]> {
   const words = SESSION_WORDS[session];
   const unit = t3Unit(session);
   const active = await userctl(run, 'is-active', unit);
@@ -64,7 +61,6 @@ async function measureService(
     const blocked = await desktopPrerequisite(run);
     if (blocked) return blocked;
   }
-  if (!installed) return pending(...words.installFailed);
   const enabled = await userctl(run, 'is-enabled', unit);
   if (!active.ok || !enabled.ok) return pending(...words.stopped(unit));
   return [{ id: 't3:service', status: 'pass', summary: words.running }];

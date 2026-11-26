@@ -269,19 +269,6 @@
       failed_when: false
     # Starting needs the auto-login graphical session, which a machine has only
     # after its first reboot; the running state is measured after this play.
-    # The app reads its exposure only when it starts (ExecStartPre above): a
-    # running app that serves beyond loopback is restarted like an update.
-    - name: Read the addresses the T3 server listens on
-      ansible.builtin.command:
-        argv: [ss, -H, -l, -n, -t, 'sport = :3773']
-      register: t3_desktop_listeners
-      changed_when: false
-      check_mode: false
-      failed_when: false
-    # A running app keeps the files of its release: restart it into the one
-    # just installed, only while it runs no agent turn. Otherwise
-    # personal-worker-recovery restarts it at the first idle check, and
-    # t3:running-version reports T3_RESTART_PENDING until then.
     - name: Reconcile the desktop listener with the recovery timer
       become: true
       become_user: '{{ development_user }}'
@@ -293,9 +280,7 @@
           - /usr/local/lib/personal-fleet/t3-health.sh
           - --apply
           - >-
-            {{ '--stage' if t3_desktop_was_active.rc == 0 and
-            (t3_desktop_updated is changed or
-            (t3_desktop_listeners.stdout_lines | select('match', '^\S+\s+\S+\s+\S+\s+(?!\s|127\.0\.0\.1:|\[::1\]:)') | list | length > 0))
+            {{ '--stage' if t3_desktop_was_active.rc == 0 and t3_desktop_updated is changed
             else '--check' }}
           - "{{ '--force' if t3_restart_busy | default(false) | bool else '--keep-turns' }}"
       register: t3_recovery
