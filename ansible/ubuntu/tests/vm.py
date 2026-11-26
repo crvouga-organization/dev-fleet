@@ -525,7 +525,8 @@ path.write_text(json.dumps(settings))
     # own its real state. Both actors inspect a real listener and systemd scope.
     run(ssh + ['mkdir -p busy/userdata && python3 -'], input="""import sqlite3
 with sqlite3.connect('busy/userdata/statev2.sqlite') as db:
-    db.execute("CREATE TABLE orchestration_v2_projection_runs (status TEXT)")
+    db.execute("CREATE TABLE IF NOT EXISTS orchestration_v2_projection_runs (status TEXT)")
+    db.execute("DELETE FROM orchestration_v2_projection_runs")
     db.execute("INSERT INTO orchestration_v2_projection_runs VALUES ('running')")
 """)
     health = 'T3CODE_HOME=$HOME/busy /bin/sh /usr/local/lib/personal-fleet/t3-health.sh'

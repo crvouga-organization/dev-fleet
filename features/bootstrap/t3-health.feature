@@ -276,6 +276,13 @@ Feature: The watchdog keeps a worker's T3 up, responsive and on its installed re
       Then it says "T3_LISTENER_OWNER_UNKNOWN"
       And it starts and restarts nothing
 
+    Scenario: A retry finishes the outstanding stop after the socket is free
+      Given the T3 desktop service is stopped
+      And an interrupted handoff is stopping the former desktop scope after it released the port
+      When sync resumes desktop recovery
+      Then it runs "systemctl --user stop app-com.t3tools.T3Code-fixture.scope" before "systemctl --user start t3code-desktop.service"
+      And the pending restart is cleared
+
     Scenario: An overlapping recovery leaves the active handoff to finish
       Given another desktop handoff holds the recovery lock
       When the watchdog runs

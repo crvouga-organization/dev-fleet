@@ -108,7 +108,14 @@ if [ -z "$headless" ]; then
       case "$previous" in
         app-com.t3tools.T3Code-*.scope)
           state=$(systemctl --user show "$previous" -p ActiveState --value)
-          case "$state" in active | activating | deactivating) exit 0 ;; esac
+          case "$state" in
+            deactivating)
+              [ "${1:-}" = --apply ] || exit 0
+              systemctl --user stop "$previous" || exit 1
+              [ "$(python3 -I -B "$here/t3-listener.py")" = free ] || exit 0
+              ;;
+            active | activating) exit 0 ;;
+          esac
           ;;
       esac
       ;;
