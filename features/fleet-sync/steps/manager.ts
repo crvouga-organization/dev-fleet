@@ -6,7 +6,7 @@ import {
   rmSync,
   writeFileSync,
 } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import policy from '../../../ansible/macos/policy.json';
 import type { Account } from '../../../src/agents/accounts';
@@ -19,6 +19,10 @@ import {
   pinnedDockerDesktop,
 } from '../../../src/cli/fleet-sync-manager';
 import { holdManagerVault } from '../../../src/cli/fleet-sync-vault';
+import {
+  checkedProviders,
+  refreshAntigravity,
+} from '../../../src/t3/antigravity';
 import { machineProviders } from '../../../src/t3/providers';
 import { MACOS_MANAGER } from '../../../src/platform/manager-host';
 import type { Check, Status } from '../../../src/types';
@@ -82,6 +86,74 @@ Given('T3 on the manager is configured with:', (world, settings: string) => {
 const unchecked = new WeakMap<FleetSyncWorld, string>();
 Given('T3 cannot authenticate instance {string}', (world, id: string) => {
   unchecked.set(world, id);
+});
+
+const installedCli = join(homedir(), '.t3', 'bin', 't3');
+Given(
+  /^the worker's T3 CLI is (available only in its user install|missing from the user install too)$/,
+  (world, installation: string) => {
+    const home = temporary(world, 'worker-t3-');
+    mkdirSync(join(home, 'userdata'));
+    writeFileSync(
+      join(home, 'userdata/server-runtime.json'),
+      JSON.stringify({ origin: 'http://localhost:3773' })
+    );
+    manager(world).t3Home = home;
+    world.commands.otherwise = { ...failed(), reason: 'missing' };
+    if (installation === 'available only in its user install') {
+      world.commands.answer(
+        [installedCli, 'auth session issue'].join(' '),
+        succeeded(
+          JSON.stringify({ sessionId: 'test-session', token: 'test-token' })
+        )
+      );
+      world.commands.answer(
+        [installedCli, 'auth session revoke test-session'].join(' '),
+        succeeded()
+      );
+    }
+  }
+);
+
+When('the worker verifies its Antigravity provider session', async (world) => {
+  world.checks = [
+    await checkedProviders(
+      { example: { driver: 'antigravity' } },
+      manager(world).t3Home,
+      (id, home) =>
+        refreshAntigravity(id, home, {
+          run: world.commands.run,
+          transport: {
+            post: async () => ({ ticket: 'test-ticket' }),
+            call: async () => ({
+              _tag: 'Exit',
+              exit: {
+                _tag: 'Success',
+                value: {
+                  providers: [
+                    {
+                      instanceId: id,
+                      enabled: true,
+                      installed: true,
+                      status: 'ready',
+                      auth: { status: 'authenticated' },
+                    },
+                  ],
+                },
+              },
+            }),
+          },
+        })
+    ),
+  ];
+});
+
+Then('the managed T3 CLI revoked {int} sessions', (world, count: number) => {
+  expect(
+    world.commands.ran(
+      [installedCli, 'auth session revoke test-session'].join(' ')
+    )
+  ).toHaveLength(count);
 });
 
 function providers(
