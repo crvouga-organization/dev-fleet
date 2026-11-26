@@ -1,0 +1,12 @@
+{
+  "acls": [{ "action": "accept", "src": ["*"], "dst": ["*:*"] }],
+  "tagOwners": { "tag:fleet-worker": [] },
+  "ssh": [
+    {
+      "action": "accept",
+      "src": ["tag:fleet-worker"],
+      "dst": ["tag:fleet-worker"],
+      "users": ["fleettest"]
+    }
+  ]
+}

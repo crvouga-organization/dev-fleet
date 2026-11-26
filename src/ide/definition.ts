@@ -15,6 +15,7 @@ export interface T3Definition {
   profile?: Record<string, unknown>;
   /** Allow first pairing during sync; absent asks on an interactive terminal. */
   pairOnEnrollment?: boolean;
+  meshAccess?: 'full-access';
   /** Models T3 must offer for every account of a tool, by tool. */
   requiredModels?: Record<string, string[]>;
 }
@@ -43,15 +44,29 @@ export function parseIdes(value: unknown): IdeId[] {
   return value as IdeId[];
 }
 
+function meshPolicy(value: unknown): T3Definition {
+  if (value === undefined) return {};
+  if (value !== 'full-access') invalid('t3.meshAccess must be full-access.');
+  return { meshAccess: value };
+}
+
 export function parseT3(value: unknown): T3Definition {
   if (
     !record(value) ||
     Object.keys(value).some(
-      (key) => !['profile', 'requiredModels', 'pairOnEnrollment'].includes(key)
+      (key) =>
+        ![
+          'profile',
+          'requiredModels',
+          'pairOnEnrollment',
+          'meshAccess',
+        ].includes(key)
     )
   )
-    invalid('t3 holds only profile, requiredModels and pairOnEnrollment.');
-  const result: T3Definition = {};
+    invalid(
+      't3 holds only profile, requiredModels, pairOnEnrollment and meshAccess.'
+    );
+  const result = meshPolicy(value['meshAccess']);
   if (value['pairOnEnrollment'] !== undefined) {
     if (typeof value['pairOnEnrollment'] !== 'boolean')
       invalid('t3.pairOnEnrollment must be a boolean.');

@@ -40,7 +40,7 @@ log:
   format: text
 policy:
   mode: file
-  path: ''
+  path: /etc/headscale/policy.json
 # Tailnet names under tailnet.test; every other name still goes to Docker's
 # resolver, which knows headscale.fleet.test (as Headscale's own tests do).
 dns:

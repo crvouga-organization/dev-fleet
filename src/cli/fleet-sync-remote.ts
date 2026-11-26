@@ -1,3 +1,4 @@
+import { meshChecks } from '../t3/mesh';
 import { authorizeFirstPairing } from './fleet-sync-pairing';
 import { createHash } from 'node:crypto';
 import { previewSuperWorkspaces } from '../ide/super';
@@ -127,7 +128,7 @@ export async function selected(
       revision: options.revision,
       apply: Boolean(options.apply),
       ...canary(canonical, options),
-      ...serial(options),
+      ...serial(options, canonical),
       progress: (node, phase) => ui.progress.step(node, phase),
       finished: (node) => ui.progress.finished(node),
       manager: () =>
@@ -153,6 +154,9 @@ export async function selected(
   ).finally(() => ui.progress.stop());
   if (options.enrollment) reportEnrollment(report, options.enrollment);
   reportSelection(report, options);
+  notes.push(
+    ...(await meshChecks(canonical, nodes, run, Boolean(options.apply)))
+  );
   report.checks.push(...notes);
   // A worker that could not be retired, like any other failed check of the
   // fleet, means the run did not converge: it is not recorded as applied.
@@ -223,8 +227,13 @@ function reportSelection(
 /** Maintenance reboots go one worker at a time, and a worker that does not
  * come back ready stops the others.
  */
-function serial(options: FleetSyncOptions): { serial?: true } {
-  return options.maintenanceReboot ? { serial: true } : {};
+function serial(
+  options: FleetSyncOptions,
+  definition: FleetDefinition
+): { serial?: true } {
+  return options.maintenanceReboot || definition.nativeSsh
+    ? { serial: true }
+    : {};
 }
 
 function rebootOptions(options: FleetSyncOptions): {

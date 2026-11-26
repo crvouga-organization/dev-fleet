@@ -1,0 +1,30 @@
+---
+- name: Reconcile one directed T3 grant between verified environments
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Mint a short-lived pairing credential at the destination
+      ansible.builtin.command:
+        expand_argument_vars: false
+        argv: '{{ mint_command }}'
+      register: mesh_pairing
+      changed_when: true
+      no_log: true
+    - name: Validate the destination pairing credential before replacing a grant
+      ansible.builtin.assert:
+        that: (mesh_pairing.stdout | from_json).credential is match('^[A-Za-z0-9_-]{6,128}$')
+      no_log: true
+    - name: Retire the incorrect grant to this environment
+      ansible.builtin.command:
+        expand_argument_vars: false
+        argv: '{{ unlink_command }}'
+      when: replace_grant | bool
+      changed_when: true
+    - name: Link the destination from the enrolled source
+      ansible.builtin.command:
+        expand_argument_vars: false
+        argv: '{{ link_command }}'
+        stdin: '{{ target_url }} {{ (mesh_pairing.stdout | from_json).credential }}'
+      changed_when: true
+      no_log: true

@@ -71,3 +71,11 @@ Feature: A worker joins a real tailnet unattended, is reached only through it, a
     And the control plane lists one device named "worker-two", tagged "tag:fleet-worker"
     And that device is not the one that was removed
     And the fleet's tailnet holds no leftover device
+
+  Scenario: Native SSH survives a worker reboot and a sync repairs a disabled preference
+    Given "ssh-manager" joined the tailnet
+    And "ssh-worker" joined the tailnet
+    And the two enrolled accounts have strict OpenSSH access to each other as "fleettest"
+    When native SSH is applied from "ssh-manager" to "ssh-worker"
+    Then native SSH on "ssh-worker" still answers "ssh-manager" as "fleettest" after a reboot
+    And repairing a disabled native SSH preference on "ssh-worker" restores unattended access as "fleettest"

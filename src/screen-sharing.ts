@@ -63,10 +63,23 @@ export async function desktopChecks(
   port: number,
   run: Runner
 ): Promise<Check[]> {
+  const runtime = '/run/user/' + userInfo().uid;
+  const sessionCommand = (argv: string[]) =>
+    run(argv, {
+      env: {
+        XDG_RUNTIME_DIR: runtime,
+        DBUS_SESSION_BUS_ADDRESS: 'unix:path=' + runtime + '/bus',
+      },
+    });
   const [service, session, configured, listening, credential, cert] =
     await Promise.all([
-      run(['systemctl', '--user', 'is-active', 'gnome-remote-desktop.service']),
-      run([
+      sessionCommand([
+        'systemctl',
+        '--user',
+        'is-active',
+        'gnome-remote-desktop.service',
+      ]),
+      sessionCommand([
         'gdbus',
         'call',
         '--session',
@@ -78,14 +91,14 @@ export async function desktopChecks(
         'org.freedesktop.DBus.NameHasOwner',
         'org.gnome.Mutter.RemoteDesktop',
       ]),
-      run(['gsettings', 'get', RDP, 'port']),
-      run(['ss', '-H', '-ltn', 'sport', '=', String(port)]),
-      run([
+      sessionCommand(['gsettings', 'get', RDP, 'port']),
+      sessionCommand(['ss', '-H', '-ltn', 'sport', '=', String(port)]),
+      sessionCommand([
         '/usr/bin/python3',
         '/etc/personal-fleet/screen-sharing-credential.py',
         'check',
       ]),
-      run(['gsettings', 'get', RDP, 'tls-cert']),
+      sessionCommand(['gsettings', 'get', RDP, 'tls-cert']),
     ]);
   const path = cert.ok && /^'(\/[^'\n]+)'$/.exec(cert.stdout.trim())?.[1];
   const certificate =

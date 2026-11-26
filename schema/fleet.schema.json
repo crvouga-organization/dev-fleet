@@ -702,6 +702,10 @@
             }
           }
         },
+        "meshAccess": {
+          "const": "full-access",
+          "description": "Maintain directed full-access T3 grants between all enrolled environments."
+        },
         "pairOnEnrollment": {
           "type": "boolean",
           "description": "Allow first T3 pairing for enrolled workers over their verified connection. Omit to ask during interactive sync; false keeps pairing manual."

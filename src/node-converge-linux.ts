@@ -1,3 +1,4 @@
+import { FIREWALL_TABLE, parseFirewall } from './worker-exposure';
 import { existsSync } from 'node:fs';
 import { applyScreenSharing } from './screen-sharing';
 import ubuntuPolicy from '../ansible/ubuntu/policy.json';
@@ -264,7 +265,12 @@ async function applyBaseline(
       name: 'ubuntu-baseline',
       sources: [ubuntu, resolve(root, 'ansible/github')],
       force,
-      verify: () => baselineServicesActive(run, features),
+      verify: () =>
+        baselineServicesActive(
+          run,
+          features,
+          fleet.workers.find((entry) => entry.id === node)?.screenSharing?.port
+        ),
     }
   );
   return {
@@ -287,8 +293,27 @@ async function applyBaseline(
 /** Cheap probe for what the baseline owns: system services and user timers. */
 async function baselineServicesActive(
   run: Runner,
-  features: WorkerFeatures
+  features: WorkerFeatures,
+  sharingPort?: number
 ): Promise<boolean> {
+  if (sharingPort) {
+    const rules = await run([
+      'sudo',
+      '-n',
+      'nft',
+      '-j',
+      'list',
+      'table',
+      ...FIREWALL_TABLE,
+    ]);
+    if (
+      !rules.ok ||
+      !parseFirewall(rules.stdout).tailnetOnly.some(
+        (p) => p.port === sharingPort && p.protocol === 'tcp'
+      )
+    )
+      return false;
+  }
   const system = await run([
     'systemctl',
     'is-active',

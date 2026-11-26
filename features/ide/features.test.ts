@@ -5,6 +5,7 @@ import './steps/profile';
 import './steps/models';
 import './steps/manager';
 import './steps/pairing';
+import './steps/mesh';
 import './steps/work-in-progress';
 import './steps/super';
 

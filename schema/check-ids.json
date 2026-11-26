@@ -1689,6 +1689,22 @@
       }
     },
     {
+      "id": "t3:mesh-link",
+      "meaning": "Directed T3 access to an enrolled environment.",
+      "severity": "required",
+      "repair": {
+        "manual": "Verify the enrolled identities and their tailnet connections, then run fleet-sync to reconcile the directed grants declared by t3.meshAccess."
+      }
+    },
+    {
+      "id": "t3:mesh-member",
+      "meaning": "Enrolled mesh member identity and availability.",
+      "severity": "required",
+      "repair": {
+        "manual": "Verify the enrolled identities and their tailnet connections, then run fleet-sync to reconcile the directed grants declared by t3.meshAccess."
+      }
+    },
+    {
       "id": "t3:models",
       "meaning": "T3 offers only the declared models for every account instance the fleet manages.",
       "severity": "advisory",

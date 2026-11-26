@@ -415,6 +415,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
   't3:manager-origin': "The manager's T3 origin is configured.",
   't3:models':
     'T3 offers only the declared models for every account instance the fleet manages.',
+  't3:mesh-member': 'Enrolled mesh member identity and availability.',
+  't3:mesh-link': 'Directed T3 access to an enrolled environment.',
   't3:paired-access': "The manager's T3 is linked to this worker.",
   't3:policy-loaded': 'The running T3 loaded the managed policy.',
   't3:policy-staged': 'The managed T3 policy is installed.',

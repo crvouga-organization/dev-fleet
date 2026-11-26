@@ -15,6 +15,7 @@ is missing from it.
 | ------------------------------------------ | ---------------------------------------------------------------------------------- |
 | `ansible/ubuntu/baseline.yml`              | A worker's packages, Docker, services, power, user, SSH, disk                      |
 | `ansible/ubuntu/native-ssh.yml`            | Enroll and verify native SSH in both directions                                    |
+| `ansible/ubuntu/t3-mesh.yml`               | Replace or create one declared full-access T3 grant                                |
 | `ansible/ubuntu/screen-sharing.yml`        | Configure GNOME desktop sharing and publish its per-worker credential              |
 | `ansible/ubuntu/retire-screen-sharing.yml` | Retire managed sharing before changing the firewall                                |
 | `ansible/ubuntu/tailscale.yml`             | Tailscale on a worker                                                              |

@@ -45,11 +45,16 @@ collection = Secret.Collection.for_alias_sync(service, Secret.COLLECTION_SESSION
                                              Secret.CollectionFlags.NONE, None)
 if not collection or collection.get_locked():
     sys.exit("RDP session collection unavailable")
+already_published = False
 for item in items:
-    if item.get_locked() or item.get_object_path().startswith(collection.get_object_path() + "/"):
+    if item.get_locked():
         continue
-    if credential(item) != expected:
+    if item.get_object_path().startswith(collection.get_object_path() + "/"):
+        already_published |= credential(item) == expected
+    elif credential(item) != expected:
         sys.exit("RDP credential conflicts with an existing unlocked desktop credential")
+if already_published:
+    sys.exit(0)
 variant = GLib.Variant("a{sv}", {k: GLib.Variant("s", v) for k, v in expected.items()})
 if not Secret.password_store_sync(schema, {}, Secret.COLLECTION_SESSION,
                                   "Fleet GNOME Remote Desktop RDP credentials",

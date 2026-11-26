@@ -711,3 +711,7 @@ See the GNOME desktop sharing and manager keychain procedures in
 - `TAILSCALE_SSH_MACOS_UNSUPPORTED`: use a supported open-source macOS tailscaled installation for native SSH. **Needs a person.**
 - `TAILSCALE_SSH_NETWORK_REQUIRED`: declare the worker's tailnet name and account and verify its enrolled SSH route.
 - `TAILSCALE_SSH_VERIFICATION_FAILED`: confirm both devices have tailnet SSH authorization, the expected host keys, and unconditional access for the enrolled accounts. Check the manager distribution and the sudo privileges of the accounts applying the change.
+
+### Directed T3 grants
+
+To authorize every enrolled environment's agents to work with full access on every other enrolled environment, set `t3.meshAccess` to `"full-access"` in fleet.json. Preview with `devfleet fleet-sync --dry-run`. Each `t3:mesh-link` names the source, destination and measured grant. An unreachable environment or changed identity is reported by `t3:mesh-member`. Restore its T3 service and enrolled tailnet connection, then run fleet-sync. Sync adopts healthy grants in place and replaces incorrect grants or grants expiring within seven days. Scheduled sync retries outstanding pairs. Use `devfleet fleet-status` to measure the links from their sources.
