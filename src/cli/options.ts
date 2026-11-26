@@ -6,6 +6,7 @@ import type { Settings } from './settings';
 export interface CliOptions extends Partial<Settings> {
   managed?: boolean;
   workers?: boolean;
+  placement?: boolean;
   tailnet?: boolean;
   list?: boolean;
   onboard?: boolean;

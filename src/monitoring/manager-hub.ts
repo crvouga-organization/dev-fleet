@@ -117,6 +117,14 @@ export async function convergeManagerHub(
       ...(options.receipts ? { directory: options.receipts } : {}),
     }
   );
+  if (
+    !result.ok &&
+    (result.stdout + result.stderr).includes('BESZEL_HUB_UPGRADE_PENDING')
+  )
+    return failure(
+      'BESZEL_HUB_UPGRADE_PENDING',
+      'Take and verify a hub backup, then perform the planned image upgrade as described in ansible/monitoring/README.md before rerunning fleet-sync.'
+    );
   if (!result.ok)
     return failure(
       'BESZEL_HUB_INSTALLATION_INCOMPLETE',

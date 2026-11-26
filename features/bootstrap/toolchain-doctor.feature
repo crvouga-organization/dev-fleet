@@ -17,6 +17,19 @@ Feature: The doctor checks a machine's toolchain
       And the check "bun" passes
       And there is no check "atlas"
 
+    Scenario Outline: tmux reports its version with -V
+      Given the toolchain pins:
+        | tool | version |
+        | tmux | 3.8     |
+      And the command "tmux -V" prints "tmux <version>"
+      When the doctor checks the tools
+      Then the check "tmux" <verdict>
+
+      Examples:
+        | version | verdict |
+        | 3.8     | passes  |
+        | 3.7     | fails   |
+
     Scenario Outline: A version check accepts sentence punctuation but rejects a longer version
       Given the toolchain pins:
         | tool    | version |

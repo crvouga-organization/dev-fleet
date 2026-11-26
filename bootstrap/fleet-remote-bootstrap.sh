@@ -59,7 +59,7 @@ remedy() {
     APT_REPOSITORY_UNAVAILABLE) echo 'The Ubuntu archive could not be reached. Check the network or archive status, then rerun fleet-sync.';;
     APT_DISK_FULL) echo 'Package installation ran out of disk space. Free space under /var and /usr, then rerun fleet-sync.';;
     DPKG_INTERRUPTED) echo 'An interrupted package installation could not be finished: dpkg --configure -a, run once and bounded, left the package database inconsistent. Read sudo dpkg --audit on the worker, repair the packages it names, then rerun fleet-sync.';;
-    APT_UPDATE_FAILED|APT_INSTALL_FAILED) echo 'Run sudo apt-get update and install the bootstrap packages by hand to see the error, then rerun fleet-sync.';;
+    APT_UPDATE_FAILED|APT_INSTALL_FAILED|APT_UPDATE_TIMEOUT|APT_INSTALL_TIMEOUT) echo 'Run sudo apt-get update and install the bootstrap packages by hand to see the error, then rerun fleet-sync.';;
     SOURCE_CACHE_CHANGED|SOURCE_STATUS_FAILED|SOURCE_CHECKOUT_CONFLICT) echo 'The fleet-owned checkout of this revision holds changes fleet-sync did not make. Inspect and remove that revisions directory, then rerun fleet-sync.';;
     FLEET_CONFIGURATION_COPY_CHANGED) echo 'The copy of the fleet configuration on this worker (~/.config/dev-fleet/fleet.json) was edited there since fleet-sync last wrote it, so it was not replaced and nothing was installed. A worker takes its configuration from the manager: make the change in the fleet.json the fleet is synced from, then delete the copy on this worker (rm ~/.config/dev-fleet/fleet.json) and rerun fleet-sync.';;
     CONFIGURATION_INSTALL_FAILED) echo 'The fleet configuration could not be written under ~/.config/dev-fleet. Check that directory, then rerun fleet-sync.';;
@@ -74,6 +74,12 @@ fail() {
 # apt-failure: begin
 # Names an APT failure by the fixed messages of the pinned Ubuntu release.
 apt_failure() {
+  if [ "${2:-0}" = 124 ]; then
+    case "$1" in
+      APT_UPDATE_FAILED) die APT_UPDATE_TIMEOUT;;
+      APT_INSTALL_FAILED) die APT_INSTALL_TIMEOUT;;
+    esac
+  fi
   # APT names a held lock in several ways: with the process that holds it,
   # without one (it could not read the holder), or in dpkg's own words.
   if grep -qE 'Could not get lock|Unable to acquire the dpkg frontend lock|Unable to lock the administration directory|locked by another process' "$apt_log" 2>/dev/null; then die APT_LOCK_CONTENDED
@@ -273,9 +279,9 @@ if [ -n "$missing" ]; then
     # Never remove APT locks or kill package processes. Timeout keeps genuine
     # transactions bounded; Ubuntu archive signatures/TLS remain enabled.
     # shellcheck disable=SC2024
-    sudo -n timeout 300 env LC_ALL=C apt-get -o DPkg::Lock::Timeout=120 update >"$apt_log" 2>&1 || apt_failure APT_UPDATE_FAILED
+    sudo -n timeout 300 env LC_ALL=C apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o DPkg::Lock::Timeout=120 -o APT::Update::Error-Mode=any update >"$apt_log" 2>&1 || apt_failure APT_UPDATE_FAILED "$?"
     # shellcheck disable=SC2086,SC2024
-    sudo -n timeout 600 env DEBIAN_FRONTEND=noninteractive LC_ALL=C apt-get -o DPkg::Lock::Timeout=120 --no-install-recommends install -y $missing >>"$apt_log" 2>&1 || apt_failure APT_INSTALL_FAILED
+    sudo -n timeout 600 env DEBIAN_FRONTEND=noninteractive LC_ALL=C apt-get -o Acquire::Retries=3 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 -o DPkg::Lock::Timeout=120 --no-install-recommends install -y $missing >"$apt_log" 2>&1 || apt_failure APT_INSTALL_FAILED "$?"
   fi
   rm -f -- "$apt_log"
   apt_log=''

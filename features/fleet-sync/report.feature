@@ -154,3 +154,8 @@ Feature: fleet-sync prints a short report that is the same every time
         | summary                                    | code                  | detail               |
         | SERVICE_NOT_INSTALLED beszel-agent.service | SERVICE_NOT_INSTALLED | beszel-agent.service |
         | Plain sentence.                            |                       | Plain sentence.      |
+
+  Scenario: Fleet parity remains pending for a worker omitted from a scoped rollout
+    Given a fleet-sync report that applied the revision "approved", with the dashboard "unused"
+    When version parity is measured for the declared fleet
+    Then the parity report lists every unmeasured machine as pending for "rollout"

@@ -1,3 +1,5 @@
+import { measureParity } from '../../../src/version-parity';
+import { fleet } from '../../../src/fleet-config';
 import { expect } from 'bun:test';
 import { managerText, splitSummary } from '../../../src/cli/fleet-sync-output';
 import { applyAcceptance } from '../../../src/cli/fleet-sync-remote';
@@ -193,5 +195,23 @@ Then(
   'its code is {string} and its detail is {string}',
   (world, code: string, detail: string) => {
     expect(state(world).split).toEqual({ code, detail });
+  }
+);
+
+When('version parity is measured for the declared fleet', (world) => {
+  const report = state(world).report!;
+  report.versionParity = measureParity(fleet, report);
+});
+Then(
+  'the parity report lists every unmeasured machine as pending for {string}',
+  (world, reason: string) => {
+    const parity = state(world).report!.versionParity!;
+    expect(parity.complete).toBe(false);
+    expect(parity.nodes).toEqual(
+      [fleet.manager, ...fleet.workers].map((machine) => ({
+        node: machine.id,
+        pending: [reason],
+      }))
+    );
   }
 );

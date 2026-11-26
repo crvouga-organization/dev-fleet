@@ -275,7 +275,7 @@
               <string>--idle-days</string><string>{{ gc_idle_days }}</string>
               <string>--pressure-mib</string><string>{{ disk.warnFreeMiB }}</string>
           {% if gc_on_disposable %}
-              <string>--pressure-percent</string><string>{{ gc_policy.diskGcDisposable.pressureFreePercent }}</string>
+              <string>--target-used-percent</string><string>{{ fleet_storage_target_used_percent | default(gc_policy.diskGcDisposable.targetUsedPercent) }}</string>
               <string>--disposable</string>
           {% endif %}
               <string>--pressure-inode-percent</string><string>{{ gc_policy.inodeWarnFreePercent }}</string>

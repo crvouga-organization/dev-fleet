@@ -666,11 +666,27 @@
         }
       }
     },
+    "softwarePolicy": {
+      "const": "latest-supported",
+      "description": "Require version parity across the manager and all declared workers at the channel pins of this published revision."
+    },
     "storage": {
       "type": "object",
       "additionalProperties": false,
+      "dependentSchemas": {
+        "targetUsedPercent": {
+          "required": ["disposable"],
+          "properties": { "disposable": { "const": true } }
+        }
+      },
       "description": "How the disk GC of every node, workers and manager, treats what is on its disk (docs/ubuntu-sync.md, Disk GC).",
       "properties": {
+        "targetUsedPercent": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 99,
+          "description": "Maximum effective disk use for disposable storage, measured after collection."
+        },
         "disposable": {
           "type": "boolean",
           "default": false,

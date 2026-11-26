@@ -487,6 +487,14 @@ a process could be using). On the manager it also trims `~/Library/Caches`,
 and its pressure mode starts where `manager:disk` warns
 (`disk.warnFreeMiB` in `ansible/macos/policy.json`).
 
+On workers the collector recognizes Bun’s native-package extraction layout under
+the host temporary directories. It requires the nonce and package-name suffix,
+a matching package manifest and an executable ELF file. Recent, open, mounted,
+linked or foreign-owned entries are kept. The GC report includes the reclaimed
+space in `categoriesMiB.package_staging`. Its `pnpmStores` field records the
+native prune result for each store generation, including generations for which
+no compatible installed pnpm was found.
+
 It limits Docker build cache to a share of the root disk. Under pressure it
 also prunes unused images, build cache and anonymous dangling volumes. It
 trims older children of the development user's cache directories, excluding
@@ -523,7 +531,7 @@ and manager:
 | Branch deleted on its remote, or merged  | no effect                                            | the worktree goes at once, whatever its age (deleted: every commit was on the remote branch; merged: work was committed on it) |
 | Ignored build output of an idle checkout | after 7 days (`diskGcIdleDays`)                      | after 6 hours                                                                                                                  |
 | Unused Docker images and build cache     | older than 168 hours; build cache kept to 5% of disk | all of it, every run                                                                                                           |
-| Pressure mode                            | below the `diskGcPressure` threshold of the disk     | also below 25% of the disk free                                                                                                |
+| Pressure mode                            | below the `diskGcPressure` threshold of the disk     | also above `storage.targetUsedPercent` effective disk use (default 60%, excluding reserved blocks from available capacity)     |
 
 A worktree a process runs in is kept by both, and so is its branch: only the
 worktree goes. A pull request closed without its branch being deleted is not

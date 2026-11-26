@@ -1,3 +1,4 @@
+import { quotaCoverage } from '../../../src/t3/quota-coverage';
 import { expect } from 'bun:test';
 import {
   mkdirSync,
@@ -165,6 +166,7 @@ function providers(
   return machineProviders(id, ROOT, apply, {
     t3Home: t3Home!,
     roster: async () => accounts,
+    keys: async () => {},
     refresh: async (instanceId) => instanceId !== unchecked.get(world),
   });
 }
@@ -735,4 +737,46 @@ Then(
     expect(command).not.toContain(' -K');
     expect(command).not.toContain('--ask-become-pass');
   }
+);
+
+When(
+  'a proxy source at {string} reports Antigravity windows last read {int} minutes ago',
+  (world, path: string, age: number) => {
+    const origin = 'https://proxy.example.invalid';
+    const now = Date.now();
+    const checkedAt = new Date(now - age * 60_000).toISOString();
+    const account = {
+      tool: 'antigravity',
+      email: 'one@example.invalid',
+      prefix: 'antigravity-one',
+      models: [],
+    };
+    quotaResults.set(
+      world,
+      quotaCoverage(
+        [account],
+        origin + '/hub',
+        [
+          {
+            kind: 'cliproxy',
+            origin,
+            endpoint: origin + path,
+            checkedAt,
+            accounts: [
+              {
+                driver: account.tool,
+                email: account.email,
+                usageLimits: { checkedAt, windows: [{ id: 'test' }] },
+              },
+            ],
+          },
+        ],
+        now
+      ).status
+    );
+  }
+);
+const quotaResults = new WeakMap<object, string>();
+Then('the account quota check reports {string}', (world, status: string) =>
+  expect(quotaResults.get(world)).toBe(status)
 );

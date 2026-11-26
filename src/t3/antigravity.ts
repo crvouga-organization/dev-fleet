@@ -14,7 +14,7 @@ export async function refreshAntigravity(
     options.run ?? runCommand,
     {
       tag: 'server.refreshProviders',
-      payload: { instanceId: id, refreshModels: true },
+      payload: { instanceId: id, refreshModels: true, reloadSecrets: true },
     },
     [
       '--scope',

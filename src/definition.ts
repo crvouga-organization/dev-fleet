@@ -182,6 +182,7 @@ export interface FleetDefinition {
   /** Parking and idle reporting (docs/topology.md). */
   parking?: ParkingPolicy;
   /** How the disk GC of every node treats what is on its disk. */
+  softwarePolicy?: 'latest-supported';
   storage?: StoragePolicy;
 }
 /** disposable: every node disk is a cache (work lives on remotes and in the
@@ -189,6 +190,7 @@ export interface FleetDefinition {
  * (docs/ubuntu-sync.md). Absent or false, the default policy. */
 export interface StoragePolicy {
   disposable?: boolean;
+  targetUsedPercent?: number;
 }
 /** Whether the fleet treats every node disk as a cache. */
 export const disposableStorage = (
@@ -430,12 +432,29 @@ function idleHours(
 function storage(value: unknown): StoragePolicy {
   const path = '$.storage';
   const fields = object(value, path);
-  keys(fields, ['disposable'], path);
+  keys(fields, ['disposable', 'targetUsedPercent'], path);
+  const target = fields['targetUsedPercent'];
+  if (
+    target !== undefined &&
+    (fields['disposable'] !== true ||
+      typeof target !== 'number' ||
+      !Number.isInteger(target) ||
+      target < 1 ||
+      target > 99)
+  )
+    fail(
+      `${path}.targetUsedPercent`,
+      'an integer from 1 to 99 with disposable storage enabled',
+      target
+    );
   const disposable = fields['disposable'];
   if (disposable === undefined) return {};
   if (typeof disposable !== 'boolean')
     fail(`${path}.disposable`, 'true or false', disposable);
-  return { disposable: disposable as boolean };
+  return {
+    disposable: disposable as boolean,
+    ...(target === undefined ? {} : { targetUsedPercent: target as number }),
+  };
 }
 function parking(value: unknown): ParkingPolicy {
   const path = '$.parking';
@@ -668,6 +687,7 @@ export function parseDefinition(value: unknown): FleetDefinition {
       'nativeSsh',
       'tailnet',
       'parking',
+      'softwarePolicy',
       'storage',
     ],
     '$'
@@ -797,9 +817,18 @@ function operations(
   fields: Record<string, unknown>
 ): Pick<
   FleetDefinition,
-  'github' | 'parking' | 'tailnet' | 'storage' | 'nativeSsh'
+  'github' | 'parking' | 'tailnet' | 'storage' | 'nativeSsh' | 'softwarePolicy'
 > {
   return {
+    ...(fields['softwarePolicy'] === undefined
+      ? {}
+      : {
+          softwarePolicy: constant(
+            fields['softwarePolicy'],
+            'latest-supported' as const,
+            '$.softwarePolicy'
+          ),
+        }),
     ...(fields['nativeSsh'] === undefined
       ? {}
       : {

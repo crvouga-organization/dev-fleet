@@ -3,6 +3,11 @@ import { disposableStorage, type FleetDefinition } from '../definition';
 import type { ManagerNode } from '../manager-sync';
 import { convergeProxy } from '../proxy-converge';
 import { attempt } from '../node-converge-shared';
+import { toolchainChecks } from '../toolchain-checks';
+import { pinnedT3Version, versionCheck } from '../t3/version';
+import { liveServerVersion } from '../platform/t3-service';
+import { loopbackOrigin } from '../t3/local-rpc';
+import { managerQuotaCoverage } from '../t3/quota-coverage';
 import { quotaLimited, verifyFleetProviders } from '../agents/fleet-verify';
 import { verifyNativeAgents } from '../agents/native-verify';
 import { accountContext, nodeAccountChecks } from '../accounts/context';
@@ -160,6 +165,21 @@ async function managerMeasures(
       }),
     () => managerHealth(run),
   ]);
+  if (definition.softwarePolicy) {
+    rest.push(...(await toolchainChecks(input.workspace, run)));
+    if (idesOf(definition).includes('t3')) {
+      const origin = await loopbackOrigin();
+      rest.push({
+        ...versionCheck(
+          origin ? ((await liveServerVersion(run, [], origin)) ?? null) : null,
+          await pinnedT3Version(input.workspace),
+          'the manager',
+          'Restart the manager server when its active turns finish.'
+        ),
+        id: 't3:running-version',
+      });
+    }
+  }
   return [...vault, ...rest];
 }
 
@@ -245,7 +265,12 @@ async function managerSessions(
       })
     )
   );
-  return [...providers, ...roster, ...sessions];
+  return [
+    ...providers,
+    ...roster,
+    ...sessions,
+    ...(await managerQuotaCoverage(accounts?.live ?? [], run)),
+  ];
 }
 
 function playbookPassed(cached: boolean): Check {
@@ -486,6 +511,8 @@ export async function convergeManagerPolicy(
         fleet_watch_minutes: scheduleIntervals(definition.manager).watchMinutes,
         // The disk GC's policy (storage.disposable in fleet.json).
         fleet_storage_disposable: disposableStorage(definition),
+        fleet_storage_target_used_percent:
+          definition.storage?.targetUsedPercent,
       }),
     },
     {

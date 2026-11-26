@@ -1,3 +1,4 @@
+import { pendingVersions } from './version-parity';
 import { diagnostic, type Diagnostic } from './diagnostics';
 import {
   blocking,
@@ -44,6 +45,11 @@ export interface ManagerReport {
   execution: 'manager-push';
   ok: boolean;
   applied: boolean;
+  versionParity?: {
+    revision: string | null;
+    complete: boolean;
+    nodes: { node: string; pending: string[] }[];
+  };
   acceptance?: { failOnWarning: boolean; warnings: number; accepted: boolean };
   desiredRevision: string | null;
   /** What selected the desired revision. */
@@ -207,11 +213,11 @@ export async function synchronizeManager(
       );
     })
   );
-  const [workers] = await Promise.all([inspected, managerRun]);
+  const [workers, manager] = await Promise.all([inspected, managerRun]);
   report.nodes.push(...workers);
+  if (manager) report.nodes.unshift(manager);
   if (input.apply) await applyNodes(report, input, deploy);
   else workers.forEach((node) => input.finished?.(node));
-  if (managerRun) report.nodes.unshift(await managerRun);
   report.ok = ready(report);
   for (const node of report.nodes)
     node.diagnostics = node.checks.map((check) => diagnostic(node.node, check));
@@ -246,6 +252,7 @@ function ready(report: ManagerReport): boolean {
 async function applyNodes(
   report: ManagerReport,
   input: {
+    definition: FleetDefinition;
     nodes: FleetNode[];
     revision: string;
     canary?: string;
@@ -260,7 +267,12 @@ async function applyNodes(
     ? chooseCanary(workers, input.canary, input.nodes)
     : undefined;
   if (canary) report.canary = canary.node;
-  let blocked = report.checks.some(blocking);
+  const unverified = (node: ManagerNode) =>
+    input.definition.softwarePolicy &&
+    pendingVersions(input.definition, node, input.revision).length > 0;
+  let blocked =
+    report.checks.some(blocking) ||
+    report.nodes.some((node) => node.role === 'manager' && unverified(node));
   const step = async (result: ManagerNode) => {
     const deployable = mayDeploy(result, input.nodes);
     if (await rollOut(result, { deployable, blocked }, input, deploy))
@@ -272,7 +284,12 @@ async function applyNodes(
   // workers are independent, so they converge concurrently.
   if (canary) {
     const deployable = await step(canary);
-    if (!deployable || canary.checks.some(blocksPromotion)) blocked = true;
+    blocked = [
+      blocked,
+      !deployable,
+      canary.checks.some(blocksPromotion),
+      unverified(canary),
+    ].some(Boolean);
   }
   const rest = workers.filter((node) => node !== canary);
   if (!input.serial) {

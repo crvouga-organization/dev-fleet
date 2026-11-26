@@ -1,3 +1,4 @@
+import type { reconcileProviderKeys } from './provider-keys';
 import { checkedProviders, type refreshAntigravity } from './antigravity';
 import { T3DiagnosticError } from './diagnostics';
 import type { Check } from '../types';
@@ -22,6 +23,7 @@ export async function machineProviders(
     t3Home?: string;
     roster?: Roster;
     refresh?: typeof refreshAntigravity;
+    keys?: typeof reconcileProviderKeys;
   } = {}
 ): Promise<Check> {
   const remedy = {
@@ -43,9 +45,10 @@ export async function machineProviders(
     );
     const plan = await reconcileT3(target, instances, { apply: false });
     const result =
-      apply && plan.ok && plan.changed
+      apply && plan.ok
         ? await reconcileT3(target, instances, {
             apply: true,
+            ...(options.keys ? { keys: options.keys } : {}),
             planHash: plan.planHash,
           })
         : plan;

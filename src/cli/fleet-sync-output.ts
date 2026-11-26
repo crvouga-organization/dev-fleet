@@ -108,6 +108,7 @@ export function managerText(
   const lines: string[] = [header(c, report, failing, options)];
   lines.push('', ...grid(c, report.nodes, mark, options.color === true));
   lines.push('', totals(c, counts, options.color === true));
+  lines.push(...parityLines(report));
   lines.push(...slowLines(c, report.nodes));
   for (const status of [
     'fail',
@@ -402,4 +403,13 @@ export function duration(ms: number): string {
   const seconds = Math.round(ms / 1000);
   if (seconds < 60) return `${seconds}s`;
   return `${Math.floor(seconds / 60)}m${String(seconds % 60).padStart(2, '0')}s`;
+}
+
+function parityLines(report: ManagerReport) {
+  return (report.versionParity?.nodes ?? [])
+    .filter((node) => node.pending.length)
+    .map(
+      (node) =>
+        `Version parity pending on ${node.node}: ${node.pending.join(', ')}`
+    );
 }

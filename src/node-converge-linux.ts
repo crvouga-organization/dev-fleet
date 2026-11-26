@@ -37,6 +37,7 @@ import {
   workerFeatures,
   type WorkerFeatures,
 } from './worker-features';
+import { toolchainChecks } from './toolchain-checks';
 import { userInfo } from 'node:os';
 import { resolve } from 'node:path';
 import { auditUbuntu } from './platform/ubuntu-audit';
@@ -188,6 +189,10 @@ export async function convergeLinux(
   checks.push(
     ...(await attempt('worker:readiness', () => workerReadiness(run, node)))
   );
+  if (fleet.softwarePolicy)
+    checks.push(
+      ...(await toolchainChecks(root, run, workerSelection(fleet, node)))
+    );
   return checks;
 }
 
@@ -259,6 +264,7 @@ async function applyBaseline(
         worker_agent_session_limit: agentSessionLimit(fleet, node) ?? 0,
         // The disk GC's policy (tasks/resources.yml, storage.disposable).
         fleet_storage_disposable: disposableStorage(fleet),
+        fleet_storage_target_used_percent: fleet.storage?.targetUsedPercent,
       }),
     },
     {
