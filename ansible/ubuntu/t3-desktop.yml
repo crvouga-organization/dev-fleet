@@ -285,3 +285,13 @@
           - "{{ '--force' if t3_restart_busy | default(false) | bool else '--keep-turns' }}"
       register: t3_recovery
       changed_when: "'T3_HANDOFF' in t3_recovery.stdout or 'starting it' in t3_recovery.stdout"
+    - name: Wait for a newly started desktop to answer locally
+      ansible.builtin.uri:
+        url: http://127.0.0.1:3773/.well-known/t3/environment
+        use_proxy: false
+        return_content: false
+      register: t3_desktop_api
+      until: t3_desktop_api.status == 200 and t3_desktop_api.json.environmentId is defined
+      retries: 20
+      delay: 1
+      when: "'starting it' in t3_recovery.stdout | default('')"

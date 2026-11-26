@@ -73,7 +73,11 @@ The tracked test covers:
 - With `FLEET_TEST_DESKTOP=1`, the desktop session: the same worker switched
   to `t3-desktop.yml` keeps `~/.t3` and loses the server's unit, the desktop
   app runs in the auto-login session after a reboot, and a stopped app is
-  started by the recovery timer.
+  started by the recovery timer. A separately launched desktop keeps its
+  listener while busy and hands it to the managed service when idle. Repeated
+  applies preserve the healthy PID. A FreeRDP client controls the existing
+  desktop after two reboots with the login keyring locked. The manager's TLS
+  probe runs between two pointer movements on the same authenticated session.
 - Pinned stock Beszel hub, missing native Docker/Compose installation, repeated
   no-op, and container restart after reboot.
 - Native Beszel agent installation through the production private-variable-file
@@ -102,7 +106,10 @@ This opt-in variant calls the production `bootstrapRemote` transport against a
 fresh guest. It removes the image's preinstalled Git **inside the disposable VM**
 and asserts that Node, Bun, mise and Git are absent. It transfers a Git bundle at
 one exact commit, runs the shared installer, requires a passing Ubuntu baseline,
-then repeats to check preserved work, SSH identity and managed-file timestamps.
+and checks that a missing account roster prevents T3 installation while Git
+converges. A local HTTPS roster unblocks the retry. Repeat, drift repair and
+post-repair applies check the T3 process, installed Bun, Git signing identity,
+SSH identity, managed files and preserved work.
 Missing Tailscale/provider credentials and paired T3 acceptance remain incomplete.
 The test does not convert those failures into full fleet readiness.
 

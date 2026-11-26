@@ -15,6 +15,7 @@ Feature: A worker runs one T3: the pinned desktop app
       | t3 --version                                       | prints t3 v0.1.7 |
       | systemctl --user is-active t3code-desktop.service  | succeeds         |
       | systemctl --user is-enabled t3code-desktop.service | succeeds         |
+    And the command "python3 -I -B /usr/local/lib/personal-fleet/t3-listener.py" prints managed
     When the worker's T3 desktop app is converged
     Then the check passes
     And no command with any of these words was run:
@@ -48,6 +49,7 @@ Feature: A worker runs one T3: the pinned desktop app
       | cat /opt/T3 Code (Nightly)/.personal-fleet-version | prints T3-Code-0.1.6-amd64.deb |
       | systemctl --user is-active t3code-desktop.service  | succeeds                       |
       | systemctl --user is-enabled t3code-desktop.service | succeeds                       |
+    And the command "python3 -I -B /usr/local/lib/personal-fleet/t3-listener.py" prints managed
     When the worker's T3 desktop app is converged
     Then the check passes
     And the policy was staged
@@ -94,3 +96,10 @@ Feature: A worker runs one T3: the pinned desktop app
       | systemctl --user is-enabled t3code.service         | fails            |
     When the worker's T3 desktop app is converged
     Then the summary of the check is "T3_NO_GRAPHICAL_SESSION"
+
+  Scenario: An active unit cannot claim a listener served by a separately launched desktop
+    Given the command "t3 --version" prints t3 v0.1.7
+    And the command "systemctl --user is-active t3code-desktop.service" succeeds
+    And the command "python3 -I -B /usr/local/lib/personal-fleet/t3-listener.py" prints app-com.t3tools.T3Code-123.scope
+    When the worker's T3 desktop app is converged
+    Then the summary of the check is "T3_DESKTOP_HANDOFF_PENDING"
