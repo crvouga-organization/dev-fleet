@@ -109,8 +109,11 @@ if [ -z "$headless" ]; then
       # the listener that actually exists on the next invocation.
       [ "$(python3 -I -B "$here/t3-listener.py")" = "$owner" ] || exit 1
       echo "T3_HANDOFF: stopping the idle desktop scope."
-      systemctl --user stop "$owner" || exit 1
-      [ "$(python3 -I -B "$here/t3-listener.py")" = free ] || exit 1
+      record_pending
+      systemctl --user stop --no-block "$owner" || exit 1
+      # The application may spend its full stop timeout flushing state.
+      # Leave the stop job in systemd and resume on the next observation.
+      [ "$(python3 -I -B "$here/t3-listener.py")" = free ] || exit 0
       ;;
     *)
       echo "T3_LISTENER_OWNER_UNKNOWN"
@@ -132,7 +135,8 @@ fi
 [ "$stage" != --stage ] || record_pending
 if [ -z "$headless" ] && [ -n "${T3_RENDERER_HIGH_MIB:-}" ]; then
   group=$(systemctl --user show "$unit" --property=ControlGroup --value)
-  python3 -I -B "$here/t3-renderers.py" "$group" "$T3_RENDERER_HIGH_MIB" "$T3_RENDERER_MAX_MIB" ||
+  main_pid=$(systemctl --user show "$unit" --property=MainPID --value)
+  python3 -I -B "$here/t3-renderers.py" --main-pid "$main_pid" "$group" "$T3_RENDERER_HIGH_MIB" "$T3_RENDERER_MAX_MIB" ||
     echo "T3 renderer limits could not be applied."
 fi
 if ! environment=$(curl --fail --silent --max-time 10 "$url"); then

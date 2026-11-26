@@ -14,13 +14,14 @@ def scope():
         pids = re.findall(r'pid=(\d+)', row)
         if not pids:
             return 'unknown'
+        local = row.split()[3].rsplit(':', 1)[0] in ('127.0.0.1', '[::1]')
+        managed = 'managed' if local else 'exposed'
         for pid in pids:
             group = Path('/proc', pid, 'cgroup').read_text().split('0::')[-1].strip()
             units = [part for part in group.split('/') if part.endswith(('.service', '.scope'))]
             unit = units[-1] if units else ''
             if unit == 't3code-desktop.service':
-                owners.add('managed' if row.split()[3].rsplit(':', 1)[0] in
-                           ('127.0.0.1', '[::1]') else 'exposed')
+                owners.add(managed)
             elif re.fullmatch(r'app-com\.t3tools\.T3Code-[A-Za-z0-9_-]+\.scope', unit):
                 # Verify the session manager resolves this name to this exact
                 # group and that the installed desktop is running inside it.
@@ -29,6 +30,9 @@ def scope():
                 if not path or group != path:
                     return 'unknown'
                 members = (Path('/sys/fs/cgroup' + path) / 'cgroup.procs').read_text().split()
+                main = subprocess.check_output(
+                    ['systemctl', '--user', 'show', 't3code-desktop.service',
+                     '-p', 'MainPID', '--value'], text=True).strip()
                 for member in members:
                     try:
                         executable = Path('/proc', member, 'exe').readlink()
@@ -38,7 +42,9 @@ def scope():
                         break
                 else:
                     return 'unknown'
-                owners.add(unit)
+                # GNOME may move an already managed Electron process into
+                # this scope. systemd still supervises its original MainPID.
+                owners.add(managed if main in members else unit)
             else:
                 return 'unknown'
     if owners == {'managed', 'exposed'}:

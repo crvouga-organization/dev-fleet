@@ -507,13 +507,20 @@ def test_desktop(ssh, t3):
     ceiling = policy['resourceSafety']['rendererMaxMiB'] * 1024**2
     run(ssh + [f'test "$(cat {renderers}/memory.max)" = {ceiling}'])
     # Reproduce a manually launched Electron app owning the socket in a
-    # graphical application scope. The outer transient service supplies the
-    # graphical session environment to the scope, even though we use SSH.
+    # graphical application scope. The transient service supplies the
+    # graphical environment. GNOME names the new scope after the actual PID.
     user(ssh, f'systemctl --user stop personal-worker-recovery.timer {APP}')
-    scope = 'app-com.t3tools.T3Code-fixture.scope'
-    user(ssh, f'systemd-run --user --quiet systemd-run --user --scope --unit={scope} "/opt/T3 Code (Nightly)/t3code" --ozone-platform=x11')
+    run(ssh + ['python3 -'], input="""import json
+from pathlib import Path
+path = Path.home() / '.t3/userdata/desktop-settings.json'
+settings = json.loads(path.read_text())
+settings['serverExposureMode'] = 'network-accessible'
+path.write_text(json.dumps(settings))
+""")
+    user(ssh, 'systemd-run --user --quiet --unit=fixture-desktop "/opt/T3 Code (Nightly)/t3code" --ozone-platform=x11')
     owner = 'python3 -I -B /usr/local/lib/personal-fleet/t3-listener.py'
-    wait_for(ssh, f'test "$({owner})" = {scope}', 120, 'unmanaged app did not acquire the listener')
+    wait_for(ssh, f'{owner} | grep -Eq "^app-com[.]t3tools[.]T3Code-.*[.]scope$"', 120, 'unmanaged app did not acquire the listener')
+    scope = run(ssh + [owner]).stdout.strip()
     # Use a disposable activity database so the application can continue to
     # own its real state. Both actors inspect a real listener and systemd scope.
     run(ssh + ['mkdir -p busy/userdata && python3 -'], input="""import sqlite3
@@ -580,6 +587,26 @@ def test_screen_sharing(ssh):
     run(ssh + ['systemctl --user stop gnome-remote-desktop.service && gsettings set org.gnome.desktop.remote-desktop.rdp port 3397'])
     run(ssh + [apply])
     run(ssh + [apply])
+    # Observe the compositor's actual pointer in the disposable session.
+    # This works with a keyring prompt on screen: authentication and control
+    # must succeed while unrelated login secrets stay locked.
+    extension = '.local/share/gnome-shell/extensions/rdp-observer@example.test'
+    major = run(ssh + ['gnome-shell --version']).stdout.split()[-1].split('.')[0]
+    run(ssh + [f'mkdir -p {extension} && cat > {extension}/metadata.json'],
+        input=json.dumps({'uuid': 'rdp-observer@example.test', 'name': 'Test pointer observer',
+                          'description': 'Disposable RDP control test', 'shell-version': [major]}))
+    run(ssh + [f'cat > {extension}/extension.js'], input="""import GLib from 'gi://GLib';
+export default class Observer {
+    enable() {
+        this.timer = GLib.timeout_add(GLib.PRIORITY_DEFAULT, 100, () => {
+            const [x, y] = global.get_pointer();
+            GLib.file_set_contents(GLib.get_user_runtime_dir() + '/rdp-pointer', x + ' ' + y);
+            return GLib.SOURCE_CONTINUE;
+        });
+    }
+    disable() { GLib.Source.remove(this.timer); }
+}
+""")
     for _ in range(2):
         reboot(ssh)
         wait_for(ssh, cert_probe, 90, 'RDP did not recover unattended')
@@ -587,10 +614,10 @@ def test_screen_sharing(ssh):
         assert holds_tailnet_only(ssh)
         locked = run(ssh + ['gdbus call --session --dest org.freedesktop.secrets --object-path /org/freedesktop/secrets/collection/login --method org.freedesktop.DBus.Properties.Get org.freedesktop.Secret.Collection Locked']).stdout
         assert 'true' in locked, 'unrelated login keyring was unlocked'
-        # Launch the client on a separate X display. Send a keystroke through
+        # Launch the client on a separate X display. Move the pointer through
         # that client and observe its effect on the shared GNOME desktop.
         run(ssh + [f"""set -eu
-rm -f rdp-controlled
+gnome-extensions enable rdp-observer@example.test
 export RDP_PIN={fingerprint.replace(':', '')}
 xvfb-run -a bash -se <<'CLIENT'
 client=$(command -v xfreerdp3 || command -v xfreerdp)
@@ -605,17 +632,20 @@ for i in $(seq 1 45); do
 done
 test -n "$window"
 xdotool windowfocus --sync "$window"
-# The exact monitoring handshake must leave the active client connected.
+# Move the pointer on the shared desktop before and after the manager's probe.
+move_pointer() {{
+  for i in $(seq 1 20); do
+    xdotool mousemove --window "$window" "$1" "$2"
+    sleep 0.3
+    test "$(cat "$XDG_RUNTIME_DIR/rdp-pointer" 2>/dev/null)" != "$1 $2" || return 0
+    kill -0 "$pid"
+  done
+  return 1
+}}
+move_pointer 140 170
 python3 rdp-probe.py 127.0.0.1 {TAILNET_ONLY_PORT} >/dev/null
-xdotool key alt+F2
-sleep 1
-xdotool type 'touch /home/fleettest/rdp-controlled'
-xdotool key Return
-for i in $(seq 1 15); do
-  test ! -f rdp-controlled || break
-  sleep 1
-done
-test -f rdp-controlled && kill -0 "$pid"
+move_pointer 230 250
+kill -0 "$pid"
 CLIENT"""])
     print('RDP desktop control verified after drift repair and two reboots with the login keyring locked; the TLS probe preserved the connected client', flush=True)
 

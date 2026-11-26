@@ -259,7 +259,7 @@ Feature: The watchdog keeps a worker's T3 up, responsive and on its installed re
       When the watchdog runs 2 times
       Then it says "T3_RESTART_PENDING"
       And the pending restart is kept
-      And it does not run "systemctl --user stop app-com.t3tools.T3Code-fixture.scope"
+      And it does not run "systemctl --user stop --no-block app-com.t3tools.T3Code-fixture.scope"
       And it starts and restarts nothing
 
     Scenario: An idle desktop releases the listener before the managed desktop starts
@@ -267,7 +267,7 @@ Feature: The watchdog keeps a worker's T3 up, responsive and on its installed re
       And the desktop listener belongs to "app-com.t3tools.T3Code-fixture.scope"
       And T3 runs no agent turn
       When the watchdog runs
-      Then it runs "systemctl --user stop app-com.t3tools.T3Code-fixture.scope" before "systemctl --user start t3code-desktop.service"
+      Then it runs "systemctl --user stop --no-block app-com.t3tools.T3Code-fixture.scope" before "systemctl --user start t3code-desktop.service"
       And the pending restart is cleared
 
     Scenario: Recovery preserves a listener whose owner cannot be established

@@ -282,7 +282,7 @@ function watch(world: BootstrapWorld): number {
     'systemctl',
     [
       'case "$*" in',
-      `  *"stop app-com.t3tools.T3Code-fixture.scope") touch "${directory}/stopped-scope";;`,
+      `  *"stop --no-block app-com.t3tools.T3Code-fixture.scope") touch "${directory}/stopped-scope";;`,
       `  *"t3code.service") case "$*" in *disable*) exit ${exit(state.retires)};; *) exit ${exit(state.headless)};; esac;;`,
       `  *"is-enabled --quiet t3code-headless.service") exit ${exit(state.server)};;`,
       `  *"show --property=ExecStart --value t3code-headless.service") echo "{ path=/home/dev/.local/share/personal/tools/t3-${state.installed}-linux-x64/t3 ; argv[]=/home/dev/.local/share/personal/tools/t3-${state.installed}-linux-x64/t3 serve --mode web ; }";;`,
@@ -762,6 +762,7 @@ Then('it reports:', (world, text: string) => {
 const DESKTOP_GROUP = '/app.slice/t3code-desktop.service';
 const renderers = part((world) => ({
   cgroups: world.directory('t3-cgroups-'),
+  mainPid: '',
   proc: world.directory('t3-proc-'),
 }));
 const desktopUnit = (world: BootstrapWorld) =>
@@ -800,6 +801,23 @@ Given(
   }
 );
 
+Given(
+  'GNOME moved the managed desktop with main PID {int} into its application scope',
+  (world, pid: number) => {
+    const state = renderers(world);
+    state.mainPid = String(pid);
+    const group = `/app.slice/app-com.t3tools.T3Code-${pid}.scope`;
+    const directory = join(state.cgroups, group);
+    mkdirSync(directory, { recursive: true });
+    const original = join(desktopUnit(world), 'app/cgroup.procs');
+    const members = readFileSync(original, 'utf8');
+    writeFileSync(original, '');
+    writeFileSync(join(directory, 'cgroup.procs'), members);
+    for (const member of members.trim().split('\n'))
+      writeFileSync(join(state.proc, member, 'cgroup'), `0::${group}\n`);
+  }
+);
+
 When(
   'the renderer limits of {int} MiB high and {int} MiB max are applied',
   (world, high: number, maximum: number) => {
@@ -816,6 +834,8 @@ When(
         renderers(world).cgroups,
         '--proc',
         renderers(world).proc,
+        '--main-pid',
+        renderers(world).mainPid,
       ],
       { encoding: 'utf8' }
     );
