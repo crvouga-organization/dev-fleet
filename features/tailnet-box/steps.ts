@@ -272,6 +272,7 @@ async function createLab(): Promise<Lab> {
   ]);
   const etc = join(scratch, 'headscale');
   await mkdir(etc);
+  await copyFile(join(support, 'policy.json'), join(etc, 'policy.json'));
   await copyFile(join(support, 'headscale.yaml'), join(etc, 'config.yaml'));
   await copyFile(join(scratch, 'tls.crt'), join(etc, 'tls.crt'));
   await copyFile(join(scratch, 'tls.key'), join(etc, 'tls.key'));
@@ -819,3 +820,150 @@ Then('that device is not the one that was removed', async (world) => {
   const devices = await named(world, world.recreated!);
   expect(devices.map((device) => device.id)).not.toContain(world.removed);
 });
+
+const nativeNames = ['ssh-manager', 'ssh-worker'] as const;
+const strictProbe = (target: string, user: string, native: boolean) => [
+  'ssh',
+  '-o',
+  'StrictHostKeyChecking=yes',
+  '-o',
+  'BatchMode=yes',
+  '-o',
+  'ControlPath=none',
+  ...(native ? ['-o', 'PreferredAuthentications=none'] : []),
+  user + '@' + target + '.tailnet.test',
+  'id -un',
+];
+async function realNativePlay() {
+  const manager = await machine(await lab!, nativeNames[0]);
+  const applied = await on(
+    manager,
+    'cd /u && ansible-playbook native-ssh-fixture.yml --extra-vars @native-vars.json'
+  );
+  if (!applied.ok)
+    throw new Error(
+      'Native SSH adoption failed at ' +
+        applied.stdout
+          .match(/TASK \[([^\]]+)\][^]*?fatal:/g)
+          ?.at(-1)
+          ?.split('\n')
+          .at(-2)
+          ?.slice(0, 160)
+    );
+}
+Given(
+  'the two enrolled accounts have strict OpenSSH access to each other as {string}',
+  async (_world, user: string) => {
+    const current = await lab!;
+    for (const name of nativeNames) {
+      const box = await machine(current, name);
+      const configured = await on(
+        box,
+        `set -e
+useradd --create-home --shell /bin/bash ${user}
+usermod -p '*' ${user}
+rm -f /etc/ssh/ssh_host_* && ssh-keygen -A
+install -d -m700 -o ${user} -g ${user} /home/${user}/.ssh
+mkdir -p -m700 /root/.ssh
+ssh-keygen -q -t ed25519 -N '' -f /root/.ssh/id_ed25519
+runuser -u ${user} -- ssh-keygen -q -t ed25519 -N '' -f /home/${user}/.ssh/id_ed25519
+printf '%s ALL=(ALL) NOPASSWD: ALL\n' ${user} >/etc/sudoers.d/fleettest
+systemctl start ssh`
+      );
+      expect(configured.ok).toBe(true);
+    }
+    for (const [source, target] of [
+      nativeNames,
+      [nativeNames[1], nativeNames[0]],
+    ] as const) {
+      const from = await machine(current, source),
+        to = await machine(current, target);
+      const keys = await on(
+        from,
+        `cat /root/.ssh/id_ed25519.pub /home/${user}/.ssh/id_ed25519.pub`
+      );
+      expect(
+        (
+          await on(
+            to,
+            `runuser -u ${user} -- tee /home/${user}/.ssh/authorized_keys >/dev/null`,
+            { input: keys.stdout }
+          )
+        ).ok
+      ).toBe(true);
+      const hostKey = await on(to, 'cat /etc/ssh/ssh_host_ed25519_key.pub');
+      expect(
+        (
+          await on(
+            from,
+            `cat >/root/.ssh/known_hosts && install -o ${user} -g ${user} /root/.ssh/known_hosts /home/${user}/.ssh/known_hosts`,
+            { input: `${target}.tailnet.test ${hostKey.stdout}` }
+          )
+        ).ok
+      ).toBe(true);
+    }
+    const [manager, worker] = nativeNames;
+    const box = await machine(current, manager);
+    await must([
+      'docker',
+      'cp',
+      join(support, 'native-ssh.yml'),
+      box + ':/u/native-ssh-fixture.yml',
+    ]);
+    expect(
+      (
+        await on(box, 'cat >/u/native-vars.json', {
+          input: JSON.stringify({
+            target: worker + '.tailnet.test',
+            login: user,
+            ssh_options: '-o StrictHostKeyChecking=yes -o BatchMode=yes',
+            worker_user: user,
+            manager_user: user,
+            worker_probe: strictProbe(worker, user, false),
+            manager_probe: strictProbe(manager, user, false),
+            worker_native_probe: strictProbe(worker, user, true),
+            manager_native_probe: strictProbe(manager, user, true),
+          }),
+        })
+      ).ok
+    ).toBe(true);
+  }
+);
+When(
+  'native SSH is applied from {string} to {string}',
+  async (_world, manager: string, worker: string) => {
+    expect([manager, worker]).toEqual([...nativeNames]);
+    await realNativePlay();
+  }
+);
+Then(
+  'native SSH on {string} still answers {string} as {string} after a reboot',
+  async (_world, worker: string, manager: string, user: string) => {
+    const box = await machine(await lab!, worker);
+    await must(['docker', 'restart', box]);
+    await booted(box);
+    const from = await machine(await lab!, manager);
+    const probe = strictProbe(worker, user, true).join(' ');
+    for (let i = 0; i < 30; i++) {
+      const result = await on(from, probe);
+      if (result.ok && result.stdout.trim() === user) return;
+      await Bun.sleep(1000);
+    }
+    throw new Error('The restarted worker did not accept native SSH.');
+  }
+);
+Then(
+  'repairing a disabled native SSH preference on {string} restores unattended access as {string}',
+  async (_world, worker: string, user: string) => {
+    const current = await lab!;
+    expect(
+      (await on(await machine(current, worker), 'tailscale set --ssh=false')).ok
+    ).toBe(true);
+    await realNativePlay();
+    const proof = await on(
+      await machine(current, nativeNames[0]),
+      strictProbe(worker, user, true).join(' ')
+    );
+    expect(proof.ok && proof.stdout.trim()).toBe(user);
+  }
+);

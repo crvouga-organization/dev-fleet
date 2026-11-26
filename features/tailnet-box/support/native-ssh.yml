@@ -1,0 +1,8 @@
+---
+- name: Exercise native SSH on two disposable systemd machines
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Apply the enrollment and verification tasks
+      ansible.builtin.import_tasks: tasks/native-ssh.yml
