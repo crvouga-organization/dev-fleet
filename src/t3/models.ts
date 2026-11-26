@@ -1,4 +1,5 @@
 import { homedir } from 'node:os';
+import proxyTemplate from '../../cliproxy/config.template.yaml';
 import { join, resolve } from 'node:path';
 import type { Check } from '../types';
 import { fleet, fleetJson } from '../fleet-config';
@@ -42,6 +43,26 @@ function catalogueOf(
   return Array.isArray(models) ? strings(models) : null;
 }
 
+/** Antigravity also discovers models from its live ACP session. Its native
+ * IDs can appear in the picker before T3 adds them to the static manifest.
+ * The proxy template names the native IDs that dev-fleet routes as aliases.
+ */
+const antigravityAliases = (
+  proxyTemplate as {
+    oauth: { 'model-alias': { antigravity: { alias: string }[] } };
+  }
+).oauth['model-alias'].antigravity.map(({ alias }) => alias);
+
+function preferenceCatalogue(
+  manifest: Record<string, unknown>,
+  driver: string
+) {
+  const catalogue = catalogueOf(manifest, driver);
+  return driver === 'antigravity'
+    ? [...new Set([...(catalogue ?? []), ...antigravityAliases])]
+    : catalogue;
+}
+
 /** The custom models an instance adds. T3 always shows them. */
 function customOf(instance: unknown): string[] {
   const models = record(record(instance)['config'])['customModels'];
@@ -83,7 +104,7 @@ function planPreferences(
   const next = { ...record(settings[PREFERENCES]) };
   const changes = new Set<string>();
   for (const { account, driver, id } of managed(accounts, settings)) {
-    const catalogue = catalogueOf(manifest, driver);
+    const catalogue = preferenceCatalogue(manifest, driver);
     if (!catalogue) continue;
     const current = preference(next[id]);
     const unserved = catalogue.filter(

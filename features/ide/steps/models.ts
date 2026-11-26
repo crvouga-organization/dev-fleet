@@ -40,6 +40,7 @@ const of = (world: IdeWorld): Models => {
 };
 
 const PROVIDERS: Record<string, string> = {
+  antigravity: 'antigravity',
   codex: 'codex',
   claude: 'claude',
   opencode: 'antigravity',

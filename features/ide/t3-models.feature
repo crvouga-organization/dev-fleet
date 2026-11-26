@@ -27,6 +27,25 @@ Feature: T3 shows only the models the proxy serves
     When the models T3 offers are checked
     Then the check "t3:models" warns with "T3_MODELS_UNVERIFIED"
 
+  Scenario: A live Antigravity model missing from the static catalogue is hidden only for an account without its route
+    Given the proxy serves these models:
+      | tool        | account           | models                                                                |
+      | antigravity | team@example.test | gemini-3.8-flash, gemini-3.1-flash-lite-preview                       |
+      | antigravity | pro@example.test  | gemini-3.8-flash, gemini-3.1-flash-lite-preview, gemini-4-neon-xhigh, gemini-4-neon |
+    And T3 holds the instances of every account the proxy serves
+    And T3's catalogue for the driver "antigravity" is "gemini-3.8-flash"
+    When the models T3 offers are synced
+    Then the check "t3:models" passes
+    And T3's setting "providerModelPreferences" is:
+      """
+      {
+        "personal_antigravity_team_example_test": {
+          "hiddenModels": ["gemini-4-neon"],
+          "modelOrder": ["gemini-3.8-flash"]
+        }
+      }
+      """
+
   Rule: Two accounts of one tool with different entitlements each show what their own account serves
 
     T3 keeps what an instance's model picker shows under the instance's ID:
