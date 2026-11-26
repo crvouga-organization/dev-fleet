@@ -9,7 +9,7 @@ import type { Check } from './types';
  * prints child output. Workers are Linux.
  */
 async function main(): Promise<Check[]> {
-  const [node, revision, t3Restart = 'keep-turns'] = process.argv.slice(2);
+  const [node, revision, t3Restart = 'restart-busy'] = process.argv.slice(2);
   if (
     !node ||
     !/^[a-z][a-z0-9-]{0,62}$/.test(node) ||
@@ -20,10 +20,18 @@ async function main(): Promise<Check[]> {
   const root = process.cwd();
   const head = await runCommand(['git', 'rev-parse', 'HEAD']);
   if (!head.ok || head.stdout.trim() !== revision) throw new Error();
+  const encoded = await Bun.stdin.text();
   if (process.platform === 'linux')
     return convergeLinux(
       root,
-      { node, revision, restartBusy: t3Restart === 'restart-busy' },
+      {
+        node,
+        revision,
+        restartBusy: t3Restart === 'restart-busy',
+        ...(encoded
+          ? { clientSettings: Buffer.from(encoded, 'base64').toString('utf8') }
+          : {}),
+      },
       runCommand
     );
   return [

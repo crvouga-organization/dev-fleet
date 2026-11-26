@@ -1,0 +1,53 @@
+---
+- name: Switch a running T3 desktop to the verified manager bundle
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Terminate the running desktop and wait for its exit
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/osascript
+          - -l
+          - JavaScript
+          - -e
+          - |
+            ObjC.import('AppKit');
+            function run(argv) {
+              const apps = $.NSRunningApplication.runningApplicationsWithBundleIdentifier(argv[0]);
+              if (Number(apps.count) === 0) return;
+              if (Number(apps.count) !== 1) throw Error('Multiple T3 desktops are running');
+              const app = apps.objectAtIndex(0);
+              if (ObjC.unwrap(app.bundleURL.path) === argv[1]) return;
+              if (!app.forceTerminate) throw Error('Could not terminate T3');
+              for (let n = 0; n < 100 && !app.terminated; n++) delay(0.1);
+              if (!app.terminated) throw Error('T3 did not exit');
+            }
+          - '{{ bundle_id }}'
+          - '{{ desktop_path }}'
+      changed_when: true
+    - name: Open the verified manager desktop
+      ansible.builtin.command:
+        argv: [/usr/bin/open, '{{ desktop_path }}']
+      changed_when: true
+    - name: Wait for Launch Services to report the verified desktop
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/osascript
+          - -l
+          - JavaScript
+          - -e
+          - |
+            ObjC.import('AppKit');
+            function run(argv) {
+              const apps = $.NSRunningApplication.runningApplicationsWithBundleIdentifier(argv[0]);
+              if (Number(apps.count) !== 1 || ObjC.unwrap(apps.objectAtIndex(0).bundleURL.path) !== argv[1])
+                throw Error('Waiting for the verified desktop');
+            }
+          - '{{ bundle_id }}'
+          - '{{ desktop_path }}'
+      register: launched
+      retries: 15
+      delay: 1
+      until: launched.rc == 0
+      changed_when: false

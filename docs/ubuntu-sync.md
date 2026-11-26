@@ -408,36 +408,16 @@ launch; nothing is copied between nodes.
 
 **Ansible applies, TypeScript measures.** On a worker the T3 lifecycle is
 declared in playbooks: `t3-policy.yml` stages the provider policy and restarts
-a running T3 that has not loaded it once it runs no agent turn, `t3-desktop.yml` installs the app, retires
+a running T3 that has not loaded it, `t3-desktop.yml` installs the app, retires
 the former headless server and starts it, and `t3-route.yml` publishes the
 private tailnet route when port 443 has no owner. The TypeScript around them
 only refuses conflicts and reports what it observes afterwards. Each sync also
 prunes old revision checkouts on the worker, keeping two: the new one and the
 one T3 launches from, or the most recent other when they are the same.
 
-**Every sync applies everything, except a T3 restart that would end a turn.**
-A worker whose T3 has not loaded the staged provider policy, or runs an older
-release than the one installed, is restarted only while it runs no agent turn;
-otherwise sync reports the pending restart and the recovery timer applies it
-at the first idle check. A worker that always runs a turn is never idle, so
-the wait is bounded: `t3RestartMaxDeferralHours`
-(`ansible/ubuntu/policy.json`, 24) after the restart was first deferred, the
-recovery timer restarts T3 although turns run (`T3_RESTART_DEADLINE` in the journal of
-`personal-worker-recovery.service`). **Those turns end**: T3 Code offers no
-way to stop accepting turns and wait for a gap, so the deadline is the only
-bound. The time of the first deferral is the content of
-`/run/user/UID/personal-t3-restart-pending`, written by the play that
-deferred the restart, or by the recovery timer when it is the first to find
-the worker busy; whichever of them restarts T3 clears it. While the restart waits,
-`t3:running-version` (and `t3:policy-loaded` for a policy) warns and its
-remedy says how long it has waited and when the deadline falls; a restart
-still pending after the deadline fails, since the recovery timer did not
-apply it. For 24 hours after a restart at the deadline
-`worker:t3-deadline-restarts` warns that turns ended.
-`fleet-sync --restart-busy` passes `t3_restart_busy` to the plays, which then
-restart a busy T3 at once and end its turns; the `--dry-run` plan says, per
-T3 restart, whether running turns end at once and, for one that waits, its
-deadline (`deadlineHours`). A pending proxy
+Full sync immediately restarts a worker desktop to load updated preferences,
+policy or a new release, even during an agent turn. The recovery timer still
+applies its idle and deadline policy between syncs. A pending proxy
 update is installed even when it recreates the gateway. The manager finishes before the workers
 start, so they are verified against the updated proxy. `--dry-run` previews.
 

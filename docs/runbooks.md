@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 473 codes; 100 need a person.
+There are 477 codes; 100 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -337,6 +337,10 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_PRIVATE_ROUTE_CONFLICT`: t3 private route conflict.
 - `T3_PRIVATE_ROUTE_REQUIRED`: t3 private route required.
 - `T3_PRIVATE_ROUTE_UNVERIFIED`: t3 private route unverified.
+- `T3_CLIENT_SETTINGS_UNVERIFIED`: check the manager’s T3 client-settings.json, fleet state availability and the worker desktop service, then rerun fleet-sync. A pending desktop restart is retried.
+- `T3_DESKTOP_ACTIVATION_FAILED`: open the verified manager bundle named in the remedy and rerun fleet-sync.
+- `T3_CLIENT_SETTINGS_INVALID`: repair the manager’s client-settings.json so its settings are a JSON object.
+- `T3_CLIENT_SETTINGS_TOO_LARGE`: the desktop preferences exceed the fleet state's 1 MiB document limit. Reduce the document on the manager and rerun fleet-sync.
 - `T3_PROFILE_CONFLICT`: t3 profile conflict.
 - `T3_PROFILE_PENDING`: t3 profile pending.
 - `T3_PROFILE_RECORD_INVALID`: t3 profile record invalid.

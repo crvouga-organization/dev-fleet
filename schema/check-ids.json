@@ -1649,6 +1649,14 @@
       }
     },
     {
+      "id": "t3:client-settings",
+      "meaning": "The complete T3 desktop preferences match the manager’s snapshot.",
+      "severity": "required",
+      "repair": {
+        "manual": "Approve first T3 pairing in interactive fleet-sync or with t3.pairOnEnrollment; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest."
+      }
+    },
+    {
       "id": "t3:desktop-installed",
       "meaning": "The manager has the signed desktop bundle for the pinned release.",
       "severity": "required",

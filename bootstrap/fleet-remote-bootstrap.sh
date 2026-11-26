@@ -144,6 +144,11 @@ IFS= read -r configuration || configuration=''
 # Held in this shell only (never exported, never an argument) until it is
 # written to a root-only file for the Tailscale play.
 IFS= read -r tailnet_key || tailnet_key=''
+client_preferences=''
+if [ "${8:-}" = client-preferences ]; then
+  IFS= read -r client_preferences || die CONFIGURATION_INSTALL_FAILED
+  [ -n "$client_preferences" ] || die CONFIGURATION_INSTALL_FAILED
+fi
 if [ -n "$configuration" ]; then
   config_dir="$HOME/.config/dev-fleet"
   # configuration-install: begin
@@ -394,7 +399,7 @@ trap - EXIT INT TERM
 # session: the session may be gone by the time it ends. The evidence is then
 # printed for the manager that is still connected, under the same lock.
 code=0
-mise exec --locked bun -- bun src/node-converge.ts "$node" "$revision" "$t3_restart" >"$result.partial" 2>"$root/remote-operation.log" || code=$?
+printf '%s' "$client_preferences" | mise exec --locked bun -- bun src/node-converge.ts "$node" "$revision" "$t3_restart" >"$result.partial" 2>"$root/remote-operation.log" || code=$?
 mv -f -- "$result.partial" "$result"
 operation finished ",\"finished\":$(date +%s),\"exit\":$code"
 cat -- "$result" || true

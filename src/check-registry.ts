@@ -422,6 +422,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
   't3:policy-staged': 'The managed T3 policy is installed.',
   't3:prerequisites': 'The T3 baseline prerequisites are present.',
   't3:private-route': "T3's private HTTPS route is served.",
+  't3:client-settings':
+    'The complete T3 desktop preferences match the manager’s snapshot.',
   't3:profile': 'The declared T3 settings are in place on this machine.',
   't3:provider-names': "T3 lists the fleet's provider names.",
   't3:account-roster':

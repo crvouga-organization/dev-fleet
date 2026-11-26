@@ -130,7 +130,7 @@ export interface FleetSyncOptions {
   /** Take the manager lease from another manager before it expired. */
   takeOver?: boolean;
   /** Restart a worker's T3 for a new release or policy even while agent
-   * turns run, which ends them; by default the restart waits for idle.
+   * turns run, which ends them (the default).
    */
   restartBusy?: boolean;
   failOnWarning?: boolean;

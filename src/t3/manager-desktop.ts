@@ -93,20 +93,32 @@ async function runningDesktop(
   pin: { app: string; version: string; installed: boolean }
 ): Promise<Check> {
   const { app, version, installed } = pin;
-  const live = await context.run([
-    '/usr/bin/osascript',
-    '-l',
-    'JavaScript',
-    '-e',
-    runningApp,
-    BUNDLE_ID,
-    app,
-  ]);
-  const observed = live.ok
-    ? /^(managed|other) (\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)$/.exec(
-        live.stdout.trim()
-      )
-    : null;
+  const observed = await observeDesktop(context.run, app);
+  if (
+    context.apply &&
+    installed &&
+    observed &&
+    observed[0] !== 'managed ' + version
+  ) {
+    const switched = await runAnsible(
+      context.run,
+      join(context.workspace, 'ansible/macos/t3-activate.yml'),
+      {
+        input: JSON.stringify({ bundle_id: BUNDLE_ID, desktop_path: app }),
+        timeoutMs: 90_000,
+      }
+    );
+    if (!switched.ok)
+      return {
+        id: 't3:version',
+        status: 'fail',
+        summary: 'T3_DESKTOP_ACTIVATION_FAILED',
+        remedy: {
+          action: `Open the verified desktop with open ${shellQuote(app)} and rerun fleet-sync.`,
+        },
+      };
+    return runningDesktop({ ...context, apply: false }, pin);
+  }
   const action = installed
     ? `When manager sessions have finished, quit T3 Code, then run open ${shellQuote(app)}. Pin that copy in the Dock.`
     : 'Stage the verified desktop with fleet-sync before opening it.';
@@ -128,4 +140,21 @@ async function runningDesktop(
       remedy: { action },
     };
   return running;
+}
+
+async function observeDesktop(run: MachineContext['run'], app: string) {
+  const live = await run([
+    '/usr/bin/osascript',
+    '-l',
+    'JavaScript',
+    '-e',
+    runningApp,
+    BUNDLE_ID,
+    app,
+  ]);
+  return live.ok
+    ? /^(managed|other) (\d+\.\d+\.\d+(?:-[0-9A-Za-z.]+)?)$/.exec(
+        live.stdout.trim()
+      )
+    : null;
 }

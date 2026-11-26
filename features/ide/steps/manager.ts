@@ -87,6 +87,16 @@ Given('the managed desktop is absent until its play succeeds', (world) => {
   );
 });
 
+Given('the activation play opens the verified desktop', (world) => {
+  world.commands.answer('ansible/macos/t3-activate.yml', () => {
+    world.commands.answer(
+      '/usr/bin/osascript',
+      succeeded('managed ' + withPin('<pinned>'))
+    );
+    return succeeded();
+  });
+});
+
 When(
   /^the T3 desktop of the manager is (checked|applied)$/,
   async (world, mode: string) => {

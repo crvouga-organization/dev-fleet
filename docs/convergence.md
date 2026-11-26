@@ -84,3 +84,9 @@ Roles with a common interface (`baseline`, `toolchain`, `agents`, `t3`,
 the fleet configuration, and `site.yml`, `manager.yml` and `workers.yml` that
 bring a fresh manager and worker to ready with no other mutating step. Each
 row of the table above moves into one of those roles.
+
+The manager snapshots T3 desktop preferences once per full sync. Workers apply
+`ansible/t3-client-settings.yml` under the worker operation lock and measure the
+installed preferences after restarting a changed desktop.
+
+The manager switches a running desktop to its verified release with `ansible/macos/t3-activate.yml`.

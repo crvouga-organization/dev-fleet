@@ -117,7 +117,7 @@ Feature: A worker is bootstrapped over SSH with one verified revision
 
       Examples:
         | request                                        | last                 |
-        | keeps a newer mise                             | keep-turns           |
+        | keeps a newer mise                             | restart-busy           |
         | may downgrade mise (--allow-mise-downgrade)    | allow-mise-downgrade |
 
     Scenario: A worker held by another fleet operation reports the lock, and nothing else is claimed
