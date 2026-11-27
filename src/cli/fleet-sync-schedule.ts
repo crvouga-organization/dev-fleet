@@ -79,7 +79,7 @@ export function publishedRelease(release: Release): boolean {
 }
 
 /** What launchd (or the systemd timer) runs: the installed package's own
- * entry point under Node, with the tools fleet-sync installs on PATH. No path
+ * entry point under Node, with the tools converge installs on PATH. No path
  * into the project or the package the operator ran is written into it.
  */
 export function scheduledCommand(
@@ -91,7 +91,7 @@ export function scheduledCommand(
     '/usr/bin/env',
     'node',
     join(prefix, 'node_modules', release.name, release.bin ?? ''),
-    'fleet-sync',
+    'converge',
     '--revision',
     revision,
     '--apply',

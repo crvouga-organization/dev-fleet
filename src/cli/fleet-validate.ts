@@ -56,7 +56,7 @@ const PLAYBOOK_DIRECTORIES = ['ansible/ubuntu', 'ansible/macos'];
 
 /** The Ansible inventory a definition describes: the manager, and every
  * worker in the `workers` group in the order it is declared. Host names are
- * the fleet ids; a machine is reached as fleet-sync reaches it.
+ * the fleet ids; a machine is reached as converge reaches it.
  */
 export function fleetInventory(
   definition: FleetDefinition,
@@ -224,7 +224,7 @@ async function ansibleChecks(
             summary: 'DEFINITION_INVENTORY_REJECTED',
             remedy: {
               action:
-                'Run homelab check-config --ansible on the manager after fleet-sync installed the pinned Ansible; report the failure as an issue if it persists.',
+                'Run homelab check-config --ansible on the manager after converge installed the pinned Ansible; report the failure as an issue if it persists.',
             },
           },
     ];

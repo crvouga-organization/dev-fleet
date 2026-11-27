@@ -17,7 +17,7 @@
     mode: '0644'
     backup: true
     content: |
-      # Managed by personal fleet-sync: keep this worker service always on.
+      # Managed by personal converge: keep this worker service always on.
       [Unit]
       StartLimitIntervalSec=0
       [Service]

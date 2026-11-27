@@ -3,12 +3,12 @@ import { parseSelection, type RevisionSelection } from '../revision-selection';
 import { databasePath, stateRoot } from './paths';
 import { readDocument, writeDocument } from './store';
 
-/** Who started a fleet-sync run: a person (or an agent) at the manager, or
+/** Who started a converge run: a person (or an agent) at the manager, or
  * the manager's own schedule.
  */
 export type Trigger = 'operator' | 'schedule';
 
-/** One fleet-sync run, as the history keeps it: codes and node names only,
+/** One converge run, as the history keeps it: codes and node names only,
  * never a remedy, a path or anything a subprocess printed.
  */
 export interface SyncRun {
@@ -211,7 +211,7 @@ function workerResults(nodes: Record<string, unknown>[]) {
   return workers;
 }
 
-/** What a fleet-sync report says about one run. */
+/** What a converge report says about one run. */
 export function summarizeRun(
   data: unknown,
   timing: { startedAt: Date; finishedAt: Date },

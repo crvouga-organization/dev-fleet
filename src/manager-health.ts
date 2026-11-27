@@ -52,7 +52,7 @@ export async function managerClock(run: Runner): Promise<Check> {
       status: 'warn',
       summary: 'MANAGER_CLOCK_UNOBSERVED',
       remedy: {
-        action: `Reading whether network time is on needs the manager's grant. Give it once, as an administrator, from the homelab checkout fleet-sync runs: ${GRANT}`,
+        action: `Reading whether network time is on needs the manager's grant. Give it once, as an administrator, from the homelab checkout converge runs: ${GRANT}`,
       },
     };
   if (on)
@@ -201,7 +201,7 @@ export async function managerJobLogs(
       status: 'warn',
       summary: 'MANAGER_JOB_LOG_ROTATION_MISSING',
       remedy: {
-        action: `newsyslog keeps the logs of the scheduled jobs under ${macos.jobLogs.maxKiB} KiB once the manager's grant installs its drop-in. Give it once, as an administrator, from the homelab checkout fleet-sync runs: ${GRANT}`,
+        action: `newsyslog keeps the logs of the scheduled jobs under ${macos.jobLogs.maxKiB} KiB once the manager's grant installs its drop-in. Give it once, as an administrator, from the homelab checkout converge runs: ${GRANT}`,
       },
     };
   const limit = 2 * macos.jobLogs.maxKiB * 1024;

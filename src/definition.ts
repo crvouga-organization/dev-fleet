@@ -114,7 +114,7 @@ export interface FeaturesDefinition {
   containers?: boolean;
   session?: Session;
 }
-/** The singleton manager: the human's machine. It runs fleet-sync and hosts
+/** The singleton manager: the human's machine. It runs converge and hosts
  * every singleton service; it is never converged over SSH. */
 export interface ManagerDefinition {
   id: string;
@@ -153,7 +153,7 @@ export interface FleetDefinition {
       managerAccount: string;
       /** Read-only Beszel account visitors are signed in as. */
       viewerAccount: string;
-      /** Scheduled off-machine backups fleet-sync sets on the hub. */
+      /** Scheduled off-machine backups converge sets on the hub. */
       backups?: HubBackups;
     };
   };

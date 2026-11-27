@@ -12,7 +12,7 @@ import { DOCUMENTS, writeDocument, type DocumentName } from './store';
  * all of them into the state, and nothing reads or writes them afterwards.
  */
 const LEGACY: Record<DocumentName, string> = {
-  // The copy fleet-sync installs; it stays the launchers' copy afterwards.
+  // The copy converge installs; it stays the launchers' copy afterwards.
   definition: '.config/homelab/fleet.json',
   roster: '.config/personal/fleet.json',
   enrollment: '.local/share/personal/fleet/manager/enrollment.json',

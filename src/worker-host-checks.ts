@@ -33,7 +33,7 @@ function check(id: string, ok: boolean, summary: string): Check {
       ? {
           remedy: {
             action:
-              'Apply the approved fleet-sync revision over verified SSH, then rerun check --workers. No password prompt or state reset is attempted by health.',
+              'Apply the approved converge revision over verified SSH, then rerun check --workers. No password prompt or state reset is attempted by health.',
           },
         }
       : {}),

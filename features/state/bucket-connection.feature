@@ -13,7 +13,7 @@ Feature: A command reaches the bucket its configuration names, with the credenti
 
     Background:
       Given the fleet configuration names the bucket:
-        | bucket   | fleet-state            |
+        | bucket   | state            |
         | endpoint | https://s3.example.com |
         | region   | auto                   |
 
@@ -43,7 +43,7 @@ Feature: A command reaches the bucket its configuration names, with the credenti
     Scenario: Passed credentials win over saved ones
       That is how they are rotated.
       Given the manager saved these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDSAVED              |
@@ -69,7 +69,7 @@ Feature: A command reaches the bucket its configuration names, with the credenti
 
     Background:
       Given the manager saved these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDSAVED              |
@@ -77,7 +77,7 @@ Feature: A command reaches the bucket its configuration names, with the credenti
 
     Scenario: Saved credentials are used for the bucket the configuration names
       Given the fleet configuration names the bucket:
-        | bucket   | fleet-state            |
+        | bucket   | state            |
         | endpoint | https://s3.example.com |
         | region   | auto                   |
       When the connection is resolved
@@ -175,7 +175,7 @@ Feature: A command reaches the bucket its configuration names, with the credenti
     Scenario: A fleet.json that names no bucket leaves the manager's saved bucket
       Given "~/fleet.json" on the manager holds the example fleet
       And the manager saved these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDSAVED              |
@@ -191,7 +191,7 @@ Feature: A command reaches the bucket its configuration names, with the credenti
     Scenario: No configuration at all is not an error
       The first command on a new machine may be the one that restores it.
       Given the manager saved these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDSAVED              |
@@ -208,7 +208,7 @@ Feature: A command reaches the bucket its configuration names, with the credenti
         {
         """
       And the manager saved these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDSAVED              |

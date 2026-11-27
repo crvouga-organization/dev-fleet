@@ -200,7 +200,7 @@ When('the GitHub checks run on the manager', async (world) => {
 });
 
 When(
-  'fleet-status checks the {string} capability on the manager',
+  'check checks the {string} capability on the manager',
   async (world, capability: 'github') => {
     world.checks = await authCheck(capability, world.runner(MANAGER), root);
   }

@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Recover disk space by deleting only what a build or install can recreate.
 
-Managed by personal fleet-sync: on an Ubuntu worker (tasks/resources.yml) as
+Managed by personal converge: on an Ubuntu worker (tasks/resources.yml) as
 personal-fleet-disk-gc.service, started by personal-fleet-disk-gc.timer; on
 the macOS manager (ansible/macos/manager.yml) as the launchd job
 dev.homelab.disk-gc. Both run it hourly, or every 15 minutes when fleet.json
@@ -54,7 +54,7 @@ work that is not saved elsewhere, a container or a named volume. Every
 decision is one JSON line on stdout, and the last one says how many MiB were
 reclaimed. --report FILE (under --home when relative) also keeps that summary,
 with what the worktrees, package stores and tool installs hold, for
-fleet-status.
+check.
 
 Usage: disk-gc.py --home H [--path P ...] [--idle-days N] [--pressure-mib N]
                   [--pressure-percent N] [--pressure-inode-percent N]

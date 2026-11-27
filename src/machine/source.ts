@@ -116,7 +116,7 @@ const DEFAULT_BRANCH = 'refs/remotes/origin/HEAD';
 export type Ancestry = 'merged' | 'unmerged' | 'unverified' | 'mismatched';
 
 /** Asks the manager's own copy of the source repository, never the directory
- * fleet-sync was started in: a checkout there may be on any branch. A
+ * converge was started in: a checkout there may be on any branch. A
  * revision the copy already knows to be on the default branch stays on it,
  * so that answer needs no network; anything else is fetched first.
  */

@@ -3,7 +3,7 @@ import type { ManagerDefinition } from './definition';
 import type { History } from './state/history';
 import type { Check } from './types';
 
-/** How often the manager's schedule runs fleet-sync by default. */
+/** How often the manager's schedule runs converge by default. */
 export const SCHEDULE_INTERVAL_SECONDS = macos.fleetSync.intervalMinutes * 60;
 
 /** How often the manager's scheduled jobs run: `manager.schedule` in

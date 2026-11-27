@@ -36,7 +36,7 @@ export const RESTORES = [
   },
   {
     what: 'CLI proxy state (provider logins, keys, Tailscale identity)',
-    how: 'Restored from its encrypted snapshots by homelab cliproxy install (vault secrets provider only).',
+    how: 'Restored from its encrypted snapshots by homelab proxy install (vault secrets provider only).',
   },
   {
     what: 'Monitoring hub',
@@ -123,7 +123,7 @@ async function prerequisites(
     check('restore:git', git.ok, [
       'Git is installed.',
       'Git is not installed.',
-      'Install Git; fleet-sync installs everything else.',
+      'Install Git; converge installs everything else.',
     ])
   );
   const tailscale = await services.run(['tailscale', 'status', '--json']);
@@ -177,7 +177,7 @@ export async function fleetRestore(
     const after = await pull(context);
     checks.push(
       check('restore:applied', after === 'in-sync', [
-        'This machine holds the fleet state from the bucket. Next: homelab converge (it may need --take-over while the old manager’s lease runs), then homelab cliproxy install.',
+        'This machine holds the fleet state from the bucket. Next: homelab converge (it may need --take-over while the old manager’s lease runs), then homelab proxy install.',
         `The fleet state was not restored: it stands "${after}".`,
         'Run homelab state for the remedy.',
       ])

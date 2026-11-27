@@ -73,7 +73,7 @@ export async function linkAgentCommands(
       id,
       status: 'skip',
       summary:
-        'Not a checkout fleet-sync owns: the agent commands of this machine are left as they are.',
+        'Not a checkout converge owns: the agent commands of this machine are left as they are.',
     };
   const held = () => readlink(wanted.path).catch(() => null);
   if ((await held()) !== wanted.target) {
@@ -84,7 +84,7 @@ export async function linkAgentCommands(
         status: 'fail',
         summary: 'AGENT_COMMANDS_CONFLICT',
         remedy: {
-          action: `${wanted.path} is not the link fleet-sync makes. Move it away on this worker, then run converge.`,
+          action: `${wanted.path} is not the link converge makes. Move it away on this worker, then run converge.`,
         },
       };
     const played = await play({

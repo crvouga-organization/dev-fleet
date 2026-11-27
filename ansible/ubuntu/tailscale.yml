@@ -4,7 +4,7 @@
   connection: local
   become: true
   gather_facts: true
-  # fleet-repair re-applies this play alone for a failing tailscale:* check.
+  # repair re-applies this play alone for a failing tailscale:* check.
   tags: [network]
   # The approved version and the signing key's digest: `tailscale` in policy.json.
   vars_files:
@@ -17,7 +17,7 @@
         manager: apt
     # The pin is a minimum: a newer Tailscale is kept and reported as a
     # warning by the worker checks; an older one needs a maintenance window:
-    # fleet-sync --maintenance-reboot applies this play with tailscale_upgrade
+    # converge --maintenance-reboot applies this play with tailscale_upgrade
     # in a detached unit on the worker (tailscale-upgrade.yml), where a
     # dropped SSH session cannot interrupt the upgrade.
     - name: Compare the installed Tailscale with its pin
@@ -36,7 +36,7 @@
     - name: Require maintenance for an upgrade to the pin
       ansible.builtin.assert:
         that: "'tailscale' not in ansible_facts.packages or tailscale_pin.rc == 0 or tailscale_upgrade | default(false) | bool"
-        fail_msg: TAILSCALE_UPGRADE_PENDING; upgrading an active VPN can disconnect SSH. Run fleet-sync --maintenance-reboot, which upgrades it in a detached unit.
+        fail_msg: TAILSCALE_UPGRADE_PENDING; upgrading an active VPN can disconnect SSH. Run converge --maintenance-reboot, which upgrades it in a detached unit.
     - name: Inspect existing package-source ownership before writing
       ansible.builtin.find:
         paths: /etc/apt/sources.list.d
@@ -138,5 +138,5 @@
     - name: Require genuine device authentication before claiming connectivity
       ansible.builtin.assert:
         that: ((tailscale_joined if tailnet_join is changed else tailscale_status).stdout | from_json).BackendState == 'Running'
-        fail_msg: TAILSCALE_LOGIN_REQUIRED; authorize this device through its native login, or declare tailnet in fleet.json so fleet-sync enrols it with a single-use key. Existing state is never copied or reset.
+        fail_msg: TAILSCALE_LOGIN_REQUIRED; authorize this device through its native login, or declare tailnet in fleet.json so converge enrols it with a single-use key. Existing state is never copied or reset.
       no_log: true

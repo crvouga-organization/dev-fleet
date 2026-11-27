@@ -31,7 +31,7 @@ export class FreshBoxWorld extends World {
   /** MiB measured on the machine, by what was measured. */
   measured: Record<string, number> = {};
 
-  /** A command on the machine, over the same SSH transport fleet-sync uses. */
+  /** A command on the machine, over the same SSH transport converge uses. */
   remote(command: string): Promise<{ ok: boolean; stdout: string }> {
     return remote(this.machine, command);
   }

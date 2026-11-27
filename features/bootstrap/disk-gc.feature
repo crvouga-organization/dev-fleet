@@ -308,7 +308,7 @@ Feature: The disk GC removes only what a node can rebuild
         | 30000 | under pressure  | gone    |
         | 40000 | not under it    | kept    |
 
-  Rule: Each run leaves a report fleet-status reads
+  Rule: Each run leaves a report check reads
 
     Scenario: An under-target disposable disk reports that it reached its target
       Given a disk of 100000 MiB with 45000 MiB free

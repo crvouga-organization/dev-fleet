@@ -1,7 +1,7 @@
 ---
 # The manager's hub is reached over the tailnet only: Tailscale Serve
 # terminates HTTPS on the declared port and proxies to the loopback hub. Never
-# Funnel. A port that already has any owner is left alone: fleet-sync refuses
+# Funnel. A port that already has any owner is left alone: converge refuses
 # a conflicting owner before this runs and reads the route back afterwards.
 - name: Serve the manager hub privately over the tailnet
   hosts: localhost

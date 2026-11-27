@@ -25,7 +25,7 @@ export async function readRoster(path: string): Promise<FleetConfig | null> {
   }
 }
 
-/** The roster a fleet-sync needs: a missing one is an error, not an empty fleet. */
+/** The roster a converge needs: a missing one is an error, not an empty fleet. */
 export async function loadRoster(path: string): Promise<FleetConfig> {
   let value: unknown;
   try {

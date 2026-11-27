@@ -27,7 +27,7 @@ function dockerFailure(result: CommandResult): {
     return {
       code: 'DOCKER_SOCKET_ACCESS_DENIED',
       action:
-        "This session cannot use the Docker socket. fleet-sync adds the worker's user to the docker group; a session started before that keeps its old groups. Rerun converge, then restart the session (log out and in, or restart the T3 service).",
+        "This session cannot use the Docker socket. converge adds the worker's user to the docker group; a session started before that keeps its old groups. Rerun converge, then restart the session (log out and in, or restart the T3 service).",
     };
   if (/cannot connect to the docker daemon/i.test(said))
     return {
@@ -57,7 +57,7 @@ function dockerFailure(result: CommandResult): {
 /** A word the shell reads back unchanged. */
 const quoted = (word: string): string => `'${word.replaceAll("'", `'\\''`)}'`;
 
-/** fleet-sync adds the worker's user to the docker group, but a session
+/** converge adds the worker's user to the docker group, but a session
  * started before that keeps its old groups: the group database lists the
  * user in docker while this process does not hold the group. A fresh session
  * made with `sg docker` then reads the group from scratch, as the baseline's
@@ -134,7 +134,7 @@ export async function dockerRunCheck(run: Runner): Promise<Check> {
     summary:
       session === run
         ? 'A container of the pinned image ran and a one-line image built, offline, in this session.'
-        : 'A container of the pinned image ran and a one-line image built, offline, in a fresh session of the docker group: sessions started before fleet-sync granted it need a new login.',
+        : 'A container of the pinned image ran and a one-line image built, offline, in a fresh session of the docker group: sessions started before converge granted it need a new login.',
   };
 }
 

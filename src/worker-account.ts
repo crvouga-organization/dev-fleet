@@ -36,7 +36,7 @@ export async function createWorkerAccount(
   if (!user || user === 'root')
     return failure(
       'WORKER_ACCOUNT_UNDECLARED',
-      `The worker lets only root in, and the fleet configuration names no non-root account for it. Declare workers[].network.user in ${fleetJson()}; fleet-sync then creates that account and continues as it.`
+      `The worker lets only root in, and the fleet configuration names no non-root account for it. Declare workers[].network.user in ${fleetJson()}; converge then creates that account and continues as it.`
     );
   const result = await playbook(
     'ubuntu/worker-account.yml',

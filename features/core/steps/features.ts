@@ -242,7 +242,7 @@ Then(
   'the printed report of the worker {string} says:',
   (world, node: string, table: DataTable) => {
     const text = renderReport(
-      makeReport('fleet-status', [{ node, checks: world.checks }])
+      makeReport('check', [{ node, checks: world.checks }])
     );
     for (const line of table.list()) expect(text).toContain(line);
   }
@@ -252,9 +252,7 @@ Then(
   'the JSON report of the worker {string} holds the check {string} as {string}, saying {string}',
   (world, node: string, id: string, status: string, text: string) => {
     const report = JSON.parse(
-      JSON.stringify(
-        makeReport('fleet-status', [{ node, checks: world.checks }])
-      )
+      JSON.stringify(makeReport('check', [{ node, checks: world.checks }]))
     ) as { nodes: { checks: Check[] }[]; summary: Record<string, number> };
     const check = report.nodes[0]!.checks.find((entry) => entry.id === id);
     expect(check?.status).toBe(status as Check['status']);

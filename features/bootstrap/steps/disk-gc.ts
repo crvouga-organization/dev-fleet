@@ -721,7 +721,7 @@ Given(
   }
 );
 
-// ── What fleet-status reads ─────────────────────────────────────────────
+// ── What check reads ─────────────────────────────────────────────
 
 Given(
   'the package store {string} holds a file of {int} MiB, linked into the worktree as {string}',

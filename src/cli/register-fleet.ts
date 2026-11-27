@@ -263,7 +263,7 @@ function registerSync({ program, defaults, complete }: Registration) {
     )
     .option(
       '--apply',
-      'Accepted for compatibility; fleet-sync applies by default (schedule writes still need --apply --yes)'
+      'Accepted for compatibility; converge applies by default (schedule writes still need --apply --yes)'
     )
     .option('--yes', 'Accepted for compatibility with --apply')
     .option(
@@ -343,11 +343,11 @@ function registerState({ program, complete }: Registration) {
     )
     .option(
       '--import <path>',
-      'Store a fleet configuration without running fleet-sync'
+      'Store a fleet configuration without running converge'
     )
     .option(
       '--export',
-      'Print the stored fleet configuration: the one fleet-sync last applied'
+      'Print the stored fleet configuration: the one converge last applied'
     )
     .option('--example', 'Print an example fleet.json to start a project from')
     .option('--push', 'Upload this machine’s changes to the bucket')
@@ -442,7 +442,7 @@ function registerWatch({ program, defaults, complete }: Registration) {
               ? {}
               : {
                   remedy: {
-                    action: `fleet-node-park refused ${worker.id}; run homelab park --id ${worker.id} to see why.`,
+                    action: `park refused ${worker.id}; run homelab park --id ${worker.id} to see why.`,
                   },
                 }),
           });
@@ -522,7 +522,7 @@ function registerLifecycle({ program, defaults, complete }: Registration) {
     .requiredOption('--id <name>', 'The declared worker being replaced')
     .option(
       '--host-key <key>',
-      'The new machine’s SSH host key, "TYPE BASE64", verified out of band or printed by fleet-node-seed'
+      'The new machine’s SSH host key, "TYPE BASE64", verified out of band or printed by provision'
     )
     .option('--apply', 'Change the manager and Vault; requires --yes')
     .option('--yes', 'Confirm an explicitly requested --apply operation')
@@ -586,7 +586,7 @@ function registerLifecycle({ program, defaults, complete }: Registration) {
     .requiredOption('--id <name>', 'The declared worker to resume')
     .option(
       '--allow-unmerged',
-      'Let the fleet-sync of that worker converge to a revision that is not on the default branch of the source repository, as converge --allow-unmerged does'
+      'Let the converge of that worker converge to a revision that is not on the default branch of the source repository, as converge --allow-unmerged does'
     )
     .option('--dry-run', 'Say what would change; change nothing')
     .action(parking('resume'));

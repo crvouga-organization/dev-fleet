@@ -689,7 +689,7 @@ function sessionFailure(output: string): string {
 
 function sessionRemedy(agent: Agent): string {
   if (agent.name === 'antigravity')
-    return 'Antigravity sends its own catalog model ids; the proxy serves them through declared aliases that fleet-sync applies on the manager (see proxy:config-pending). Pick Gemini 3.8 Flash in T3: the default Pro model is not served by the shared accounts.';
+    return 'Antigravity sends its own catalog model ids; the proxy serves them through declared aliases that converge applies on the manager (see proxy:config-pending). Pick Gemini 3.8 Flash in T3: the default Pro model is not served by the shared accounts.';
   return `Run the ${agent.name} launcher on this node to inspect it: WS_AGENT_NODE=<node> bun agents/${agent.wrapper}. Check this node's Vault session and the shared proxy.`;
 }
 

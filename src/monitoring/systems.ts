@@ -73,7 +73,7 @@ export async function moveSystem(
   if (!found[0])
     return check(
       'pass',
-      `The hub holds no system for ${node}; fleet-sync enrolls the new machine.`
+      `The hub holds no system for ${node}; converge enrolls the new machine.`
     );
   if (found[0].host === host)
     return check('pass', `The hub's system ${node} already watches ${host}.`);

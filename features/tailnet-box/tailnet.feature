@@ -62,7 +62,7 @@ Feature: A worker joins a real tailnet unattended, is reached only through it, a
     But the manager does not reach port 8080 of "worker-one" over the private network
 
   Scenario: A worker destroyed and created again under the same ID is one device once its old one is removed
-    The old device is removed through the tailnet clean-up fleet-node-retire
+    The old device is removed through the tailnet clean-up retire
     uses (src/tailnet-cleanup.ts), by the device ID the worker reported for
     itself, before the new machine joins.
     Given "worker-two" joined the tailnet

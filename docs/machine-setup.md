@@ -368,7 +368,7 @@ upstream `SHA256SUMS` omits packages) and started by the `t3code-desktop.service
 user unit in the GDM auto-login session. It shares `~/.t3` with the former
 headless service, so environment identity and pairing are kept. A conflicting
 launcher version requires reviewed maintenance; the recovery timer stops a
-still-running headless service. Routine fleet-sync never ends a running turn
+still-running headless service. Routine converge never ends a running turn
 to load a new pin or policy: the app restarts into them at the first idle
 check (`t3:running-version`, `t3:policy-loaded`). Private routing and paired
 execution require separate evidence.
@@ -402,7 +402,7 @@ was. A headless worker installs none of the desktop-only packages
 as not applicable. The server prints a one-time pairing token to its own
 journal at start, as `t3 serve` does anywhere; homelab never reads it.
 Pairing is done from the manager: by a person the first time, and by
-`fleet-node-replace` or the next `sync` for a machine that replaces a
+`replace` or the next `sync` for a machine that replaces a
 worker.
 
 The disposable Ubuntu VM test (`ansible/ubuntu/tests/vm.py`) converges each
@@ -427,7 +427,7 @@ Project scripts use `bash bootstrap/project-action.sh ACTION` from the checkout.
 Actions are named exactly like the `personal` command they run, so a T3 script
 label reads the same as the CLI: `warm`, `portfolio`, `workstation-sync`,
 `workstation-update`, `workstation-net-fix`, `workstation-net-check`,
-`workstation-net-fix-check`, `sync`, `status`, `fleet-repair`, `infra-cliproxy`. Label
+`workstation-net-fix-check`, `sync`, `status`, `repair`, `infra-cliproxy`. Label
 each T3 script `Domain: Command words` (`Fleet: Sync`, `Fleet: Status`,
 `Workstation: Net check`, `Infra: Cliproxy model health` running `infra-cliproxy model-health`; `infra-cliproxy model-suite --target mock` is the offline, credential-free suite). `sync` selects the current checkout HEAD as its
 exact revision and retains its approval flow; extra arguments such as `--dry-run`

@@ -35,7 +35,7 @@
     - name: Recover or refuse a broken package database
       ansible.builtin.import_tasks: tasks/dpkg.yml
     # Memory and disk safety must land even when the disk is nearly full.
-    # fleet-repair re-applies them alone (--tags disk) for worker:capacity:*.
+    # repair re-applies them alone (--tags disk) for worker:capacity:*.
     - name: Apply memory and disk safety
       ansible.builtin.import_tasks: tasks/resources.yml
       tags: [disk]
@@ -83,7 +83,7 @@
       when: "'web' in worker_tool_profiles | default([])"
     - name: Keep the always-on services running
       ansible.builtin.import_tasks: tasks/services.yml
-    # fleet-repair re-applies this alone (--tags power) for
+    # repair re-applies this alone (--tags power) for
     # worker:power-loss-recovery. The release assert above is tagged always,
     # so it still runs.
     - name: Apply the power policy

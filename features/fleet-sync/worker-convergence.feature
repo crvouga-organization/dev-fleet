@@ -1,7 +1,7 @@
 Feature: Fleet status identifies the last failed apply of each worker
   Scenario: A worker with an older receipt reports its failed step
     Given a fleet state of its own, holding no history
-    When fleet-sync records the run of "2026-10-01T01:00:00Z" to "2026-10-01T01:10:00Z" that ended with 1 and reported:
+    When converge records the run of "2026-10-01T01:00:00Z" to "2026-10-01T01:10:00Z" that ended with 1 and reported:
       """
       {"nodes":[{"node":"worker-one","role":"worker","checks":[{"id":"ubuntu:baseline","status":"fail"}]}]}
       """

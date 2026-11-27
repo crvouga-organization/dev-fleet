@@ -28,15 +28,15 @@ import type { BucketLocation } from './state/bucket';
 import { definitionPath, stateRoot } from './state/paths';
 import { expandRecords } from './worker-records';
 
-/** Where every machine keeps the fleet configuration fleet-sync approved.
+/** Where every machine keeps the fleet configuration converge approved.
  * Launchers and scheduled jobs get no environment and read it from here.
  */
 export const installedPath = (home: string): string =>
   join(home, '.config/homelab/fleet.json');
 
-/** Beside the installed copy: the SHA-256 of the copy as fleet-sync last
+/** Beside the installed copy: the SHA-256 of the copy as converge last
  * wrote it, so the next run can tell a copy edited by hand from one the
- * configuration has moved on from. A cache: fleet-sync writes it again. The
+ * configuration has moved on from. A cache: converge writes it again. The
  * copy itself is JSON that Node and Python read, and cannot carry a header.
  */
 const recordPath = (home: string): string => `${installedPath(home)}.sha256`;
@@ -45,9 +45,9 @@ const recordPath = (home: string): string => `${installedPath(home)}.sha256`;
  * - `file`: the file `HOMELAB_CONFIG` names. The homelab CLI sets it to the
  *   `fleet.json` of the project it is run from (src/cli/project.ts);
  * - `state`: the `definition` document in the manager's fleet state, the
- *   configuration fleet-sync last applied, which only the homelab CLI
+ *   configuration converge last applied, which only the homelab CLI
  *   reads. `path` is its copy as a file;
- * - `installed`: the copy fleet-sync installed on this machine.
+ * - `installed`: the copy converge installed on this machine.
  */
 export interface DefinitionSource {
   kind: 'file' | 'state' | 'installed';
@@ -118,7 +118,7 @@ function readText(path: string): string | null {
   }
 }
 
-/** A configuration as fleet-sync would install it, whatever wrote the text:
+/** A configuration as converge would install it, whatever wrote the text:
  * two texts that say the same render the same. Null for one that is not a
  * fleet configuration.
  */
@@ -132,7 +132,7 @@ function rendered(text: string | null): string | null {
 }
 
 /** The path of this machine's installed copy when it holds an edit the next
- * install would lose, or null. It holds none when it is still what fleet-sync
+ * install would lose, or null. It holds none when it is still what converge
  * last wrote (its record says so), when it says what this run would install,
  * or when it says what the fleet state records as last applied: a copy
  * written before the record existed, or by a revision that keeps none, is
@@ -169,13 +169,13 @@ export function editedCopyRemedy(
     source.path !== definitionPath(stateRoot(env, home))
       ? `this run reads the configuration from ${source.path}. To keep the edit, make the same change in ${source.path}. Then, or to discard the edit, delete the copy (rm ${path}) and run converge again`
       : `the configuration is kept in the fleet state. To keep the edit, run homelab state --import ${path} and then converge again. To discard it, delete the copy (rm ${path}) and run converge again`;
-  return `The copy of the fleet configuration on this manager (${path}) was edited since fleet-sync last wrote it, and a sync would replace it, so nothing was changed. That file is a copy fleet-sync installs for launchers and scheduled jobs; ${kept}: it installs the copy anew.`;
+  return `The copy of the fleet configuration on this manager (${path}) was edited since converge last wrote it, and a sync would replace it, so nothing was changed. That file is a copy converge installs for launchers and scheduled jobs; ${kept}: it installs the copy anew.`;
 }
 
 /** How a remedy names fleet.json: the file itself, for the way this process
  * found its configuration. A project's file, or the one HOMELAB_CONFIG
  * names, by its path; a configuration kept in the fleet state by the commands
- * that change it; and on a machine that holds only the copy fleet-sync
+ * that change it; and on a machine that holds only the copy converge
  * installs, where the file is instead. Every remedy that tells the operator
  * to declare something uses this, so none sends them to the copy.
  */
@@ -185,7 +185,7 @@ export function fleetJson(env = process.env, home = homedir()): string {
   if (source.kind === 'file' && source.path !== stored)
     return `fleet.json (${source.path})`;
   if (source.kind === 'installed')
-    return `fleet.json (the one in the project the fleet is synced from, on the manager; not ${source.path}, the copy fleet-sync installs from it)`;
+    return `fleet.json (the one in the project the fleet is synced from, on the manager; not ${source.path}, the copy converge installs from it)`;
   return `fleet.json (kept in the fleet state: ${STATE_EDIT})`;
 }
 
@@ -259,7 +259,7 @@ export const secret: SecretsProvider = Object.assign(
   { login: () => secretsProvider(fleet.secrets, { run: pinned }).login() }
 );
 
-/** The same, through an injected runner (fleet-sync phases and their tests). */
+/** The same, through an injected runner (converge phases and their tests). */
 export const secretVia = (run: Runner): SecretsProvider =>
   secretsProvider(fleet.secrets, {
     run: async (argv) => {

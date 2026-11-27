@@ -90,13 +90,13 @@ Given('a fleet state of its own, holding no history', (world) => {
   setEnv(world, 'HOMELAB_STATE', temporary(world, 'fleet-history-'));
 });
 
-Given('fleet-sync recorded these runs:', (_world, table: DataTable) => {
+Given('converge recorded these runs:', (_world, table: DataTable) => {
   for (const row of table.hashes())
     appendRun(runFrom(row), process.env, new Date(row['finished']!));
 });
 
 Given(
-  'fleet-sync recorded {int} runs, one a minute, the last at {string}',
+  'converge recorded {int} runs, one a minute, the last at {string}',
   (_world, count: number, last: string) => {
     for (let index = count - 1; index >= 0; index -= 1) {
       const finished = new Date(Date.parse(last) - index * 60_000);
@@ -121,7 +121,7 @@ Given(
 );
 
 When(
-  'fleet-sync records the run of {string} to {string} that ended with {int} and reported:',
+  'converge records the run of {string} to {string} that ended with {int} and reported:',
   (_world, started: string, finished: string, exitCode: number, report) => {
     appendRun(
       summarizeRun(
@@ -137,7 +137,7 @@ When(
 );
 
 When(
-  'fleet-sync records a run that finished at {string}',
+  'converge records a run that finished at {string}',
   (_world, finished: string) => {
     appendRun(
       runFrom({ finished, ok: 'yes' }),
@@ -465,7 +465,7 @@ Then(
 const rolled = new WeakMap<object, boolean>();
 
 Given(
-  'the last fleet-sync run was of the revision {string} and left these workers:',
+  'the last converge run was of the revision {string} and left these workers:',
   (_world, revision: string, table: DataTable) => {
     const finished = new Date('2026-11-01T10:00:00Z');
     const workers: NonNullable<SyncRun['workers']> = {};

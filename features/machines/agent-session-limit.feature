@@ -76,7 +76,7 @@ Feature: A worker refuses agent sessions above a limit its fleet declares
         | app.slice/other.slice                                                                    | max         |
 
     Scenario: Stopping it puts every slice back to no limit
-      This is the way back that needs no fleet-sync:
+      This is the way back that needs no converge:
       `systemctl --user stop personal-fleet-agent-session-limit.service`.
       When the unit that holds 6 scopes runs until it is stopped
       Then the slices hold:

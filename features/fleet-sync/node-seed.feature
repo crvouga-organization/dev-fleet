@@ -1,7 +1,7 @@
 Feature: A new worker joins the fleet by itself from a seed
   homelab provision writes the cloud-init user data a stock Ubuntu
   image boots with: the worker account with the manager's key, the privilege
-  rule fleet-sync expects, a host key generated for the machine and the
+  rule converge expects, a host key generated for the machine and the
   pinned Tailscale, which joins with a short-lived single-use auth key. No
   person opens an SSH session to prepare it, and the manager pins the host key
   before the machine answers, so nothing is trusted on first use.

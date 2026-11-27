@@ -47,15 +47,16 @@
   configuration says where the bucket is and every command is passed its
   credentials in the environment (`src/state/connection.ts`). Only the
   homelab CLI reads the state and looks for a project's `fleet.json`;
-  launchers and the worker probe run under Node and use the copy fleet-sync
+  launchers and the worker probe run under Node and use the copy converge
   installs, so nothing they import may load `bun:sqlite`.
 - Secrets are read by purpose through `src/secrets.ts`. Never put a secret in
   argv, a report, a log or the fleet configuration.
 - Diagnostics are read-only. Use stable check IDs and structured remedies;
   never serialize raw subprocess output, environment, SSH config or auth
   responses.
-- Keep the CLI flat: `fleet-*`, `t3-*`, `cliproxy`. Add flags, not aliases or
-  nested groups.
+- Keep the CLI flat: short names such as `converge`, `check`, `t3`,
+  `t3-reconcile`, and `proxy`. Add flags, not aliases or nested groups.
+  Old names (`fleet-*`, `sync`, `t3-apply`, `cliproxy`) are not commands.
 - **Behaviour is specified in Gherkin.** Every test of the TypeScript is a
   scenario under `features/` (read `features/README.md` first): the feature
   says what is true in the product's words and carries its inputs and expected

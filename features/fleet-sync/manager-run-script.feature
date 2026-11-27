@@ -1,8 +1,8 @@
-Feature: Every fleet-sync on the manager runs through the manager run script
-  Whether started on the manager or handed off from a worker, fleet-sync runs
+Feature: Every converge on the manager runs through the manager run script
+  Whether started on the manager or handed off from a worker, converge runs
   from a clean, fleet-owned checkout of the exact revision, so the result never
   depends on the working tree it was started in. Nobody keeps a clone of
-  homelab: the run script takes the revision from the repository fleet-sync
+  homelab: the run script takes the revision from the repository converge
   prepared, or from the manager's own copy of the source repository.
 
   Background:
@@ -11,11 +11,11 @@ Feature: Every fleet-sync on the manager runs through the manager run script
 
   Rule: The revision is checked out of a repository the manager owns
 
-    Scenario: Started by fleet-sync, the revision is checked out of the repository fleet-sync prepared
+    Scenario: Started by converge, the revision is checked out of the repository converge prepared
       The toolchain bootstrap installs mise where there is none, then the CLI
       runs from the checkout.
       Given the manager has its own copy of the source repository
-      When the run script is started for the commit "first" with "--json", from the repository fleet-sync prepared
+      When the run script is started for the commit "first" with "--json", from the repository converge prepared
       Then the run script exits with 0
       And the run checkout of the commit "first" is at that commit
       And the file "file" in the run checkout of the commit "first" holds "first"

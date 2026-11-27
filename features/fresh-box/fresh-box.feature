@@ -1,7 +1,7 @@
 @fresh-box @slow
 Feature: A fresh Ubuntu machine becomes a worker over SSH
   A machine needs nothing beforehand but an SSH server, an account that can
-  use sudo and the manager's key. fleet-sync brings everything else: the
+  use sudo and the manager's key. converge brings everything else: the
   commit, the operating system packages, the pinned toolchain and the fleet
   configuration. This runs the production bootstrap over a real SSH
   connection against a disposable machine, and only when
@@ -26,7 +26,7 @@ Feature: A fresh Ubuntu machine becomes a worker over SSH
       | bun              |
       | node             |
 
-  Scenario: The first fleet-sync bootstraps the machine
+  Scenario: The first converge bootstraps the machine
     The example configuration adds the "go" tool profile to every worker, so
     a profile beyond the base tools is installed here too.
     When the manager bootstraps the machine at the commit under test

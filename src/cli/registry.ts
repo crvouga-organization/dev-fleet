@@ -73,7 +73,7 @@ export const COMMANDS: CommandSpec[] = [
     [
       'state',
       'Check the fleet state and its bucket',
-      'Read-only: where the fleet configuration, the roster and the approved revision are kept on this manager, and whether the bucket holds the same version. --example prints a fleet.json to start a project from; --export prints the configuration fleet-sync last applied; --import PATH stores one.',
+      'Read-only: where the fleet configuration, the roster and the approved revision are kept on this manager, and whether the bucket holds the same version. --example prints a fleet.json to start a project from; --export prints the configuration converge last applied; --import PATH stores one.',
       ['state', 'bucket', 's3', 'backup', 'litestream', 'configuration'],
     ],
     [
@@ -99,8 +99,8 @@ export const COMMANDS: CommandSpec[] = [
     ],
     [
       'history',
-      'Report how reliably fleet-sync runs',
-      'Read-only: success rate, mean duration, the most frequent failing check IDs and how long each machine was not ready, from the history of fleet-sync runs kept in the fleet state. --since 30d (default), 12h or 90m.',
+      'Report how reliably converge runs',
+      'Read-only: success rate, mean duration, the most frequent failing check IDs and how long each machine was not ready, from the history of converge runs kept in the fleet state. --since 30d (default), 12h or 90m.',
       ['history', 'reliability', 'report', 'failures', 'sync'],
     ],
     [
@@ -112,7 +112,7 @@ export const COMMANDS: CommandSpec[] = [
     [
       'recover',
       'Restore a replacement manager from the bucket',
-      'Runs the same checks, then takes the fleet state from the bucket. fleet-sync rebuilds the rest.',
+      'Runs the same checks, then takes the fleet state from the bucket. converge rebuilds the rest.',
       ['manager', 'restore', 'replace', 'lost', 'recovery'],
       true,
     ],
@@ -210,7 +210,7 @@ export const COMMANDS: CommandSpec[] = [
     [
       'park',
       'Park a worker that is off on purpose',
-      'Record in the fleet state that a declared worker is stopped or destroyed on purpose (a rented machine nobody uses): fleet-sync and fleet-status list it as parked with the time since, never contact it or make it the canary, and it does not change the exit code. Refuses while agent turns run on it, unless --force. Runs the stop command fleet.json declares under parking.stop with the worker ID. --dry-run previews.',
+      'Record in the fleet state that a declared worker is stopped or destroyed on purpose (a rented machine nobody uses): converge and check list it as parked with the time since, never contact it or make it the canary, and it does not change the exit code. Refuses while agent turns run on it, unless --force. Runs the stop command fleet.json declares under parking.stop with the worker ID. --dry-run previews.',
       ['park', 'stop', 'pause', 'idle', 'cost', 'rented', 'shutdown'],
       true,
     ],

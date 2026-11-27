@@ -173,7 +173,7 @@ Then(
       // The option is in the request it is said to be handed off from.
       expect(given.split(' ')).toContain(row['option']!);
       const forwarded = forwardedFlags(
-        request(`fleet-sync ${given}`),
+        request(`converge ${given}`),
         undefined
       );
       if (asked.startsWith('--')) expect(forwarded).toEqual(asked.split(' '));
@@ -231,7 +231,7 @@ Given('nothing stands in for the SSH connection to the manager', (world) => {
   world.spawn = undefined;
 });
 
-When('fleet-sync is started with {string}', async (world, text: string) => {
+When('converge is started with {string}', async (world, text: string) => {
   world.outcome = await runFleetSync(
     flags(text),
     world.settings,

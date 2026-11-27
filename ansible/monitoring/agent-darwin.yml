@@ -1,7 +1,7 @@
 ---
 # The manager's own Beszel agent, so the manager is always a monitored system
 # on its own hub. It runs as the signed-in user (no become, like hub-darwin.yml)
-# as an always-on per-user launchd agent: fleet-sync stays unattended and never
+# as an always-on per-user launchd agent: converge stays unattended and never
 # needs the manager's sudo password. Credentials arrive through private
 # variables, never argv.
 - name: Converge the manager's native Beszel agent as a per-user launchd agent

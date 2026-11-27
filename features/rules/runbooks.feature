@@ -5,7 +5,7 @@ Feature: Every failure code has a runbook, and the documents quote real commands
   codes) or the name that opens one ("CODE: what was found"), what a
   bootstrap phase dies with, the name that opens what a script on a machine
   says, the name an Ansible message starts with or a task names, the phase
-  the CLI proxy reports to a fleet-sync, and the name the error of a
+  the CLI proxy reports to a converge, and the name the error of a
   workflow starts with. A code is never told from
   another name by the word it ends with: a list of such words leaves every
   code that ends otherwise without an entry. A name the TypeScript reads

@@ -7,7 +7,7 @@ Feature: The fleet moves only to a revision on the default branch of the source 
   and a toolchain bootstrap never replaces mise with an older release unasked.
 
   The manager's own copy of the source repository answers, never the directory
-  fleet-sync was started in. These scenarios run the real Git, the real run
+  converge was started in. These scenarios run the real Git, the real run
   script and the real toolchain bootstrap in a manager's home of their own.
 
   Background:
@@ -83,7 +83,7 @@ Feature: The fleet moves only to a revision on the default branch of the source 
     merged revision unmerged. The declared repository is cloned beside it, and
     only a complete clone takes its place.
 
-    Scenario: Asked by fleet-sync, the copy of another repository is replaced and answers
+    Scenario: Asked by converge, the copy of another repository is replaced and answers
       Given the manager's copy of the source repository is a clone of another repository
       When the manager's copy of the source repository is asked whether the default branch holds the commit "released"
       Then the answer is "merged"

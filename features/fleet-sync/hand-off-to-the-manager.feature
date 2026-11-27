@@ -1,5 +1,5 @@
-Feature: fleet-sync started on a worker is handed to the manager
-  fleet-sync only ever runs on the manager. Started anywhere else, the same
+Feature: converge started on a worker is handed to the manager
+  converge only ever runs on the manager. Started anywhere else, the same
   request goes to the manager over host-key-verified SSH (no agent forwarding,
   no credentials copied) and the manager's result is reported unchanged.
 
@@ -16,7 +16,7 @@ Feature: fleet-sync started on a worker is handed to the manager
         | -a                        |
       And what the manager is asked to run contains:
         | PERSONAL_FLEET_NO_FORWARD=1              |
-        | fleet-sync                               |
+        | converge                               |
         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
 
     Scenario: With the revision's run script the manager runs that exact revision
@@ -51,7 +51,7 @@ Feature: fleet-sync started on a worker is handed to the manager
       Then the manager is asked for exactly "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --restart-busy --dry-run"
 
     Scenario: The hand-off keeps the request to take the manager lease over
-      fleet-sync also runs itself again from the checkout of the revision;
+      converge also runs itself again from the checkout of the revision;
       a replacement manager that asked for the lease must still hold the
       request there, or it is told to ask for what it asked for.
       When a worker prepares to hand "converge --take-over --yes" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
@@ -61,8 +61,8 @@ Feature: fleet-sync started on a worker is handed to the manager
     A request that loses an option on the way is another request: an
     accounts-only one would become a full sync.
 
-    Scenario: No option of fleet-sync is dropped without a reason
-      An option added to fleet-sync fails here until it is listed with what
+    Scenario: No option of converge is dropped without a reason
+      An option added to converge fails here until it is listed with what
       the manager is asked for.
       When the options the "converge" command line offers are handed off by a worker
       Then each option reaches the manager like this:
@@ -111,7 +111,7 @@ Feature: fleet-sync started on a worker is handed to the manager
         """
         {"ok":true}
         """
-      When fleet-sync is started with "--only accounts --json"
+      When converge is started with "--only accounts --json"
       Then the manager was asked to run exactly "homelab converge --only accounts --json"
       And the result is exactly exit code 0 and the report:
         """
@@ -168,7 +168,7 @@ Feature: fleet-sync started on a worker is handed to the manager
       Then what the manager is asked to run names "converge" directly followed by "--allow-unmerged"
 
     Scenario Outline: "<request>" converges nothing, so the guard is left out
-      When a worker prepares to hand "fleet-sync <request>" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      When a worker prepares to hand "converge <request>" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then what the manager is asked to run does not contain "fleet-revision-guard"
 
       Examples:
@@ -257,11 +257,11 @@ Feature: fleet-sync started on a worker is handed to the manager
       And the report mentions "worker-one (2026.11.11)"
 
     Scenario: Asked on a worker, --measure-mise is refused and nothing is handed off
-      Only the manager reaches the workers; a fleet-sync started on a worker
+      Only the manager reaches the workers; a converge started on a worker
       has the manager asked by itself.
       Given this machine is a worker, where no command is found
       And a hand-off would fail the scenario
-      When fleet-sync is started with "--measure-mise --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --json"
+      When converge is started with "--measure-mise --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --json"
       Then the command exits with 1
       And the report mentions "FLEET_NOT_MANAGER"
       And the report mentions "--measure-mise is answered only on the manager"
@@ -292,13 +292,13 @@ Feature: fleet-sync started on a worker is handed to the manager
 
   Rule: A worker reports what the manager answered and runs nothing itself
 
-    Scenario: A worker hands fleet-sync to the manager and reports its result
+    Scenario: A worker hands converge to the manager and reports its result
       Given this machine is a worker, where no command is found
       And the manager answers the hand-off with exit code 0 and:
         """
         {"ok":true}
         """
-      When fleet-sync is started with "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --json"
+      When converge is started with "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --json"
       Then 1 command was handed to the manager
       And the result is exactly exit code 0 and the report:
         """
@@ -321,7 +321,7 @@ Feature: fleet-sync started on a worker is handed to the manager
       Given this machine is a worker, where no command is found
       And the environment sets "PERSONAL_FLEET_NO_FORWARD" to "1"
       And a hand-off would fail the scenario
-      When fleet-sync is started with "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --json"
+      When converge is started with "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --json"
       Then the command exits with 1
       And the report mentions "FLEET_NOT_MANAGER"
       And the report mentions "always a macOS machine"

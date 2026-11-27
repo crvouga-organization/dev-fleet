@@ -68,7 +68,7 @@ export async function checkedProviders(
         summary: 'T3_CLI_MISSING',
         remedy: {
           action:
-            'Restore the T3 CLI in the user installation or on the fleet-sync PATH, then rerun converge.',
+            'Restore the T3 CLI in the user installation or on the converge PATH, then rerun converge.',
         },
       };
     if (!result) failed.push(index + 1);

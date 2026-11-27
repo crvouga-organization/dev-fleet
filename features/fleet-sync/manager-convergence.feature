@@ -109,7 +109,7 @@ Feature: The manager converges itself before any worker
       When the providers of "manager-mac" are applied
       Then the check's status is "fail"
       And the check's summary is "T3_PROVIDERS_UNVERIFIED"
-      And the check's remedy contains "t3-apply --dry-run"
+      And the check's remedy contains "t3-reconcile --dry-run"
       And the checks do not mention "secret-value"
 
   Rule: The manager applies every proxy agent profile the workers get
@@ -274,7 +274,7 @@ Feature: The manager converges itself before any worker
   Rule: The manager's Vault session renews itself
     Every worker renews its own Vault session; so does the manager, with a
     launch agent vault-renew.yml loads on every applying sync. Without it the
-    session lapses while nobody runs fleet-sync. A lapsed session needs one
+    session lapses while nobody runs converge. A lapsed session needs one
     login by a person.
 
     Scenario: An applying sync loads the renewal job for the fleet's Vault

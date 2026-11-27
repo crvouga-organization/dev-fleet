@@ -10,7 +10,7 @@ export async function syncT3(
   settings: Settings
 ): Promise<CommandOutcome> {
   try {
-    return await t3Command('t3-apply', options, settings);
+    return await t3Command('t3-reconcile', options, settings);
   } catch (error) {
     return {
       exitCode: 1,

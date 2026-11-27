@@ -27,7 +27,7 @@ Feature: A fleet is a project of your own, run with the published package
         | machines/notes |
 
     Scenario: The project's fleet.json is named for the command and everything it starts
-      fleet-sync re-runs itself from another directory, so the file is named in
+      converge re-runs itself from another directory, so the file is named in
       the environment the command passes on.
       Given the project's "fleet.json" holds:
         """
@@ -57,7 +57,7 @@ Feature: A fleet is a project of your own, run with the published package
       Then the fleet configuration found is the project's "fleet.json"
 
     Scenario: A file named in HOMELAB_CONFIG wins, and a relative one is anchored where the command is run
-      It is anchored because fleet-sync re-runs itself from another directory.
+      It is anchored because converge re-runs itself from another directory.
       Given the project's "fleet.json" holds:
         """
         {"version":3,"manager":{"id":"manager-mac"}}

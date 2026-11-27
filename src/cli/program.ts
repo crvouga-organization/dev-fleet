@@ -14,7 +14,7 @@ export interface Release {
   version: string;
   /** ISO timestamp recorded when this distribution was built; null for source runs. */
   releasedAt: string | null;
-  /** The commit a published package was built from: what fleet-sync run from
+  /** The commit a published package was built from: what converge run from
    * it converges every machine to. Absent for source runs.
    */
   revision?: string | null;
@@ -141,17 +141,39 @@ export async function execute(
     .action((_options, command: Command) => {
       outcome = catalog(command.optsWithGlobals<CliOptions>(), release);
     });
-  program.action(() => {
+  // A default action makes Commander treat an unknown first word as an
+  // argument. `--help` on that word is answered before the unknown-command
+  // event, so reject it first. Bare homelab still prints help or, with
+  // --json, the catalog.
+  const outputHelp = program.outputHelp.bind(program);
+  program.outputHelp = (context) => {
     const pending = program.args.filter((arg) => !arg.startsWith('-'));
-    if (pending.length > 0)
+    const unknown =
+      pending[0] === 'help' && pending.length > 1 ? pending[1] : pending[0];
+    if (unknown && unknown !== 'help')
       throw new FleetUsageError(
-        `Unknown command "${pending[0]}". Run homelab --help.`
+        `Unknown command "${unknown}". Run homelab --help.`
       );
+    outputHelp(context as (str: string) => string);
+  };
+  program.action(() => {
     if (program.opts<CliOptions>().json)
       outcome = catalog(program.opts<CliOptions>(), release);
     else program.help();
   });
   try {
+    const known = new Set(
+      program.commands.flatMap((command) => [
+        command.name(),
+        ...command.aliases(),
+      ])
+    );
+    known.add('help');
+    const first = args.find((arg) => !arg.startsWith('-'));
+    if (first && !known.has(first))
+      throw new FleetUsageError(
+        `Unknown command "${first}". Run homelab --help.`
+      );
     await program.parseAsync(args, { from: 'user' });
     return (
       outcome ?? {

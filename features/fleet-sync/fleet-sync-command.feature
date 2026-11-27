@@ -3,7 +3,7 @@ Feature: homelab converge refuses before it changes anything
   nonzero exit code, without a write, an SSH connection or a login. An unsafe
   combination of options is a usage error.
 
-  Rule: Off the manager, fleet-sync reports and changes nothing
+  Rule: Off the manager, converge reports and changes nothing
     Hand-off is disabled in every scenario here: a test never hands off to the
     real manager over SSH.
 

@@ -153,13 +153,13 @@ function definitionCheck(
     return {
       id,
       status: 'pass',
-      summary: `The fleet configuration is ${source.path}. fleet-sync records the one it applies in the fleet state, for runs started anywhere else.`,
+      summary: `The fleet configuration is ${source.path}. converge records the one it applies in the fleet state, for runs started anywhere else.`,
     };
   if (existsSync(source.path))
     return {
       id,
       status: 'warn',
-      summary: `The fleet configuration is only the copy fleet-sync installed at ${source.path}; the fleet state does not hold it.`,
+      summary: `The fleet configuration is only the copy converge installed at ${source.path}; the fleet state does not hold it.`,
       remedy: {
         action: `Store it: homelab state --import ${source.path}.`,
       },
@@ -202,13 +202,13 @@ function documentCheck(
       summary: `${TITLE[name]} is still read from ${legacyPath(name, services.env, services.home)}, outside the fleet state.`,
       remedy: {
         action:
-          'Move it into the fleet state: homelab state --init. The next fleet-sync does the same. The file is left in place and no longer read afterwards.',
+          'Move it into the fleet state: homelab state --init. The next converge does the same. The file is left in place and no longer read afterwards.',
       },
     };
   return {
     id,
     status: 'skip',
-    summary: `${TITLE[name]} is not recorded yet; fleet-sync records it.`,
+    summary: `${TITLE[name]} is not recorded yet; converge records it.`,
   };
 }
 
@@ -435,7 +435,7 @@ async function importDefinition(
     );
   }
   parseDefinition(value);
-  // The copy fleet-sync installs is the configuration without the bucket:
+  // The copy converge installs is the configuration without the bucket:
   // importing that file keeps the bucket the stored configuration names.
   const copy =
     resolve(path) === installedPath(services.home) &&
@@ -559,7 +559,7 @@ const DEFAULTS = (options: FleetStateOptions): FleetStateServices => ({
   holder: managerHolder(process.env),
 });
 
-/** `fleet-state` alone is read-only. Each flag is one explicit action on the
+/** `state` alone is read-only. Each flag is one explicit action on the
  * manager's fleet state or its bucket.
  */
 export async function fleetState(

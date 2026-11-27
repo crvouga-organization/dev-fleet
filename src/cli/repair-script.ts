@@ -38,7 +38,7 @@ export function repairScript(
             [
               'bun',
               'src/cli/cli.ts',
-              'fleet-repair',
+              'repair',
               '--local',
               '--repair',
               'workspace',

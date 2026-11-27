@@ -8,7 +8,7 @@ import type { Check, Runner } from '../types';
 
 /** Installs the manager's own Beszel agent locally (never over SSH) as a
  * per-user launchd agent, so the manager is always a system on its own hub.
- * No sudo: fleet-sync on the manager stays unattended.
+ * No sudo: converge on the manager stays unattended.
  */
 export async function installManagerAgent(
   root: string,

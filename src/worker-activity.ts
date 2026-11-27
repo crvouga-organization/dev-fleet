@@ -13,7 +13,7 @@ export interface WorkerActivity {
   lastActivityAt: string | null;
 }
 
-/** One worker in fleet-status: active or parked, what it does, and what it
+/** One worker in check: active or parked, what it does, and what it
  * costs while it runs (only what fleet.json declares).
  */
 export interface WorkerUsage extends Partial<WorkerActivity> {
@@ -29,7 +29,7 @@ export interface WorkerUsage extends Partial<WorkerActivity> {
   billingNote?: string;
 }
 
-/** The installed copy fleet-sync keeps outside every revision
+/** The installed copy converge keeps outside every revision
  * (ansible/ubuntu/tasks/recovery.yml).
  */
 export const ACTIVITY_PROBE =
@@ -177,7 +177,7 @@ function billing(worker: MachineDefinition | undefined) {
 }
 
 /** Measures every active enrolled worker and lists the parked ones: the
- * `workers` of fleet-status, and the checks it adds to each worker's report.
+ * `workers` of check, and the checks it adds to each worker's report.
  * Parked workers are not contacted.
  */
 export async function fleetUsage(
@@ -260,7 +260,7 @@ export function usageSummary(workers: WorkerUsage[]) {
   };
 }
 
-/** The lines fleet-status prints about each worker and the fleet. */
+/** The lines check prints about each worker and the fleet. */
 export function usageText(workers: WorkerUsage[], now: Date): string {
   const summary = usageSummary(workers);
   const lines = workers.map((worker) => {

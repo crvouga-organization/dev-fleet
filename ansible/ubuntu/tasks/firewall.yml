@@ -82,7 +82,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync: ansible/ubuntu/tasks/firewall.yml
+      # Managed by personal converge: ansible/ubuntu/tasks/firewall.yml
       [Unit]
       Description=Personal Fleet firewall (inbound only over loopback and the tailnet)
       DefaultDependencies=no
@@ -175,4 +175,4 @@
       ansible.builtin.fail:
         msg: >-
           {{ 'FIREWALL_RULES_REJECTED' if firewall_rules is defined and firewall_rules is failed else 'FIREWALL_TAILNET_UNVERIFIED' }};
-          the previous rules are back in place. Check tailscale status on the worker, then rerun fleet-sync.
+          the previous rules are back in place. Check tailscale status on the worker, then rerun converge.

@@ -1,7 +1,7 @@
 import type { Runner } from '../types';
 
 export const KEYCHAIN_REMEDY =
-  'From the worker, trigger the signed-in manager’s fleet-sync LaunchAgent over verified SSH as described in docs/ubuntu-sync.md under Manager keychain. Run converge from the manager desktop to use a different revision or options.';
+  'From the worker, trigger the signed-in manager’s converge LaunchAgent over verified SSH as described in docs/ubuntu-sync.md under Manager keychain. Run converge from the manager desktop to use a different revision or options.';
 
 // Ask Security.framework for the active gh item with UI forbidden. Only the
 // OSStatus crosses the subprocess boundary, including on a successful read.

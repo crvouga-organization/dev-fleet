@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Restart a fleet container that stays unhealthy, a bounded number of times.
 
-Managed by fleet-sync (ansible/monitoring/hub-darwin.yml) as the per-user
+Managed by converge (ansible/monitoring/hub-darwin.yml) as the per-user
 launchd agent dev.homelab.container-watchdog on the manager. Docker restarts
 a container that exits, never one that hangs while it still holds its port.
 Every run reads the health of each container labelled

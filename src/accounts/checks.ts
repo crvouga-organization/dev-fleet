@@ -115,7 +115,7 @@ export function rosterCurrentCheck(proxy: string | null, node: string): Check {
       status: 'warn',
       summary: `The proxy's account roster could not be read; this node offers roster version ${node}.`,
       remedy: {
-        action: 'Check proxy:reachable-from, then run fleet-status again.',
+        action: 'Check proxy:reachable-from, then run check again.',
       },
     };
   return proxy === node
@@ -208,7 +208,7 @@ export async function proxyReachableCheck(
         : {
             remedy: {
               action:
-                'Agents retry for about a minute and then report "proxy unreachable". Check the proxy on the manager: homelab cliproxy status.',
+                'Agents retry for about a minute and then report "proxy unreachable". Check the proxy on the manager: homelab proxy status.',
             },
           }),
     };
@@ -219,7 +219,7 @@ export async function proxyReachableCheck(
       summary: 'PROXY_UNREACHABLE: no answer from the proxy.',
       remedy: {
         action:
-          'Agents retry for about a minute and then report "proxy unreachable". Check this node’s tailnet and the proxy on the manager: homelab cliproxy status.',
+          'Agents retry for about a minute and then report "proxy unreachable". Check this node’s tailnet and the proxy on the manager: homelab proxy status.',
       },
     };
   }

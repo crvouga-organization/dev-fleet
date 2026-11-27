@@ -144,7 +144,7 @@ Given('{string} asks for a sudo password', (world, alias: string) => {
   );
 });
 
-When('fleet-sync enrolls without a person', async (world) => {
+When('converge enrolls without a person', async (world) => {
   const state = unattended(world);
   const config = controlPlane(world).config;
   state.result = await enrollManager(state.roster, world.commands.run, {
@@ -212,7 +212,7 @@ Then(
 // ── The report ───────────────────────────────────────────────────────────
 
 Given(
-  'a fleet-sync report of {string} and {string}',
+  'a converge report of {string} and {string}',
   (world, first: string, second: string) => {
     const node = (id: string) => ({
       node: id,

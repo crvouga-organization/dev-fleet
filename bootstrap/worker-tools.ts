@@ -89,7 +89,7 @@ export function workerSelection(
   };
 }
 
-/** The selection of the fleet configuration fleet-sync installed on this
+/** The selection of the fleet configuration converge installed on this
  * machine; none when there is no configuration yet.
  */
 export function installedSelection(

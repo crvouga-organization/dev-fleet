@@ -16,7 +16,7 @@ Rules for an agent working in a project that uses homelab:
 - [README](https://github.com/crvouga/homelab/blob/main/README.md): what homelab assumes, quickstart, versions, adding a machine, known limits
 - [Example fleet.json](https://github.com/crvouga/homelab/blob/main/examples/fleet.json): a complete configuration with placeholders (`npx @crvouga/homelab state --example` prints it)
 - [fleet.json schema](https://github.com/crvouga/homelab/blob/main/schema/fleet.schema.json): JSON Schema for the fleet configuration
-- [Check-ID registry](https://github.com/crvouga/homelab/blob/main/schema/check-ids.json): every check ID a report can carry, with what it means, whether it can block readiness (severity) and what repairs it (a fleet-repair recipe, or why only a person can); generated from the code
+- [Check-ID registry](https://github.com/crvouga/homelab/blob/main/schema/check-ids.json): every check ID a report can carry, with what it means, whether it can block readiness (severity) and what repairs it (a repair recipe, or why only a person can); generated from the code
 
 ## Operate it
 
@@ -30,7 +30,7 @@ Rules for an agent working in a project that uses homelab:
 
 ## Optional
 
-- [Ubuntu fleet-sync reference](https://github.com/crvouga/homelab/blob/main/docs/ubuntu-sync.md): enrollment, approval, machine policy by platform, remote-work safety
+- [Ubuntu converge reference](https://github.com/crvouga/homelab/blob/main/docs/ubuntu-sync.md): enrollment, approval, machine policy by platform, remote-work safety
 - [Worker contract](https://github.com/crvouga/homelab/blob/main/docs/worker-contract.md): what a worker guarantees and how readiness is scoped
 - [Operations](https://github.com/crvouga/homelab/blob/main/docs/operations.md): roster, diagnostics and repairs
 - [Runbooks](https://github.com/crvouga/homelab/blob/main/docs/runbooks.md): every failure code, how to confirm it, the fix and when to escalate

@@ -70,7 +70,7 @@ default. Neither flag authorizes managing arbitrary Tailscale peers.
 
 Roster-level workspace convergence lives in `homelab repair --repair workspace`, which previews until `--apply --yes`.
 The new manager report is version **2**, deliberately replacing the unshipped
-local-first fleet-sync version 1 contract.
+local-first converge version 1 contract.
 
 ## Prerequisites and first enrollment
 
@@ -158,7 +158,7 @@ trust/enrollment of new connections still asks separately.
 Select one full lowercase commit SHA. Approval is saved on the manager and
 retained throughout the run. New package versions do not silently replace saved
 approval. Promote a reviewed release with the explicit `--revision SHA` invocation.
-Use `homelab@VERSION fleet-sync ...` for automation; unversioned npx
+Use `homelab@VERSION converge ...` for automation; unversioned npx
 is convenience, not a reproducibility guarantee. Dirty review artifacts have no
 automatically approved source SHA.
 
@@ -195,7 +195,7 @@ verification and the CLIProxy singleton.
 | Credential renewal          | user timer `personal-worker-auth` renews the node's own Vault token every 10min; `personal-worker-github` signs it in to GitHub from the stored token ([GitHub](github.md))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | the human's own Vault and GitHub sessions                                                                                                                                                                                                                                                                                                                                                                 |
 | Noninteractive sudo         | validated `/etc/sudoers.d/personal-fleet-USER`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `pmset -c`, granted once by `manager-privilege.yml` (`-K`)                                                                                                                                                                                                                                                                                                                                           |
 | T3 worker app               | pinned desktop `.deb` is the only T3 process (UI plus embedded server) on a desktop worker, and the pinned server as the lingering user unit `t3code-headless.service` on a headless one (`features.session`; no session is waited for); GDM auto-login, user unit `t3code-desktop.service` bound to the graphical session with `Restart=always`; `personal-worker-recovery` runs a copy of `t3-health.sh` installed in `/usr/local/lib/personal-fleet` every minute: it stops and disables a still-running headless `t3code.service`, reports `T3_NO_GRAPHICAL_SESSION` and restarts the display manager (three times at most) when there is no session, starts a stopped app after `reset-failed`, restarts one whose local API missed three checks, and restarts one on another release than the installed one or with a deferred policy restart once it runs no agent turn; administrator policy | not a worker                                                                                                                                                                                                                                                                                                                                                                                              |
-| T3 providers                | the same managed instances (`fleet/agents/t3.json`) through locked T3 administrator policy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | reconciled into the human's T3 settings by `sync` (`t3:providers`) with the ownership-safe `t3-apply` engine, so every T3 offers the identical set; unrelated and unmanaged instances are preserved. `sync` also applies the same proxy agent profiles (`configuration:apply`) and verifies the shared Vault gateway credential end to end with `provider:*:inference`, exactly as on workers |
+| T3 providers                | the same managed instances (`fleet/agents/t3.json`) through locked T3 administrator policy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | reconciled into the human's T3 settings by `sync` (`t3:providers`) with the ownership-safe `t3-reconcile` engine, so every T3 offers the identical set; unrelated and unmanaged instances are preserved. `sync` also applies the same proxy agent profiles (`configuration:apply`) and verifies the shared Vault gateway credential end to end with `provider:*:inference`, exactly as on workers |
 | Singleton services          | never; clients of the manager's services only                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | every singleton runs here: CLI proxy (`cliproxy`), Beszel hub (`workstation/monitoring`)                                                                                                                                                                                                                                                                                                                  |
 
 Under sustained host memory pressure the guard selects the leaf agent scope
@@ -320,20 +320,20 @@ port and its unit. A fleet service there always fails; anything else warns or
 fails by `otherListeners`. What an agent started, such as a development
 server, is named apart (`WORKER_AGENT_LISTENER_UNRESTRICTED`, by the
 `t3code-<agent>-<id>.scope` T3 starts each agent in), with its own remedy: it
-is no fault of a fleet unit and fleet-sync does not change it. Nothing the
+is no fault of a fleet unit and converge does not change it. Nothing the
 fleet declares keeps an agent from binding every address; the firewall admits
 such a listener only over the tailnet. A listener on a port of
 `tailnetOnlyPorts`, whoever started it, passes only while the loaded table
 holds the `tailnet-only` rule for that port, and is named in the summary;
 without the rule it fails as `WORKER_TAILNET_ONLY_RULE_MISSING`, whatever
-`otherListeners` says, until fleet-sync has loaded it. The T3
+`otherListeners` says, until converge has loaded it. The T3
 desktop app counts as a fleet service in `t3code-desktop.service` and in the
 `app-com.t3tools.T3Code-<pid>.scope` its main process moves into. It serves on
 127.0.0.1 only: its exposure (`serverExposureMode` in its desktop settings,
 `T3CODE_LAN` in `~/.t3/service.env`) is not a setting T3's administrator
 policy can lock, and the running app rewrites its settings, so the unit sets
 both to local-only before every start (`ansible/ubuntu/t3-local-only.py`).
-fleet-sync restarts an app that still listens beyond loopback once it runs
+converge restarts an app that still listens beyond loopback once it runs
 no agent turn, like a release update.
 `worker:public-reachability` (from the manager, in `status --workers`)
 tries the SSH, T3 and monitoring ports on the public address Tailscale knows
@@ -450,7 +450,7 @@ talks to Meta's own catalog endpoint, so Muse models run through OpenCode.
 
 ### Checkout project actions
 
-`bash bootstrap/project-action.sh fleet-sync` warms the shared toolchain
+`bash bootstrap/project-action.sh converge` warms the shared toolchain
 and passes the current checkout HEAD as the exact revision to the existing approval
 flow. Extra arguments such as `--dry-run` are forwarded. The manager can bundle
 committed objects from this canonical local repository, including unpublished

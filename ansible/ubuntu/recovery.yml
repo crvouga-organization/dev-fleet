@@ -6,7 +6,7 @@
   gather_facts: false
   vars_files:
     - policy.json
-  # fleet-repair re-applies this play alone for worker:service-recovery.
+  # repair re-applies this play alone for worker:service-recovery.
   tags: [recovery]
   tasks:
     # t3_unit is t3code-headless.service on a headless worker.

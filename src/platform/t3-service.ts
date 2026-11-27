@@ -256,7 +256,7 @@ export async function runningVersionCheck(
     remedy: {
       action: `${
         running === release
-          ? `T3 runs the installed release ${release} and has not restarted for what fleet-sync staged since.`
+          ? `T3 runs the installed release ${release} and has not restarted for what converge staged since.`
           : `T3 runs ${running}; ${release} is installed.`
       } ${deferralRemedy(deferral, session)}`,
     },

@@ -107,7 +107,7 @@ Feature: The pinned Litestream replicates the fleet state and a new manager rest
       And manager "a" stands "bucket-ahead" with the bucket
 
   @litestream @s3 @slow
-  Rule: fleet-state keeps a fleet in an S3 bucket
+  Rule: state keeps a fleet in an S3 bucket
     In a command, `$S3` is the origin HOMELAB_TEST_S3 names, `$S3_BUCKET` is a
     bucket made there for the scenario, `~` is the manager's home and
     examples/fleet.json is the tracked example.

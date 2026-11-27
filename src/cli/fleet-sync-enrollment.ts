@@ -188,7 +188,7 @@ async function passwordlessSudo(
     summary: 'SUDO_AUTHORIZATION_REQUIRED',
     remedy: {
       action:
-        'The worker account has no passwordless sudo, so a run without a person did not enroll it. Grant it (a fleet-node-seed seed does), or run converge once in a terminal to authorize it.',
+        'The worker account has no passwordless sudo, so a run without a person did not enroll it. Grant it (a provision seed does), or run converge once in a terminal to authorize it.',
     },
   };
 }

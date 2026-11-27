@@ -120,7 +120,7 @@ Feature: A worker is bootstrapped over SSH with one verified revision
         | restarts a busy T3 (--restart-busy) | restart-busy |
 
     Scenario Outline: The bootstrap tells the worker when the older mise its revision pins is to be installed (<request>)
-      A worker's toolchain bootstrap keeps a newer mise unless fleet-sync was
+      A worker's toolchain bootstrap keeps a newer mise unless converge was
       given --allow-mise-downgrade. The word follows every other argument,
       and nothing is passed without the flag.
       Given the sync <request>

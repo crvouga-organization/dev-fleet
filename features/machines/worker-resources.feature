@@ -101,8 +101,8 @@ Feature: A worker's memory and disk guards are measured where they run
       | 1000 | passes  |
       | 100  | fails   |
 
-  Scenario: An unprotected listener is repaired by fleet-sync without restarting T3
-    A drop-in fleet-sync writes for the unit T3 serves from reaches the
+  Scenario: An unprotected listener is repaired by converge without restarting T3
+    A drop-in converge writes for the unit T3 serves from reaches the
     running unit when the user manager is reloaded, so the remedy does not
     wait for T3 to restart.
     Given these commands answer:
@@ -119,7 +119,7 @@ Feature: A worker's memory and disk guards are measured where they run
     And the remedy of the check does not contain "--maintenance-reboot"
 
   Rule: An io reserve that waits for the user manager says so, and only warns
-    Ubuntu hands the user manager cpu, memory and pids only. fleet-sync
+    Ubuntu hands the user manager cpu, memory and pids only. converge
     declares io for it, and the manager's own controllers list io as soon as
     that is loaded; but the running manager hands down only what it found
     when it started, so it takes io on its next start, which in practice is
@@ -152,7 +152,7 @@ Feature: A worker's memory and disk guards are measured where they run
       And the summary of the check is "T3_PROTECTION_ESCAPED io"
       And the remedy of the check contains "--maintenance-reboot"
 
-    Scenario: With io handed down by the user manager, a missing io reserve is for fleet-sync to declare
+    Scenario: With io handed down by the user manager, a missing io reserve is for converge to declare
       A reboot would change nothing: the user manager hands io down and the
       unit T3 serves from was not given its weight.
       Given the user manager of user 1000 hands down cpu io memory pids

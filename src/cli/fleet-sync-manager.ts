@@ -375,7 +375,7 @@ function failedTool(stdout: string): string | undefined {
   return undefined;
 }
 
-/** fleet-sync runs only on the declared manager. */
+/** converge runs only on the declared manager. */
 export async function managerIdentity(
   id: string,
   run: Runner,
@@ -430,7 +430,7 @@ export async function managerPower(
           ? 'MANAGER_SLEEPS_ON_POWER'
           : `MANAGER_POWER_POLICY_DRIFT ${drifted.join(' ')}`,
         remedy: {
-          action: `Workers lose the CLI proxy and Beszel hub while the manager sleeps. Grant the manager its power settings once, as an administrator; every fleet-sync then applies the policy with no prompt: cd ${workspace} && ${ansibleCommand().join(' ')} -e user=$(id -un) -K ansible/macos/manager-privilege.yml`,
+          action: `Workers lose the CLI proxy and Beszel hub while the manager sleeps. Grant the manager its power settings once, as an administrator; every converge then applies the policy with no prompt: cd ${workspace} && ${ansibleCommand().join(' ')} -e user=$(id -un) -K ansible/macos/manager-privilege.yml`,
         },
       };
 }
@@ -602,7 +602,7 @@ export async function managerDocker(
       ? 'MANAGER_DOCKER_DESKTOP_DRIFT'
       : 'MANAGER_DOCKER_DESKTOP_UNOBSERVED',
     remedy: {
-      action: `The manager's services are tested on ${pinned}. Install that release and turn off its automatic updates, or expect differences; fleet-sync does not install or replace Docker Desktop.`,
+      action: `The manager's services are tested on ${pinned}. Install that release and turn off its automatic updates, or expect differences; converge does not install or replace Docker Desktop.`,
     },
   };
 }

@@ -17,7 +17,7 @@ Feature: The fleet tells someone when a worker becomes unhealthy
   Rule: A notification is sent on a transition only
 
     Scenario: Losing the desktop credential degrades a worker until it is readable again
-      When the watcher runs at these times, while fleet-status sees these failing checks:
+      When the watcher runs at these times, while check sees these failing checks:
         | time                 | worker-a              | worker-b |
         | 2026-11-11T00:00:00Z |                       |          |
         | 2026-11-11T00:15:00Z | worker:rdp-credential |          |
@@ -28,7 +28,7 @@ Feature: The fleet tells someone when a worker becomes unhealthy
         | recovered | worker-a |                       |
 
     Scenario: Stopping a worker sends one notification, and recovering one more
-      When the watcher runs at these times, while fleet-status sees these failing checks:
+      When the watcher runs at these times, while check sees these failing checks:
         | time                 | worker-a                                       | worker-b |
         | 2026-11-11T00:00:00Z |                                                |          |
         | 2026-11-11T00:15:00Z | tailscale:reachability, worker:service:docker  |          |
@@ -43,7 +43,7 @@ Feature: The fleet tells someone when a worker becomes unhealthy
       And nothing the receiver got contains "PRIVATE"
 
     Scenario: A worker that stays degraded is mentioned again after the repeat interval
-      When the watcher runs at these times, while fleet-status sees these failing checks:
+      When the watcher runs at these times, while check sees these failing checks:
         | time                 | worker-a      |
         | 2026-11-11T00:00:00Z | worker:ubuntu |
         | 2026-11-11T12:00:00Z | worker:ubuntu |
@@ -55,14 +55,14 @@ Feature: The fleet tells someone when a worker becomes unhealthy
         | still-degraded | worker-a | worker:ubuntu |
 
     Scenario: A fleet that is ready sends nothing and leaves a heartbeat
-      Given fleet-status sees every worker ready
+      Given check sees every worker ready
       When the watcher runs
       Then the receiver got 0 notifications
       And notify exits with 0 and its check "watch:heartbeat" passes
       And the bucket holds a heartbeat from "2026-11-11T00:00:00Z"
 
     Scenario: Low disk space warns the operator before the worker fails
-      Given fleet-status warns about "worker:capacity:disk" on "worker-a"
+      Given check warns about "worker:capacity:disk" on "worker-a"
       When the watcher runs
       Then the webhook receiver got, in order:
         | event    | node     | checks               |
@@ -73,7 +73,7 @@ Feature: The fleet tells someone when a worker becomes unhealthy
     words and a worker's fleet id, never an account or a command line.
 
     Scenario: The approved revision is reported with what selected it and when
-      Given fleet-status sees every worker ready
+      Given check sees every worker ready
       And the fleet state says of the approved revision:
         """
         {
@@ -101,11 +101,11 @@ Feature: The fleet tells someone when a worker becomes unhealthy
           }
         }
         """
-      And notify prints "revision cccccccccccc selected by the HEAD of the checkout fleet-sync was started in, handed off from worker-a (--allow-unmerged) at 2026-11-10T23:50:00.000Z (not applied to the whole fleet)"
+      And notify prints "revision cccccccccccc selected by the HEAD of the checkout converge was started in, handed off from worker-a (--allow-unmerged) at 2026-11-10T23:50:00.000Z (not applied to the whole fleet)"
 
     Scenario: A fleet state that does not say what selected the revision still names it
       Fleet states written before this was recorded have no such record.
-      Given fleet-status sees every worker ready
+      Given check sees every worker ready
       And the fleet state says of the approved revision:
         """
         {
@@ -116,8 +116,8 @@ Feature: The fleet tells someone when a worker becomes unhealthy
       When the watcher runs
       Then notify prints "revision bbbbbbbbbbbb"
 
-    Scenario: Before the first fleet-sync there is no revision to report
-      Given fleet-status sees every worker ready
+    Scenario: Before the first converge there is no revision to report
+      Given check sees every worker ready
       When the watcher runs
       Then notify reports no revision
 
@@ -127,7 +127,7 @@ Feature: The fleet tells someone when a worker becomes unhealthy
     worker's fleet id only.
 
     Scenario: The first revision the watcher sees is only remembered
-      Given fleet-status sees every worker ready
+      Given check sees every worker ready
       And the fleet state says of the approved revision:
         """
         { "approved": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "applied": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
@@ -136,7 +136,7 @@ Feature: The fleet tells someone when a worker becomes unhealthy
       Then the receiver got 0 notifications
 
     Scenario: A new approved revision is notified once, with what selected it
-      Given fleet-status sees every worker ready
+      Given check sees every worker ready
       And the watcher ran while the fleet state said of the approved revision:
         """
         { "approved": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "applied": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
@@ -164,15 +164,15 @@ Feature: The fleet tells someone when a worker becomes unhealthy
           "revision": {
             "approved": "cccccccccccccccccccccccccccccccccccccccc",
             "replaced": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-            "selectedBy": "the HEAD of the checkout fleet-sync was started in, handed off from worker-a (--allow-unmerged)"
+            "selectedBy": "the HEAD of the checkout converge was started in, handed off from worker-a (--allow-unmerged)"
           },
-          "text": "homelab: the approved revision of the fleet changed from bbbbbbbbbbbb to cccccccccccc, selected by the HEAD of the checkout fleet-sync was started in, handed off from worker-a (--allow-unmerged)"
+          "text": "homelab: the approved revision of the fleet changed from bbbbbbbbbbbb to cccccccccccc, selected by the HEAD of the checkout converge was started in, handed off from worker-a (--allow-unmerged)"
         }
         """
 
     Scenario: A fleet state that cannot be read does not forget the revision
       The next run that reads it compares with the revision seen last.
-      Given fleet-status sees every worker ready
+      Given check sees every worker ready
       And the watcher ran while the fleet state said of the approved revision:
         """
         { "approved": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "applied": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
@@ -237,7 +237,7 @@ Feature: The fleet tells someone when a worker becomes unhealthy
 
     Scenario: A fleet with no notify block is told how to add one
       Given the fleet configuration has no notify block
-      And fleet-status sees every worker ready
+      And check sees every worker ready
       When the watcher runs
       Then notify exits with 0 and its check "notify:configured" warns
 

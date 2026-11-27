@@ -97,7 +97,7 @@ export function workerFeatures(
   return over(over(DEFAULT_FEATURES, policy['features']), own?.['features']);
 }
 
-/** The features of this worker in the fleet configuration fleet-sync
+/** The features of this worker in the fleet configuration converge
  * installed; the defaults when there is none yet.
  */
 export function installedFeatures(

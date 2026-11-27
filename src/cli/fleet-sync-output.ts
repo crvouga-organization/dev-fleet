@@ -209,7 +209,7 @@ function header(
 ): string {
   const verdict = verdictText(c, report, failing, options);
   const parts = [
-    c.bold('fleet-sync'),
+    c.bold('converge'),
     verdict,
     `${c.dim('revision')} ${(report.desiredRevision ?? 'none').slice(0, 12)}`,
   ];

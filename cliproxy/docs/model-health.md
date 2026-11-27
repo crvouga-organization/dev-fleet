@@ -86,17 +86,17 @@ all.
 
 ```bash
 # Frequent, cheap: liveness + readiness + 2 requests per model
-homelab cliproxy model-health                      # default profile: light
-homelab cliproxy model-health --profile readiness  # no inference
-homelab cliproxy model-health --profile liveness   # no credentials
+homelab proxy model-health                      # default profile: light
+homelab proxy model-health --profile readiness  # no inference
+homelab proxy model-health --profile liveness   # no credentials
 
 # Complete suite (default profile: nightly)
-homelab cliproxy model-suite
-homelab cliproxy model-suite --suite cursor        # Cursor-style agent checks only
-homelab cliproxy model-suite --profile manual --model gpt-6.1-sol --output ./report
+homelab proxy model-suite
+homelab proxy model-suite --suite cursor        # Cursor-style agent checks only
+homelab proxy model-suite --profile manual --model gpt-6.1-sol --output ./report
 
 # Offline: the same declarative suite against the local emulator. No key, no spend, no network.
-homelab cliproxy model-suite --target mock --profile manual
+homelab proxy model-suite --target mock --profile manual
 ```
 
 Useful flags: `--model MODEL_ID` (repeatable), `--check CAPABILITY_GLOB` (repeatable), `--force-probe`, `--suite core|cursor|all`, `--json`, `--output DIR`
@@ -184,7 +184,7 @@ Append to `models` and nothing else:
 ```
 
 Run `python3 -B cliproxy/scripts/check.py` (it validates `models.json`), then
-`homelab cliproxy model-suite --target mock` and finally a live `--model` run. Unit tests
+`homelab proxy model-suite --target mock` and finally a live `--model` run. Unit tests
 (`tests/test_model_config.py`) demonstrate that a new model is picked up with no code changes.
 
 ### Add a capability or check
@@ -235,8 +235,8 @@ config, and the strategy is not observable through the API, so the health report
 ```bash
 cp /opt/cliproxy-fleet/state/runtime/config.yaml /protected/candidate.yaml
 # edit routing: strategy -> fill-first, retry.max-retry-credentials -> 0; change nothing else
-homelab cliproxy apply /protected/candidate.yaml   # validate, isolated staging, restart, health wait
-homelab cliproxy status                           # monitor-failed clears on the next 5-minute run
+homelab proxy apply /protected/candidate.yaml   # validate, isolated staging, restart, health wait
+homelab proxy status                           # monitor-failed clears on the next 5-minute run
 ```
 
 Not established by this repository: which account counts as "first". Upstream chooses the order
@@ -325,7 +325,7 @@ Every failure becomes a **finding** in `model-health.json` (`findings[]`, valida
   tool-call names, usage, and the protocol violations found. Traces contain structure and numbers only:
   never prompt text, completions or keys, and error messages are redacted and truncated.
 - `reproduce`: the exact cheap command, for example
-  `homelab cliproxy model-suite --profile nightly --model gpt-6.1-sol --check chat.tools --seed 4` (one
+  `homelab proxy model-suite --profile nightly --model gpt-6.1-sol --check chat.tools --seed 4` (one
   check, one or two requests). `--check` takes capability globs.
 - `fix_hints`: where to edit (`models.json` declaration, check fixture, validator, or the operator
   action), and what not to do (delete a check, loosen an assertion, call an untested capability healthy).
@@ -369,12 +369,12 @@ endpoint are redacted and truncated to a few hundred characters.
 
 1. Open the run summary. Read **Levels** first: a liveness or readiness failure explains every
    model failure below it.
-2. `transport`/`timeout` at liveness: host, tunnel or DNS. Use `homelab cliproxy status` on the
+2. `transport`/`timeout` at liveness: host, tunnel or DNS. Use `homelab proxy status` on the
    workstation. `auth` at readiness: the client key and `access.api-keys` disagree.
-3. `model_missing`: the model id is not in `/v1/models`. Compare `homelab cliproxy models` with
+3. `model_missing`: the model id is not in `/v1/models`. Compare `homelab proxy models` with
    `models.json`; the provider account behind it may be unauthenticated or the model retired.
 4. A model `unhealthy` with `upstream`: provider account or upstream outage. Check the dashboard and
-   `homelab cliproxy logs`. A model with `rate_limit` (quota exhausted, every credential cooling down)
+   `homelab proxy logs`. A model with `rate_limit` (quota exhausted, every credential cooling down)
    is listed in `summary.rate_limited` and as an operator finding, but never fails the run or turns
    `summary.status` red: the proxy answered, and the limit clears on its own. The harness already
    stopped requesting after the first 429.

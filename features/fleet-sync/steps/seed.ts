@@ -26,7 +26,7 @@ import {
 import { services } from './lifecycle';
 import { controlPlane, controlSecrets, http } from './tailnet';
 
-/** fleet-node-seed, with ssh-keygen and the secrets provider answered here. */
+/** provision, with ssh-keygen and the secrets provider answered here. */
 const { Given, When, Then } = fleetSync;
 
 interface Seeding {

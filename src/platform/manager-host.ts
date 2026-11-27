@@ -161,7 +161,7 @@ export const MACOS_MANAGER: ManagerHost = {
     ];
   },
   bootRemedy: (workspace) =>
-    `fleet-sync applies ansible/macos/manager.yml on every run (autorestart, Docker Desktop at login, LaunchAgents); autorestart needs the one grant an administrator gives: cd ${workspace} && ${ansibleCommand('darwin').join(' ')} -e user=$(id -un) -K ansible/macos/manager-privilege.yml. FileVault and automatic login are a person’s choice: docs/manager-recovery.md.`,
+    `converge applies ansible/macos/manager.yml on every run (autorestart, Docker Desktop at login, LaunchAgents); autorestart needs the one grant an administrator gives: cd ${workspace} && ${ansibleCommand('darwin').join(' ')} -e user=$(id -un) -K ansible/macos/manager-privilege.yml. FileVault and automatic login are a person’s choice: docs/manager-recovery.md.`,
 };
 
 /** The sleep states a Linux manager must never enter. */

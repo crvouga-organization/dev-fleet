@@ -17,7 +17,7 @@ import {
 import type { RevisionSelection } from '../revision-selection';
 import type { Check } from '../types';
 
-/** What one fleet-sync run records in the fleet state: the revision it was
+/** What one converge run records in the fleet state: the revision it was
  * approved for and the configuration it runs with, then what it applied, then
  * an upload so the bucket holds all of it.
  */

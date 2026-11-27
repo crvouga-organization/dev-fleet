@@ -55,7 +55,7 @@ const sync = scratch<{
   mise: null,
 }));
 
-/** Git on the manager, as far as fleet-sync asks it here: its own copy of
+/** Git on the manager, as far as converge asks it here: its own copy of
  * the fleet's source repository, whose default branch holds every revision
  * but the ones a scenario names, and which shows the files of the revisions
  * a scenario describes. Anything else Git is asked fails, as it does where
@@ -90,7 +90,7 @@ function git(world: StateWorld, argv: string[]) {
   return answer(false);
 }
 
-Given('fleet-sync runs on a manager with no worker enrolled', (world) => {
+Given('converge runs on a manager with no worker enrolled', (world) => {
   const manager = world.manager();
   world.bind(manager);
   // Litestream answers, and Git about the manager's copy of the source
@@ -173,7 +173,7 @@ Given(
   }
 );
 
-/** fleet-sync on the manager this process is bound to. A run whose state was
+/** converge on the manager this process is bound to. A run whose state was
  * replaced under it starts the same request over.
  */
 function run(
@@ -213,13 +213,13 @@ const ALLOWING = '(?: with (--allow-unmerged|--allow-mise-downgrade))?';
 
 Given(
   new RegExp(
-    `^fleet-sync (runs|ran) for revision "([a-f0-9]{40})"${ALLOWING}$`
+    `^converge (runs|ran) for revision "([a-f0-9]{40})"${ALLOWING}$`
   ),
   (world, verb: string, revision: string, flag: string | undefined) =>
     act(world, verb, () => run(world, { revision, ...allowing(flag) }))
 );
 When(
-  /^fleet-sync is asked only what revision "([a-f0-9]{40})" would do to mise$/,
+  /^converge is asked only what revision "([a-f0-9]{40})" would do to mise$/,
   (world, revision: string) =>
     world.attempt(() => {
       const manager = world.manager();
@@ -239,13 +239,13 @@ When(
     })
 );
 When(
-  /^fleet-sync previews revision "([a-f0-9]{40})"$/,
+  /^converge previews revision "([a-f0-9]{40})"$/,
   (world, revision: string) =>
     world.attempt(() => run(world, { revision, dryRun: true }))
 );
 
 When(
-  new RegExp(`^fleet-sync rolls back${ALLOWING}$`),
+  new RegExp(`^converge rolls back${ALLOWING}$`),
   (world, flag: string | undefined) =>
     world.attempt(() => run(world, { rollback: true, ...allowing(flag) }))
 );

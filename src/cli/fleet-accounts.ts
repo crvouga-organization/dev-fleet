@@ -128,7 +128,7 @@ async function applyChange(
   const operate =
     dependencies.operate ??
     ((forwarded: string[]) =>
-      forwardSourceOperation(['cliproxy', ...forwarded], settings));
+      forwardSourceOperation(['proxy', ...forwarded], settings));
   if ((await operate(change)) !== 0) return { exitCode: 1, data: null };
   return (
     dependencies.propagate ??
@@ -197,7 +197,7 @@ async function readRoster(
   const checkout = ownerCheckout(workspace);
   if (!checkout)
     throw new FleetUsageError(
-      'The account roster is kept by the proxy on the manager. Run homelab accounts there, after a first fleet-sync.'
+      'The account roster is kept by the proxy on the manager. Run homelab accounts there, after a first converge.'
     );
   const result = await run(
     [
@@ -214,7 +214,7 @@ async function readRoster(
     return parseRoster(result.stdout);
   } catch {
     throw new FleetUsageError(
-      'The proxy did not report its accounts. Check it with homelab cliproxy status.'
+      'The proxy did not report its accounts. Check it with homelab proxy status.'
     );
   }
 }

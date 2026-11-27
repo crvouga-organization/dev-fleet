@@ -34,11 +34,11 @@ export function projectConfig(cwd: string): string | null {
 
 /** A fleet is a project of your own: a fleet.json in Git, and the homelab
  * CLI run from inside it. This names that file for the whole command, and
- * for everything the command starts in another directory (fleet-sync re-runs
+ * for everything the command starts in another directory (converge re-runs
  * itself from a checkout of the revision). `HOMELAB_CONFIG` names a file
  * elsewhere and wins. Only the CLI does this: launchers and scheduled jobs
  * run in directories that belong to other projects and read the copy
- * fleet-sync installed.
+ * converge installed.
  */
 export function useProjectConfig(
   env: NodeJS.ProcessEnv = process.env,

@@ -1,7 +1,7 @@
 # GitHub on every node
 
 Every node, the manager and each worker, signs in to GitHub from a stored
-credential. When a fresh worker has no stored token, an interactive fleet-sync starts
+credential. When a fresh worker has no stored token, an interactive converge starts
 GitHub's device authorization flow on that worker. Approve the device as
 the declared fleet login in your browser. The worker stores its own login
 and sync verifies it in the same run. Other workers cannot reuse that
@@ -43,7 +43,7 @@ All of it is optional:
   can be revoked alone and nodes do not share a rate limit).
 - `scopes`, `repositories`, `organizations`: what `github:permissions` and
   `github:org-access` hold the token to.
-- `sandbox`: the repository `fleet-github-verify` may use.
+- `sandbox`: the repository `check-github` may use.
 
 ## How a node is signed in
 
@@ -82,7 +82,7 @@ A `sync` fails with `github:sync` when the node cannot be signed in.
 | `github:git-credential` | git asks gh for its GitHub credential.                                                                                                                                  |
 | `worker:github-sync`    | Why a worker is not signed in: `GITHUB_TOKEN_MISSING`, `GITHUB_TOKEN_REJECTED`, `GITHUB_LOGIN_MISMATCH`, `GITHUB_UNREACHABLE`.                                          |
 | `auth:copilot`          | Copilot CLI uses the node's GitHub sign-in; fails `not-signed-in` without one and `COPILOT_TOKEN_UNSUPPORTED` for a classic token.                                      |
-| `github:workflow`       | From `fleet-github-verify`: the first step of clone, branch, commit, push, pull request, checks and comment that failed.                                                |
+| `github:workflow`       | From `check-github`: the first step of clone, branch, commit, push, pull request, checks and comment that failed.                                                |
 
 ## Copilot CLI
 
@@ -106,5 +106,5 @@ whatever failed, and reports anything it could not remove.
 - A container registry, package registry and tool installer adapter: today
   only git takes its credential from gh.
 - A launchd timer for the manager: it is signed in at every `sync`.
-- `fleet-github-verify` runs on the machine it is started on; `--node` and a
+- `check-github` runs on the machine it is started on; `--node` and a
   scheduled run are not there yet.

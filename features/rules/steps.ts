@@ -1274,7 +1274,7 @@ async function emitters(): Promise<{ path: string; text: string }[]> {
 }
 
 When(
-  'the check ids of the {string} and {string} columns of the fleet-sync report are read',
+  'the check ids of the {string} and {string} columns of the converge report are read',
   (world, first: string, second: string) => {
     const report = read('src/cli/fleet-sync-output.ts');
     world.found = [first, second].flatMap((title) => {
@@ -1370,7 +1370,7 @@ const POSITIONS: [pattern: string, where: RegExp[]][] = [
       ],
     ]
   ),
-  // The proxy's part of a fleet-sync: each phase it reports becomes a check
+  // The proxy's part of a converge: each phase it reports becomes a check
   // whose summary is the code of the phase (src/proxy-converge.ts).
   [
     'cliproxy/scripts/fleet_sync.py',
@@ -1872,7 +1872,7 @@ Then(
 );
 
 Then(
-  'every check that verifies one is a check fleet-sync reports',
+  'every check that verifies one is a check converge reports',
   async (world) => {
     const sources = (await files('src/**/*.ts')).map(read).join('\n');
     for (const id of world.found) expect(sources).toContain(`'${id}'`);

@@ -79,7 +79,7 @@ const OWN: Record<
     },
   },
   'global-mise-config': {
-    pass: 'The global mise configuration is the one fleet-sync publishes.',
+    pass: 'The global mise configuration is the one converge publishes.',
     fail: 'The global mise configuration is missing, was replaced by another project or tool, or is not the one this revision publishes.',
     action:
       'Run homelab converge from the project that holds fleet.json. On a fleet machine the global mise configuration belongs to homelab: a project pins its own tools in a project mise.toml and never publishes a global one.',

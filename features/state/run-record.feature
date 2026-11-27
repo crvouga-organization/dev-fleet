@@ -1,4 +1,4 @@
-Feature: A fleet-sync run records its approval and its result in the fleet state
+Feature: A converge run records its approval and its result in the fleet state
   Before any machine changes, the run records the revision it was approved
   for. Once its result is known it records what it applied and what that
   replaced, then uploads what it changed. Its report carries the check
@@ -10,7 +10,7 @@ Feature: A fleet-sync run records its approval and its result in the fleet state
     And the manager replicates to the bucket
 
   Scenario: A run that fails leaves its approval, and the bucket still receives it
-    Given a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is approved
+    Given a converge run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is approved
     When the run ends without converging
     Then its report carries the check "state:replica" as "pass"
     And the enrollment of the manager is exactly:
@@ -24,9 +24,9 @@ Feature: A fleet-sync run records its approval and its result in the fleet state
 
   Scenario: A run that converges records what it applied and what it replaced, even while the bucket is away
     The bucket going away never fails the run: it is reported as a warning.
-    Given a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ended without converging
-    And a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" converged
-    And a fleet-sync run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" is approved
+    Given a converge run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ended without converging
+    And a converge run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" converged
+    And a converge run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" is approved
     And the bucket stops answering
     When the run converges
     Then its report carries the check "state:replica" as "warn"
@@ -43,7 +43,7 @@ Feature: A fleet-sync run records its approval and its result in the fleet state
 
   Scenario: Workers that converged keep their progress when the fleet is not ready
     One offline worker must not throw away what the others applied.
-    Given a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is approved
+    Given a converge run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is approved
     When the run ends without converging, with these workers converged:
       | worker-two | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
     Then the enrollment of the manager is exactly:
@@ -70,7 +70,7 @@ Feature: A fleet-sync run records its approval and its result in the fleet state
         "workers": { "worker-one": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "worker-two": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }
       }
       """
-    And a fleet-sync run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" is approved
+    And a converge run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" is approved
     And the manager stored the enrollment:
       """
       {
@@ -110,7 +110,7 @@ Feature: A fleet-sync run records its approval and its result in the fleet state
         "workers": { "worker-one": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "worker-two": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }
       }
       """
-    And a fleet-sync run for revision "cccccccccccccccccccccccccccccccccccccccc" scoped with --node is approved
+    And a converge run for revision "cccccccccccccccccccccccccccccccccccccccc" scoped with --node is approved
     When the run converges, with these workers converged:
       | worker-one | cccccccccccccccccccccccccccccccccccccccc |
     Then the enrollment of the manager is exactly:
@@ -128,22 +128,22 @@ Feature: A fleet-sync run records its approval and its result in the fleet state
   Rule: What a run could not upload, the next run uploads
 
     Background:
-      Given a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ended without converging
-      And a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" converged
-      And a fleet-sync run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" was approved
+      Given a converge run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" ended without converging
+      And a converge run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" converged
+      And a converge run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" was approved
       And the bucket stopped answering
       And the run converged
       And the bucket answered again
 
     Scenario: The next run starts ahead of the bucket and uploads both changes
-      Given a fleet-sync run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" is approved
+      Given a converge run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" is approved
       When the run converges
       Then the run had started "local-ahead"
       And its report carries the check "state:replica" as "pass"
 
     Scenario: Repeating a converged run changes nothing and uploads nothing
-      Given a fleet-sync run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" converged
-      And a fleet-sync run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" is approved
+      Given a converge run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" converged
+      And a converge run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" is approved
       When the run converges
       Then its report carries the check "state:replica" as "pass"
       And Litestream was not started after the run began
@@ -153,7 +153,7 @@ Feature: A fleet-sync run records its approval and its result in the fleet state
     Scenario: The approval is in the bucket for a replacement manager to find
       Manager "b" is the replacement.
       Given manager "b" replicates to the bucket
-      And a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is approved
+      And a converge run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is approved
       When the run stops before its report
       Then the run had started "empty"
       And a refresh of the manager reports "in-sync"
@@ -165,7 +165,7 @@ Feature: A fleet-sync run records its approval and its result in the fleet state
     command line.
 
     Scenario: The run that makes a revision the approved one records what selected it
-      Given a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is approved at "2026-11-22T10:00:00.000Z", selected by:
+      Given a converge run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is approved at "2026-11-22T10:00:00.000Z", selected by:
         """
         { "by": "checkout", "handOff": { "worker": "worker-one" }, "allowUnmerged": true }
         """
@@ -188,11 +188,11 @@ Feature: A fleet-sync run records its approval and its result in the fleet state
     Scenario: A run that approves the same revision again did not change it
       The schedule repeats the revision a person selected: the record still
       says who moved the fleet there.
-      Given a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" was approved at "2026-11-22T10:00:00.000Z", selected by:
+      Given a converge run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" was approved at "2026-11-22T10:00:00.000Z", selected by:
         """
         { "by": "revision" }
         """
-      And a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is approved at "2026-11-22T10:30:00.000Z", selected by:
+      And a converge run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is approved at "2026-11-22T10:30:00.000Z", selected by:
         """
         { "by": "schedule" }
         """
@@ -208,11 +208,11 @@ Feature: A fleet-sync run records its approval and its result in the fleet state
         """
 
     Scenario: A run for another revision replaces the record
-      Given a fleet-sync run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" was approved at "2026-11-22T10:00:00.000Z", selected by:
+      Given a converge run for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" was approved at "2026-11-22T10:00:00.000Z", selected by:
         """
         { "by": "revision", "allowUnmerged": true }
         """
-      And a fleet-sync run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" is approved at "2026-11-22T10:30:00.000Z", selected by:
+      And a converge run for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" is approved at "2026-11-22T10:30:00.000Z", selected by:
         """
         { "by": "schedule" }
         """
