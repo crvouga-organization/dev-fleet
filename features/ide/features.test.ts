@@ -10,6 +10,7 @@ import './steps/pairing';
 import './steps/mesh';
 import './steps/work-in-progress';
 import './steps/super';
+import './steps/remote-mesh';
 
 runFeatures({
   directory: import.meta.dir,

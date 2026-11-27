@@ -1060,6 +1060,46 @@
       }
     },
     {
+      "id": "orca:app",
+      "meaning": "Orca on the manager answers its CLI.",
+      "severity": "advisory",
+      "repair": {
+        "manual": "Orca is installed and started by a person. fleet-sync reads orca host list and names an SSH target that is missing; the person adds it under Settings → SSH. Orca has no command that adds one."
+      }
+    },
+    {
+      "id": "orca:host",
+      "meaning": "Orca on this machine lists the other machine as an SSH host. Adding a missing host is done in Settings → SSH; Orca has no command for it.",
+      "severity": "advisory",
+      "repair": {
+        "manual": "Orca is installed and started by a person. fleet-sync reads orca host list and names an SSH target that is missing; the person adds it under Settings → SSH. Orca has no command that adds one."
+      }
+    },
+    {
+      "id": "paradev:app",
+      "meaning": "Paradev on the manager answers its CLI and is signed in.",
+      "severity": "advisory",
+      "repair": {
+        "manual": "Paradev is installed and signed in by a person (paradev auth login, or SUPERSET_API_KEY). fleet-sync starts the host and runs paradev hosts add so every machine holds every other machine. On Linux, lingering (loginctl enable-linger) is the person’s."
+      }
+    },
+    {
+      "id": "paradev:host",
+      "meaning": "Paradev on this machine holds the other machine as a remote host, set up over SSH by paradev hosts add.",
+      "severity": "advisory",
+      "repair": {
+        "manual": "Paradev is installed and signed in by a person (paradev auth login, or SUPERSET_API_KEY). fleet-sync starts the host and runs paradev hosts add so every machine holds every other machine. On Linux, lingering (loginctl enable-linger) is the person’s."
+      }
+    },
+    {
+      "id": "paradev:service",
+      "meaning": "The Paradev host server is running on this machine.",
+      "severity": "advisory",
+      "repair": {
+        "manual": "Paradev is installed and signed in by a person (paradev auth login, or SUPERSET_API_KEY). fleet-sync starts the host and runs paradev hosts add so every machine holds every other machine. On Linux, lingering (loginctl enable-linger) is the person’s."
+      }
+    },
+    {
       "id": "platform:environment",
       "meaning": "The worker runs on a physical or virtual machine of its own, not in a container or WSL2.",
       "severity": "required",

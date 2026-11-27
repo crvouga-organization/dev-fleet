@@ -32,6 +32,8 @@ Feature: Supported IDEs are reached through one interface
       | ide |
       | t3  |
     And the IDE "t3" is implemented
+    And the IDE "orca" is implemented
+    And the IDE "paradev" is implemented
 
   Scenario Outline: The fleet configuration enables <ides>, which is <verdict>
     When a fleet configuration that sets ides to <ides> is read
@@ -40,6 +42,10 @@ Feature: Supported IDEs are reached through one interface
     Examples:
       | ides             | verdict  |
       | ["t3"]           | accepted |
+      | ["orca"]         | accepted |
+      | ["paradev"]      | accepted |
+      | ["t3", "orca", "paradev"] | accepted |
       | ["vscode"]       | refused  |
       | []               | refused  |
       | ["t3", "t3"]     | refused  |
+      | ["orca", "orca"] | refused  |

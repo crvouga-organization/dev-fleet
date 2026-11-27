@@ -155,7 +155,9 @@ async function managerMeasures(
     () => managerPower(run, input.workspace, host),
     () => managerBootRecovery(run, input.workspace, host),
     () => managerDocker(run),
-    // Each enabled IDE: its settings, pinned version and policy.
+    // Each enabled IDE: its settings, pinned version and policy. Orca and
+    // Paradev answer nothing here; remoteMeshChecks measures them after the
+    // workers, when every machine can register every other machine.
     () =>
       managerChecks(enabled(idesOf(definition), IDES), {
         id,

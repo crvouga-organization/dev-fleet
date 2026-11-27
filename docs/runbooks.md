@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 485 codes; 100 need a person.
+There are 494 codes; 105 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -394,6 +394,31 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `SUPER_HOST_INCOMPLETE`: a warning of `super:ssh`: an SSH session without a terminal finds no `git` or no `flock` on the worker; the remedy names which. The app's helper cannot be installed without them. Run `homelab converge --node ID`: the baseline installs both.
 - `SUPER_AGENTS_NOT_FOUND`: a warning of `super:ssh`: an SSH session without a terminal finds none of the fleet's coding agents on the worker's `PATH`, so the app can start no agent there. Run `homelab converge --node ID`, which installs the pinned agents and puts their shims on that session's `PATH`; confirm with the SSH command above.
 - `SUPER_AGENTS_NOT_PROXIED`: a warning of `super:ssh`: on the worker an SSH session without a terminal starts the agents the remedy names as the plain pinned CLI, with a sign-in of its own or none, and not as the fleet's launcher through the CLI proxy. The worker has not been converged since its agent commands became launchers, or its shell profile no longer puts `~/.local/share/personal/fleet/agent-commands` first. Run `homelab converge --node ID`; confirm with `ssh ALIAS 'command -v claude'`, which names that directory.
+
+## Orca
+
+- **Meaning:** A fleet that lists `orca` under `ides` runs Orca with every machine listed as an SSH host of every other machine. Orca has no command that adds an SSH target, so a missing one is a warning. These checks never fail a sync.
+- **Confirm:** The `orca:*` checks of `devfleet fleet-sync`. On the manager, `orca status --json` and `orca host list --json`. On Linux the CLI is `orca-ide`.
+- **Fix:** Follow the remedy, then run `devfleet fleet-sync`.
+- **Escalate:** When Orca is running, the SSH target is in Settings → SSH, and `orca:host` still warns.
+
+- `ORCA_NOT_INSTALLED`: a warning of `orca:app` or `orca:host`: the CLI is not on the machine the check names. Install Orca from <https://www.onorca.dev/download>, start it once, then run `devfleet fleet-sync`. **Needs a person.**
+- `ORCA_NOT_RUNNING`: a warning of `orca:app` or `orca:host`: the CLI is there and no running app answers it. Start Orca, then run `devfleet fleet-sync`.
+- `ORCA_REFUSED`: a warning of `orca:app` or `orca:host`: Orca answered with an error dev-fleet does not know. The remedy names the code and nothing else. Update Orca and start it again.
+- `ORCA_SSH_TARGET_MISSING`: a warning of `orca:host`: `orca host list` does not include that machine. In Orca open Settings → SSH and add the SSH destination the remedy names. **Needs a person.**
+
+## Paradev
+
+- **Meaning:** A fleet that lists `paradev` under `ides` runs Paradev (formerly Superset) with every machine set up as a host of every other machine by `paradev hosts add`. These checks never fail a sync.
+- **Confirm:** The `paradev:*` checks of `devfleet fleet-sync`. On the manager, `paradev auth whoami --json`, `paradev status --json` and `paradev hosts list --json`.
+- **Fix:** Follow the remedy, then run `devfleet fleet-sync`. It starts the host and adds any machine that is missing.
+- **Escalate:** When the manager is signed in, `paradev hosts add` succeeds from a terminal, and `paradev:host` still warns.
+
+- `PARADEV_NOT_INSTALLED`: a warning of `paradev:app`, `paradev:host` or `paradev:service`: the CLI is not on the machine the check names. Install Paradev (<https://docs.paradev.com/remote-access>) and start it once. **Needs a person.**
+- `PARADEV_NOT_SIGNED_IN`: a warning of `paradev:app`: `paradev auth whoami` failed. Run `paradev auth login`, or set `SUPERSET_API_KEY`, then run `devfleet fleet-sync`. **Needs a person.**
+- `PARADEV_NOT_RUNNING`: a warning of `paradev:service`: the CLI answered and the host is not running, and starting it failed. Start it with `paradev start --daemon --auto-update`.
+- `PARADEV_HOST_OFFLINE`: a warning of `paradev:host`: the host is listed and offline. Start Paradev on that machine. On Linux, lingering keeps it after logout (`loginctl enable-linger`); fleet-sync does not enable lingering. **Needs a person.**
+- `PARADEV_REFUSED`: a warning of `paradev:app`, `paradev:host` or `paradev:service`: Paradev answered with an error dev-fleet does not know. The remedy names the code. A key printed by `hosts add` is not kept.
 
 ## Monitoring (Beszel)
 

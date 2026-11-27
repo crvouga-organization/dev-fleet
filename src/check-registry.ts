@@ -401,6 +401,13 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'state:bucket': 'A bucket for the fleet state is configured and reachable.',
   'state:replica': "The bucket holds this manager's fleet state.",
   'state:retired': 'The fleet state records that a retired worker was retired.',
+  'orca:app': 'Orca on the manager answers its CLI.',
+  'orca:host':
+    'Orca on this machine lists the other machine as an SSH host. Adding a missing host is done in Settings → SSH; Orca has no command for it.',
+  'paradev:app': 'Paradev on the manager answers its CLI and is signed in.',
+  'paradev:host':
+    'Paradev on this machine holds the other machine as a remote host, set up over SSH by paradev hosts add.',
+  'paradev:service': 'The Paradev host server is running on this machine.',
   'super:app': 'super.engineering on the manager answers its CLI.',
   'super:ssh':
     "The manager's own SSH reaches the worker without a prompt and finds Git, flock and a coding agent there, started through the CLI proxy, as a super.engineering remote workspace needs.",
@@ -584,6 +591,11 @@ export const ADVISORY_CHECKS = [
   'manager:docker',
   'manager:job-logs',
   'manager:updates',
+  'orca:app',
+  'orca:host',
+  'paradev:app',
+  'paradev:host',
+  'paradev:service',
   'super:app',
   'super:ssh',
   'super:workspace',
