@@ -68,7 +68,7 @@ export async function checkedProviders(
         summary: 'T3_CLI_MISSING',
         remedy: {
           action:
-            'Restore the T3 CLI in the user installation or on the fleet-sync PATH, then rerun fleet-sync.',
+            'Restore the T3 CLI in the user installation or on the fleet-sync PATH, then rerun converge.',
         },
       };
     if (!result) failed.push(index + 1);
@@ -80,7 +80,7 @@ export async function checkedProviders(
       summary: `T3_ANTIGRAVITY_SESSION_UNVERIFIED: account positions ${failed.join(', ')} of ${managed.length}.`,
       remedy: {
         action:
-          'Open T3 Settings > Providers on this machine and refresh the affected Antigravity instances. Check their account-specific proxy sessions and rerun fleet-sync.',
+          'Open T3 Settings > Providers on this machine and refresh the affected Antigravity instances. Check their account-specific proxy sessions and rerun converge.',
       },
     };
   return {

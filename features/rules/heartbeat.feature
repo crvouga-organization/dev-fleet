@@ -1,6 +1,6 @@
 Feature: Something off the manager notices when the manager stops watching
   Every watcher runs on the manager, so a manager that is off, asleep or
-  offline notices nothing. Each fleet-watch run stores a heartbeat in the
+  offline notices nothing. Each notify run stores a heartbeat in the
   bucket; a reusable workflow, called from the repository that holds the
   fleet's fleet.json, fails when that heartbeat is too old.
 

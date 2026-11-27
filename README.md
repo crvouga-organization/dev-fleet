@@ -182,7 +182,7 @@ mise's own pin (`min_version`) is a minimum. A machine that runs a newer mise
 than a revision pins keeps it, after a rollback too: replacing it would break
 every checkout on the machine whose pin is newer. `status` reports that
 as the warning `TOOLCHAIN_DOWNGRADE` of `tool:mise`, and
-`fleet-sync --allow-mise-downgrade` installs the older one on purpose, on
+`converge --allow-mise-downgrade` installs the older one on purpose, on
 every machine it converges. Each revision runs its own bootstrap, and one from
 before this rule installs exactly the mise it pins. So `sync` reads the
 pin from the revision's own files and measures the mise of the manager and of
@@ -193,7 +193,7 @@ revision that would replace a newer mise is refused with
 runs is not let through unmeasured: the run is refused with
 `FLEET_MISE_UNMEASURED` until it answers, is parked or is left out with
 `--node`. Started on a worker, the same question is asked of the homelab
-installed on the manager (`fleet-sync --measure-mise`, which only answers)
+installed on the manager (`converge --measure-mise`, which only answers)
 before the revision's own run script starts there; a manager whose installed
 homelab is from before that question refuses such a revision rather than
 passing it.
@@ -262,7 +262,7 @@ project, and which state is not in the bucket yet.
 
 Provider accounts live only on the CLI proxy. `npx @crvouga/homelab accounts`
 lists them with their state; `--add`, `--relogin` and `--remove` change one
-and propagate the result to every node, and `fleet-sync --only accounts`
+and propagate the result to every node, and `converge --only accounts`
 propagates them without a full sync.
 [docs/accounts.md](docs/accounts.md) explains how.
 
@@ -316,7 +316,7 @@ autoinstall file with `--autoinstall`) holding the worker account with your
 manager's key, the privilege rule, a host key the manager pins at once and the
 pinned Tailscale with a short-lived single-use auth key from your secrets
 provider (`tailnet-auth-key`). Boot a stock Ubuntu image with it, then add the
-worker with `fleet-node-add` and run `sync`.
+worker with `enroll` and run `sync`.
 
 `npx @crvouga/homelab measure --id ID` measures what a worker is made of
 (packages, active tools, always-on services) with a digest that is the same
@@ -329,7 +329,7 @@ Remove a machine with `npx @crvouga/homelab retire --id ID --apply --yes`
 and leaves a tombstone in the fleet state), then delete its entry and run
 `sync`. To put a fresh machine in place of a worker under the same id,
 run `npx @crvouga/homelab replace --id ID --host-key "TYPE BASE64" --apply
---yes` and then `fleet-sync --node ID`; the manager's T3 pairs with the new
+--yes` and then `converge --node ID`; the manager's T3 pairs with the new
 machine's T3 by itself, with no code to copy. A run scoped with `--node` records only the
 revision of the workers it covered; the fleet's applied revision moves with a
 full `sync`.
@@ -338,7 +338,7 @@ full `sync`.
 
 Your `fleet.json` is validated by
 [`schema/fleet.schema.json`](schema/fleet.schema.json), which the installed
-package carries: `fleet-state --example` prints a complete example that points
+package carries: `state --example` prints a complete example that points
 `$schema` at it, so an editor checks the file as you type.
 [`examples/fleet.json`](examples/fleet.json) is the same example.
 `homelab check-config` checks the file without contacting anything and
@@ -460,7 +460,7 @@ Secrets are asked for by purpose (`proxy-client-key`,
 
 `sync` records the configuration it applies in the fleet state, so a
 run started outside your project uses the one last applied.
-`fleet-state --export` prints it.
+`state --export` prints it.
 
 To run your own fork, publish it as your own package and name its repository
 under `source`: the commit a package names must be reachable there.
@@ -508,10 +508,10 @@ fleet.json contents.
   `sync` fetches that copy again when it is deleted, but the proxy then
   needs `homelab proxy install` once more.
 - The manager is a Mac host. There is no container image of the manager.
-- `fleet-sync --schedule enable --apply --yes` (unattended runs every 30
+- `converge --schedule enable --apply --yes` (unattended runs every 30
   minutes) is installed by that command on the manager, not yet by the
   manager's playbook, and its interval is not yet part of `fleet.json`.
-  `fleet-sync --schedule status` lists its last runs, and `status` fails
+  `converge --schedule status` lists its last runs, and `status` fails
   `manager:schedule` when it has not converged the fleet for two intervals.
 - Not everything on a machine is pinned. [What is declared, and
   where](docs/declared.md) lists what is and what is not: most of a worker's

@@ -167,7 +167,7 @@ function handOffFailure(
   if (exitCode === GUARD_EXIT.unverified)
     return failed(
       'FLEET_REVISION_UNVERIFIED',
-      `The manager changed nothing: it has no copy of ${repository} yet, or could not fetch it, so it is not known whether its default branch holds the revision. Run fleet-sync once on the manager itself, and check its network and Git access; --allow-unmerged converges without asking.`,
+      `The manager changed nothing: it has no copy of ${repository} yet, or could not fetch it, so it is not known whether its default branch holds the revision. Run converge once on the manager itself, and check its network and Git access; --allow-unmerged converges without asking.`,
       { revision: revision ?? null }
     );
   if (exitCode === GUARD_EXIT.miseDowngrade)
@@ -179,13 +179,13 @@ function handOffFailure(
   if (exitCode === GUARD_EXIT.miseUnmeasured)
     return failed(
       'FLEET_MISE_UNMEASURED',
-      `The manager changed nothing: the revision's toolchain bootstrap is from before the rule that keeps a newer mise, so it would replace a newer one, and the homelab installed on the manager could not say which mise the workers run (it is from before that question, or the manager has none on its PATH). Run homelab fleet-sync on the manager itself once, with a current release, so that it can answer; or converge to a revision whose bootstrap keeps a newer mise (any release since that rule); or pass --allow-mise-downgrade to install the older mise on purpose.`,
+      `The manager changed nothing: the revision's toolchain bootstrap is from before the rule that keeps a newer mise, so it would replace a newer one, and the homelab installed on the manager could not say which mise the workers run (it is from before that question, or the manager has none on its PATH). Run homelab converge on the manager itself once, with a current release, so that it can answer; or converge to a revision whose bootstrap keeps a newer mise (any release since that rule); or pass --allow-mise-downgrade to install the older mise on purpose.`,
       { revision: revision ?? null }
     );
   if (exitCode === 255)
     return failed(
       'FLEET_MANAGER_UNREACHABLE',
-      `Could not reach the manager (${manager.id}) over SSH. Wake it, check Tailscale and SSH (Remote Login), or run fleet-sync on the manager directly.`
+      `Could not reach the manager (${manager.id}) over SSH. Wake it, check Tailscale and SSH (Remote Login), or run converge on the manager directly.`
     );
   return null;
 }
@@ -231,7 +231,7 @@ export function managerCommand(
         ]
       : [
           'homelab',
-          'fleet-sync',
+          'converge',
           ...forwardedFlags(options, revision),
           // With no revision to say it about, the manager is told directly.
           ...(!revision && options.allowUnmerged ? ['--allow-unmerged'] : []),

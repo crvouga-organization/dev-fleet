@@ -113,7 +113,7 @@ async function desktopPrerequisite(
 }
 
 /** How a worker's T3 restarts for a new release or policy, as the manager's
- * bootstrap passes it on to node convergence (`fleet-sync --restart-busy`).
+ * bootstrap passes it on to node convergence (`converge --restart-busy`).
  * The words cross from one revision's script to another: an interface.
  */
 export const T3_RESTART_MODES = ['keep-turns', 'restart-busy'] as const;
@@ -208,7 +208,7 @@ export function deferralRemedy(
   const hours = policy.t3RestartMaxDeferralHours;
   const waited = deferral.waitedSeconds;
   if (deferral.overdue && waited !== undefined)
-    return `The restart has waited ${hoursAndMinutes(waited)}, longer than the ${hours} hours a restart is deferred at most, and personal-worker-recovery has not applied it. Check worker:service-recovery, then run homelab fleet-sync; restarting ${t3Unit(session)} on the worker ends its running turns.`;
+    return `The restart has waited ${hoursAndMinutes(waited)}, longer than the ${hours} hours a restart is deferred at most, and personal-worker-recovery has not applied it. Check worker:service-recovery, then run homelab converge; restarting ${t3Unit(session)} on the worker ends its running turns.`;
   const deadline =
     waited === undefined
       ? `${hours} hours after it was first deferred`
@@ -239,7 +239,7 @@ export async function runningVersionCheck(
       summary: 'T3_RUNNING_VERSION_UNKNOWN',
       remedy: {
         action:
-          'The running server or the installed release could not be read. Check worker:t3-health, then rerun fleet-sync to reinstall the pinned T3.',
+          'The running server or the installed release could not be read. Check worker:t3-health, then rerun converge to reinstall the pinned T3.',
       },
     };
   const deferral = await restartDeferral(run, uid, now);

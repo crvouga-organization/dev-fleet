@@ -130,11 +130,11 @@ function resolveNodes(
 ): FleetNode[] {
   if (!roster && !options.local && !['doctor', 'nodes'].includes(command))
     throw new FleetUsageError(
-      'No fleet roster. Use fleet-node-add or the interactive Register action; use fleet-status --local for this machine.'
+      'No fleet roster. Use enroll or the interactive Register action; use check --local for this machine.'
     );
   if (options.node?.length && !roster)
     throw new FleetUsageError(
-      'Cannot select nodes without a roster. Use fleet-node-add first.'
+      'Cannot select nodes without a roster. Use enroll first.'
     );
   return roster ? selectNodes(roster, options.node ?? []) : [];
 }
@@ -160,7 +160,7 @@ async function register(
     node,
     nodes: added.roster.nodes,
     next: options.apply
-      ? 'Run fleet-nodes --onboard, then fleet-status --json.'
+      ? 'Run workers --onboard, then check --json.'
       : 'Review this preview, then repeat with --apply --yes.',
   });
 }
@@ -237,7 +237,7 @@ function statusRoot(settings: Settings, services: FleetServices): string {
   return revision && runs ? join(runs, revision) : settings.workspace;
 }
 
-/** The manager has not run fleet-sync at this package's commit yet (a
+/** The manager has not run converge at this package's commit yet (a
  * checkout is its own reference, so it always exists).
  */
 function explainMissingCheckout(reports: NodeReport[], root: string): void {
@@ -248,7 +248,7 @@ function explainMissingCheckout(reports: NodeReport[], root: string): void {
     'This manager has no fleet-owned checkout of the commit this package names; it is made by fleet-sync.';
   check.remedy = {
     action:
-      'Run homelab fleet-sync from the project that holds your fleet.json, then fleet-status again.',
+      'Run homelab converge from the project that holds your fleet.json, then fleet-status again.',
   };
 }
 
@@ -280,7 +280,7 @@ function missingRoster(): NodeReport {
           'No developer fleet roster is configured. Only this manager could be checked; fleet-wide health is unknown.',
         remedy: {
           action:
-            'Open personal --interactive and choose Register a developer computer, or run homelab fleet-node-add --help. Then run fleet-status --json.',
+            'Open personal --interactive and choose Register a developer computer, or run homelab enroll --help. Then run check --json.',
         },
       },
     ],

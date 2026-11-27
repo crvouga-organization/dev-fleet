@@ -27,6 +27,6 @@ Feature: A release is installed and run before it is published
 
   Scenario: A package that cannot print the example configuration is refused
     Given a packed release "1.2.3" from commit "0123456789abcdef0123456789abcdef01234567"
-    But its homelab fails "fleet-state --example"
+    But its homelab fails "state --example"
     When the packed release is installed and run
-    Then it is refused with "homelab fleet-state --example failed"
+    Then it is refused with "homelab state --example failed"

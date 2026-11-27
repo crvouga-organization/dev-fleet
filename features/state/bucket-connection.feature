@@ -3,7 +3,7 @@ Feature: A command reaches the bucket its configuration names, with the credenti
   credentials. Those are passed to every command in
   HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY. A
   manager that runs unattended gets no environment, so it uses what
-  `fleet-state --init` saved on it.
+  `state --init` saved on it.
 
   "The example fleet" is examples/fleet.json without the bucket it names, and
   "the example fleet.json" is that file as it is. In a path, `~` is the
@@ -28,7 +28,7 @@ Feature: A command reaches the bucket its configuration names, with the credenti
         {
           "bucket": {
             "kind": "s3",
-            "bucket": "fleet-state",
+            "bucket": "state",
             "endpoint": "https://s3.example.com",
             "region": "auto",
             "prefix": "homelab",
@@ -65,7 +65,7 @@ Feature: A command reaches the bucket its configuration names, with the credenti
       When the connection is resolved
       Then it is refused with "Set both"
 
-  Rule: A manager that runs unattended uses what fleet-state --init saved on it
+  Rule: A manager that runs unattended uses what state --init saved on it
 
     Background:
       Given the manager saved these bucket settings:
@@ -95,7 +95,7 @@ Feature: A command reaches the bucket its configuration names, with the credenti
       Then the connection includes:
         """
         {
-          "bucket": { "bucket": "fleet-state", "accessKeyId": "AKIDSAVED" },
+          "bucket": { "bucket": "state", "accessKeyId": "AKIDSAVED" },
           "location": "saved",
           "credentials": "saved"
         }
@@ -144,7 +144,7 @@ Feature: A command reaches the bucket its configuration names, with the credenti
       Given "~/fleet.json" on the manager holds the example fleet with the bucket:
         """
         {
-          "bucket": "fleet-state",
+          "bucket": "state",
           "endpoint": "https://s3.example.com",
           "region": "auto"
         }
@@ -157,7 +157,7 @@ Feature: A command reaches the bucket its configuration names, with the credenti
       Then the connection includes:
         """
         {
-          "bucket": { "bucket": "fleet-state", "accessKeyId": "AKIDPASSED" },
+          "bucket": { "bucket": "state", "accessKeyId": "AKIDPASSED" },
           "location": "configuration",
           "credentials": "environment"
         }
@@ -236,13 +236,13 @@ Feature: A command reaches the bucket its configuration names, with the credenti
 
       Examples:
         | why                                | bucket                                                                                                                           | message                       |
-        | both keys beside the bucket        | {"bucket": "fleet-state", "endpoint": "https://s3.example.com", "region": "auto", "accessKeyId": "AKID", "secretAccessKey": "secret"} | Invalid bucket settings       |
-        | a secret beside the bucket         | {"bucket": "fleet-state", "endpoint": "https://s3.example.com", "region": "auto", "secretAccessKey": "secret"}                   | Invalid bucket settings       |
-        | the version bucket.json carries    | {"bucket": "fleet-state", "endpoint": "https://s3.example.com", "region": "auto", "version": 1}                                  | Invalid bucket settings       |
+        | both keys beside the bucket        | {"bucket": "state", "endpoint": "https://s3.example.com", "region": "auto", "accessKeyId": "AKID", "secretAccessKey": "secret"} | Invalid bucket settings       |
+        | a secret beside the bucket         | {"bucket": "state", "endpoint": "https://s3.example.com", "region": "auto", "secretAccessKey": "secret"}                   | Invalid bucket settings       |
+        | the version bucket.json carries    | {"bucket": "state", "endpoint": "https://s3.example.com", "region": "auto", "version": 1}                                  | Invalid bucket settings       |
         | an endpoint without a bucket       | {"endpoint": "https://s3.example.com"}                                                                                           | Invalid bucket settings       |
-        | a bucket and a directory at once   | {"bucket": "fleet-state", "directory": "/mnt/fleet"}                                                                             | Invalid bucket settings       |
-        | a name instead of settings         | "fleet-state"                                                                                                                    | Invalid bucket settings       |
-        | an access key, naming where it goes | {"bucket": "fleet-state", "endpoint": "https://s3.example.com", "region": "auto", "accessKeyId": "AKID"}                        | HOMELAB_BUCKET_ACCESS_KEY_ID |
+        | a bucket and a directory at once   | {"bucket": "state", "directory": "/mnt/fleet"}                                                                             | Invalid bucket settings       |
+        | a name instead of settings         | "state"                                                                                                                    | Invalid bucket settings       |
+        | an access key, naming where it goes | {"bucket": "state", "endpoint": "https://s3.example.com", "region": "auto", "accessKeyId": "AKID"}                        | HOMELAB_BUCKET_ACCESS_KEY_ID |
 
     Scenario: The schema editors validate against accepts the same block
       Then the schema of fleet.json accepts a bucket written with exactly these settings:

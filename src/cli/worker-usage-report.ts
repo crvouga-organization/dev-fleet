@@ -84,7 +84,7 @@ export function convergenceCheck(
           status: 'warn',
           summary: ['WORKER_NOT_CONVERGED', details.join(' ')].join(': '),
           remedy: {
-            action: `Run homelab fleet-sync --node ${id} and inspect the failed check.`,
+            action: `Run homelab converge --node ${id} and inspect the failed check.`,
           },
         }
       : { status: behind ? 'skip' : 'pass', summary: details.join(' ') }),

@@ -632,7 +632,7 @@ async function serviceLaunch(
   };
 }
 
-const INCOMPLETE_REMEDY = `The PATH of ${T3_SERVICE} does not find Bun, so T3 cannot start any agent launcher even though they work from a shell. Put the pinned shims on the PATH of the user service manager through the baseline (never by hand), then run fleet-sync.`;
+const INCOMPLETE_REMEDY = `The PATH of ${T3_SERVICE} does not find Bun, so T3 cannot start any agent launcher even though they work from a shell. Put the pinned shims on the PATH of the user service manager through the baseline (never by hand), then run converge.`;
 
 function environmentCheck(
   status: Check['status'],

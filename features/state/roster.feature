@@ -28,7 +28,7 @@ Feature: The roster of enrolled workers is kept in the fleet state
       When a command resolves its settings in the workspace
       Then its roster is the file ".fleet.local.json" in the workspace
 
-  Rule: fleet-node-add writes the roster in the fleet state and reports how it stands with the bucket
+  Rule: enroll writes the roster in the fleet state and reports how it stands with the bucket
 
     Background:
       Given the process runs on a manager with an empty fleet state

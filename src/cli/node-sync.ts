@@ -29,7 +29,7 @@ export async function syncNode(
   // is the operator's own project: its HEAD is not a homelab revision.
   if (packageInfo().revision)
     throw new FleetUsageError(
-      'fleet-node-sync works on a checkout of homelab. Run fleet-sync instead: it converges this machine from a checkout it owns.'
+      'converge-local works on a checkout of homelab. Run converge instead: it converges this machine from a checkout it owns.'
     );
   const head = await run(['git', 'rev-parse', '--verify', 'HEAD'], {
     cwd: settings.workspace,
@@ -115,7 +115,7 @@ async function finishSync(
         inference: 'unverified',
         pairing: 'unverified',
       },
-      next: 'Use homelab t3-status for configuration drift and homelab fleet-status for machine health.',
+      next: 'Use homelab t3 for configuration drift and homelab check for machine health.',
     },
   };
 }

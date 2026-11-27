@@ -56,7 +56,7 @@ A session check that does not pass says which of these it found:
 | ------------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
 | `AGENT_ACCOUNT_COOLING_DOWN`          | warn   | The provider limited the account. It clears on its own                                         |
 | `AGENT_ACCOUNT_VERIFICATION_REQUIRED` | fail   | The provider answers "Verify your account": a person completes it with the provider            |
-| `AGENT_ACCOUNT_AUTH_REJECTED`         | fail   | The account's credentials were refused; `fleet-accounts` says whether it needs a login         |
+| `AGENT_ACCOUNT_AUTH_REJECTED`         | fail   | The account's credentials were refused; `accounts` says whether it needs a login         |
 | `AGENT_ACCOUNT_SESSION_TIMED_OUT`     | fail   | The session never ended, and the proxy named no cooldown and no refusal. Not a sign-in failure |
 | `AGENT_ACCOUNT_SESSION_FAILED`        | fail   | Anything else                                                                                  |
 
@@ -76,7 +76,7 @@ so: "… is rate limited until 2027-01-15T09:30:00Z". The instant is read from
 the `Retry-After` of the proxy's 429 (else the `reset_seconds` of its
 `model_cooldown` error), or from the instant the fleet's relay prints when it
 refuses a request for an account it holds back. An answer that names no time
-adds none to the summary; `fleet-accounts` still lists `until` per model. The
+adds none to the summary; `accounts` still lists `until` per model. The
 proxy names a time when the provider did: a limit the provider gave no time
 for is held for a moment and asked again.
 
@@ -207,8 +207,8 @@ over. Revoking one node's key leaves the others working.
 
 - The proxy does not notify anyone when an account turns `needs-login`, and
   no watcher on the manager triggers propagation or a checkpoint when a
-  credential file changes. Run `fleet-sync --only accounts` or
-  `fleet-accounts` instead.
+  credential file changes. Run `converge --only accounts` or
+  `accounts` instead.
 - Nothing forces a refresh of every account after a restore. The digest
   comparison above is offline.
 - The lease is not yet taken by the proxy service at start, and its

@@ -34,12 +34,12 @@ export interface BootstrapPayload {
   authorizeSudo?: string;
   /** The fleet configuration every node keeps at ~/.config/homelab/fleet.json. */
   config?: string;
-  /** `fleet-sync --restart-busy`: a worker's T3 restarts for a new release or
+  /** `converge --restart-busy`: a worker's T3 restarts for a new release or
    * policy even while agent turns run. This is the default.
    */
   restartBusy?: boolean;
   clientSettings?: string;
-  /** `fleet-sync --allow-mise-downgrade`: the worker's bootstrap installs the
+  /** `converge --allow-mise-downgrade`: the worker's bootstrap installs the
    * mise the revision pins even when the worker runs a newer one.
    */
   allowMiseDowngrade?: boolean;

@@ -98,7 +98,7 @@ function installAndRun(
       );
     const example = must(
       run([homelab, 'fleet-state', '--example'], directory),
-      `homelab fleet-state --example${how}`
+      `homelab state --example${how}`
     );
     const parsed = JSON.parse(example) as { $schema?: unknown };
     if (typeof parsed.$schema !== 'string')

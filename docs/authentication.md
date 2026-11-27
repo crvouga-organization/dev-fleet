@@ -11,7 +11,7 @@ rewrites them).
 | Credential                          | Lives in                                                                                                                       | Read by                                          |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
 | The fleet's secrets (table below)   | The provider `secrets` names in `fleet.json`                                                                                   | The node that needs it, through `src/secrets.ts` |
-| The bucket's two keys               | The environment of the `homelab` command; `~/.config/homelab/bucket.json` (0600) on the manager after `fleet-state --init`  | The manager only                                 |
+| The bucket's two keys               | The environment of the `homelab` command; `~/.config/homelab/bucket.json` (0600) on the manager after `state --init`  | The manager only                                 |
 | A node's Vault token                | That node's own Vault session (`~/.vault-token`)                                                                               | That node only; never copied                     |
 | A node's GitHub login               | `gh`'s own store on that node                                                                                                  | `gh`, and git through its credential helper      |
 | Provider accounts (Claude, Codex …) | The CLI proxy's store on the manager                                                                                           | The proxy; nodes hold only the proxy client key  |

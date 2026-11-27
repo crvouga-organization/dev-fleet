@@ -100,7 +100,7 @@ async function prepareRemoteSource(
  * revision is merged, so --allow-unmerged is not the answer.
  */
 export function sourceMismatchRemedy(declared: string): string {
-  return `The manager's own copy of the source repository (~/.local/share/personal/fleet/manager/source) is a clone of another repository, and ${declared} could not be cloned to replace it, so nothing was changed and it is not known whether the revision is merged. Check the manager's network and Git access to ${declared}, and that source.repository in fleet.json names it, then run fleet-sync again: the copy is replaced by itself. Removing that directory on the manager has the same effect.`;
+  return `The manager's own copy of the source repository (~/.local/share/personal/fleet/manager/source) is a clone of another repository, and ${declared} could not be cloned to replace it, so nothing was changed and it is not known whether the revision is merged. Check the manager's network and Git access to ${declared}, and that source.repository in fleet.json names it, then run converge again: the copy is replaced by itself. Removing that directory on the manager has the same effect.`;
 }
 
 /** The default branch of the source repository, as the manager's copy of it

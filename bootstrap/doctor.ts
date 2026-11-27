@@ -261,7 +261,7 @@ export function globalConfigCheck(
     detail:
       standing === 'published'
         ? STANDING[standing]
-        : `${STANDING[standing]} Run fleet-sync; projects pin their own tools in a project mise.toml and never publish a global one.`,
+        : `${STANDING[standing]} Run converge; projects pin their own tools in a project mise.toml and never publish a global one.`,
   };
 }
 

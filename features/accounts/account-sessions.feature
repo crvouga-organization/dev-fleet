@@ -90,7 +90,7 @@ Feature: Every per-account instance runs a real session, and account changes re-
       | a@example.com | verification-required |
     When the account sessions are checked
     Then the remedy of the check "agent:codex:account-1:session" mentions "complete the verification it asks for"
-    And the check "agent:codex:account-1:session" asks to run "homelab fleet-accounts"
+    And the check "agent:codex:account-1:session" asks to run "homelab accounts"
 
   Scenario: A cooldown asks nothing of anyone
     Given the proxy lists these models:

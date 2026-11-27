@@ -53,7 +53,7 @@ export function scheduleCheck(history: History, now: Date): Check | null {
       : `The schedule has not converged the fleet once since it was turned on, more than two intervals of ${minutes} minutes ago.`,
     remedy: {
       action:
-        'Run homelab fleet-sync --schedule status on the manager to see the last scheduled runs, then homelab fleet-report for the failing checks. Re-enable it with homelab fleet-sync --schedule enable --apply --yes when the manager was replaced.',
+        'Run homelab converge --schedule status on the manager to see the last scheduled runs, then homelab history for the failing checks. Re-enable it with homelab converge --schedule enable --apply --yes when the manager was replaced.',
     },
   };
 }

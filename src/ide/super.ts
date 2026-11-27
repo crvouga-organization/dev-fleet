@@ -36,8 +36,8 @@ const PROBE = `for c in ${[...HOST_COMMANDS, ...AGENT_COMMANDS].join(' ')}; do p
 const LAUNCHERS = '/.local/share/personal/fleet/agent-commands/';
 
 const INSTALL =
-  'Install super.engineering on the manager (https://super.engineering/download) and start it once, then run fleet-sync.';
-const START = 'Start super.engineering on the manager, then run fleet-sync.';
+  'Install super.engineering on the manager (https://super.engineering/download) and start it once, then run converge.';
+const START = 'Start super.engineering on the manager, then run converge.';
 
 /** What the scenarios replace: the home directory and the declared workers. */
 export interface SuperInputs {
@@ -124,7 +124,7 @@ function unanswered(
       summary: 'SUPER_REMOTE_WORKSPACES_OFF',
       remedy: {
         action:
-          'In super.engineering on the manager, open Settings → Experimental and enable Remote workspaces, then run fleet-sync.',
+          'In super.engineering on the manager, open Settings → Experimental and enable Remote workspaces, then run converge.',
       },
     };
   return {
@@ -132,7 +132,7 @@ function unanswered(
     status: 'warn',
     summary: 'SUPER_REFUSED',
     remedy: {
-      action: `super.engineering on the manager answered ${answer.refused}. Update the app, start it again, then run fleet-sync.`,
+      action: `super.engineering on the manager answered ${answer.refused}. Update the app, start it again, then run converge.`,
     },
   };
 }
@@ -321,7 +321,7 @@ export function superIde(inputs: SuperInputs = {}): Ide {
         status: 'warn',
         summary: 'SUPER_HOST_INCOMPLETE',
         remedy: {
-          action: `Worker ${node.id} has no ${missing.join(' or ')} in an SSH session without a terminal. Run fleet-sync for that worker: the baseline installs both.`,
+          action: `Worker ${node.id} has no ${missing.join(' or ')} in an SSH session without a terminal. Run converge for that worker: the baseline installs both.`,
         },
       };
     const agents = AGENT_COMMANDS.filter((command) => found.has(command));
@@ -331,7 +331,7 @@ export function superIde(inputs: SuperInputs = {}): Ide {
         status: 'warn',
         summary: 'SUPER_AGENTS_NOT_FOUND',
         remedy: {
-          action: `An SSH session without a terminal finds none of ${AGENT_COMMANDS.join(', ')} on worker ${node.id}, so super.engineering can start no agent there. Run fleet-sync for that worker: it installs the pinned agents and puts them on that session's PATH.`,
+          action: `An SSH session without a terminal finds none of ${AGENT_COMMANDS.join(', ')} on worker ${node.id}, so super.engineering can start no agent there. Run converge for that worker: it installs the pinned agents and puts them on that session's PATH.`,
         },
       };
     const own = agents.filter(
@@ -343,7 +343,7 @@ export function superIde(inputs: SuperInputs = {}): Ide {
         status: 'warn',
         summary: 'SUPER_AGENTS_NOT_PROXIED',
         remedy: {
-          action: `On worker ${node.id} an SSH session without a terminal starts ${own.join(', ')} as the plain CLI, with a sign-in of its own, not through the CLI proxy. Run fleet-sync for that worker: it puts the fleet's launchers first on that session's PATH.`,
+          action: `On worker ${node.id} an SSH session without a terminal starts ${own.join(', ')} as the plain CLI, with a sign-in of its own, not through the CLI proxy. Run converge for that worker: it puts the fleet's launchers first on that session's PATH.`,
         },
       };
     return {

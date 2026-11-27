@@ -15,39 +15,39 @@ Feature: The homelab CLI answers in JSON and changes nothing until it is told to
 
     Examples:
       | command                              |
-      | homelab fleet-nodes --schema --json |
-      | homelab fleet-nodes --json          |
+      | homelab workers --schema --json |
+      | homelab workers --json          |
 
   Rule: Registering a worker previews, then writes once
 
     Scenario: Without --apply a registration is only previewed
-      When the operator runs "homelab fleet-node-add --id dev-one --ssh dev-one --path /home/dev/workspace --config roster.json --json"
+      When the operator runs "homelab enroll --id dev-one --ssh dev-one --path /home/dev/workspace --config roster.json --json"
       Then the answer says "applied" is false
       And the file "roster.json" does not exist
 
     Scenario: An applied registration writes the roster
-      When the operator runs "homelab fleet-node-add --id dev-one --ssh dev-one --path /home/dev/workspace --config roster.json --json --apply --yes"
+      When the operator runs "homelab enroll --id dev-one --ssh dev-one --path /home/dev/workspace --config roster.json --json --apply --yes"
       Then the process succeeds
       And the file "roster.json" is a roster of version 1
 
     Scenario: A worker that is registered is never overwritten
-      Given the operator has run "homelab fleet-node-add --id dev-one --ssh dev-one --path /home/dev/workspace --config roster.json --json --apply --yes"
-      When the operator runs "homelab fleet-node-add --id dev-one --ssh dev-one --path /home/dev/workspace --config roster.json --json --apply --yes"
+      Given the operator has run "homelab enroll --id dev-one --ssh dev-one --path /home/dev/workspace --config roster.json --json --apply --yes"
+      When the operator runs "homelab enroll --id dev-one --ssh dev-one --path /home/dev/workspace --config roster.json --json --apply --yes"
       Then the process fails
       And the file "roster.json" is as it was before the command
 
   Rule: Looking at repairs and onboarding applies nothing
 
     Background:
-      Given the operator has run "homelab fleet-node-add --id dev-one --ssh dev-one --path /home/dev/workspace --config roster.json --apply --yes"
+      Given the operator has run "homelab enroll --id dev-one --ssh dev-one --path /home/dev/workspace --config roster.json --apply --yes"
 
     Scenario: Listing the repairs of a registered worker succeeds without reaching it
-      When the operator runs "homelab fleet-repair --list --config roster.json --yes --json"
+      When the operator runs "homelab repair --list --config roster.json --yes --json"
       Then the process succeeds
       And the answer says "ok" is true
 
     Scenario: Onboarding prints the SSH configuration to add and applies nothing
-      When the operator runs "homelab fleet-nodes --onboard --config roster.json --json"
+      When the operator runs "homelab workers --onboard --config roster.json --json"
       Then the "sshTemplate" of the first worker in the answer contains "IdentitiesOnly yes"
       And the first worker in the answer says "applied" is false
 
@@ -55,7 +55,7 @@ Feature: The homelab CLI answers in JSON and changes nothing until it is told to
 
     Scenario: A usage error is JSON and never echoes the value of an option
       A value typed at the wrong option may be a secret.
-      When the operator runs "homelab fleet-status --unrecognized-secret=never-print-this"
+      When the operator runs "homelab check --unrecognized-secret=never-print-this"
       Then the process fails
       And the answer says "code" is "invalid_usage"
       And "never-print-this" appears nowhere in what the process printed

@@ -156,7 +156,7 @@ const IDENTITY_CONFLICT: Check = {
   summary: 'TAILSCALE_IDENTITY_CONFLICT',
   remedy: {
     action:
-      'More than one tailnet device matches this worker, so it was not enrolled. Remove the stale device from the tailnet, then rerun fleet-sync.',
+      'More than one tailnet device matches this worker, so it was not enrolled. Remove the stale device from the tailnet, then rerun converge.',
   },
 };
 
@@ -165,7 +165,7 @@ const notOnTailnet = (): Check => ({
   status: 'fail',
   summary: 'TAILSCALE_ENROLLMENT_REQUIRED',
   remedy: {
-    action: `No tailnet device matches this worker and the fleet configuration declares no tailnet control plane to join it with, so a run without a person did not enroll it. Declare tailnet in ${fleetJson()} with the secret tailnet-admin, join the machine yourself, or run fleet-sync once in a terminal.`,
+    action: `No tailnet device matches this worker and the fleet configuration declares no tailnet control plane to join it with, so a run without a person did not enroll it. Declare tailnet in ${fleetJson()} with the secret tailnet-admin, join the machine yourself, or run converge once in a terminal.`,
   },
 });
 
@@ -188,7 +188,7 @@ async function passwordlessSudo(
     summary: 'SUDO_AUTHORIZATION_REQUIRED',
     remedy: {
       action:
-        'The worker account has no passwordless sudo, so a run without a person did not enroll it. Grant it (a fleet-node-seed seed does), or run fleet-sync once in a terminal to authorize it.',
+        'The worker account has no passwordless sudo, so a run without a person did not enroll it. Grant it (a fleet-node-seed seed does), or run converge once in a terminal to authorize it.',
     },
   };
 }

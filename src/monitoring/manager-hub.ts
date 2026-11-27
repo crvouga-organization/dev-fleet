@@ -246,7 +246,7 @@ async function preconditions(
   if (!local.ok || hostId(local.stdout.trim()) !== definition.manager.id)
     return failure(
       'BESZEL_NOT_MANAGER',
-      `The Beszel hub runs only on the manager (${definition.manager.id}). Run fleet-sync from the manager; workers only run the agent.`
+      `The Beszel hub runs only on the manager (${definition.manager.id}). Run converge from the manager; workers only run the agent.`
     );
   const docker = await run(
     ['docker', 'info', '--format', '{{.ServerVersion}}'],
@@ -255,7 +255,7 @@ async function preconditions(
   if (!docker.ok || docker.stdout.trim() === '')
     return failure(
       'BESZEL_DOCKER_DESKTOP_REQUIRED',
-      'Start Docker Desktop on the manager (and enable "Start Docker Desktop when you sign in"), then rerun fleet-sync. Existing hub data is never deleted.'
+      'Start Docker Desktop on the manager (and enable "Start Docker Desktop when you sign in"), then rerun converge. Existing hub data is never deleted.'
     );
   return null;
 }

@@ -46,7 +46,7 @@ export async function convergeGitIdentity(
         : {
             remedy: {
               action:
-                'Inspect ~/.config/git/config and ~/.gitconfig on this node: a ~/.gitconfig that sets user.name or user.email, or a GitHub credential helper other than gh auth git-credential, wins over the fleet. Remove those lines and rerun fleet-sync; the helper gh auth setup-git writes may stay.',
+                'Inspect ~/.config/git/config and ~/.gitconfig on this node: a ~/.gitconfig that sets user.name or user.email, or a GitHub credential helper other than gh auth git-credential, wins over the fleet. Remove those lines and rerun converge; the helper gh auth setup-git writes may stay.',
             },
           }),
     },
@@ -115,7 +115,7 @@ export async function gitIdentityCheck(
       status: 'warn',
       summary: 'GIT_IDENTITY_UNDECLARED',
       remedy: {
-        action: `Declare git.name and git.email in ${fleetJson()} and rerun fleet-sync; until then commits on this node carry whatever author it happens to have. First remove from ~/.gitconfig on every node any user.name, user.email or GitHub credential helper other than gh auth git-credential (the one gh auth setup-git writes may stay): it wins over the declared block, so git:configuration fails and the canary stops the rollout.`,
+        action: `Declare git.name and git.email in ${fleetJson()} and rerun converge; until then commits on this node carry whatever author it happens to have. First remove from ~/.gitconfig on every node any user.name, user.email or GitHub credential helper other than gh auth git-credential (the one gh auth setup-git writes may stay): it wins over the declared block, so git:configuration fails and the canary stops the rollout.`,
       },
     };
   const name = await effective(run, 'user.name');
@@ -132,7 +132,7 @@ export async function gitIdentityCheck(
     summary: !name || !email ? 'GIT_IDENTITY_MISSING' : 'GIT_IDENTITY_MISMATCH',
     remedy: {
       action:
-        'Rerun fleet-sync: it writes the identity in ~/.config/git/config. A ~/.gitconfig that sets another user.name or user.email wins over it; remove those lines.',
+        'Rerun converge: it writes the identity in ~/.config/git/config. A ~/.gitconfig that sets another user.name or user.email wins over it; remove those lines.',
     },
   };
 }
@@ -163,7 +163,7 @@ async function missingPushCredential(run: Runner, id: string): Promise<Check> {
     summary: 'GIT_CREDENTIAL_HELPER_MISSING',
     remedy: {
       action:
-        'Git has no credential for github.com, so an agent cannot push over HTTPS. Rerun fleet-sync, which declares gh as the credential helper; if gh is signed out, the worker signs in again from its own Vault session (auth:github).',
+        'Git has no credential for github.com, so an agent cannot push over HTTPS. Rerun converge, which declares gh as the credential helper; if gh is signed out, the worker signs in again from its own Vault session (auth:github).',
     },
   };
 }
@@ -250,7 +250,7 @@ export async function gitSigningCheck(
           : 'GIT_SIGNING_OVERRIDDEN',
       remedy: {
         action:
-          'Rerun fleet-sync: it makes the node its own signing key and writes the signing settings in ~/.config/git/config. A ~/.gitconfig that sets gpg.format, user.signingkey or commit.gpgsign wins over it; remove those lines.',
+          'Rerun converge: it makes the node its own signing key and writes the signing settings in ~/.config/git/config. A ~/.gitconfig that sets gpg.format, user.signingkey or commit.gpgsign wins over it; remove those lines.',
       },
     };
   const signed = await run(
@@ -267,7 +267,7 @@ export async function gitSigningCheck(
       summary: 'GIT_SIGNING_FAILED',
       remedy: {
         action:
-          "The node's signing key (~/.ssh/homelab-git-signing) is missing or cannot sign without a prompt. Remove both halves of it and rerun fleet-sync, which makes a new one; then add the new public key to the GitHub account as a signing key.",
+          "The node's signing key (~/.ssh/homelab-git-signing) is missing or cannot sign without a prompt. Remove both halves of it and rerun converge, which makes a new one; then add the new public key to the GitHub account as a signing key.",
       },
     };
   return {

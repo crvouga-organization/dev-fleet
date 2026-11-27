@@ -13,7 +13,7 @@ import type { FleetSyncOptions } from './fleet-sync';
 import type { Settings } from './settings';
 import type { CommandOutcome } from './contracts';
 
-/** `fleet-sync --only accounts` on the manager. */
+/** `converge --only accounts` on the manager. */
 export async function syncAccounts(
   options: FleetSyncOptions,
   settings: Settings,
@@ -50,7 +50,7 @@ export async function managerAccounts(workspace: string): Promise<Check[]> {
         summary: 'No revision is applied on the manager yet.',
         remedy: {
           action: 'Run a full fleet-sync first.',
-          command: 'homelab fleet-sync',
+          command: 'homelab converge',
         },
       },
     ];

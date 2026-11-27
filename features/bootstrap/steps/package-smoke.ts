@@ -21,7 +21,7 @@ const [version, commit] = ['__VERSION__', '__COMMIT__'];
 const args = process.argv.slice(2).join(' ');
 if (args === ${JSON.stringify(failing)}) process.exit(1);
 if (args === '--version') console.log(version + ' (commit ' + commit + ')');
-else if (args === 'fleet-state --example') console.log(JSON.stringify({ $schema: './schema.json' }));
+else if (args === 'state --example') console.log(JSON.stringify({ $schema: './schema.json' }));
 else process.exit(2);
 `;
 

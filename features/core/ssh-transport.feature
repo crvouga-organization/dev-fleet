@@ -105,7 +105,7 @@ Feature: The manager reaches a worker over SSH
         """
       When the failed session is classified
       Then the check "ssh:host-key" fails
-      And the remedy of the check "ssh:host-key" mentions "homelab fleet-node-replace --id ID --host-key"
+      And the remedy of the check "ssh:host-key" mentions "homelab replace --id ID --host-key"
       And the remedy of the check "ssh:host-key" mentions "hostKey in its worker record"
 
   Rule: A path is quoted so a POSIX shell evaluates none of it

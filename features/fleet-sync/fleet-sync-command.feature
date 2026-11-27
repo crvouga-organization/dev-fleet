@@ -1,4 +1,4 @@
-Feature: homelab fleet-sync refuses before it changes anything
+Feature: homelab converge refuses before it changes anything
   A request that cannot be carried out is answered with a report and a
   nonzero exit code, without a write, an SSH connection or a login. An unsafe
   combination of options is a usage error.
@@ -12,7 +12,7 @@ Feature: homelab fleet-sync refuses before it changes anything
       And the environment sets "PERSONAL_FLEET_NO_FORWARD" to "1"
 
     Scenario: A preview reports the manager's scope and applies nothing
-      When the operator runs "homelab fleet-sync --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run --json"
+      When the operator runs "homelab converge --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run --json"
       Then the command exits with 1
       And the report has:
         | command         | converge                                 |
@@ -21,7 +21,7 @@ Feature: homelab fleet-sync refuses before it changes anything
       And the manager keeps reports under ".local/share/personal/fleet/manager/reports" in the temporary test home
 
     Scenario: A noninteractive sync cannot enroll or log in without confirmation
-      When the operator runs "homelab fleet-sync --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --non-interactive --json"
+      When the operator runs "homelab converge --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --non-interactive --json"
       Then the command exits with 1
       And the report has:
         | applied   | false        |
@@ -29,7 +29,7 @@ Feature: homelab fleet-sync refuses before it changes anything
         | execution | manager-push |
 
     Scenario Outline: Selecting workers with "<selection>" needs a roster, and tailnet discovery never stands in for one
-      When the operator runs "homelab fleet-sync <selection> --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run --json"
+      When the operator runs "homelab converge <selection> --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run --json"
       Then the command exits with 1
 
       Examples:
@@ -38,7 +38,7 @@ Feature: homelab fleet-sync refuses before it changes anything
         | --node unknown |
 
     Scenario: The help page names the safety flags, without a checkout
-      When the operator runs "homelab fleet-sync --help"
+      When the operator runs "homelab converge --help"
       Then the command exits with 0
       And the command's output names each of:
         | --dry-run  |
@@ -58,7 +58,7 @@ Feature: homelab fleet-sync refuses before it changes anything
         | id         | ssh        | workspace |
         | worker-one | worker-one | /fixture  |
       And any command would fail the scenario
-      When the manager applies "fleet-sync --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --apply --yes --json" to the selected workers, approved for the plan fingerprint "stale-fixture"
+      When the manager applies "converge --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --apply --yes --json" to the selected workers, approved for the plan fingerprint "stale-fixture"
       Then no command was run
       And the report mentions "FLEET_PLAN_STALE"
       And the command exits with 1
@@ -86,25 +86,25 @@ Feature: homelab fleet-sync refuses before it changes anything
 
       Examples:
         | arguments                             |
-        | fleet-repair --apply                  |
-        | fleet-status --apply --yes            |
-        | fleet-status --pull                   |
-        | fleet-status --local --node dev-one   |
-        | fleet-status --timeout Infinity       |
-        | fleet-status --timeout 0              |
-        | fleet-status --require made-up        |
-        | fleet-status --tailnet --require none |
-        | fleet-discover --local                |
-        | fleet-sync --force                    |
-        | fleet-sync --maintenance-reboot --dry-run |
+        | repair --apply                  |
+        | check --apply --yes            |
+        | check --pull                   |
+        | check --local --node dev-one   |
+        | check --timeout Infinity       |
+        | check --timeout 0              |
+        | check --require made-up        |
+        | check --tailnet --require none |
+        | tailnet --local                |
+        | converge --force                    |
+        | converge --maintenance-reboot --dry-run |
         | fleet-unknown                         |
         | fleet doctor                          |
-        | fleet-sync --restart-busy --only accounts |
-        | fleet-sync --restart-busy --schedule enable |
-        | fleet-sync --allow-unmerged --schedule enable |
-        | fleet-sync --allow-unmerged --only accounts |
-        | fleet-sync --allow-mise-downgrade --schedule enable |
-        | fleet-sync --allow-mise-downgrade --only accounts |
-        | fleet-sync --measure-mise |
-        | fleet-sync --measure-mise --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run |
-        | fleet-sync --measure-mise --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --allow-mise-downgrade |
+        | converge --restart-busy --only accounts |
+        | converge --restart-busy --schedule enable |
+        | converge --allow-unmerged --schedule enable |
+        | converge --allow-unmerged --only accounts |
+        | converge --allow-mise-downgrade --schedule enable |
+        | converge --allow-mise-downgrade --only accounts |
+        | converge --measure-mise |
+        | converge --measure-mise --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run |
+        | converge --measure-mise --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --allow-mise-downgrade |

@@ -18,7 +18,7 @@ Feature: A damaged replica is reported as corrupt and restored from an earlier v
     When the standing "corrupt" is reported as a check
     Then the check "state:replica" fails
     And its summary contains "cannot be read"
-    And its remedy contains "fleet-state --restore --timestamp"
+    And its remedy contains "state --restore --timestamp"
 
   Scenario: A change on a corrupt replica is kept on the manager and nothing is uploaded over it
     When manager "a" changes the roster to "r"
@@ -26,8 +26,8 @@ Feature: A damaged replica is reported as corrupt and restored from an earlier v
     And manager "a" has changes waiting for the bucket
 
   Scenario: Restoring the earlier version brings the fleet state back to the manager and to the bucket
-    Given the operator ran "fleet-state --init --directory $BUCKET" on manager "b"
-    When the operator runs "fleet-state --restore --timestamp $NOTED --yes" on manager "b"
+    Given the operator ran "state --init --directory $BUCKET" on manager "b"
+    When the operator runs "state --restore --timestamp $NOTED --yes" on manager "b"
     Then the report includes:
       """
       { "standing": "in-sync" }
@@ -36,6 +36,6 @@ Feature: A damaged replica is reported as corrupt and restored from an earlier v
     And manager "a" stands "bucket-ahead" with the bucket
 
   Scenario: Restoring an earlier version needs --yes
-    Given the operator ran "fleet-state --init --directory $BUCKET" on manager "b"
-    When the operator runs "fleet-state --restore --timestamp $NOTED" on manager "b"
+    Given the operator ran "state --init --directory $BUCKET" on manager "b"
+    When the operator runs "state --restore --timestamp $NOTED" on manager "b"
     Then it is refused with "Repeat with --yes"

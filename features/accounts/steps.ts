@@ -275,7 +275,7 @@ Given("the proxy's sign-in is interrupted", (world) => {
 });
 
 When(
-  'the operator runs fleet-accounts with {string}',
+  'the operator runs accounts with {string}',
   async (world, line: string) => {
     const words = line.split(' ').filter(Boolean);
     const options = Object.fromEntries(

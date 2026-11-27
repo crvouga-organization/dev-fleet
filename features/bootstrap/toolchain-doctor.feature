@@ -146,7 +146,7 @@ Feature: The doctor checks a machine's toolchain
       Then the check "global-mise-config" fails
       And the check says "There is no global mise configuration"
 
-    Scenario: A configuration another project published fails, and says to run fleet-sync
+    Scenario: A configuration another project published fails, and says to run converge
       Given the global configuration has been published
       And the published "config.toml" has since been replaced with:
         """
@@ -157,7 +157,7 @@ Feature: The doctor checks a machine's toolchain
       When the doctor checks the global mise configuration
       Then the check "global-mise-config" fails
       And the check says "Another project or tool replaced"
-      And the check says "Run fleet-sync"
+      And the check says "Run converge"
 
     Scenario: homelab's configuration from another revision fails
       Given the global configuration has been published

@@ -15,15 +15,15 @@
 #        tofu -chdir=infra apply -var-file=workers.tfvars
 #   2. Seed it. homelab generates its host key, pins it in the fleet state
 #      and writes the cloud-init user data:
-#        npx homelab fleet-node-seed --id rented-one \
+#        npx homelab provision --id rented-one \
 #          --output infra/seed/rented-one.yaml --apply --yes --json
 #      Put the path in `seed` (and, if you like, the printed hostKey in
 #      `host_key`, so that the record carries it too).
 #   3. Create the machine, then converge it:
 #        tofu -chdir=infra apply -var-file=workers.tfvars
-#        npx homelab fleet-sync --non-interactive
+#        npx homelab converge --non-interactive
 #   4. Remove it: drop it from `workers` and apply, or `tofu destroy`. Its
-#      record is gone, so the next `npx homelab fleet-sync` retires it: its
+#      record is gone, so the next `npx homelab converge` retires it: its
 #      token, pinned host key, monitoring system and T3 link are removed.
 #
 # What the machine must offer (image, architecture, size, access, network) is

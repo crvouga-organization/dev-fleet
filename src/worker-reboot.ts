@@ -113,7 +113,7 @@ export async function rebootWorker(
       summary: 'WORKER_REBOOT_FAILED',
       remedy: {
         action:
-          'The roster names no workspace under the account home, so the worker was not rebooted. Rerun fleet-sync once it is enrolled.',
+          'The roster names no workspace under the account home, so the worker was not rebooted. Rerun converge once it is enrolled.',
       },
     };
   const result = await playbook(
@@ -145,7 +145,7 @@ export async function rebootWorker(
       summary: 'WORKER_REBOOT_BUSY',
       remedy: {
         action:
-          'An agent turn is running on the worker, so it was not rebooted. Rerun fleet-sync --maintenance-reboot once the turn has ended, or add --force to end it.',
+          'An agent turn is running on the worker, so it was not rebooted. Rerun converge --maintenance-reboot once the turn has ended, or add --force to end it.',
       },
     };
   return {
@@ -154,7 +154,7 @@ export async function rebootWorker(
     summary: 'WORKER_REBOOT_FAILED',
     remedy: {
       action:
-        'The reboot did not complete, or the worker did not answer within 15 minutes. Check its console with the provider, then rerun fleet-sync.',
+        'The reboot did not complete, or the worker did not answer within 15 minutes. Check its console with the provider, then rerun converge.',
     },
   };
 }

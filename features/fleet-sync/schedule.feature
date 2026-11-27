@@ -162,8 +162,8 @@ Feature: The manager's schedule changes only when that is authorized
       Then it rotates exactly these logs under "/Users/dev/.local/share/personal/fleet/manager/logs", at 1024 KiB, keeping 3:
         | personal-fleet-sync.out.log      |
         | personal-fleet-sync.err.log      |
-        | dev.homelab.fleet-watch.out.log |
-        | dev.homelab.fleet-watch.err.log |
+        | dev.homelab.notify.out.log |
+        | dev.homelab.notify.err.log |
       And it is checked with newsyslog before it is installed
 
     Scenario: Logs under the rotation size pass
@@ -174,7 +174,7 @@ Feature: The manager's schedule changes only when that is authorized
 
     Scenario: A log past twice the rotation size warns that newsyslog does not rotate it
       Given the newsyslog drop-in for the manager's job logs is installed
-      And the job log "dev.homelab.fleet-watch.err.log" holds 2100 KiB of lines
+      And the job log "dev.homelab.notify.err.log" holds 2100 KiB of lines
       When the manager's job logs are checked
       Then the check "manager:job-logs" warns with "MANAGER_JOB_LOG_OVERSIZED 1 logs"
 

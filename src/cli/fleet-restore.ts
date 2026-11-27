@@ -32,7 +32,7 @@ export const RESTORES = [
   },
   {
     what: 'Machine policy, toolchain and checkouts',
-    how: 'Rebuilt from Git by homelab fleet-sync.',
+    how: 'Rebuilt from Git by homelab converge.',
   },
   {
     what: 'CLI proxy state (provider logins, keys, Tailscale identity)',
@@ -40,11 +40,11 @@ export const RESTORES = [
   },
   {
     what: 'Monitoring hub',
-    how: 'Recreated by homelab fleet-sync with its accounts and systems; metric history is lost.',
+    how: 'Recreated by homelab converge with its accounts and systems; metric history is lost.',
   },
   {
     what: 'T3 ownership record',
-    how: 'Adopted again with homelab t3-apply --import ID.',
+    how: 'Adopted again with homelab t3-reconcile --import ID.',
   },
 ];
 
@@ -100,7 +100,7 @@ async function prerequisites(
         [
           'The bucket answers and holds the fleet state.',
           `The fleet state cannot be restored from the bucket: it stands "${stands}".`,
-          'See the state:replica remedy of homelab fleet-state; a corrupt replica is restored with --restore --timestamp.',
+          'See the state:replica remedy of homelab state; a corrupt replica is restored with --restore --timestamp.',
         ]
       )
     );
@@ -177,9 +177,9 @@ export async function fleetRestore(
     const after = await pull(context);
     checks.push(
       check('restore:applied', after === 'in-sync', [
-        'This machine holds the fleet state from the bucket. Next: homelab fleet-sync (it may need --take-over while the old manager’s lease runs), then homelab cliproxy install.',
+        'This machine holds the fleet state from the bucket. Next: homelab converge (it may need --take-over while the old manager’s lease runs), then homelab cliproxy install.',
         `The fleet state was not restored: it stands "${after}".`,
-        'Run homelab fleet-state for the remedy.',
+        'Run homelab state for the remedy.',
       ])
     );
     done.push('Restored the fleet state from the bucket.');

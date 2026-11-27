@@ -43,7 +43,7 @@ export async function powerRecoveryCheck(run: Runner): Promise<Check> {
           ? {
               remedy: {
                 action:
-                  'Run homelab fleet-sync: it sets the recognized restore-after-AC-loss firmware setting. The firmware applies it at the next boot.',
+                  'Run homelab converge: it sets the recognized restore-after-AC-loss firmware setting. The firmware applies it at the next boot.',
               },
             }
           : {}),

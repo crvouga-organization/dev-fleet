@@ -146,7 +146,7 @@ homelab cliproxy inference responses EXACT_CODEX_MODEL_ID
 homelab cliproxy inference messages EXACT_CLAUDE_MODEL_ID
 ```
 
-`homelab fleet-accounts --add|--relogin|--remove` wraps these and propagates the result to every node; a login writes into a staging directory and only a complete credential is moved in. Codex uses the upstream device-code flow. Remote callback flows may require the documented dashboard callback flow or temporary SSH loopback forwarding; callback ports are not exposed by default. This pinned version has no generic Gemini CLI login flag; use its supported dashboard/API-key integration. Provider rules still govern permissible account use.
+`homelab accounts --add|--relogin|--remove` wraps these and propagates the result to every node; a login writes into a staging directory and only a complete credential is moved in. Codex uses the upstream device-code flow. Remote callback flows may require the documented dashboard callback flow or temporary SSH loopback forwarding; callback ports are not exposed by default. This pinned version has no generic Gemini CLI login flag; use its supported dashboard/API-key integration. Provider rules still govern permissible account use.
 
 **Account routing.** Credential files are the only list of accounts. `ops declared` (run by every fleet-sync) gives each Claude, Codex and Antigravity credential the model prefix `<type>-<email>` through the proxy's management API (`scripts/accounts.py`; a credential file is never edited directly). A request for `<type>-<email>/<model>` is served only by that account, and `/v1/models` lists those ids, which is how every fleet node discovers the accounts to offer in T3. Nothing in Git names an account.
 
@@ -230,7 +230,7 @@ Sources: [upstream release](https://github.com/router-for-me/CLIProxyAPI/tree/v8
 
 ## Manager fleet integration
 
-`homelab fleet-sync` delegates singleton inspection and permitted stopped-agent
+`homelab converge` delegates singleton inspection and permitted stopped-agent
 recovery to `scripts/fleet_sync.py`, which reads Fleet definition version 3: the
 proxy owner is `manager.id`. Flags: `--definition`, `--node`, `--revision`,
 `--apply`. It prints one JSON object (`version` 1, `command`,

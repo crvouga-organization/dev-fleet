@@ -21,7 +21,7 @@ export async function launcherCheck(
         summary: 'The homelab launcher is missing.',
         remedy: {
           action:
-            'Run npx homelab fleet-sync from the fleet project on the manager to reinstall the launcher.',
+            'Run npx homelab converge from the fleet project on the manager to reinstall the launcher.',
         },
       };
 }

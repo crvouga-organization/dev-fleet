@@ -224,7 +224,7 @@ async function ansibleChecks(
             summary: 'DEFINITION_INVENTORY_REJECTED',
             remedy: {
               action:
-                'Run homelab fleet-validate --ansible on the manager after fleet-sync installed the pinned Ansible; report the failure as an issue if it persists.',
+                'Run homelab check-config --ansible on the manager after fleet-sync installed the pinned Ansible; report the failure as an issue if it persists.',
             },
           },
     ];

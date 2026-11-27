@@ -67,7 +67,7 @@ checks (`worker:package:*`, `worker:service:docker`, `worker:docker-run`,
 `containers` off on an existing worker removes what homelab installed for it:
 the packages (not purged: images and volumes under `/var/lib/docker` stay
 until a person deletes them), the restart drop-in and the developer's group
-membership. `fleet-sync --dry-run` lists what each worker will lose (`plan`,
+membership. `converge --dry-run` lists what each worker will lose (`plan`,
 under `removals`), and `worker:features` reports what the run removed and
 fails with `WORKER_FEATURE_REMOVAL_INCOMPLETE` while any of it remains. A
 headless worker installs no desktop-only package but removes none: a desktop
@@ -123,7 +123,7 @@ bound (`sizing.thresholds`), with higher disk warning and cleanup caps for large
 The warning starts below 15% free (capped at 256 GiB); cleanup pressure starts
 below 20% free (capped at 512 GiB). Small workers intentionally reserve more
 space too: a 40 GiB disk now warns below 6 GiB and cleans below 8 GiB.
-Configured fleet-watch targets receive disk warnings before they become failures.
+Configured notify targets receive disk warnings before they become failures.
 
 | Line                               | Share         | Lower    | Upper      |
 | ---------------------------------- | ------------- | -------- | ---------- |
@@ -237,7 +237,7 @@ one:
   readiness; it says the pin can be raised when the snapshot moves.
 - Tailscale follows the same rule: a newer Tailscale is kept; an older one
   stops with `TAILSCALE_UPGRADE_PENDING`, because upgrading an active VPN can
-  drop SSH. `fleet-sync --maintenance-reboot` upgrades it to the pin in a
+  drop SSH. `converge --maintenance-reboot` upgrades it to the pin in a
   detached unit and waits for the worker to answer again.
 
 A package run cut off by a power loss is finished by the next sync: the

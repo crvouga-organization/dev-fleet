@@ -11,7 +11,7 @@ the rule under `agent.support`.
 For the enrolled Ubuntu development fleet, run on the designated manager:
 
 ```sh
-homelab fleet-sync
+homelab converge
 ```
 
 Read the [Fleet operator guide](../../fleet/docs/ubuntu-sync.md) for enrollment,
@@ -28,10 +28,10 @@ implementation packages; neither exports its own executable.
 linked to the fleet-owned checkout of the applied revision. On such a machine:
 
 ```sh
-homelab fleet-status
+homelab check
 ```
 
-`fleet-node-sync` reconciles one machine from a checkout of homelab
+`converge-local` reconciles one machine from a checkout of homelab
 (`--workspace PATH` or `PERSONAL_WORKSPACE` names it). It is for development:
 run from the published package it is refused, because `fleet-sync` does the
 same from a checkout it owns.
@@ -40,7 +40,7 @@ The sync never copies them or provisions infrastructure.
 
 ## Reconciliation
 
-`fleet-node-sync` applies by invocation. It reconciles the locked toolchain, installs
+`converge-local` applies by invocation. It reconciles the locked toolchain, installs
 one `personal` launcher, retires the repository-owned `ws` launcher, upserts the
 Codex proxy profile, and reconciles T3 provider instances. `--dry-run` lists these
 steps without writing or installing. The default node ID is the normalized hostname;
@@ -58,22 +58,22 @@ New sessions use the updated configuration. Running sessions are not restarted.
 ## T3 plan, apply, import and cleanup
 
 ```sh
-homelab t3-apply --dry-run --json
-homelab t3-apply
-homelab t3-status
-homelab t3-cleanup --dry-run
+homelab t3-reconcile --dry-run --json
+homelab t3-reconcile
+homelab t3
+homelab t3-remove --dry-run
 ```
 
 Plans show create/update/delete/unchanged/conflict by instance ID, with no settings
-values or credentials. `homelab t3-apply --plan-hash HASH` binds apply to the exact
+values or credentials. `homelab t3-reconcile --plan-hash HASH` binds apply to the exact
 settings, ownership state, desired definitions and destination reviewed in a plan.
 A stale plan fails. A second apply with identical inputs performs no settings write.
 
 A provider instance becomes managed when created by personal, or explicitly imported:
 
 ```sh
-homelab t3-apply --import personal_grok_proxy
-homelab t3-apply
+homelab t3-reconcile --import personal_grok_proxy
+homelab t3-reconcile
 ```
 
 Import grants ownership of the entire named provider instance. It does not change
@@ -82,7 +82,7 @@ definition, including removal of extra fields. Existing unowned instances cause 
 conflict, even when their names match. Unrelated instances and settings are preserved.
 
 Removing an instance from the desired definition removes it on the next apply.
-`homelab t3-cleanup` removes **all owned provider instances** while retaining
+`homelab t3-remove` removes **all owned provider instances** while retaining
 threads, projects, pairing, native provider instances, credentials and profile files.
 It does not delete T3's data directory or secret store. Historical threads may need
 a replacement provider selected after their managed instance is removed.
@@ -152,7 +152,7 @@ homelab opencode sync
 homelab net check
 ```
 
-`homelab fleet-status` diagnoses the manager and registered remote nodes.
-`homelab fleet-discover` lists visible Tailscale computers. The local SSH roster
+`homelab check` diagnoses the manager and registered remote nodes.
+`homelab tailnet` lists visible Tailscale computers. The local SSH roster
 still requires real aliases and checkout paths; discovery never guesses these.
 Use `personal commands --json` to discover the complete interface.

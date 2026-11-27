@@ -1,5 +1,5 @@
 Feature: The fleet tells someone when a worker becomes unhealthy
-  fleet-watch runs fleet-status --workers, compares what it sees with the
+  notify runs check --workers, compares what it sees with the
   previous run and notifies the targets fleet.json names under "notify" when a
   worker changes between ready and degraded. A notification carries node and
   check IDs only: never a secret, the address of a target or what a command
@@ -58,7 +58,7 @@ Feature: The fleet tells someone when a worker becomes unhealthy
       Given fleet-status sees every worker ready
       When the watcher runs
       Then the receiver got 0 notifications
-      And fleet-watch exits with 0 and its check "watch:heartbeat" passes
+      And notify exits with 0 and its check "watch:heartbeat" passes
       And the bucket holds a heartbeat from "2026-11-11T00:00:00Z"
 
     Scenario: Low disk space warns the operator before the worker fails
@@ -88,7 +88,7 @@ Feature: The fleet tells someone when a worker becomes unhealthy
         }
         """
       When the watcher runs
-      Then fleet-watch reports the revision:
+      Then notify reports the revision:
         """
         {
           "approved": "cccccccccccccccccccccccccccccccccccccccc",
@@ -101,7 +101,7 @@ Feature: The fleet tells someone when a worker becomes unhealthy
           }
         }
         """
-      And fleet-watch prints "revision cccccccccccc selected by the HEAD of the checkout fleet-sync was started in, handed off from worker-a (--allow-unmerged) at 2026-11-10T23:50:00.000Z (not applied to the whole fleet)"
+      And notify prints "revision cccccccccccc selected by the HEAD of the checkout fleet-sync was started in, handed off from worker-a (--allow-unmerged) at 2026-11-10T23:50:00.000Z (not applied to the whole fleet)"
 
     Scenario: A fleet state that does not say what selected the revision still names it
       Fleet states written before this was recorded have no such record.
@@ -114,12 +114,12 @@ Feature: The fleet tells someone when a worker becomes unhealthy
         }
         """
       When the watcher runs
-      Then fleet-watch prints "revision bbbbbbbbbbbb"
+      Then notify prints "revision bbbbbbbbbbbb"
 
     Scenario: Before the first fleet-sync there is no revision to report
       Given fleet-status sees every worker ready
       When the watcher runs
-      Then fleet-watch reports no revision
+      Then notify reports no revision
 
   Rule: A changed approved revision is a notification
     The watcher remembers the approved revision it saw. A run that finds
@@ -190,8 +190,8 @@ Feature: The fleet tells someone when a worker becomes unhealthy
     Scenario: The test reaches the webhook
       When the watcher sends a test notification
       Then the receiver got 1 notification
-      And fleet-watch exits with 0 and its check "notify:webhook" passes
-      And nothing fleet-watch reported contains "PRIVATE-TOKEN"
+      And notify exits with 0 and its check "notify:webhook" passes
+      And nothing notify reported contains "PRIVATE-TOKEN"
 
     Scenario: The test reaches an ntfy topic as text
       Given an ntfy receiver on this machine
@@ -200,13 +200,13 @@ Feature: The fleet tells someone when a worker becomes unhealthy
         { "notify": { "targets": ["ntfy"] } }
         """
       When the watcher sends a test notification
-      Then the ntfy receiver got the text "homelab: fleet-watch sent a test notification"
+      Then the ntfy receiver got the text "homelab: notify sent a test notification"
 
     Scenario: A target that refuses fails, without repeating its answer
       Given a webhook receiver on this machine, answering 500
       When the watcher sends a test notification
-      Then fleet-watch exits with 1 and its check "notify:webhook" fails
-      And nothing fleet-watch reported contains "PRIVATE"
+      Then notify exits with 1 and its check "notify:webhook" fails
+      And nothing notify reported contains "PRIVATE"
 
     Scenario: A target whose address is not stored fails with a remedy
       Given the fleet configuration says:
@@ -214,8 +214,8 @@ Feature: The fleet tells someone when a worker becomes unhealthy
         { "notify": { "targets": ["ntfy"] } }
         """
       When the watcher sends a test notification
-      Then fleet-watch exits with 1 and its check "notify:ntfy" fails
-      And the check "notify:ntfy" of fleet-watch says "NOTIFY_TARGET_UNAVAILABLE"
+      Then notify exits with 1 and its check "notify:ntfy" fails
+      And the check "notify:ntfy" of notify says "NOTIFY_TARGET_UNAVAILABLE"
 
     Scenario Outline: A target whose address the manager could not read is blocked by the manager's login, not missing
       Nothing is to be stored: the manager <fault> its secrets provider, and
@@ -226,9 +226,9 @@ Feature: The fleet tells someone when a worker becomes unhealthy
         """
       And the manager <fault> its secrets provider
       When the watcher sends a test notification
-      Then fleet-watch exits with 1 and its check "notify:ntfy" fails
-      And the check "notify:ntfy" of fleet-watch says "SECRET_READ_BLOCKED by manager:vault-renewal"
-      And nothing fleet-watch reported contains "NOTIFY_TARGET_UNAVAILABLE"
+      Then notify exits with 1 and its check "notify:ntfy" fails
+      And the check "notify:ntfy" of notify says "SECRET_READ_BLOCKED by manager:vault-renewal"
+      And nothing notify reported contains "NOTIFY_TARGET_UNAVAILABLE"
 
       Examples:
         | fault               |
@@ -239,7 +239,7 @@ Feature: The fleet tells someone when a worker becomes unhealthy
       Given the fleet configuration has no notify block
       And fleet-status sees every worker ready
       When the watcher runs
-      Then fleet-watch exits with 0 and its check "notify:configured" warns
+      Then notify exits with 0 and its check "notify:configured" warns
 
   Rule: The notify block names known targets only
 

@@ -44,8 +44,7 @@ export function registerGithubVerify(
   complete: (outcome: CommandOutcome) => void
 ): void {
   program
-    .command(commandNames('fleet-github-verify').name)
-    .alias('fleet-github-verify')
+    .command(commandNames('check-github').name)
     .description(
       'Prove this machine can clone, push, open a pull request, read checks and comment on GitHub'
     )

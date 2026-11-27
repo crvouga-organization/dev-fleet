@@ -22,7 +22,7 @@ Feature: Each process reads the fleet configuration from the one place meant for
 
     Scenario: Reading from it is refused, naming how a manager restores one
       When the manager is read from the configuration
-      Then it is refused with "fleet-state --init"
+      Then it is refused with "state --init"
 
     Scenario: A configuration written afterwards is read without starting over
       Given reading the manager from the configuration was refused
@@ -118,13 +118,13 @@ Feature: Each process reads the fleet configuration from the one place meant for
 
     Scenario: A configuration kept in the fleet state is named with the commands that change it
       Given the process is the homelab CLI
-      Then a remedy on the manager names "fleet.json (kept in the fleet state: homelab fleet-state --export > fleet.json, edit that file, then homelab fleet-state --import fleet.json)"
+      Then a remedy on the manager names "fleet.json (kept in the fleet state: homelab state --export > fleet.json, edit that file, then homelab state --import fleet.json)"
 
     Scenario: A command the homelab CLI started is not sent to the state's copy as a file
       That file is rewritten from the fleet state and never edited.
       Given commands on the manager are passed:
         | HOMELAB_CONFIG | ~/.local/share/homelab/state/definition.json |
-      Then a remedy on the manager names "fleet.json (kept in the fleet state: homelab fleet-state --export > fleet.json, edit that file, then homelab fleet-state --import fleet.json)"
+      Then a remedy on the manager names "fleet.json (kept in the fleet state: homelab state --export > fleet.json, edit that file, then homelab state --import fleet.json)"
 
     Scenario: A machine that holds only the installed copy is sent to the project, not to the copy
       A launcher, a scheduled job, the worker probe.

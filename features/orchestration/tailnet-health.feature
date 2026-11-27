@@ -1,5 +1,5 @@
 Feature: The health of the tailnet accounts for every computer
-  `fleet-status --tailnet` reports every computer Tailscale shows and every
+  `check --tailnet` reports every computer Tailscale shows and every
   worker the manager has registered. A computer is probed over SSH only when
   exactly one registration maps to it and to nothing else; whatever cannot be
   probed is reported as such instead of being left out.

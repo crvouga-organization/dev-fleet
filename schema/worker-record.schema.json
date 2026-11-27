@@ -45,7 +45,7 @@
           "hostKey": {
             "type": "string",
             "pattern": "^(ssh-ed25519|ecdsa-sha2-nistp256|ssh-rsa) [A-Za-z0-9+/=]{16,}$",
-            "description": "The machine's SSH host public key, \"TYPE BASE64\": generated before the machine exists (homelab fleet-node-seed prints it) or read from the machine by the tool that created it. It is pinned, never learned on first use. Without it the key the fleet state pins is used (homelab fleet-node-seed --apply --yes), and until there is one every session is refused."
+            "description": "The machine's SSH host public key, \"TYPE BASE64\": generated before the machine exists (homelab provision prints it) or read from the machine by the tool that created it. It is pinned, never learned on first use. Without it the key the fleet state pins is used (homelab provision --apply --yes), and until there is one every session is refused."
           },
           "t3Port": {
             "type": "integer",

@@ -113,14 +113,14 @@ Feature: The command catalog
       Examples:
         | command                                                  |
         | homelab --unknown-secret=do-not-echo                    |
-        | homelab fleet-node-add --id do-not-echo                 |
-        | homelab fleet-node-add --id a --ssh a --path /a --apply |
-        | homelab fleet-status --all --local                      |
-        | homelab fleet-status --tailnet --workers                |
-        | homelab fleet-status --tailnet --node do-not-echo       |
-        | homelab fleet-status --timeout not-a-number             |
-        | homelab fleet-repair --list --local                     |
-        | homelab fleet-nodes --onboard --schema                  |
+        | homelab enroll --id do-not-echo                 |
+        | homelab enroll --id a --ssh a --path /a --apply |
+        | homelab check --all --local                      |
+        | homelab check --tailnet --workers                |
+        | homelab check --tailnet --node do-not-echo       |
+        | homelab check --timeout not-a-number             |
+        | homelab repair --list --local                     |
+        | homelab workers --onboard --schema                  |
         | homelab t3-reconcile --import do-not-echo --dry-run         |
 
   Rule: Run with no command, homelab shows its help; asked for JSON, the command index

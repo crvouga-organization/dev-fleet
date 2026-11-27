@@ -75,7 +75,7 @@ function run(
 }
 
 When(
-  phrase('the operator runs "fleet-restore( --dry-run)?" on ', WHO),
+  phrase('the operator runs "recover( --dry-run)?" on ', WHO),
   (world, dryRun: string | undefined, name: string | undefined) => {
     const manager = world.manager(name);
     return world.attempt(() =>

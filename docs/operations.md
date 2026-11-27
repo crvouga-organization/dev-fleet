@@ -95,7 +95,7 @@ changes that reference/local sync target. Nodes are compared to **that checkout*
 including uncommitted lockfile edits, not an implicitly fetched origin/main.
 Manager capabilities default to all five; headless managers can pass
 `--require github,vault,t3,toolchain` or `--require none`. This does not override
-remote nodes' required lists. Run `fleet-nodes --schema` for editor/agent validation.
+remote nodes' required lists. Run `workers --schema` for editor/agent validation.
 
 ## Evidence and diagnosis
 
@@ -198,7 +198,7 @@ need normal repository validation. A green install is not a healthy fleet.
    fingerprint out of band. Never expose public SSH or copy private keys/auth
    folders. Cloud provisioning remains an OpenTofu task.
 3. Configure the manager's SSH alias, append the node to the local roster,
-   then run `fleet-nodes` and `fleet-nodes --onboard --node ID --json`. Onboarding
+   then run `fleet-nodes` and `workers --onboard --node ID --json`. Onboarding
    emits a ready-to-edit SSH stanza, VS Code settings and ordered instructions;
    it does not overwrite user config. Test `ssh ALIAS` manually first.
 4. Ensure noninteractive shell startup is quiet and Node (or explicit Bun runtime) is reachable. Fleet
@@ -236,7 +236,7 @@ serially; diagnostics run at most four remote probes concurrently.
   and existing config conflict guards in the shared bootstrap runbook.
 - Record input hashes only after success and stable checkout inputs. Failed
   setup can leave partial installs, which the next sync completes. Going back
-  is `fleet-sync --rollback`, as the [README](../README.md#the-version) says. Trusted checkout
+  is `converge --rollback`, as the [README](../README.md#the-version) says. Trusted checkout
   package lifecycle scripts can execute during installation.
 - No other application repos, credentials, provider settings or cloud resources
   are synchronized. `homelab converge` remains the broader convergence.
@@ -295,10 +295,10 @@ sends one test notification to every target.
 Every run stores what it saw, and when, as `watch.json` beside the fleet state
 in the bucket. That time is the manager's heartbeat. Nobody has to run it:
 `sync` installs it on the manager as the launchd job
-`dev.homelab.fleet-watch` (`ansible/macos/manager.yml`), which runs every
+`dev.homelab.notify` (`ansible/macos/manager.yml`), which runs every
 `manager.schedule.watchMinutes` minutes of `fleet.json` (15 by default) from
 the checkout `sync` last applied, and `manager:watch` fails when it is
-not loaded. It reads the bucket credentials `fleet-state --init` saved.
+not loaded. It reads the bucket credentials `state --init` saved.
 
 A watcher on the manager notices nothing when the manager itself is off, so
 call the reusable `fleet-heartbeat.yml` workflow from the repository that
@@ -322,7 +322,7 @@ and the full suite nightly, and keeps one tracking issue in your repository.
 
 ### The logs of the manager's scheduled jobs
 
-`fleet-sync --schedule` and the watch job write to
+`converge --schedule` and the watch job write to
 `~/.local/share/personal/fleet/manager/logs/<label>.{out,err}.log`. newsyslog
 rotates each once it passes `jobLogs.maxKiB` of `ansible/macos/policy.json`
 (1024 KiB) and keeps `jobLogs.keep` compressed archives, from the drop-in
@@ -345,7 +345,7 @@ Tests inject results/use temporary fixtures; they do not contact nodes, login or
 change global config. The transport smoke test runs the bundled probe locally
 against a temporary checkout, not an SSH server.
 
-## Tailscale fleet-status --tailnet in the public CLI
+## Tailscale check --tailnet in the public CLI
 
 `homelab tailnet --json` lists computers visible to the local signed-in
 Tailscale daemon, including offline devices, while explicitly excluding iOS,

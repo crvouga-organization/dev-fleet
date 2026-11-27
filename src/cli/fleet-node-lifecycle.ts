@@ -199,7 +199,7 @@ export async function fleetNodeRetire(
   const entry = roster?.nodes.find((node) => node.id === worker.id);
   if (entry && roster!.nodes.length === 1)
     throw new FleetUsageError(
-      'The roster must keep at least one worker. Add the replacement with fleet-node-add first.'
+      'The roster must keep at least one worker. Add the replacement with enroll first.'
     );
   return retireWorker(worker, entry, services, !preview(options));
 }
@@ -422,7 +422,7 @@ async function onHub(
           : 'BESZEL_API_UNAVAILABLE',
       remedy: {
         action:
-          'The hub was not changed. Run fleet-sync on the manager so the hub answers, then run this command again; fleet-status --workers lists systems that match no declared worker.',
+          'The hub was not changed. Run converge on the manager so the hub answers, then run this command again; check --workers lists systems that match no declared worker.',
       },
     };
   }
@@ -499,7 +499,7 @@ async function tombstone(
  * or in the next fleet-sync once it runs), removes the old tailnet device
  * (when the tailnet control is wired) and issues it a token of its own
  * (revoking the old one).
- * Preview until --apply --yes; then `fleet-sync --node ID` brings it to
+ * Preview until --apply --yes; then `converge --node ID` brings it to
  * ready. When nothing changed (the same device, the same key, a token of its
  * own) it changes nothing.
  */
@@ -581,7 +581,7 @@ async function replaceable(
   const entry = roster?.nodes.find((node) => node.id === worker.id);
   if (!entry)
     throw new FleetUsageError(
-      `${worker.id} is not in the roster. Add it with fleet-node-add first.`
+      `${worker.id} is not in the roster. Add it with enroll first.`
     );
   return entry;
 }
@@ -677,7 +677,7 @@ async function carryOut(
   steps.push({
     id: 'rollout:next',
     status: 'pass',
-    summary: `Run homelab fleet-sync --node ${worker.id} to converge the new machine.`,
+    summary: `Run homelab converge --node ${worker.id} to converge the new machine.`,
   });
   return steps;
 }
@@ -760,7 +760,7 @@ function hostKeyFailure(): Check {
     summary: 'SSH_HOST_KEY_NOT_CHANGED',
     remedy: {
       action:
-        'The pinned Ansible could not change known_hosts on this manager. Run homelab fleet-validate --ansible, then this command again.',
+        'The pinned Ansible could not change known_hosts on this manager. Run homelab check-config --ansible, then this command again.',
     },
   };
 }

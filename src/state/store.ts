@@ -110,7 +110,7 @@ function migrate(db: Database): void {
 
 function unreadable(): FleetUsageError {
   return new FleetUsageError(
-    'The fleet state database cannot be read. It is a local copy: run homelab fleet-state --restore to replace it from the bucket.'
+    'The fleet state database cannot be read. It is a local copy: run homelab state --restore to replace it from the bucket.'
   );
 }
 

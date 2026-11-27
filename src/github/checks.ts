@@ -46,7 +46,7 @@ export async function githubChecks(
         : {
             remedy: {
               action: target.managed
-                ? 'Put the fleet GitHub token in the secrets provider under github-token, then run fleet-sync: it signs this node in. No interactive login is needed.'
+                ? 'Put the fleet GitHub token in the secrets provider under github-token, then run converge: it signs this node in. No interactive login is needed.'
                 : 'Authenticate on this node with gh auth login, then gh auth setup-git.',
             },
           }),
@@ -122,7 +122,7 @@ function principal(target: GithubNode, login: string | null): Check {
       : {
           remedy: {
             action: target.managed
-              ? 'Run fleet-sync: it signs this node in with the token in the secrets provider (github-token). If the stored token belongs to another account, replace it or change worker.githubLogin.'
+              ? 'Run converge: it signs this node in with the token in the secrets provider (github-token). If the stored token belongs to another account, replace it or change worker.githubLogin.'
               : 'Sign in on this manager as the login named in github.manager of the fleet configuration (gh auth login), or change that declaration. homelab never replaces a personal login.',
           },
         }),
@@ -163,7 +163,7 @@ async function tokenCurrent(
       : {
           remedy: {
             action:
-              'Run fleet-sync, or wait for the next run of the GitHub sign-in job: either adopts the stored token while the old one still works. Revoke the old token only when every node passes this check.',
+              'Run converge, or wait for the next run of the GitHub sign-in job: either adopts the stored token while the old one still works. Revoke the old token only when every node passes this check.',
           },
         }),
   };
@@ -230,7 +230,7 @@ async function permissions(
       summary: `GITHUB_PERMISSION_MISSING: ${missing.join(', ')}`,
       remedy: {
         action:
-          'Issue a token with the permissions named, store it as github-token and run fleet-sync. A token without them fails agents mid-task with a 403.',
+          'Issue a token with the permissions named, store it as github-token and run converge. A token without them fails agents mid-task with a 403.',
       },
     };
   // A fine-grained token reports no scopes: only the repositories are proof.
@@ -281,7 +281,7 @@ function expiry(headers: Record<string, string>, now: Date): Check {
   const at = date.toISOString();
   const remedy = {
     action:
-      'Issue a new token, store it as github-token and run fleet-sync before this one expires; every node adopts it while the old one still works.',
+      'Issue a new token, store it as github-token and run converge before this one expires; every node adopts it while the old one still works.',
   };
   if (days <= EXPIRY_FAIL_DAYS)
     return {
@@ -400,7 +400,7 @@ async function gitCredential(run: Runner): Promise<Check> {
       ? {}
       : {
           remedy: {
-            action: `Declare the git block in ${fleetJson()} and run fleet-sync: ansible/github/git.yml sets gh as the credential helper. On a manager with a personal login, run gh auth setup-git.`,
+            action: `Declare the git block in ${fleetJson()} and run converge: ansible/github/git.yml sets gh as the credential helper. On a manager with a personal login, run gh auth setup-git.`,
           },
         }),
   };

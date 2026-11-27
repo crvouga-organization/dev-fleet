@@ -104,7 +104,7 @@ function s3(value: Record<string, unknown>): Bucket {
   };
 }
 
-/** The contents of bucket.json, or the same fields from `fleet-state --init`. */
+/** The contents of bucket.json, or the same fields from `state --init`. */
 export function parseBucket(value: unknown): Bucket {
   if (!record(value)) return invalid('expected a JSON object.');
   if (value['version'] !== undefined && value['version'] !== 1)

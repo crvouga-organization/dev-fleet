@@ -148,4 +148,4 @@ Feature: The fleet moves only to a revision on the default branch of the source 
       And the manager still runs mise "2026.11.11"
       And this time the run script ran nothing that names "curl"
       And the toolchain setup log of the commit "older" says "TOOLCHAIN_DOWNGRADE"
-      And the last thing the run script ran is "mise exec --locked bun -- bun src/cli/cli.ts fleet-sync --revision {older} --json", where {older} is that commit
+      And the last thing the run script ran is "mise exec --locked bun -- bun src/cli/cli.ts converge --revision {older} --json", where {older} is that commit

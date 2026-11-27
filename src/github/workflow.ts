@@ -118,7 +118,7 @@ export async function verifyGithubWorkflow(
         '--title',
         `homelab verify ${node}`,
         '--body',
-        'Opened by homelab fleet-github-verify; closed again by the same run.',
+        'Opened by homelab check-github; closed again by the same run.',
       ]);
       const url = created.stdout.trim().split('\n').pop() ?? '';
       if (created.ok && /^https:\/\/\S+\/pull\/\d+$/.test(url))
@@ -151,7 +151,7 @@ export async function verifyGithubWorkflow(
             '--repo',
             sandbox,
             '--body',
-            'homelab fleet-github-verify: comment step.',
+            'homelab check-github: comment step.',
           ])
         ).ok
     );

@@ -71,7 +71,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
     When fleet-sync runs for revision "dddddddddddddddddddddddddddddddddddddddd"
     Then the command exits 1
     And the report contains "FLEET_STATE_DIVERGED"
-    And the report contains "fleet-state --restore --yes"
+    And the report contains "state --restore --yes"
     And the enrollment in the fleet state of the manager is what it was before the run
     And the manager stands "diverged" with the bucket
 

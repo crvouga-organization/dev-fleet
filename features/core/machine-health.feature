@@ -200,9 +200,9 @@ Feature: The health of a machine itself
         | docker         | 10GB␊1.5GB␊0B␊500MB                                                                     |
         | cat            | {}                                                                                      |
         | sudo -n /usr/sbin/systemsetup | Network Time: On |
-        | /bin/launchctl print gui/501/dev.homelab.fleet-watch | state = not running |
+        | /bin/launchctl print gui/501/dev.homelab.notify | state = not running |
         | /bin/launchctl print gui/501/dev.homelab.disk-gc | state = not running |
-        | cat /etc/newsyslog.d/homelab-dev.conf | # Managed by homelab: manager job logs␊/Users/dev/.local/share/personal/fleet/manager/logs/personal-fleet-sync.out.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/personal-fleet-sync.err.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/dev.homelab.fleet-watch.out.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/dev.homelab.fleet-watch.err.log dev:staff 600 3 1024 * NZ |
+        | cat /etc/newsyslog.d/homelab-dev.conf | # Managed by homelab: manager job logs␊/Users/dev/.local/share/personal/fleet/manager/logs/personal-fleet-sync.out.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/personal-fleet-sync.err.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/dev.homelab.notify.out.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/dev.homelab.notify.err.log dev:staff 600 3 1024 * NZ |
 
     Scenario: A manager with nothing to do passes every check
       When the health of the manager is checked
@@ -231,7 +231,7 @@ Feature: The health of a machine itself
       Given the command "test -x /Users/dev/.local/bin/homelab" fails
       When the health of the manager is checked
       Then the check "workstation:configuration" fails
-      And the remedy of the check "workstation:configuration" mentions "npx homelab fleet-sync"
+      And the remedy of the check "workstation:configuration" mentions "npx homelab converge"
 
     Scenario: A manager whose clock is off network time fails, and is told how to turn it on
       Given the command "sudo -n /usr/sbin/systemsetup" prints "Network Time: Off"
@@ -248,25 +248,25 @@ Feature: The health of a machine itself
       And the remedy of the check "manager:clock" mentions "manager-privilege.yml"
 
     Scenario: A manager whose watch job is not loaded fails: no heartbeat reaches the bucket
-      Given the command "/bin/launchctl print gui/501/dev.homelab.fleet-watch" fails
+      Given the command "/bin/launchctl print gui/501/dev.homelab.notify" fails
       When the health of the manager is checked
       Then the check "manager:watch" fails
       And the summary of the check "manager:watch" mentions "MANAGER_WATCH_NOT_LOADED"
-      And the remedy of the check "manager:watch" mentions "homelab fleet-sync"
+      And the remedy of the check "manager:watch" mentions "homelab converge"
 
     Scenario: A watch job whose last run failed warns, and points at its log
-      Given the command "/bin/launchctl print gui/501/dev.homelab.fleet-watch" prints "state = not running␊last exit code = 1"
+      Given the command "/bin/launchctl print gui/501/dev.homelab.notify" prints "state = not running␊last exit code = 1"
       When the health of the manager is checked
       Then the check "manager:watch" warns
       And the summary of the check "manager:watch" mentions "MANAGER_WATCH_FAILING exit 1"
-      And the remedy of the check "manager:watch" mentions "dev.homelab.fleet-watch.err.log"
+      And the remedy of the check "manager:watch" mentions "dev.homelab.notify.err.log"
 
     Scenario: A manager whose disk GC job is not loaded fails: nothing reclaims its disk
       Given the command "/bin/launchctl print gui/501/dev.homelab.disk-gc" fails
       When the health of the manager is checked
       Then the check "manager:disk-gc" fails
       And the summary of the check "manager:disk-gc" mentions "MANAGER_DISK_GC_NOT_LOADED"
-      And the remedy of the check "manager:disk-gc" mentions "homelab fleet-sync"
+      And the remedy of the check "manager:disk-gc" mentions "homelab converge"
 
     Scenario: A disk GC job whose last run failed warns, and points at its log
       Given the command "/bin/launchctl print gui/501/dev.homelab.disk-gc" prints "state = not running␊last exit code = 1"

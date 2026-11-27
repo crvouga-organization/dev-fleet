@@ -54,8 +54,8 @@ const need = (): Watched => {
 Given(
   'a labelled container that serves HTTP and checks its health every second',
   async (world) => {
-    const container = `fleet-watchdog-${process.pid}-${Date.now()}`;
-    const directory = await mkdtemp(join(tmpdir(), 'fleet-watchdog-'));
+    const container = `notifydog-${process.pid}-${Date.now()}`;
+    const directory = await mkdtemp(join(tmpdir(), 'notifydog-'));
     world.defer(async () => {
       await runCommand(['docker', 'rm', '-f', container]);
       await rm(directory, { recursive: true, force: true });

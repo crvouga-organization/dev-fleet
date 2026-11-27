@@ -159,7 +159,7 @@ Feature: A worker's memory and disk guards are measured where they run
       When the protection of the T3 listener on port 3773 is measured
       Then the check fails
       And the summary of the check is "T3_PROTECTION_ESCAPED io"
-      And the remedy of the check contains "Run homelab fleet-sync on this worker"
+      And the remedy of the check contains "Run homelab converge on this worker"
       And the remedy of the check does not contain "--maintenance-reboot"
 
   Rule: A listener that is not there has no reserve to measure

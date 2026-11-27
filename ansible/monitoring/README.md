@@ -1,7 +1,7 @@
 # Beszel owner and recovery
 
 The [README](../../README.md) and the [manager guide](../../docs/ubuntu-sync.md)
-are the normal entry points: `homelab fleet-sync`, run on the manager. This
+are the normal entry points: `homelab converge`, run on the manager. This
 directory holds the pinned Compose hub, the native agent unit and their
 playbooks. `src/monitoring/` enrolls machines and measures registration,
 connection, freshness and backups. `lock.json` pins the Beszel release, the
@@ -206,7 +206,7 @@ first is fenced, keeping node IDs, fingerprints, history and settings. It does
 not contact live nodes, prove Tailscale routing, verify systemd reboot, or use an
 off-host storage service. Those remain operational checks:
 
-- From a second tailnet machine, `homelab fleet-status --workers` reports
+- From a second tailnet machine, `homelab check --workers` reports
   `beszel:registration`, `beszel:connection` and `beszel:freshness` passing for
   every worker.
 - `beszel:backup` passes on the manager once off-host storage is configured.

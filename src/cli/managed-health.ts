@@ -94,7 +94,7 @@ async function nodeEvidence(
           : 'BESZEL_ACCOUNT_REQUIRED',
       remedy: {
         action:
-          'Authenticate this manager to Vault so BESZEL_FLEET_AUTH can be read, then rerun fleet-status --workers. Node registration and metric freshness are unverified until then.',
+          'Authenticate this manager to Vault so BESZEL_FLEET_AUTH can be read, then rerun check --workers. Node registration and metric freshness are unverified until then.',
       },
     });
   }
@@ -136,7 +136,7 @@ async function hubReachable(
   return fail(
     'beszel:hub',
     'BESZEL_HUB_UNREACHABLE',
-    `The private dashboard did not answer at ${hub}/api/health. The hub runs on the manager: keep it awake with Docker Desktop running, then run homelab fleet-sync there.`
+    `The private dashboard did not answer at ${hub}/api/health. The hub runs on the manager: keep it awake with Docker Desktop running, then run homelab converge there.`
   );
 }
 
@@ -163,7 +163,7 @@ async function publicEndpoint(fetcher: typeof fetch): Promise<Check> {
     status: 'warn',
     summary: 'BESZEL_PUBLIC_ENDPOINT_OFFLINE',
     remedy: {
-      action: `${publicHubUrl()} did not answer. Create the Cloudflare tunnel and store its token in the fleet's secrets, then run fleet-sync on the manager so the hub starts its Cloudflare connector. The private dashboard is unaffected.`,
+      action: `${publicHubUrl()} did not answer. Create the Cloudflare tunnel and store its token in the fleet's secrets, then run converge on the manager so the hub starts its Cloudflare connector. The private dashboard is unaffected.`,
     },
   };
 }
@@ -219,7 +219,7 @@ export function managedHealthScope(
           summary:
             'Canonical developer node lacks a verified SSH/check-out registration.',
           remedy: {
-            action: `Enroll ${node.id} with homelab fleet-node-add, or use interactive fleet-sync enrollment.`,
+            action: `Enroll ${node.id} with homelab enroll, or use interactive fleet-sync enrollment.`,
           },
         })),
       ],

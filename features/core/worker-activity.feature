@@ -23,7 +23,7 @@ Feature: A worker nobody uses is reported idle
     Scenario: An idle worker's remedy is to park it
       Given a worker whose T3 runs 0 agent turns, last active at "2026-11-10T12:00:00Z", up 900000 seconds
       When it is judged at "2026-11-12T12:00:00Z", with workers idle after 12 hours
-      Then the remedy of the check "worker:idle" mentions "homelab fleet-node-park --id worker-one"
+      Then the remedy of the check "worker:idle" mentions "homelab park --id worker-one"
 
     Scenario: A worker that never ran a turn is idle since it booted
       Given a worker whose T3 runs 0 agent turns, last active at "never", up 172800 seconds

@@ -382,7 +382,7 @@ Read `summary` and `remedy.action` of the failing check. The common ones:
 | `FLEET_MISE_UNMEASURED`                   | Such a revision, and a worker's mise could not be measured. Nothing changed; follow the remedy, or the human decides.          |
 | `FLEET_SOURCE_UNAVAILABLE`                | The revision could not be fetched from `source.repository`. Check the network and that the URL is right.                       |
 | `FLEET_SOURCE_MISMATCH`                   | The manager's copy of the source is of another repository and could not be replaced. Check access to `source.repository`.      |
-| `FLEET_STATE_DIVERGED`                    | This machine and the bucket hold different fleet states. `fleet-state --json` explains; never pick one without the human.      |
+| `FLEET_STATE_DIVERGED`                    | This machine and the bucket hold different fleet states. `state --json` explains; never pick one without the human.      |
 | `FLEET_CONFIGURATION_COPY_CHANGED`        | `~/.config/homelab/fleet.json` was edited by hand. The remedy says how to keep the edit or discard it; the human chooses.    |
 | `FLEET_MANAGER_LOCKED`                    | Another run holds the manager's lock. Wait for it; do not delete the lock while a run is alive.                                |
 | `FLEET_PLAN_STALE`                        | The plan changed after it was approved. Preview again.                                                                         |

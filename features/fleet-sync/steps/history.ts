@@ -181,7 +181,7 @@ Then(
   }
 );
 
-// ── fleet-report ─────────────────────────────────────────────────────────
+// ── history ─────────────────────────────────────────────────────────
 
 When(
   'the operator asks for the fleet report since {string}, at {string}',

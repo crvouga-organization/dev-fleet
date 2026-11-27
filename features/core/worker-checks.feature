@@ -142,7 +142,7 @@ Feature: What is measured on a worker
       When the recovery of the worker after a power loss is checked
       Then the check "worker:power-loss-recovery" fails
       And the summary of the check "worker:power-loss-recovery" mentions "POWER_LOSS_RECOVERY_UNSET"
-      And the remedy of the check "worker:power-loss-recovery" mentions "fleet-sync"
+      And the remedy of the check "worker:power-loss-recovery" mentions "converge"
 
   Rule: The recovery watchdog counts only when its script is there and its last run succeeded
     The unit runs a copy installed outside every revision, so pruning old

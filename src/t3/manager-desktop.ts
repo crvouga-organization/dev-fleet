@@ -77,7 +77,7 @@ export async function managerDesktop(
     ...(!installed
       ? {
           remedy: {
-            action: `Run fleet-sync to stage the pinned app. If ${app} already exists and fails verification, quit it during maintenance and move it aside first.`,
+            action: `Run converge to stage the pinned app. If ${app} already exists and fails verification, quit it during maintenance and move it aside first.`,
           },
         }
       : {}),
@@ -114,7 +114,7 @@ async function runningDesktop(
         status: 'fail',
         summary: 'T3_DESKTOP_ACTIVATION_FAILED',
         remedy: {
-          action: `Open the verified desktop with open ${shellQuote(app)} and rerun fleet-sync.`,
+          action: `Open the verified desktop with open ${shellQuote(app)} and rerun converge.`,
         },
       };
     return runningDesktop({ ...context, apply: false }, pin);

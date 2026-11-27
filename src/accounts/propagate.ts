@@ -14,7 +14,7 @@ export interface Propagation {
   run: Runner;
 }
 
-/** `fleet-sync --only accounts`: the account-derived configuration and
+/** `converge --only accounts`: the account-derived configuration and
  * nothing else, on the manager and on every worker at once. Each node
  * re-reads the proxy's roster and rewrites only its per-account T3
  * instances; T3 watches its settings, so nothing restarts and no running

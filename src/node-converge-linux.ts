@@ -120,7 +120,7 @@ export async function convergeLinux(
           summary: 'RDP_RETIREMENT_FAILED',
           remedy: {
             action:
-              'Restore the enrolled user session and rerun fleet-sync before changing the firewall.',
+              'Restore the enrolled user session and rerun converge before changing the firewall.',
           },
         },
       ];

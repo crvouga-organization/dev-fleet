@@ -27,12 +27,12 @@ Feature: What a command prints with --json is published, and checked against wha
       When fleet-state checks a fleet state whose bucket cannot be reached
       Then what it prints matches "schema/output/report.schema.json"
 
-    Scenario: fleet-state --example prints a fleet configuration, not a report
+    Scenario: state --example prints a fleet configuration, not a report
       When fleet-state prints the example configuration
       Then what it prints matches "schema/output/fleet-state-definition.schema.json"
       And it does not match "schema/output/report.schema.json"
 
-    Scenario Outline: fleet-sync --schedule <action> is a version 2 schedule report, not a fleet-sync report
+    Scenario Outline: converge --schedule <action> is a version 2 schedule report, not a fleet-sync report
       When the manager schedule is asked to <action>
       Then what it prints matches "schema/output/fleet-sync-schedule.schema.json"
       And it does not match "schema/output/fleet-sync.schema.json"
@@ -42,9 +42,9 @@ Feature: What a command prints with --json is published, and checked against wha
         | report its status            |
         | pause, without authorization |
 
-    Scenario: fleet-report's output matches its schema
-      When fleet-report reads a history of two runs
-      Then what it prints matches "schema/output/fleet-report.schema.json"
+    Scenario: history's output matches its schema
+      When history reads a history of two runs
+      Then what it prints matches "schema/output/history.schema.json"
 
     Scenario: A refused command prints an error document
       When a command is refused as a usage error
@@ -146,7 +146,7 @@ Feature: What a command prints with --json is published, and checked against wha
         | schema/output/fleet-sync.schema.json             |
         | schema/output/fleet-sync-schedule.schema.json    |
         | schema/output/fleet-state-definition.schema.json |
-        | schema/output/fleet-report.schema.json           |
+        | schema/output/history.schema.json           |
         | schema/output/error.schema.json                  |
         | schema/check-ids.json                            |
         | severity                                         |

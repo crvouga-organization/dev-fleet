@@ -341,12 +341,12 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_PRIVATE_ROUTE_CONFLICT`: t3 private route conflict.
 - `T3_PRIVATE_ROUTE_REQUIRED`: t3 private route required.
 - `T3_PRIVATE_ROUTE_UNVERIFIED`: t3 private route unverified.
-- `T3_CLIENT_SETTINGS_UNVERIFIED`: check the manager’s T3 client-settings.json, fleet state availability and the worker desktop service, then rerun fleet-sync. A pending desktop restart is retried.
-- `T3_DESKTOP_ACTIVATION_FAILED`: open the verified manager bundle named in the remedy and rerun fleet-sync.
+- `T3_CLIENT_SETTINGS_UNVERIFIED`: check the manager’s T3 client-settings.json, fleet state availability and the worker desktop service, then rerun converge. A pending desktop restart is retried.
+- `T3_DESKTOP_ACTIVATION_FAILED`: open the verified manager bundle named in the remedy and rerun converge.
 - `T3_CUSTOMIZATIONS_CONFLICT`: inspect the ownership marker in the manager’s T3 userdata directory. Move an unrelated marker aside before recovering the saved snapshot.
 - `T3_CUSTOMIZATIONS_INVALID`: check that keybindings are a JSON array, theme files are regular files listed by the pinned T3 CLI, and the encoded customization snapshot fits the 1 MiB fleet state document limit.
 - `T3_CLIENT_SETTINGS_INVALID`: repair the manager’s client-settings.json so its settings are a JSON object.
-- `T3_CLIENT_SETTINGS_TOO_LARGE`: the desktop preferences exceed the fleet state's 1 MiB document limit. Reduce the document on the manager and rerun fleet-sync.
+- `T3_CLIENT_SETTINGS_TOO_LARGE`: the desktop preferences exceed the fleet state's 1 MiB document limit. Reduce the document on the manager and rerun converge.
 - `T3_PROFILE_CONFLICT`: t3 profile conflict.
 - `T3_PROFILE_PENDING`: t3 profile pending.
 - `T3_PROFILE_RECORD_INVALID`: t3 profile record invalid.
@@ -355,7 +355,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_RECONCILIATION_UNAVAILABLE`: a local reconciliation precondition failed. Follow the stage-specific remedy to inspect the receipt, installed definition or T3 settings and ownership record locally. Restore a valid backup or correct permissions, then retry `homelab t3-reconcile --dry-run`. Never share raw file contents.
 - `T3_ACCOUNT_ROSTER_UNAVAILABLE`: the proxy account roster could not be read. Run `homelab accounts` on the affected machine to verify proxy access and the proxy-client-key secret, then retry `homelab t3-reconcile --dry-run`. Existing providers are preserved. If access still fails, report this code without credentials.
 - `T3_QUOTA_COVERAGE_MISSING`: the manager could not match a hub quota reading to each declared Antigravity account. Check its T3 usage-limit source and the account on the proxy.
-- `T3_CLI_MISSING`: the provider check could not start the T3 CLI from PATH or its user installation. Restore the executable and rerun fleet-sync to verify the account sessions.
+- `T3_CLI_MISSING`: the provider check could not start the T3 CLI from PATH or its user installation. Restore the executable and rerun converge to verify the account sessions.
 - `T3_ANTIGRAVITY_SESSION_UNVERIFIED`: T3 could not open an authenticated ACP session for the reported account positions. Check that T3 is running on this machine, refresh those instances in Settings > Providers, and compare their proxy account session checks before rerunning fleet-sync.
 - `T3_PROVIDERS_UNVERIFIED`: provider reconciliation stopped before it could report a plan. The remedy is the authored cause (a stale plan, a held lock, or the credential playbook). An unexpected error stays out of the report, because it can carry a secret. Run `devfleet t3-apply --dry-run` on the machine.
 - `T3_PROVIDER_CONFLICT`: t3 provider conflict.
@@ -363,7 +363,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_PROVIDER_NAMES_UNVERIFIED`: t3 provider names unverified.
 - `T3_RENDERER_LIMIT_UNVERIFIED`: check the delegated renderer cgroup after an idle desktop restart and recovery timer tick.
 - `T3_RENDERERS_HIGH`: the desktop renderers exceed their memory budget. Reload the app when idle.
-- `T3_PROTECTION_ESCAPED`: the T3 listener lacks its CPU, I/O or memory reserve; the summary names which (`cpu`, `io`, `memory`). Run fleet-sync: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. `io` alone, while the user manager does not hand the io controller down (measured in its `cgroup.subtree_control`; its `cgroup.controllers` lists io as soon as the declaration is loaded), is not T3 leaving its unit and only warns: fleet-sync declares the controller, and the user manager takes it on its next start, so reboot the worker while it runs no agent turn (`homelab converge --maintenance-reboot`, which reboots for it as for pending updates); restarting T3 does not change it.
+- `T3_PROTECTION_ESCAPED`: the T3 listener lacks its CPU, I/O or memory reserve; the summary names which (`cpu`, `io`, `memory`). Run converge: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. `io` alone, while the user manager does not hand the io controller down (measured in its `cgroup.subtree_control`; its `cgroup.controllers` lists io as soon as the declaration is loaded), is not T3 leaving its unit and only warns: fleet-sync declares the controller, and the user manager takes it on its next start, so reboot the worker while it runs no agent turn (`homelab converge --maintenance-reboot`, which reboots for it as for pending updates); restarting T3 does not change it.
 - `T3_PROTECTION_UNOBSERVED`: no process of the worker user listens on the T3 port, so there is no reserve to measure: T3 is stopped or restarting. See `worker:t3-recovery` and `worker:t3-health`.
 - `T3_RESTART_PENDING`: a restart of the worker's T3 (a new release, a staged policy, a return to loopback) waits for its agent turns to end. The remedy says how long it has waited and when its deadline falls: `personal-worker-recovery` applies it at the first check with no turn running, and `t3RestartMaxDeferralHours` after it was first deferred although turns run, which ends them. A failure means the deadline passed and the timer did not apply it: check `worker:service-recovery` and run `homelab converge`. To restart at once, run `homelab converge --restart-busy`.
 - `T3_SERVER_INSTALL_FAILED`: t3 server install failed: the pinned server of a headless worker is missing from the toolchain, or `t3-headless.yml` did not apply.
@@ -454,7 +454,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `BESZEL_HUB_SELECTION_REQUIRED`: beszel hub selection required.
 - `BESZEL_HUB_UNHEALTHY`: beszel hub unhealthy.
 - `BESZEL_HUB_UNREACHABLE`: beszel hub unreachable.
-- `BESZEL_AGENT_VERSION_PENDING`: the hub has yet to observe an agent running the target release. Run fleet-sync and check its next sample.
+- `BESZEL_AGENT_VERSION_PENDING`: the hub has yet to observe an agent running the target release. Run converge and check its next sample.
 - `BESZEL_HUB_UPGRADE_PENDING`: beszel hub upgrade pending. **Needs a person.**
 - `BESZEL_INPUT_INVALID`: beszel input invalid.
 - `BESZEL_INPUT_LIMIT`: beszel input limit.
@@ -503,8 +503,8 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `AGENT_COMMANDS_CONFLICT`: `agent:commands` on a worker: `~/.local/share/personal/fleet/agent-commands` exists and is not the link `sync` makes to the applied revision's launchers, so it was left untouched and the worker's `claude`, `codex` and the others are not the fleet's launchers. On the worker look at what is there, move it away, then run `homelab converge --node ID`. **Needs a person.**
 - `AGENT_COMMANDS_NOT_LINKED`: `agent:commands` on a worker: the play that makes that link (`ansible/agents/commands.yml`) failed, or the link is not there after it ran; its output is not reported. Run `homelab converge --node ID` again; when it repeats, raise an issue.
 - `AGENT_COMMANDS_REQUEST_INVALID`: the same play refused its variables: homelab passes the link beside the applied revision and its fixed target, so this is a defect of the release. Raise an issue.
-- `AGENT_SLICE_MISSING`: the user manager cannot load the T3 agent slice. Check the T3 release and run fleet-sync.
-- `AGENT_LIMIT_OVERRIDDEN`: a higher-priority setting overrides an agent slice limit. Run fleet-sync and inspect the effective properties.
+- `AGENT_SLICE_MISSING`: the user manager cannot load the T3 agent slice. Check the T3 release and run converge.
+- `AGENT_LIMIT_OVERRIDDEN`: a higher-priority setting overrides an agent slice limit. Run converge and inspect the effective properties.
 - `AGENT_MEMORY_LIMIT_MISSING`: agent memory limit missing.
 - `AGENT_MODEL_UNSERVED`: agent model unserved.
 - `AGENT_PROFILE_RENDER_MISMATCH`: agent profile render mismatch.
@@ -614,7 +614,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - **Meaning:** fleet-sync could not plan, lock, reach a machine, promote a revision or keep the fleet state.
 - **Confirm:** `homelab state` for the state, `homelab check` for machines, and the report `homelab converge` writes.
 - **Fix:** Follow the remedy; most clear by running `homelab converge` again once the holder of a lock finishes.
-- **Escalate:** FLEET_STATE_DIVERGED needs a person to choose which copy of the state to keep (docs/state.md). FLEET_CONFIGURATION_COPY_CHANGED needs a person to keep the edit (in `fleet.json`, or with the import the remedy prints) or to delete the copy. FLEET_REVISION_UNMERGED means the revision is not on the default branch of the source repository, so nothing was changed: merge it, or pass `--allow-unmerged` to converge the fleet to it on purpose. FLEET_REVISION_UNVERIFIED means the manager's own copy of the source repository could not be fetched to answer that: restore its network and Git access. FLEET_SOURCE_MISMATCH means that copy is a clone of another repository (one made before the fleet's source moved), which can never hold the revision, and the repository `source.repository` names could not be cloned to replace it: restore the manager's network and Git access to it, check the URL, and run `homelab converge` again; the copy is replaced by itself. Do not pass `--allow-unmerged` for it: the revision may well be merged. FLEET_MISE_DOWNGRADE means the revision's own toolchain bootstrap is from before the rule that keeps a newer mise, and would replace the mise of the machines the remedy names with the older one the revision pins; nothing was changed. Every checkout on those machines whose `mise.toml` asks for a newer mise would stop working, so converge to a later revision instead, or pass `--allow-mise-downgrade` to `homelab converge` to install the older one on purpose. The flag skips the refusal for any revision, but it reaches the bootstrap only of a revision that reads it: one from before the rule installs the older mise by itself, and one released after the rule and before the flag reached the bootstrap keeps the newer mise whatever it is told, so there the older mise is installed by hand, with `bash bootstrap/bootstrap.sh --allow-mise-downgrade` in the revision's checkout on each machine (`--tools-only` on the manager, `--worker --node ID` on a worker). FLEET_MISE_UNMEASURED means the same kind of revision was refused because a machine's mise could not be measured, and nothing was changed. When the remedy names workers, they did not answer over SSH: bring them back and run it again, park them (`homelab park --id ID`), or name the others with `--node`. When it names the homelab installed on the manager, the run was started on a worker and the manager's installed homelab is from before `fleet-sync --measure-mise` (or the manager has none on its PATH): run `homelab converge` on the manager itself once with a current release. `--allow-mise-downgrade` goes on without the measurement.
+- **Escalate:** FLEET_STATE_DIVERGED needs a person to choose which copy of the state to keep (docs/state.md). FLEET_CONFIGURATION_COPY_CHANGED needs a person to keep the edit (in `fleet.json`, or with the import the remedy prints) or to delete the copy. FLEET_REVISION_UNMERGED means the revision is not on the default branch of the source repository, so nothing was changed: merge it, or pass `--allow-unmerged` to converge the fleet to it on purpose. FLEET_REVISION_UNVERIFIED means the manager's own copy of the source repository could not be fetched to answer that: restore its network and Git access. FLEET_SOURCE_MISMATCH means that copy is a clone of another repository (one made before the fleet's source moved), which can never hold the revision, and the repository `source.repository` names could not be cloned to replace it: restore the manager's network and Git access to it, check the URL, and run `homelab converge` again; the copy is replaced by itself. Do not pass `--allow-unmerged` for it: the revision may well be merged. FLEET_MISE_DOWNGRADE means the revision's own toolchain bootstrap is from before the rule that keeps a newer mise, and would replace the mise of the machines the remedy names with the older one the revision pins; nothing was changed. Every checkout on those machines whose `mise.toml` asks for a newer mise would stop working, so converge to a later revision instead, or pass `--allow-mise-downgrade` to `homelab converge` to install the older one on purpose. The flag skips the refusal for any revision, but it reaches the bootstrap only of a revision that reads it: one from before the rule installs the older mise by itself, and one released after the rule and before the flag reached the bootstrap keeps the newer mise whatever it is told, so there the older mise is installed by hand, with `bash bootstrap/bootstrap.sh --allow-mise-downgrade` in the revision's checkout on each machine (`--tools-only` on the manager, `--worker --node ID` on a worker). FLEET_MISE_UNMEASURED means the same kind of revision was refused because a machine's mise could not be measured, and nothing was changed. When the remedy names workers, they did not answer over SSH: bring them back and run it again, park them (`homelab park --id ID`), or name the others with `--node`. When it names the homelab installed on the manager, the run was started on a worker and the manager's installed homelab is from before `converge --measure-mise` (or the manager has none on its PATH): run `homelab converge` on the manager itself once with a current release. `--allow-mise-downgrade` goes on without the measurement.
 
 - `ANSIBLE_VARIABLE_LIMIT`: ansible variable limit.
 - `CONTAINER_WATCHDOG_UNOBSERVED`: container watchdog unobserved.
@@ -663,7 +663,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 
 ## The manager's own policy and scheduled jobs
 
-- **Meaning:** `ansible/macos/manager.yml` did not pass its check-mode run or its apply, or something it declares (network time, the fleet-watch job, the rotation of the scheduled jobs' logs) is not in place.
+- **Meaning:** `ansible/macos/manager.yml` did not pass its check-mode run or its apply, or something it declares (network time, the notify job, the rotation of the scheduled jobs' logs) is not in place.
 - **Confirm:** The `manager:playbook`, `manager:clock`, `manager:watch` and `manager:job-logs` checks of `homelab converge --dry-run`; on the manager, the check-mode run the remedy quotes.
 - **Fix:** Run `homelab converge`, which applies the playbook in check mode first, then for real. What needs root (power settings, reading network time, newsyslog) comes from the one grant: `ansible-playbook -e user=$(id -un) -K ansible/macos/manager-privilege.yml`, run again after an upgrade that changed it.
 - **Escalate:** The grant needs an administrator's password, once.
@@ -674,23 +674,23 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `MANAGER_PLAYBOOK_FAILED`: manager playbook failed.
 - `MANAGER_WATCH_INTERVAL_INVALID`: manager watch interval invalid: `manager.schedule.watchMinutes` is outside 5 to 1440.
 - `MANAGER_JOB_LOG_OVERSIZED`: logs of the scheduled jobs grew past twice the size newsyslog rotates them at, so it is not rotating them. Check that it runs with the command the remedy prints and read `/var/log/system.log` for its errors.
-- `MANAGER_WATCH_FAILING`: the last run of the fleet-watch job failed; the check names its exit code. Read the job's error log the remedy names and run `homelab notify` on the manager to see the same failure.
+- `MANAGER_WATCH_FAILING`: the last run of the notify job failed; the check names its exit code. Read the job's error log the remedy names and run `homelab notify` on the manager to see the same failure.
 - `MANAGER_CLOCK_NOT_SYNCHRONISED`: network time is off on the manager, and every worker's clock is measured against it. `manager:clock` fails and `ansible/macos/manager.yml` asserts the same. Turn on Set time and date automatically in System Settings > General > Date & Time. **Needs a person.**
-- `MANAGER_WATCH_NOT_LOADED`: the launchd job that runs fleet-watch on a schedule is not loaded, so no heartbeat reaches the bucket and no notification is sent. Run `homelab converge` on the manager, which installs and loads it.
+- `MANAGER_WATCH_NOT_LOADED`: the launchd job that runs notify on a schedule is not loaded, so no heartbeat reaches the bucket and no notification is sent. Run `homelab converge` on the manager, which installs and loads it.
 - `MANAGER_DISK_GC_NOT_LOADED`: the launchd job that runs the manager's disk GC (`dev.homelab.disk-gc`) is not loaded, so nothing removes idle worktrees, unused tool versions or old homelab checkouts on the manager. Run `homelab converge` on the manager, which installs and loads it with `ansible/macos/manager.yml`.
 - `MANAGER_DISK_GC_FAILING`: the last run of the manager's disk GC failed; the check names its exit code. Read `~/.local/share/personal/fleet/manager/logs/dev.homelab.disk-gc.err.log`, and start it by hand with `launchctl kickstart gui/$(id -u)/dev.homelab.disk-gc` to see the same failure.
 - `MANAGER_DISK_GC_STALE`: the manager's disk GC is loaded but its last report (`~/Library/Caches/homelab/disk-gc.json`) is more than three hours old: launchd does not start it while the manager sleeps, or a run hangs. Read its error log and `manager:power`.
 
-## Notifications (fleet-watch)
+## Notifications (notify)
 
-- **Meaning:** fleet-watch could not reach a notification target `notify` in `fleet.json` names, or its address is not stored as a secret.
+- **Meaning:** notify could not reach a notification target `notify` in `fleet.json` names, or its address is not stored as a secret.
 - **Confirm:** Run `homelab notify --test` and read the `notify:*` checks.
 - **Fix:** Store the target's address as the secret the remedy names, or fix the endpoint, then run `homelab notify --test` again.
 - **Escalate:** A target that keeps refusing needs whoever runs that endpoint.
 
 - `NOTIFY_DELIVERY_FAILED`: notify delivery failed.
 - `NOTIFY_TARGET_UNAVAILABLE`: notify target unavailable.
-- `NOTIFY_NOT_CONFIGURED`: `fleet.json` has no `notify` block, so fleet-watch notifies nobody: a warning of a scheduled run, a failure of `homelab notify --test`. Add the block with its targets and store each target's address as its secret (`notify-webhook-url`, `notify-ntfy-url`). **Needs a person.**
+- `NOTIFY_NOT_CONFIGURED`: `fleet.json` has no `notify` block, so notify notifies nobody: a warning of a scheduled run, a failure of `homelab notify --test`. Add the block with its targets and store each target's address as its secret (`notify-webhook-url`, `notify-ntfy-url`). **Needs a person.**
 - `WATCH_HEARTBEAT_NO_BUCKET`: a warning of `watch:heartbeat`: `fleet.json` names no bucket under `state`, so the heartbeat and what the watcher remembers are not kept, and the heartbeat workflow has nothing to read. Name the bucket. **Needs a person.**
 - `WATCH_HEARTBEAT_UNWRITTEN`: the heartbeat could not be written to the bucket. Check the bucket credentials the run was given; `homelab state` shows the connection.
 
@@ -721,7 +721,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - **Escalate:** A manager that is off or asleep needs a person at it.
 
 - `FLEET_HEARTBEAT_MISSING`: the workflow could not download the heartbeat: the bucket holds none under the prefix, or the inputs or the key the workflow was given do not reach the bucket. Run `homelab notify` on the manager, and compare the workflow's `bucket`, `endpoint` and `prefix` with `state` in `fleet.json`.
-- `FLEET_HEARTBEAT_UNREADABLE`: what the bucket holds is not a heartbeat fleet-watch wrote. Run `homelab notify` on the manager, which writes a new one.
+- `FLEET_HEARTBEAT_UNREADABLE`: what the bucket holds is not a heartbeat notify wrote. Run `homelab notify` on the manager, which writes a new one.
 - `FLEET_HEARTBEAT_STALE`: the manager last watched the fleet longer ago than `max-age-minutes`: it is off, asleep, offline or no longer watching. Wake it and read `manager:watch` (`MANAGER_WATCH_NOT_LOADED`, `MANAGER_WATCH_FAILING`).
 - `CLIPROXY_HEALTH_PROFILE_UNKNOWN`: the `profile` the caller passed is not liveness, readiness, light, nightly or manual. Correct the calling workflow. **Needs a person.**
 - `CLIPROXY_HEALTH_CONFIG_MISSING`: the repository does not hold the fleet configuration at the path the `config` input names. Correct the input or commit the file. **Needs a person.**
@@ -757,4 +757,4 @@ See the GNOME desktop sharing and manager keychain procedures in
 
 ### Directed T3 grants
 
-To authorize every enrolled environment's agents to work with full access on every other enrolled environment, set `t3.meshAccess` to `"full-access"` in fleet.json. Preview with `homelab converge --dry-run`. Each `t3:mesh-link` names the source, destination and measured grant. An unreachable environment or changed identity is reported by `t3:mesh-member`. Restore its T3 service and enrolled tailnet connection, then run fleet-sync. Sync adopts healthy grants in place and replaces incorrect grants or grants expiring within seven days. Scheduled sync retries outstanding pairs. Use `homelab check` to measure the links from their sources.
+To authorize every enrolled environment's agents to work with full access on every other enrolled environment, set `t3.meshAccess` to `"full-access"` in fleet.json. Preview with `homelab converge --dry-run`. Each `t3:mesh-link` names the source, destination and measured grant. An unreachable environment or changed identity is reported by `t3:mesh-member`. Restore its T3 service and enrolled tailnet connection, then run converge. Sync adopts healthy grants in place and replaces incorrect grants or grants expiring within seven days. Scheduled sync retries outstanding pairs. Use `homelab check` to measure the links from their sources.

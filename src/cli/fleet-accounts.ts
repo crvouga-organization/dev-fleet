@@ -32,7 +32,7 @@ export interface AccountsDependencies {
   run?: Runner;
   /** Runs a proxy command attached to the terminal (a sign-in). */
   operate?: (args: string[]) => Promise<number>;
-  /** `fleet-sync --only accounts`. */
+  /** `converge --only accounts`. */
   propagate?: () => Promise<CommandOutcome>;
   home?: string;
   settingsFile?: string;
@@ -40,7 +40,7 @@ export interface AccountsDependencies {
 
 const PROVIDER = /^[a-z][a-z0-9-]{0,31}$/;
 
-/** `homelab fleet-accounts`: the provider account roster the proxy holds,
+/** `homelab accounts`: the provider account roster the proxy holds,
  * each account's state, and the account checks. `--add`, `--relogin` and
  * `--remove` change one account on the proxy and propagate the result to
  * every node at once.
@@ -184,7 +184,7 @@ function lifecycle(
   if (flag === 'add') return ['add-account', provider];
   if (!index || !/^[1-9][0-9]{0,3}$/.test(index))
     throw new FleetUsageError(
-      `--${flag} needs the account's index, as homelab fleet-accounts lists it.`
+      `--${flag} needs the account's index, as homelab accounts lists it.`
     );
   return [flag === 'relogin' ? 'relogin' : 'remove-account', provider, index];
 }
@@ -197,7 +197,7 @@ async function readRoster(
   const checkout = ownerCheckout(workspace);
   if (!checkout)
     throw new FleetUsageError(
-      'The account roster is kept by the proxy on the manager. Run homelab fleet-accounts there, after a first fleet-sync.'
+      'The account roster is kept by the proxy on the manager. Run homelab accounts there, after a first fleet-sync.'
     );
   const result = await run(
     [

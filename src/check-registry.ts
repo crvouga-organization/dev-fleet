@@ -329,7 +329,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'manager:vault-renewal':
     'The manager is logged in to Vault and its launch agent renews the session.',
   'manager:watch':
-    'fleet-watch runs on the manager on a schedule, so the heartbeat reaches the bucket.',
+    'notify runs on the manager on a schedule, so the heartbeat reaches the bucket.',
   'notify:*': 'A notification target fleet.json names took the notification.',
   'notify:configured':
     'Every notification target fleet.json names has its address available as a secret.',
@@ -485,13 +485,13 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'vscode:forwarding':
     'VS Code Remote-SSH forwarding, which needs an operator test.',
   'watch:heartbeat':
-    "fleet-watch stored its heartbeat and each machine's health in the bucket.",
+    "notify stored its heartbeat and each machine's health in the bucket.",
   'worker:account':
     "The declared worker account was created over a root login, with the manager's key and the fleet's sudo rule.",
   'worker:agent-sessions':
     'How many agent sessions this worker runs (a terminal or a preview browser is not one, and a process Codex or OpenCode serves all its sessions from is counted once and named as that), how many its memory policy supports at the estimated size of a session, and how that estimate compares with the agents running now; warns when more run than it supports. Nothing refuses a session unless the fleet configuration declares agentSessionLimit; a declared limit the worker does not hold fails.',
   'worker:auto-park':
-    'fleet-watch parked a worker idle longer than declared (only with parking.autoPark).',
+    'notify parked a worker idle longer than declared (only with parking.autoPark).',
   'worker:browser':
     'A headless browser starts on a worker whose tool profiles include web.',
   'worker:capacity': 'CPU, memory and disk evidence is available.',

@@ -90,7 +90,7 @@ export interface WorkerBilling {
 export interface ParkingPolicy {
   /** A worker with no agent activity for this long is `worker:idle`. */
   idleAfterHours?: number;
-  /** fleet-watch parks a worker idle longer than idleAfterHours. Off unless
+  /** notify parks a worker idle longer than idleAfterHours. Off unless
    * true.
    */
   autoPark?: boolean;
@@ -167,7 +167,7 @@ export interface FleetDefinition {
    * included, commits and pushes with.
    */
   git?: GitIdentity;
-  /** Where fleet-watch sends notifications; absent, nobody is notified. */
+  /** Where notify sends notifications; absent, nobody is notified. */
   notify?: NotifyConfig;
   /** An Ubuntu release ansible/ubuntu/policy.json accepts, with exactly the
    * architectures the policy names for it. */

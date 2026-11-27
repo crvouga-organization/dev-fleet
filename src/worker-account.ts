@@ -59,6 +59,6 @@ export async function createWorkerAccount(
     'WORKER_ACCOUNT_CREATION_FAILED';
   return failure(
     code,
-    `The declared account ${user} could not be created over the root login. Create it on the worker as root (${accountCommand(user)}), authorise the manager's key for it and grant it passwordless sudo, then rerun fleet-sync.`
+    `The declared account ${user} could not be created over the root login. Create it on the worker as root (${accountCommand(user)}), authorise the manager's key for it and grant it passwordless sudo, then rerun converge.`
   );
 }

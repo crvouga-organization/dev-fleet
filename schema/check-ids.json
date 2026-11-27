@@ -15,7 +15,7 @@
       "meaning": "This machine offers exactly the accounts of the proxy's current account roster.",
       "severity": "required",
       "repair": {
-        "manual": "The roster reaches every node with homelab fleet-sync --only accounts, run from the manager."
+        "manual": "The roster reaches every node with homelab converge --only accounts, run from the manager."
       }
     },
     {

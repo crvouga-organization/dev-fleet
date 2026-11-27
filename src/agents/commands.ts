@@ -84,7 +84,7 @@ export async function linkAgentCommands(
         status: 'fail',
         summary: 'AGENT_COMMANDS_CONFLICT',
         remedy: {
-          action: `${wanted.path} is not the link fleet-sync makes. Move it away on this worker, then run fleet-sync.`,
+          action: `${wanted.path} is not the link fleet-sync makes. Move it away on this worker, then run converge.`,
         },
       };
     const played = await play({
@@ -98,7 +98,7 @@ export async function linkAgentCommands(
         summary: 'AGENT_COMMANDS_NOT_LINKED',
         remedy: {
           action:
-            'The agent commands play (ansible/agents/commands.yml) did not make the link on this worker; its output is not reported. Run fleet-sync again.',
+            'The agent commands play (ansible/agents/commands.yml) did not make the link on this worker; its output is not reported. Run converge again.',
         },
       };
   }

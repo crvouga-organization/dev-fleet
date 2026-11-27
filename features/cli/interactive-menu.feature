@@ -17,7 +17,7 @@ Feature: The interactive menu
         | homelab --interactive            | at a terminal       | opens         |
         | homelab --interactive            | at a terminal in CI | does not open |
         | homelab --interactive t3-cleanup | at a terminal       | does not open |
-        | homelab fleet-nodes              | at a terminal       | does not open |
+        | homelab workers              | at a terminal       | does not open |
         | homelab --json --interactive     | at a terminal       | does not open |
         | homelab --non-interactive        | at a terminal       | does not open |
         | homelab                          | without a terminal  | does not open |

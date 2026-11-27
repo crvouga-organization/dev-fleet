@@ -223,7 +223,7 @@ function shared(node: FleetNode): Check {
     status: 'warn',
     summary: 'VAULT_WORKER_TOKEN_SHARED',
     remedy: {
-      action: `${node.id}'s token was read from the fleet's shared document, which every worker can read. Issue it a token of its own with homelab fleet-node-replace --id ${node.id} --apply --yes (kept at ${own.mount}/${own.path}), then remove ${workerTokenField(node.id)} from the shared document.`,
+      action: `${node.id}'s token was read from the fleet's shared document, which every worker can read. Issue it a token of its own with homelab replace --id ${node.id} --apply --yes (kept at ${own.mount}/${own.path}), then remove ${workerTokenField(node.id)} from the shared document.`,
     },
   };
 }
@@ -235,7 +235,7 @@ function required(node: FleetNode): Check {
     status: 'fail',
     summary: 'VAULT_LOGIN_REQUIRED',
     remedy: {
-      action: `Issue ${node.id} a token of its own with homelab fleet-node-replace --id ${node.id} --apply --yes. Opt-in fallback: homelab fleet-sync --vault-password-login in a terminal, or on ${node.id}: vault login -address=${addr} -method=userpass username=${definition.worker!.vaultUser}. Proxy providers in T3 stay unavailable until then.`,
+      action: `Issue ${node.id} a token of its own with homelab replace --id ${node.id} --apply --yes. Opt-in fallback: homelab converge --vault-password-login in a terminal, or on ${node.id}: vault login -address=${addr} -method=userpass username=${definition.worker!.vaultUser}. Proxy providers in T3 stay unavailable until then.`,
     },
   };
 }
@@ -251,7 +251,7 @@ function unreachable(node: FleetNode): Check {
     status: 'fail',
     summary: 'VAULT_UNREACHABLE',
     remedy: {
-      action: `Vault at ${addr} does not answer ${node.id}, or is sealed; a new token or a login does not help, so none was delivered. On ${node.id}, vault status -address=${addr} says which: no answer is the network between them (the tailnet, DNS, the address under secrets in the fleet configuration) or a Vault that is not running; "Sealed true" is a Vault to unseal. Then run homelab fleet-sync. Proxy providers in T3 stay unavailable until then.`,
+      action: `Vault at ${addr} does not answer ${node.id}, or is sealed; a new token or a login does not help, so none was delivered. On ${node.id}, vault status -address=${addr} says which: no answer is the network between them (the tailnet, DNS, the address under secrets in the fleet configuration) or a Vault that is not running; "Sealed true" is a Vault to unseal. Then run homelab converge. Proxy providers in T3 stay unavailable until then.`,
     },
   };
 }
@@ -311,7 +311,7 @@ export async function holdManagerVault(
       renewal(
         'fail',
         'VAULT_RENEWAL_MISSING',
-        `The manager's Vault session is not renewed and lapses at its TTL. Run homelab fleet-sync on the manager; it loads ${MANAGER_VAULT_RENEWAL}.`
+        `The manager's Vault session is not renewed and lapses at its TTL. Run homelab converge on the manager; it loads ${MANAGER_VAULT_RENEWAL}.`
       ),
     ];
   const session = sessionLifetime(looked.stdout);
@@ -338,12 +338,12 @@ async function unanswered(
     return renewal(
       'fail',
       'VAULT_UNREACHABLE',
-      `Vault at ${addr} does not answer the manager, or is sealed; logging in again does not help. On the manager, vault status -address=${addr} says which: no answer is the network between them (the tailnet, DNS, the address under secrets in the fleet configuration) or a Vault that is not running; "Sealed true" is a Vault to unseal. Then run homelab fleet-sync. Until then the manager's agents use the proxy client key they last read, and a login that was held is still held if Vault returns before it lapses.`
+      `Vault at ${addr} does not answer the manager, or is sealed; logging in again does not help. On the manager, vault status -address=${addr} says which: no answer is the network between them (the tailnet, DNS, the address under secrets in the fleet configuration) or a Vault that is not running; "Sealed true" is a Vault to unseal. Then run homelab converge. Until then the manager's agents use the proxy client key they last read, and a login that was held is still held if Vault returns before it lapses.`
     );
   return renewal(
     'fail',
     'VAULT_LOGIN_REQUIRED',
-    `Log the manager in once, in your own terminal: ${login}. Then run homelab fleet-sync. Until then the manager's agents use the proxy client key they last read, and new worker tokens cannot be issued.`
+    `Log the manager in once, in your own terminal: ${login}. Then run homelab converge. Until then the manager's agents use the proxy client key they last read, and new worker tokens cannot be issued.`
   );
 }
 
@@ -395,7 +395,7 @@ function endingLogin(
   return renewal(
     'warn',
     'VAULT_LOGIN_EXPIRY_PENDING',
-    `The manager's Vault login ends ${within(left)} and renewal cannot extend it: ${session.renewable ? 'Vault renews a token only up to its maximum lifetime, which this one has reached' : 'its token is not renewable'}. Log the manager in again before then, in your own terminal: ${login}. Then run homelab fleet-sync. Once it ends the manager reads no secret, and every check that needs one is blocked by this one.`
+    `The manager's Vault login ends ${within(left)} and renewal cannot extend it: ${session.renewable ? 'Vault renews a token only up to its maximum lifetime, which this one has reached' : 'its token is not renewable'}. Log the manager in again before then, in your own terminal: ${login}. Then run homelab converge. Once it ends the manager reads no secret, and every check that needs one is blocked by this one.`
   );
 }
 

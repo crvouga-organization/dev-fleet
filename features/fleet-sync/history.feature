@@ -1,4 +1,4 @@
-Feature: Every fleet-sync run is kept in a history, and fleet-report says how reliable it is
+Feature: Every fleet-sync run is kept in a history, and history says how reliable it is
   The history is a document in the fleet state, so it goes to the bucket with
   the rest and survives the manager. It keeps check IDs and machine names
   only, and is capped by age and by count.

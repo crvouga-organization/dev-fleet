@@ -126,7 +126,7 @@ When(
   }
 );
 
-When('fleet-report reads a history of two runs', (world) => {
+When('history reads a history of two runs', (world) => {
   emptyState(world);
   const now = new Date('2026-11-01T12:00:00Z');
   for (const [finished, ok] of [

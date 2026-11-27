@@ -170,7 +170,7 @@ Feature: The bucket is the source of truth and a manager's copy is disposable
 
     Scenario: The diverged manager changes nothing more
       When manager "b" changes the configuration to "more"
-      Then it is refused with "fleet-state --restore --yes"
+      Then it is refused with "state --restore --yes"
       And the fleet state of manager "b" holds the configuration "offline on b"
 
     Scenario: Nothing of the diverged manager reaches the bucket
@@ -221,7 +221,7 @@ Feature: The bucket is the source of truth and a manager's copy is disposable
   Rule: The bucket credentials reach Litestream through its environment only
 
     Scenario: A change to an S3 bucket starts Litestream with the keys in its environment
-      Given manager "a" replicates to the S3 bucket "fleet-state" at "https://s3.example.com" with the keys "AKIDEXAMPLE" and "secret/example+key"
+      Given manager "a" replicates to the S3 bucket "state" at "https://s3.example.com" with the keys "AKIDEXAMPLE" and "secret/example+key"
       When manager "a" changes the configuration to "one"
       Then Litestream was started more than once
       And no Litestream command line contains "secret/example+key"

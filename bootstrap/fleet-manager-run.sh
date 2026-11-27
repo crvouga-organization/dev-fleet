@@ -35,10 +35,10 @@ if [ -z "$repo" ] && git -C "$fleet/manager/source" rev-parse --git-dir >/dev/nu
   repo="$fleet/manager/source"
 fi
 if [ -z "$repo" ]; then
-  launcher=$(command -v homelab) || { say 'this manager has no copy of the source yet; run fleet-sync once on the manager itself, from the project that holds your fleet.json.'; exit 3; }
+  launcher=$(command -v homelab) || { say 'this manager has no copy of the source yet; run converge once on the manager itself, from the project that holds your fleet.json.'; exit 3; }
   repo=$(dirname "$(readlink -f "$launcher")")
 fi
-repo=$(git -C "$repo" rev-parse --show-toplevel) || { say 'cannot read the source repository on the manager; run fleet-sync once on the manager itself to fetch it again.'; exit 3; }
+repo=$(git -C "$repo" rev-parse --show-toplevel) || { say 'cannot read the source repository on the manager; run converge once on the manager itself to fetch it again.'; exit 3; }
 runs="$fleet/manager-runs"
 dir="$runs/$revision"
 ready() {
@@ -118,4 +118,4 @@ if [ "$preview" = false ]; then
   git -C "$repo" worktree prune
 fi
 export PERSONAL_WORKSPACE="$dir" PERSONAL_FLEET_RUN_CHECKOUT="$revision"
-exec mise exec --locked bun -- bun src/cli/cli.ts fleet-sync --revision "$revision" "$@"
+exec mise exec --locked bun -- bun src/cli/cli.ts converge --revision "$revision" "$@"

@@ -1,9 +1,9 @@
 Feature: A worker that is off on purpose is parked, not failed
   A rented machine costs money while it runs, so it is stopped overnight or
-  destroyed while nobody needs it. homelab fleet-node-park records that in
+  destroyed while nobody needs it. homelab park records that in
   the fleet state: the worker is then listed as parked, with the time since,
   and fleet-sync and fleet-status neither contact it nor fail because of it.
-  homelab fleet-node-resume brings it back and syncs it. fleet.json may
+  homelab resume brings it back and syncs it. fleet.json may
   declare the commands that stop and start a machine (an infrastructure
   tool); homelab calls them with the worker ID and never a provider itself.
 

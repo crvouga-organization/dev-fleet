@@ -167,8 +167,8 @@ export function editedCopyRemedy(
   const kept =
     source.kind === 'file' &&
     source.path !== definitionPath(stateRoot(env, home))
-      ? `this run reads the configuration from ${source.path}. To keep the edit, make the same change in ${source.path}. Then, or to discard the edit, delete the copy (rm ${path}) and run fleet-sync again`
-      : `the configuration is kept in the fleet state. To keep the edit, run homelab fleet-state --import ${path} and then fleet-sync again. To discard it, delete the copy (rm ${path}) and run fleet-sync again`;
+      ? `this run reads the configuration from ${source.path}. To keep the edit, make the same change in ${source.path}. Then, or to discard the edit, delete the copy (rm ${path}) and run converge again`
+      : `the configuration is kept in the fleet state. To keep the edit, run homelab state --import ${path} and then converge again. To discard it, delete the copy (rm ${path}) and run converge again`;
   return `The copy of the fleet configuration on this manager (${path}) was edited since fleet-sync last wrote it, and a sync would replace it, so nothing was changed. That file is a copy fleet-sync installs for launchers and scheduled jobs; ${kept}: it installs the copy anew.`;
 }
 
@@ -191,7 +191,7 @@ export function fleetJson(env = process.env, home = homedir()): string {
 
 /** Changing a configuration that is kept in the fleet state. */
 const STATE_EDIT =
-  'homelab fleet-state --export > fleet.json, edit that file, then homelab fleet-state --import fleet.json';
+  'homelab state --export > fleet.json, edit that file, then homelab state --import fleet.json';
 
 function read(path: string): FleetDefinition {
   let value: unknown;
@@ -210,7 +210,7 @@ function load(): FleetDefinition {
   const path = configPath();
   if (!existsSync(path))
     throw new FleetUsageError(
-      `No fleet configuration. Run homelab from the project that holds your fleet.json (homelab fleet-state --example prints one to start from), or name the file with HOMELAB_CONFIG. A manager whose bucket already holds one restores it with homelab fleet-state --init. Looked at ${path}.`
+      `No fleet configuration. Run homelab from the project that holds your fleet.json (homelab state --example prints one to start from), or name the file with HOMELAB_CONFIG. A manager whose bucket already holds one restores it with homelab state --init. Looked at ${path}.`
     );
   return read(path);
 }

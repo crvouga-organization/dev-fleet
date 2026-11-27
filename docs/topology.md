@@ -64,7 +64,7 @@ your project's `fleet.json` (version 3, checked by [the schema](../schema/fleet.
   Work in progress in agent worktrees is pushed to a recovery ref every 15
   minutes; [durability](durability.md) says what a lost machine takes with it.
 - One worker is the rollout canary for a revision new to the fleet: the one
-  `fleet-sync --canary` or `canary` in `fleet.json` names, else the first
+  `converge --canary` or `canary` in `fleet.json` names, else the first
   declared worker. When it cannot be reached (powered off, being rebuilt),
   the next reachable worker in declared order proves the revision instead and
   the unreachable one is reported as offline, never as a blocked rollout. A
@@ -121,7 +121,7 @@ then on `sync` and `status` list it as parked with the time since
 (`worker:parked`, not applicable), never contact it, never make it the
 canary, and it never changes an exit code. Parking refuses while agent turns
 run on it (`WORKER_BUSY`) unless `--force`. `homelab resume --id
-ID` marks it active and runs `fleet-sync --node ID`, which converges and
+ID` marks it active and runs `converge --node ID`, which converges and
 verifies it (`--allow-unmerged` is passed on to that sync). `parking.stop` and `parking.start` in `fleet.json` name commands
 (an infrastructure tool, never a provider homelab calls) run with the worker
 ID as their last argument. A parked worker found online on the tailnet is a

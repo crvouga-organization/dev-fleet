@@ -54,7 +54,7 @@ export async function reconcileRecords(
             status: 'fail',
             summary: 'WORKER_RECORD_RETIREMENT_FAILED',
             remedy: {
-              action: `${id}'s worker record disappeared, and retiring it failed at ${failed.map((step) => step.id).join(', ')}. Follow that remedy, then run fleet-sync again.`,
+              action: `${id}'s worker record disappeared, and retiring it failed at ${failed.map((step) => step.id).join(', ')}. Follow that remedy, then run converge again.`,
             },
           }
         : {

@@ -372,7 +372,7 @@ Then('no check is reported for the tailnet', (world) => {
   expect(state(world).scope?.tailnet.checks).toEqual([]);
 });
 
-// ── fleet-discover and fleet-health ──────────────────────────────────────
+// ── tailnet and fleet-health ──────────────────────────────────────
 
 Given(
   'an empty workspace, and a roster file in it that does not exist',

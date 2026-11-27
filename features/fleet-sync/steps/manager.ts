@@ -342,7 +342,7 @@ When('the power settings of the manager are measured', async (world) => {
 interface Playbook {
   check: 'passes' | 'fails';
   apply: 'passes' | 'fails';
-  /** Whether launchd holds the fleet-watch job. */
+  /** Whether launchd holds the notify job. */
   watching: boolean;
   /** Whether fleet.json says storage is disposable. */
   disposable?: boolean;

@@ -132,7 +132,7 @@ export function leftoverSystems(
       status: 'warn' as const,
       summary: `The hub watches ${system.name}, which is no declared worker.`,
       remedy: {
-        action: `If ${system.name} left the fleet, retire it (homelab fleet-node-retire --id ${system.name} --apply --yes while it is still declared) or delete the system in the dashboard.`,
+        action: `If ${system.name} left the fleet, retire it (homelab retire --id ${system.name} --apply --yes while it is still declared) or delete the system in the dashboard.`,
       },
     }));
 }

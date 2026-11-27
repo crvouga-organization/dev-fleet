@@ -168,13 +168,13 @@ export async function pairWorker(
 function remedy(id: string, reason: string): string {
   switch (reason) {
     case 'mint':
-      return `The T3 of ${id} did not mint a pairing code. Run homelab fleet-sync --node ${id} so it runs the pinned T3, then run the command again.`;
+      return `The T3 of ${id} did not mint a pairing code. Run homelab converge --node ${id} so it runs the pinned T3, then run the command again.`;
     case 'disabled':
       return "Linked environments is off in the manager's T3. Turn it on in its Settings (Labs), or stage the fleet's T3 policy, which turns it on, with ansible/macos/manager-privilege.yml as an administrator; then run the command again.";
     case 'unavailable':
       return "The manager's T3 did not answer on this machine. Open the T3 app (or start its service), then run the command again.";
     default:
-      return `The T3 of ${id} refused the link (${reason}). Check that it runs the T3 policy fleet-sync stages (Linked environments on) and answers at its private address, then run homelab fleet-sync --node ${id}.`;
+      return `The T3 of ${id} refused the link (${reason}). Check that it runs the T3 policy fleet-sync stages (Linked environments on) and answers at its private address, then run homelab converge --node ${id}.`;
   }
 }
 
@@ -190,7 +190,7 @@ export function pairingCheck(id: string, pairing: Pairing): Check {
     return {
       id: 't3:link',
       status: 'skip',
-      summary: `The T3 of ${id} does not answer yet; homelab fleet-sync --node ${id} pairs the manager with it once it runs.`,
+      summary: `The T3 of ${id} does not answer yet; homelab converge --node ${id} pairs the manager with it once it runs.`,
     };
   return {
     id: 't3:link',

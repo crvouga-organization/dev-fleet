@@ -155,7 +155,7 @@ export function flags(text: string): FleetSyncOptions & CliOptions {
   return options;
 }
 
-/** `fleet-sync --json` is the request `{ json: true }`. */
+/** `converge --json` is the request `{ json: true }`. */
 export function request(command: string): FleetSyncOptions {
   const [name, ...rest] = command.split(' ');
   if (name !== 'fleet-sync') throw new Error(`Not fleet-sync: ${command}`);

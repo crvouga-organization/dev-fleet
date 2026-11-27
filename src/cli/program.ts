@@ -142,6 +142,11 @@ export async function execute(
       outcome = catalog(command.optsWithGlobals<CliOptions>(), release);
     });
   program.action(() => {
+    const pending = program.args.filter((arg) => !arg.startsWith('-'));
+    if (pending.length > 0)
+      throw new FleetUsageError(
+        `Unknown command "${pending[0]}". Run homelab --help.`
+      );
     if (program.opts<CliOptions>().json)
       outcome = catalog(program.opts<CliOptions>(), release);
     else program.help();

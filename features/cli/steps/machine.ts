@@ -106,25 +106,21 @@ async function dispatch(
       ? { revision: described.revision, runs: described.runs! }
       : {}),
   };
-  if (name === 'check' || name === 'status' || name === 'fleet-status')
+  if (name === 'check')
     return executeFleet(
       options.tailnet || options.workers ? 'health' : 'doctor',
       { ...options, ...(options.workers ? { managed: true } : {}) },
       where(world),
       services
     );
-  if (name === 'repair' || name === 'fleet-repair')
+  if (name === 'repair')
     return executeFleet(
       options.list ? 'repairs' : 'repair',
       options,
       where(world),
       services
     );
-  if (
-    name === 'converge-local' ||
-    name === 'node-sync' ||
-    name === 'fleet-node-sync'
-  )
+  if (name === 'converge-local')
     return syncNode(
       { ...(raw as NodeSyncOptions), roster: proxy(world) },
       where(world),

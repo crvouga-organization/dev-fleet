@@ -28,7 +28,7 @@ export async function syncT3(
             ? error.message
             : 'T3 reconciliation failed; inspect local configuration and ownership state.',
         progress:
-          'Tools, launcher and profile steps completed. Node receipt was not advanced. Fix the T3 conflict and repeat fleet-node-sync.',
+          'Tools, launcher and profile steps completed. Node receipt was not advanced. Fix the T3 conflict and repeat converge-local.',
       },
     };
   }

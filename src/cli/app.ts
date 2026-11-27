@@ -66,7 +66,7 @@ export async function main(args = process.argv.slice(2)): Promise<number> {
   const terminal = interactiveTerminal();
   if (args.includes('--interactive') && !terminal) {
     process.stdout.write(
-      `${JSON.stringify({ version: 1, ok: false, code: 'tty_required', error: 'Interactive mode needs a terminal. Use personal commands --json or fleet-status --local --json.' })}\n`
+      `${JSON.stringify({ version: 1, ok: false, code: 'tty_required', error: 'Interactive mode needs a terminal. Use personal commands --json or check --local --json.' })}\n`
     );
     return 2;
   }

@@ -31,7 +31,7 @@ is missing from it.
 | `ansible/monitoring/agent-darwin.yml`      | The Beszel agent on the manager                                                    |
 | `ansible/monitoring/hub-darwin.yml`        | The Beszel hub and its tunnel on the manager                                       |
 | `ansible/monitoring/hub-route-darwin.yml`  | The hub's private tailnet route                                                    |
-| `ansible/macos/manager.yml`                | The manager's power settings, network time and fleet-watch job, unattended         |
+| `ansible/macos/manager.yml`                | The manager's power settings, network time and notify job, unattended         |
 | `ansible/macos/t3-desktop.yml`             | The verified manager desktop, staged alongside earlier releases                    |
 | `ansible/macos/t3-policy.yml`              | T3's administrator policy on the manager                                           |
 | `ansible/macos/manager-privilege.yml`      | The one administrator grant: sudoers, job log rotation and the T3 policy           |
@@ -76,7 +76,7 @@ The desktop VM also exercises graphical login, listener handoff and recovery.
 | The manager's own convergence: proxy, profiles, hub, agent                              | `src/cli/fleet-sync-manager.ts`                                                             | Orchestrates the manager playbooks and the proxy's own installer; the proxy is not a playbook yet (`docs/declared.md`)      |
 | Scheduled runs                                                                          | `src/cli/fleet-sync-schedule.ts`, `src/platform/launchd.ts`, `src/platform/systemd-user.ts` | Writes a launchd job or systemd timer from TypeScript; listed in `docs/declared.md` as a schedule that should be a playbook |
 
-Worker safety units are installed when fleet-sync reaches the Ubuntu baseline. Run fleet-sync for a worker whose last apply failed. Fleet status reports its last applied revision, recorded time and failed check when that evidence is available.
+Worker safety units are installed when fleet-sync reaches the Ubuntu baseline. Run converge for a worker whose last apply failed. Fleet status reports its last applied revision, recorded time and failed check when that evidence is available.
 
 ## Still to do
 

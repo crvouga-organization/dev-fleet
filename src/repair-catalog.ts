@@ -40,7 +40,7 @@ const playbook = ({
   title,
   owner: `${path} (tag ${tag})`,
   automatic: false,
-  action: `${action} Runs on the worker, in its fleet-owned checkout, with the variables fleet-sync wrote; homelab fleet-sync --node NODE re-applies the whole policy instead.`,
+  action: `${action} Runs on the worker, in its fleet-owned checkout, with the variables fleet-sync wrote; homelab converge --node NODE re-applies the whole policy instead.`,
   commands: [['ansible-playbook', path, '--tags', tag]],
 });
 export const REPAIR_RECIPES: RepairRecipe[] = [
@@ -165,7 +165,7 @@ export const REPAIR_RECIPES: RepairRecipe[] = [
     'copilot',
     'Sign in to Copilot',
     [],
-    'Copilot CLI uses the node’s GitHub sign-in, which fleet-sync brings from the stored credential (github-token). Run fleet-sync; store a fine-grained token with the Copilot Requests permission if auth:copilot says the token kind is refused. No per-node copilot login.'
+    'Copilot CLI uses the node’s GitHub sign-in, which fleet-sync brings from the stored credential (github-token). Run converge; store a fine-grained token with the Copilot Requests permission if auth:copilot says the token kind is refused. No per-node copilot login.'
   ),
   login(
     'gemini',
@@ -249,10 +249,10 @@ export const REPAIR_RECIPES: RepairRecipe[] = [
   {
     id: 'state',
     title: 'Take the fleet state from the bucket again',
-    owner: 'homelab fleet-state',
+    owner: 'homelab state',
     automatic: false,
     action:
-      'On the manager: homelab fleet-state --restore replaces the local copy with the bucket’s (add --yes to give up changes the bucket does not hold). A corrupt replica is restored from an earlier time with --timestamp; see docs/state.md.',
+      'On the manager: homelab state --restore replaces the local copy with the bucket’s (add --yes to give up changes the bucket does not hold). A corrupt replica is restored from an earlier time with --timestamp; see docs/state.md.',
     commands: [['homelab', 'fleet-state', '--restore']],
   },
   {

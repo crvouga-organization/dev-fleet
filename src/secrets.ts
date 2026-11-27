@@ -24,7 +24,7 @@ export const OPTIONAL_SECRET_NAMES = [
   // (services.monitoring.backups).
   'monitoring-backup-access-key',
   'monitoring-backup-secret-key',
-  // Where fleet-watch notifies (notify.targets).
+  // Where notify notifies (notify.targets).
   'notify-webhook-url',
   'notify-ntfy-url',
   // A short-lived, single-use, tagged Tailscale auth key a new worker joins

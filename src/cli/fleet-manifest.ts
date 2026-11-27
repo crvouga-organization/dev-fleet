@@ -18,7 +18,7 @@ import { readRoster } from './roster';
 
 export interface FleetManifestOptions {
   id?: string;
-  /** A manifest from a fresh build of the same revision (fleet-manifest
+  /** A manifest from a fresh build of the same revision (measure
    * --json of that build) to compare the worker with.
    */
   reference?: string;
@@ -45,7 +45,7 @@ async function reference(path: string): Promise<WorkerManifest> {
     return manifest;
   } catch {
     throw new FleetUsageError(
-      '--reference must name a manifest written by homelab fleet-manifest --json.'
+      '--reference must name a manifest written by homelab measure --json.'
     );
   }
 }

@@ -3,7 +3,7 @@ import { join } from 'node:path';
 
 /** The one directory that holds the manager's fleet state. Everything in it is
  * a local copy: the storage bucket is the source of truth, so the directory
- * can be deleted and restored with `fleet-state --restore`. `HOMELAB_STATE`
+ * can be deleted and restored with `state --restore`. `HOMELAB_STATE`
  * names another directory (a test fixture, a second fleet).
  */
 export function stateRoot(env = process.env, home = homedir()): string {

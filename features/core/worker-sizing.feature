@@ -323,7 +323,7 @@ Feature: A worker's disk and memory lines scale with the machine
         | agentlimitheld | <held>   |
       Then the check "worker:agent-sessions" fails
       And the summary of the check "worker:agent-sessions" mentions "AGENT_SESSION_LIMIT_INACTIVE: the declared limit of 4 agent sessions is not held on this worker: <reason>."
-      And the remedy of the check "worker:agent-sessions" mentions "Run homelab fleet-sync"
+      And the remedy of the check "worker:agent-sessions" mentions "Run homelab converge"
 
       Examples:
         | scopes | unit | held | reason                                                                    |

@@ -227,7 +227,7 @@ in the shared document as `FLEET_WORKER_TOKEN_<NODE>` is delivered too, with
 the warning `VAULT_WORKER_TOKEN_SHARED`: every worker can read that document,
 so issue the worker its own token and remove the field. A password login with
 the fleet's shared Vault user on the worker's own terminal happens only with
-`fleet-sync --vault-password-login`. Without a token the node reports
+`converge --vault-password-login`. Without a token the node reports
 `VAULT_LOGIN_REQUIRED` and its T3 proxy providers stay unavailable. A node
 Vault does not answer reports `VAULT_UNREACHABLE` instead and is given no
 token and no prompt: neither would log it in.
@@ -578,7 +578,7 @@ network. Set its `rdp-password-<worker-id>` in the fleet secrets provider
 field). When adopting an existing desktop, use its current password. In
 Windows App enter the worker's declared tailnet name and port, its declared
 network user and that password. Compare the certificate fingerprint shown
-by the client with the worker certificate in `fleet-status --workers --json`.
+by the client with the worker certificate in `check --workers --json`.
 
 The worker seals the password with systemd credentials and publishes the RDP
 item in the volatile session keyring at startup. Its encrypted login keyring

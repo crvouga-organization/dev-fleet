@@ -11,7 +11,7 @@ import { pinnedPath } from '../src/agents/toolchain';
 import { REFUSED_EXIT_CODE, admission, refusal } from '../src/agents/admission';
 
 const SYNC_HINT =
-  'Run homelab fleet-sync from a terminal to repair this machine.';
+  'Run homelab converge from a terminal to repair this machine.';
 
 export function managedUpdateRemedy(tool: string, args: string[]) {
   const command = args[0];
@@ -19,7 +19,7 @@ export function managedUpdateRemedy(tool: string, args: string[]) {
     ((tool === 'grok' || tool === 'claude') && command === 'update') ||
     (tool === 'opencode' && command === 'upgrade')
   )
-    return 'Provider versions come from the pinned homelab release. Update the project dependency and run homelab fleet-sync.';
+    return 'Provider versions come from the pinned homelab release. Update the project dependency and run homelab converge.';
   return undefined;
 }
 

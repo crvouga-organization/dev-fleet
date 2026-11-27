@@ -23,7 +23,7 @@ export function record(value: unknown): value is Record<string, unknown> {
 function fields(value: Record<string, unknown>, allowed: string[]): void {
   if (Object.keys(value).some((key) => !allowed.includes(key))) {
     throw new FleetUsageError(
-      'Unknown configuration field. Run fleet-nodes --schema.'
+      'Unknown configuration field. Run workers --schema.'
     );
   }
 }
@@ -135,7 +135,7 @@ function requiredCapabilities(value: unknown): Capability[] {
     required.some((item) => !CAPABILITIES.includes(item as Capability))
   ) {
     throw new FleetUsageError(
-      'required must contain only capability names from fleet-nodes --schema.'
+      'required must contain only capability names from workers --schema.'
     );
   }
   if (new Set(required).size !== required.length)
@@ -168,7 +168,7 @@ export async function loadConfig(path: string): Promise<FleetConfig> {
     value = JSON.parse(await readFile(path, 'utf8'));
   } catch {
     throw new FleetUsageError(
-      'Cannot read fleet config. Run homelab fleet-node-add or use --config PATH.'
+      'Cannot read fleet config. Run homelab enroll or use --config PATH.'
     );
   }
   return parseConfig(value);
@@ -177,7 +177,7 @@ export async function loadConfig(path: string): Promise<FleetConfig> {
 export function selectNodes(config: FleetConfig, ids: string[]): FleetNode[] {
   if (ids.some((id) => !config.nodes.some((node) => node.id === id))) {
     throw new FleetUsageError(
-      'Unknown node selection. Run fleet-nodes --json.'
+      'Unknown node selection. Run workers --json.'
     );
   }
   return ids.length === 0

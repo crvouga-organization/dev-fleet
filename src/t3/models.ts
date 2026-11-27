@@ -214,13 +214,13 @@ export async function modelsCheck(options: ModelsOptions): Promise<Check> {
   } catch {
     return warn(
       'T3_MODELS_UNVERIFIED',
-      'The proxy’s model list or T3’s settings could not be read on this machine. Check that the CLI proxy answers and T3 has started once, then run fleet-sync.'
+      'The proxy’s model list or T3’s settings could not be read on this machine. Check that the CLI proxy answers and T3 has started once, then run converge.'
     );
   }
   if (!result)
     return warn(
       'T3_SETTINGS_BUSY',
-      'T3 kept rewriting its settings while homelab hid the models an account does not serve. Run fleet-sync again; nothing was overwritten.'
+      'T3 kept rewriting its settings while homelab hid the models an account does not serve. Run converge again; nothing was overwritten.'
     );
   const problems = mismatches(result, options.required ?? {});
   if (problems.size)
@@ -241,7 +241,7 @@ export async function modelsCheck(options: ModelsOptions): Promise<Check> {
   };
 }
 
-/** What `fleet-sync --only accounts` applies beside the instances: an
+/** What `converge --only accounts` applies beside the instances: an
  * account that was just added shows only what it serves at once.
  */
 export const accountModels = (): Promise<Check> => {

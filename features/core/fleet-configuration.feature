@@ -68,7 +68,7 @@ Feature: The fleet configuration
         | the canary is a declared worker    | canary                    | "worker-nine" | DEFINITION_INVALID | $.canary                     |
         | the GitHub login is a login        | worker.githubLogin        | "has space"   | DEFINITION_INVALID | $.worker.githubLogin         |
 
-      Examples: Workers run a release of the support matrix, and fleet-watch a known target
+      Examples: Workers run a release of the support matrix, and notify a known target
         | rule                                        | field          | value                 | code               | path             |
         | the release is one the support matrix lists | ubuntu.release | "22.04"               | DEFINITION_INVALID | $.ubuntu.release |
         | a notify target is webhook or ntfy          | notify         | {"targets":["pager"]} | DEFINITION_INVALID | $.notify         |

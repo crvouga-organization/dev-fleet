@@ -97,8 +97,8 @@ still converges the fleet from the local copy and reports that the bucket was
 not reached; the next run that has credentials uploads what is pending.
 
 **A fleet that kept its configuration in the bucket.** Before projects, the
-configuration was stored with `fleet-state --import` and the bucket was named
-with `fleet-state --init --bucket …`. To move such a fleet into a project, on
+configuration was stored with `state --import` and the bucket was named
+with `state --init --bucket …`. To move such a fleet into a project, on
 the manager:
 
 ```sh
@@ -119,7 +119,7 @@ from the project (`npx homelab proxy install`, which takes the revision
 `sync` applied from the manager's own copy of the source) before you
 delete the clone.
 
-Without a `fleet.json`, `fleet-state --init --bucket NAME --endpoint https://HOST`
+Without a `fleet.json`, `state --init --bucket NAME --endpoint https://HOST`
 still connects a bucket and restores the configuration stored in it.
 
 On a manager older than the fleet state itself, `--init` (or the first
@@ -155,7 +155,7 @@ Which configuration a command uses, in this order:
 4. The copy `sync` installed at `~/.config/homelab/fleet.json`
    (launchers and scheduled jobs on every machine read only this one).
 
-`fleet-state --import PATH` stores a configuration in the state without
+`state --import PATH` stores a configuration in the state without
 running `sync`.
 
 **The installed copy is not the configuration.** `sync` writes
@@ -288,11 +288,11 @@ How a command reaches the bucket:
   `bucket.json`, only when they were saved for that same bucket; otherwise the
   standard AWS environment or profile.
 
-`fleet-state --json` reports both as `bucket.location` (`fleet.json` or
+`state --json` reports both as `bucket.location` (`fleet.json` or
 `bucket.json`) and `bucket.credentials` (`environment`, `bucket.json` or
 `aws`), never a credential.
 
-`bucket.json`, written by `fleet-state --init`:
+`bucket.json`, written by `state --init`:
 
 ```json
 {
@@ -309,7 +309,7 @@ How a command reaches the bucket:
 It must be readable by you alone (`chmod 600`); homelab refuses to use it
 otherwise. The keys reach Litestream through its environment and are never
 written to its configuration, a report or a log. To rotate them, pass the new
-ones to `fleet-state --init`.
+ones to `state --init`.
 
 The database is stored under `PREFIX/fleet.db/`. Each change adds a few
 kilobytes and Litestream keeps thirty days of snapshots, so a restore to an
@@ -346,8 +346,8 @@ writes anything and stops with `FLEET_MANAGER_LEASE_HELD`. `fleet-state
 --init` still restores the state on such a machine; it only writes nothing.
 
 The lease runs for seven days after the last change. After that, any machine
-may take it. Before that, `--take-over` (on `sync`, `fleet-state --init`,
-`fleet-state --import` or `fleet-state --restore --timestamp`) makes this machine the manager; use it only once
+may take it. Before that, `--take-over` (on `sync`, `state --init`,
+`state --import` or `state --restore --timestamp`) makes this machine the manager; use it only once
 the other one is gone ([replacing the manager](manager-recovery.md)).
 
 A machine is named in the lease by a digest of its machine ID

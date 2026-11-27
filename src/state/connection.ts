@@ -46,7 +46,7 @@ export function environmentCredentials(
 
 /** The configuration says where the bucket is; credentials are passed to the
  * command. A machine that runs unattended (the schedule, a hand-off from a
- * worker) gets no environment, so `fleet-state --init` may save both there:
+ * worker) gets no environment, so `state --init` may save both there:
  * a saved location is used when the configuration names none, and saved
  * credentials only for the bucket they were saved for.
  */

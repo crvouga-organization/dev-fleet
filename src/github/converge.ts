@@ -17,9 +17,9 @@ const CODES: GithubCode[] = [
 const REMEDIES: Record<Exclude<GithubCode, 'GITHUB_OK'>, string> = {
   GITHUB_KEYCHAIN_INACCESSIBLE: KEYCHAIN_REMEDY,
   GITHUB_TOKEN_MISSING:
-    'Store the fleet GitHub token in the secrets provider under github-token (github-token-<node> with github.credential "per-node"), then run fleet-sync again.',
+    'Store the fleet GitHub token in the secrets provider under github-token (github-token-<node> with github.credential "per-node"), then run converge again.',
   GITHUB_TOKEN_REJECTED:
-    'GitHub refuses the stored token: it was revoked or has expired. Store a new one under github-token and run fleet-sync again.',
+    'GitHub refuses the stored token: it was revoked or has expired. Store a new one under github-token and run converge again.',
   GITHUB_LOGIN_MISMATCH:
     'The stored token belongs to another account than the fleet configuration declares (worker.githubLogin, or github.manager for the manager). Store the right token or correct the declaration.',
   GITHUB_UNREACHABLE:

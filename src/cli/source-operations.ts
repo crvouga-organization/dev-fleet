@@ -16,7 +16,7 @@ interface SourceOperation {
 
 /** Commands implemented by another owner in this checkout and streamed through. */
 export const SOURCE_OPERATIONS: Record<string, SourceOperation> = {
-  cliproxy: {
+  proxy: {
     title: 'CLIProxyAPI service',
     description:
       'Install, inspect, back up, recover and validate model health (model-health, model-suite) of the CLIProxyAPI service.',
@@ -47,7 +47,7 @@ export function ownerCheckout(
 }
 
 const CHECKOUT_REQUIRED =
-  'This command runs from the revision fleet-sync applied on this machine, and none is applied yet. Run homelab fleet-sync first.\n';
+  'This command runs from the revision fleet-sync applied on this machine, and none is applied yet. Run homelab converge first.\n';
 
 export async function forwardSourceOperation(
   args: string[],

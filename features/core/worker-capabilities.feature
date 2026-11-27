@@ -105,7 +105,7 @@ Feature: A worker proves it can do what agents do on it
       When the worker's browser is tried with the web profile on "x64"
       Then the check "worker:browser" fails
       And the summary of the check "worker:browser" mentions "<code>"
-      And the remedy of the check "worker:browser" mentions "fleet-sync"
+      And the remedy of the check "worker:browser" mentions "converge"
       And nothing reported contains "PRIVATE_SENTINEL"
 
       Examples:
@@ -144,7 +144,7 @@ Feature: A worker proves it can do what agents do on it
       When the worker's Git is checked
       Then the check "worker:git-push-auth" fails
       And the summary of the check "worker:git-push-auth" mentions "GIT_CREDENTIAL_HELPER_MISSING"
-      And the remedy of the check "worker:git-push-auth" mentions "fleet-sync"
+      And the remedy of the check "worker:git-push-auth" mentions "converge"
       And every "git" command ran with git's prompts turned off
 
     Scenario Outline: An identity that is <how> fails worker:git-identity with <code>
@@ -225,7 +225,7 @@ Feature: A worker proves it can do what agents do on it
       When the worker's Git is checked
       Then the check "worker:git-signing" fails
       And the summary of the check "worker:git-signing" mentions "<code>"
-      And the remedy of the check "worker:git-signing" mentions "fleet-sync"
+      And the remedy of the check "worker:git-signing" mentions "converge"
       And nothing reported contains "PRIVATE_SENTINEL"
 
       Examples:

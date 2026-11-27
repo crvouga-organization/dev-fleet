@@ -396,8 +396,8 @@ export async function managerIdentity(
         remedy: {
           action:
             platform === 'darwin'
-              ? `Run fleet-sync on the manager (${id}). Workers are never controlled from another worker; change the manager only by editing manager in fleet.json and moving its singleton services.`
-              : `This machine runs ${platform}, and the manager is always a macOS machine. Run fleet-sync on the manager (${id}), or from a worker that can SSH to it.`,
+              ? `Run converge on the manager (${id}). Workers are never controlled from another worker; change the manager only by editing manager in fleet.json and moving its singleton services.`
+              : `This machine runs ${platform}, and the manager is always a macOS machine. Run converge on the manager (${id}), or from a worker that can SSH to it.`,
         },
       };
 }
@@ -550,7 +550,7 @@ export async function convergeManagerPolicy(
   };
 }
 
-/** Whether launchd holds the fleet-watch job manager.yml installs. Reads only. */
+/** Whether launchd holds the notify job manager.yml installs. Reads only. */
 export async function watchLoaded(run: Runner, uid: number): Promise<boolean> {
   return jobLoaded(run, uid, macos.fleetWatch.label);
 }

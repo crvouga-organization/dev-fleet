@@ -280,7 +280,7 @@ Feature: fleet-sync converges every worker on one approved revision
 
   Rule: A parked worker is off on purpose
     A rented machine is stopped, or destroyed, while nobody needs it
-    (homelab fleet-node-park). It is listed as parked, never contacted,
+    (homelab park). It is listed as parked, never contacted,
     never the canary, and the fleet is ready without it.
 
     Scenario: Parking the first worker does not block promotion to the others

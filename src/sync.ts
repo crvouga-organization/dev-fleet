@@ -25,7 +25,7 @@ export async function syncWorkspace(
   const before = await fingerprint(root, run);
   if (!completeFingerprint(before)) {
     return failed(
-      'Not a complete workspace checkout. Follow fleet-nodes --onboard first.'
+      'Not a complete workspace checkout. Follow workers --onboard first.'
     );
   }
   if (pull) {
@@ -93,7 +93,7 @@ function failed(summary: string): Check[] {
       summary,
       remedy: {
         action:
-          'Resolve locally using docs/machine-setup.md, then review and retry homelab fleet-repair --repair workspace.',
+          'Resolve locally using docs/machine-setup.md, then review and retry homelab repair --repair workspace.',
       },
     },
   ];

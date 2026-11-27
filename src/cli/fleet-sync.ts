@@ -436,7 +436,7 @@ async function managerRevision(
   if (explicit === null)
     return actionRequired(
       'FLEET_ROLLBACK_UNAVAILABLE',
-      'Nothing was changed: the fleet state records no revision applied before the approved one. Install the homelab version to go back to and run fleet-sync.'
+      'Nothing was changed: the fleet state records no revision applied before the approved one. Install the homelab version to go back to and run converge.'
     );
   const { revision, by } = await selectedRevision(
     explicit,
@@ -511,7 +511,7 @@ async function unmergedRefusal(
       )
     : actionRequired(
         'FLEET_REVISION_UNVERIFIED',
-        `Nothing was changed: ${repository} could not be fetched into the manager's own copy of it, so it is not known whether its default branch holds revision ${revision} (${selected}). Check the network and Git access to it, then run fleet-sync again; --allow-unmerged converges without asking.`,
+        `Nothing was changed: ${repository} could not be fetched into the manager's own copy of it, so it is not known whether its default branch holds revision ${revision} (${selected}). Check the network and Git access to it, then run converge again; --allow-unmerged converges without asking.`,
         revision
       );
 }
@@ -760,13 +760,13 @@ async function offManager(
   if (options.measureMise)
     return actionRequired(
       'FLEET_NOT_MANAGER',
-      `fleet-sync --measure-mise is answered only on the manager (${definition.manager.id}), which a fleet-sync started here asks by itself before it hands a revision over; no machine was asked.`
+      `converge --measure-mise is answered only on the manager (${definition.manager.id}), which a fleet-sync started here asks by itself before it hands a revision over; no machine was asked.`
     );
   // Only the manager's fleet state knows the revision applied before.
   if (options.rollback)
     return actionRequired(
       'FLEET_NOT_MANAGER',
-      `fleet-sync --rollback runs only on the manager (${definition.manager.id}); nothing was changed.`
+      `converge --rollback runs only on the manager (${definition.manager.id}); nothing was changed.`
     );
   const { revision, by } = await selectedRevision(
     options.revision,

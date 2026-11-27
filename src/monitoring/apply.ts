@@ -172,11 +172,11 @@ const REFUSALS: Record<string, string> = {
     return `Declare this machine (the manager or a worker) in ${fleetJson()} before enrolling monitoring.`;
   },
   BESZEL_SOURCE_MISMATCH:
-    'The checkout is not the clean, expected revision. Rerun fleet-sync so the reviewed source is installed first.',
+    'The checkout is not the clean, expected revision. Rerun converge so the reviewed source is installed first.',
   BESZEL_HUB_MISMATCH:
-    "Agents connect only to the manager's private hub URL from fleet.json. Rerun fleet-sync from an up-to-date checkout.",
+    "Agents connect only to the manager's private hub URL from fleet.json. Rerun converge from an up-to-date checkout.",
   BESZEL_CREDENTIALS_REQUIRED:
-    'Agent enrollment credentials were not delivered. Rerun fleet-sync from the manager.',
+    'Agent enrollment credentials were not delivered. Rerun converge from the manager.',
 };
 if (import.meta.main) {
   const checks = await main().catch(refusal);

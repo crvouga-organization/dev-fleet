@@ -111,7 +111,7 @@ export const miseGuard = (exit: {
     '  newest=$(printf \'%s\\n%s\\n\' "$pin" "$installed" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)',
     `  [ "$installed" = "$pin" ] || [ "$newest" != "$installed" ] || exit ${exit.downgrade}`,
     'fi',
-    `answer=$(homelab fleet-sync ${MEASURE_MISE_FLAG} --revision "$revision" "$@" 2>/dev/null) && exit 0`,
+    `answer=$(homelab converge ${MEASURE_MISE_FLAG} --revision "$revision" "$@" 2>/dev/null) && exit 0`,
     `case "$answer" in *FLEET_MISE_*) printf '%s\\n' "$answer"; exit 1;; esac`,
     `exit ${exit.unmeasured}`,
   ].join('\n');
@@ -254,7 +254,7 @@ export function miseDowngradeRemedy(
   const later =
     'Converge to a revision whose bootstrap keeps a newer mise (any release since that rule)';
   if (!machines.length)
-    return `${start}, so it would replace a newer one, and ${silent} did not say which mise it runs: a worker that does not answer now may answer when that bootstrap reaches it. Every checkout there whose mise.toml asks for a newer mise would then stop working. ${later}; or bring ${silent} back and run this again, park it (homelab fleet-node-park), or name the other workers with --node; or pass --allow-mise-downgrade to install the older mise on purpose.`;
+    return `${start}, so it would replace a newer one, and ${silent} did not say which mise it runs: a worker that does not answer now may answer when that bootstrap reaches it. Every checkout there whose mise.toml asks for a newer mise would then stop working. ${later}; or bring ${silent} back and run this again, park it (homelab park), or name the other workers with --node; or pass --allow-mise-downgrade to install the older mise on purpose.`;
   const also = unmeasured.length
     ? ` ${silent} did not say which mise it runs, and is not known to be safe either.`
     : '';

@@ -61,5 +61,5 @@ const REFUSED = 'AGENT_SESSION_REFUSED';
 /** What a refused launcher prints: the limit, and both ways out. */
 export function refusal({ running, limit }: Admission): string | undefined {
   if (running <= limit) return undefined;
-  return `${REFUSED}: this worker already runs ${running - 1} agent sessions and its limit is ${limit} (agentSessionLimit in the fleet configuration), so this one was not started. End a session that is no longer needed and send the message again, or raise agentSessionLimit in fleet.json and run homelab fleet-sync.`;
+  return `${REFUSED}: this worker already runs ${running - 1} agent sessions and its limit is ${limit} (agentSessionLimit in the fleet configuration), so this one was not started. End a session that is no longer needed and send the message again, or raise agentSessionLimit in fleet.json and run homelab converge.`;
 }

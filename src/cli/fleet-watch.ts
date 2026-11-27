@@ -44,7 +44,7 @@ export interface FleetWatchServices {
   notify: NotifyConfig | undefined;
   /** The approved revision and what selected it; null when none is approved. */
   revision?: () => Promise<WatchedRevision | null>;
-  /** The machines as `fleet-status --workers` sees them now. */
+  /** The machines as `check --workers` sees them now. */
   status: () => Promise<NodeReport[]>;
   store: WatchStore | null;
   secrets: SecretsProvider;
@@ -60,7 +60,7 @@ export interface FleetWatchServices {
 async function testNotification(
   services: FleetWatchServices
 ): Promise<CommandOutcome> {
-  const test: Notification = { event: 'test', node: 'fleet-watch', checks: [] };
+  const test: Notification = { event: 'test', node: 'notify', checks: [] };
   const checks = services.notify
     ? await deliver(services.notify, test, services.secrets, services.send)
     : [unconfigured('fail')];
@@ -165,7 +165,7 @@ async function heartbeat(
       summary: 'WATCH_HEARTBEAT_UNWRITTEN',
       remedy: {
         action:
-          'Check the bucket credentials this run was given (homelab fleet-state shows the connection).',
+          'Check the bucket credentials this run was given (homelab state shows the connection).',
       },
     })
   );

@@ -72,7 +72,7 @@ export async function managerClock(run: Runner): Promise<Check> {
   };
 }
 
-/** fleet-watch runs on a schedule as the launchd job manager.yml installs:
+/** notify runs on a schedule as the launchd job manager.yml installs:
  * without it no heartbeat is stored and no notification is sent.
  */
 export async function managerWatch(run: Runner, uid: number): Promise<Check> {
@@ -86,7 +86,7 @@ export async function managerWatch(run: Runner, uid: number): Promise<Check> {
       status: 'fail',
       summary: 'MANAGER_WATCH_NOT_LOADED',
       remedy: {
-        action: `Run homelab fleet-sync on the manager: it installs and loads ${label} with ansible/macos/manager.yml. Until then no heartbeat reaches the bucket, and the heartbeat workflow fails.`,
+        action: `Run homelab converge on the manager: it installs and loads ${label} with ansible/macos/manager.yml. Until then no heartbeat reaches the bucket, and the heartbeat workflow fails.`,
       },
     };
   // launchd keeps how the last run ended; a job that never ran has none.
@@ -97,13 +97,13 @@ export async function managerWatch(run: Runner, uid: number): Promise<Check> {
       status: 'warn',
       summary: `MANAGER_WATCH_FAILING exit ${exit}`,
       remedy: {
-        action: `Its last run failed. Read ~/${macos.jobLogs.directory}/${label}.err.log, and run homelab fleet-watch on the manager to see the same failure.`,
+        action: `Its last run failed. Read ~/${macos.jobLogs.directory}/${label}.err.log, and run homelab notify on the manager to see the same failure.`,
       },
     };
   return {
     id: 'manager:watch',
     status: 'pass',
-    summary: `fleet-watch runs on a schedule (${label}).`,
+    summary: `notify runs on a schedule (${label}).`,
   };
 }
 
@@ -133,7 +133,7 @@ export async function managerDiskGc(
       status: 'fail',
       summary: 'MANAGER_DISK_GC_NOT_LOADED',
       remedy: {
-        action: `Run homelab fleet-sync on the manager: it installs and loads ${label} with ansible/macos/manager.yml. Until then nothing removes idle worktrees, unused tool versions or old homelab checkouts on the manager.`,
+        action: `Run homelab converge on the manager: it installs and loads ${label} with ansible/macos/manager.yml. Until then nothing removes idle worktrees, unused tool versions or old homelab checkouts on the manager.`,
       },
     };
   const log = `~/${macos.jobLogs.directory}/${label}.err.log`;
@@ -246,7 +246,7 @@ export async function managerRelease(run: Runner): Promise<Check> {
     status: 'fail',
     summary: `MANAGER_RELEASE_UNSUPPORTED macOS ${major}, below ${macos.minimumMajorVersion}`,
     remedy: {
-      action: `Update the manager to macOS ${macos.minimumMajorVersion} or later in System Settings > General > Software Update, then rerun fleet-sync.`,
+      action: `Update the manager to macOS ${macos.minimumMajorVersion} or later in System Settings > General > Software Update, then rerun converge.`,
     },
   };
 }
@@ -274,7 +274,7 @@ export async function managerUpdates(run: Runner): Promise<Check> {
       : `MANAGER_UPDATES_PENDING ${pending} updates`,
     remedy: {
       action:
-        'Install the pending updates in System Settings > General > Software Update at a time no worker depends on the manager, then rerun fleet-sync.',
+        'Install the pending updates in System Settings > General > Software Update at a time no worker depends on the manager, then rerun converge.',
     },
   };
 }

@@ -77,7 +77,7 @@ Feature: The pinned CLI proxy says of an account it holds back what the session 
     And the session of the account "a@example.com" runs into its deadline
     When this node's account sessions are verified
     Then the check "agent:claude:account-1:session" fails saying "AGENT_ACCOUNT_VERIFICATION_REQUIRED: claude account 1"
-    And the check "agent:claude:account-1:session" asks to run "homelab fleet-accounts"
+    And the check "agent:claude:account-1:session" asks to run "homelab accounts"
     And no check repeats what the provider said
     And the provider was asked 1 time
 

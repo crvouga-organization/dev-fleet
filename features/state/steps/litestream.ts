@@ -84,7 +84,7 @@ Given(
   phrase(
     '"([^"]+)" on ',
     WHO,
-    ' holds what "fleet-state --export" prints there, with "([^"]+)" renamed "([^"]+)"'
+    ' holds what "state --export" prints there, with "([^"]+)" renamed "([^"]+)"'
   ),
   async (world, path: string, name: string | undefined, from: string, to) => {
     const manager = world.manager(name);

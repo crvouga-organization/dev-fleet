@@ -87,7 +87,7 @@ const FAILURES = [
     id: 'ssh:host-key',
     summary: 'SSH host key is unknown or changed.',
     action:
-      'The worker presented a host key other than the pinned one. Verify its fingerprint out of band, then pin the new key: homelab fleet-node-replace --id ID --host-key "TYPE BASE64" --apply --yes, or change hostKey in its worker record. A worker reached through your own SSH alias is checked against your known_hosts instead. Never disable host-key checking.',
+      'The worker presented a host key other than the pinned one. Verify its fingerprint out of band, then pin the new key: homelab replace --id ID --host-key "TYPE BASE64" --apply --yes, or change hostKey in its worker record. A worker reached through your own SSH alias is checked against your known_hosts instead. Never disable host-key checking.',
   },
   {
     pattern:
@@ -111,7 +111,7 @@ const FAILURES = [
     id: 'ssh:disconnected',
     summary: 'The SSH session was lost while the operation ran.',
     action:
-      'The worker keeps running what it started. Rerun fleet-sync: it follows the operation of the same revision to its end. Check the network between the manager and the worker if it repeats.',
+      'The worker keeps running what it started. Rerun converge: it follows the operation of the same revision to its end. Check the network between the manager and the worker if it repeats.',
   },
   {
     pattern: /Connection refused|No route to host|Network is unreachable/i,
@@ -127,7 +127,7 @@ const FAILURES = [
     summary:
       'Remote workspace or Node/Bun runtime is missing from the non-login SSH environment.',
     action:
-      'Follow fleet-nodes --onboard; configure absolute workspace/runtime paths. GUI terminals and SSH shells may have different PATHs.',
+      'Follow workers --onboard; configure absolute workspace/runtime paths. GUI terminals and SSH shells may have different PATHs.',
   },
 ];
 

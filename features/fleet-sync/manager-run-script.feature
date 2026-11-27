@@ -20,7 +20,7 @@ Feature: Every fleet-sync on the manager runs through the manager run script
       And the run checkout of the commit "first" is at that commit
       And the file "file" in the run checkout of the commit "first" holds "first"
       And the run script ran "bash bootstrap/bootstrap.sh --tools-only"
-      And the last thing the run script ran is "mise exec --locked bun -- bun src/cli/cli.ts fleet-sync --revision {first} --json", where {first} is that commit
+      And the last thing the run script ran is "mise exec --locked bun -- bun src/cli/cli.ts converge --revision {first} --json", where {first} is that commit
 
     Scenario: Handed off from a worker, a revision newer than anything the manager has fetched is fetched
       Nothing names a repository, so the manager's own copy is used.
@@ -41,7 +41,7 @@ Feature: Every fleet-sync on the manager runs through the manager run script
     Scenario: Without any source on the manager the hand-off says how to get one and changes nothing
       When the run script is started for the commit "first" with "--json"
       Then the run script exits with 3
-      And the run script says "run fleet-sync once on the manager itself"
+      And the run script says "run converge once on the manager itself"
       And there is no directory of run checkouts
 
     Scenario: Anything but a full commit is refused
@@ -58,7 +58,7 @@ Feature: Every fleet-sync on the manager runs through the manager run script
       Then the run script exits with 0
       And the run script ran "mise install --locked bun"
       And this time the run script ran nothing that names "bootstrap.sh"
-      And the last thing the run script ran is "mise exec --locked bun -- bun src/cli/cli.ts fleet-sync --revision {first} --dry-run --json", where {first} is that commit
+      And the last thing the run script ran is "mise exec --locked bun -- bun src/cli/cli.ts converge --revision {first} --dry-run --json", where {first} is that commit
 
     Scenario: A preview leaves older run checkouts for the next apply to prune
       Given the manager has its own copy of the source repository

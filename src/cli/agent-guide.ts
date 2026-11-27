@@ -13,21 +13,21 @@ const SAFETY = [
 ];
 
 const EXAMPLES = [
-  'homelab fleet-node-sync',
-  'homelab fleet-status',
-  'homelab fleet-state --json',
+  'homelab converge-local',
+  'homelab check',
+  'homelab state --json',
   'homelab t3',
-  'homelab fleet-status --local --workspace /path/to/personal --json',
-  'homelab fleet-status --json --strict --timeout 120000',
-  'homelab fleet-status --tailnet --json',
-  'homelab fleet-status --workers --json',
-  'homelab fleet-node-add --id dev-linux --ssh dev-linux --path /home/dev/workspace --require github,t3,toolchain --json',
-  'homelab fleet-node-add --id dev-linux --ssh dev-linux --path /home/dev/workspace --apply --yes --json',
-  'homelab fleet-status --node dev-linux --json',
-  'homelab fleet-repair --list --json',
-  'homelab fleet-repair --json',
-  'homelab fleet-repair --local --repair workspace --json',
-  'homelab fleet-repair --local --repair workspace --plan-hash <reviewed-sha256> --apply --yes --json',
+  'homelab check --local --workspace /path/to/personal --json',
+  'homelab check --json --strict --timeout 120000',
+  'homelab check --tailnet --json',
+  'homelab check --workers --json',
+  'homelab enroll --id dev-linux --ssh dev-linux --path /home/dev/workspace --require github,t3,toolchain --json',
+  'homelab enroll --id dev-linux --ssh dev-linux --path /home/dev/workspace --apply --yes --json',
+  'homelab check --node dev-linux --json',
+  'homelab repair --list --json',
+  'homelab repair --json',
+  'homelab repair --local --repair workspace --json',
+  'homelab repair --local --repair workspace --plan-hash <reviewed-sha256> --apply --yes --json',
 ];
 
 /** For an agent working in another project, which is every project that uses
@@ -63,7 +63,7 @@ export function agentGuide(release: Release) {
       'homelab --interactive (explicit opt-in; TTY required, disabled in CI)',
     groups: {
       'fleet-*':
-        'Developer computers: fleet-status, fleet-discover, fleet-sync, fleet-state, fleet-report, fleet-node-sync, fleet-repair, fleet-nodes, fleet-node-add',
+        'Developer computers: fleet-status, tailnet, fleet-sync, fleet-state, history, converge-local, fleet-repair, fleet-nodes, enroll',
       t3: 'Declared T3 provider instances: t3, t3-reconcile, t3-remove',
       cliproxy: 'The CLI proxy service on the manager; arguments are forwarded',
     },
@@ -75,7 +75,7 @@ export function agentGuide(release: Release) {
       definition:
         'HOMELAB_CONFIG, then the closest fleet.json in the working directory or above it (the operator’s project), then the configuration fleet-sync last applied from the fleet state (the homelab CLI on the manager), then the copy fleet-sync installed at ~/.config/homelab/fleet.json. Never edit that copy: fleet-sync replaces it, and refuses with FLEET_CONFIGURATION_COPY_CHANGED when it was edited by hand',
       state:
-        'HOMELAB_STATE or ~/.local/share/homelab/state: a local copy of the roster, the approved revision and the configuration last applied. The bucket named under "state" in the fleet configuration is the source of truth; its credentials are passed in HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY, or saved by homelab fleet-state --init in ~/.config/homelab/bucket.json for unattended runs. homelab fleet-state --json compares the copies',
+        'HOMELAB_STATE or ~/.local/share/homelab/state: a local copy of the roster, the approved revision and the configuration last applied. The bucket named under "state" in the fleet configuration is the source of truth; its credentials are passed in HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY, or saved by homelab state --init in ~/.config/homelab/bucket.json for unattended runs. homelab state --json compares the copies',
       revision:
         'The commit the published package names (homelab --version). fleet-sync converges every machine to it; --revision SHA selects another',
     },
@@ -91,7 +91,7 @@ export function agentGuide(release: Release) {
       errors:
         'schema/output/error.schema.json: {version:1,ok:false,code,error}; raw subprocess output and exception details are withheld',
       reports:
-        'These outputs have a JSON schema in this package; parse by it and by its version. Diagnostic reports of check, state and repair (whose report names its command repair): schema/output/report.schema.json, version 1. converge: schema/output/fleet-sync.schema.json, version 3 (a --dry-run adds plan). converge --schedule: schema/output/fleet-sync-schedule.schema.json, version 2. state --example and --export: schema/output/fleet-state-definition.schema.json, version 1. history: schema/output/fleet-report.schema.json, version 1. Any other --json document carries its version, and command and ok where it reports an outcome, but has no published schema yet.',
+        'These outputs have a JSON schema in this package; parse by it and by its version. Diagnostic reports of check, state and repair (whose report names its command repair): schema/output/report.schema.json, version 1. converge: schema/output/fleet-sync.schema.json, version 3 (a --dry-run adds plan). converge --schedule: schema/output/fleet-sync-schedule.schema.json, version 2. state --example and --export: schema/output/fleet-state-definition.schema.json, version 1. history: schema/output/history.schema.json, version 1. Any other --json document carries its version, and command and ok where it reports an outcome, but has no published schema yet.',
       checks:
         'schema/check-ids.json (schema/check-ids.schema.json), generated from the code, lists every check ID: meaning, what a passing check means; severity, required (a failure blocks readiness unless the run marks the check out of scope) or advisory (a warning or not required, never blocking); repair, {recipe} the repair recipe that repairs it or {manual} why only a person can. A * stands for a name taken at run time (a node, a tool, an account). Each failing check also carries its own remedy.',
       statuses: ['pass', 'warn', 'fail', 'skip', 'not-applicable'],

@@ -72,5 +72,5 @@ Feature: The T3 providers a machine gets
       And the CLI proxy does not answer: "credential-private-sentinel"
       When the providers are worked out for the machine "node" with homelab at "/repo"
       Then it is refused with "T3_ACCOUNT_ROSTER_UNAVAILABLE"
-      And the T3 failure provides check "t3:account-roster" and remedy containing "homelab fleet-accounts"
+      And the T3 failure provides check "t3:account-roster" and remedy containing "homelab accounts"
       And the T3 failure withholds "credential-private-sentinel"

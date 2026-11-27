@@ -11,7 +11,7 @@ import type { FleetDefinition, MachineDefinition } from './definition';
 import { stateRoot } from './state/paths';
 
 /** How the manager reaches a worker, written once: every direct SSH session
- * (src/ssh.ts) and every Ansible run over SSH (fleet-validate's inventory,
+ * (src/ssh.ts) and every Ansible run over SSH (check-config's inventory,
  * with ansible/ansible.cfg) takes its options from here, so the two cannot
  * drift. Host keys are checked strictly and never learned on first use. A
  * few attempts and keepalives let a short network blip pass without ending

@@ -90,12 +90,12 @@ Feature: fleet-sync never replaces a copy of the configuration that was edited b
       When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       Then the command exits 1
       And the report contains "FLEET_CONFIGURATION_COPY_CHANGED"
-      And the report tells the operator "homelab fleet-state --import ~/.config/homelab/fleet.json"
+      And the report tells the operator "homelab state --import ~/.config/homelab/fleet.json"
       And the report tells the operator "rm ~/.config/homelab/fleet.json"
       And the report does not contain "worker-edited"
 
     Scenario: Once the copy is imported the run goes on
-      Given the operator ran "fleet-state --import ~/.config/homelab/fleet.json" on the manager
+      Given the operator ran "state --import ~/.config/homelab/fleet.json" on the manager
       When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
       And the configuration in the fleet state of the manager contains "worker-edited"

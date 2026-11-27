@@ -46,7 +46,7 @@ export async function providerNames(
       summary: 'T3_PROVIDER_NAMES_UNVERIFIED',
       remedy: {
         action:
-          'T3 settings were unreadable or changed during the rename. Rerun fleet-sync; only provider display names are written.',
+          'T3 settings were unreadable or changed during the rename. Rerun converge; only provider display names are written.',
       },
     };
   }

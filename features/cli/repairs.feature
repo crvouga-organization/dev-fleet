@@ -13,7 +13,7 @@ Feature: fleet-repair previews repairs and applies only what was reviewed
 
     Scenario: The catalog is listed without a roster and without running anything
       Given no command may run on this manager
-      When the operator runs "homelab fleet-repair --list"
+      When the operator runs "homelab repair --list"
       Then it exits with 0
       And it answers with at least:
         """
@@ -28,7 +28,7 @@ Feature: fleet-repair previews repairs and applies only what was reviewed
 
     Scenario: A preview with a script installs nothing, signs in nowhere and repeats nothing a tool printed
       Given every program other than "git" fails with "private-secret"
-      When the operator runs "homelab fleet-repair --local --script"
+      When the operator runs "homelab repair --local --script"
       Then it exits with 0
       And it answers with at least:
         """
@@ -70,7 +70,7 @@ Feature: fleet-repair previews repairs and applies only what was reviewed
           }
         }
         """
-      When the operator runs "homelab fleet-repair"
+      When the operator runs "homelab repair"
       Then the program "ssh" was not run
       And it answers with at least:
         """
@@ -92,14 +92,14 @@ Feature: fleet-repair previews repairs and applies only what was reviewed
 
       Examples:
         | command                                                          |
-        | homelab fleet-repair --local --apply                            |
-        | homelab fleet-repair --local --repair login:codex --apply --yes |
-        | homelab fleet-repair --local --repair arbitrary-secret-command  |
-        | homelab fleet-repair --local --require invalid-capability       |
-        | homelab fleet-repair --local --script --apply --yes             |
+        | homelab repair --local --apply                            |
+        | homelab repair --local --repair login:codex --apply --yes |
+        | homelab repair --local --repair arbitrary-secret-command  |
+        | homelab repair --local --require invalid-capability       |
+        | homelab repair --local --script --apply --yes             |
 
     Scenario: A plan that is not the one reviewed is refused and nothing is installed
-      When the operator runs "homelab fleet-repair --local --apply --yes --plan-hash aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      When the operator runs "homelab repair --local --apply --yes --plan-hash aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       Then it is refused with "plan changed"
       And no command that was run has the argument "personal:install"
       And no command that was run has the argument "bootstrap/setup.ts"
@@ -111,7 +111,7 @@ Feature: fleet-repair previews repairs and applies only what was reviewed
         """
         {"ok":true,"private":"private-secret"}
         """
-      When the operator runs "homelab fleet-repair --local --require codex,workstation --repair providers --apply --yes"
+      When the operator runs "homelab repair --local --require codex,workstation --repair providers --apply --yes"
       Then a command with the argument "bootstrap/worker-auth.ts" was run 1 time
       And the program "codex" was run 2 times
       And it exits with 1
@@ -129,7 +129,7 @@ Feature: fleet-repair previews repairs and applies only what was reviewed
 
     Scenario: A setup that fails stops the repair, and what is still wrong is reported
       Given the program "mise" fails with "private-secret"
-      When the operator runs "homelab fleet-repair --local --apply --yes"
+      When the operator runs "homelab repair --local --apply --yes"
       Then it exits with 1
       And it answers with at least:
         """
@@ -153,7 +153,7 @@ Feature: fleet-repair previews repairs and applies only what was reviewed
         """
 
     Scenario: The repair names the action and the state it was planned against, and the worker is probed again
-      When the operator runs "homelab fleet-repair --node dev-one --repair providers --apply --yes"
+      When the operator runs "homelab repair --node dev-one --repair providers --apply --yes"
       Then only these programs were run:
         | ssh |
       And every command that was run has the argument "StrictHostKeyChecking=yes"
@@ -181,7 +181,7 @@ Feature: fleet-repair previews repairs and applies only what was reviewed
 
     Scenario: A roster that breaks during the repair keeps what was done and reports no health as fresh
       Given the roster file is overwritten with "{changed-invalid-roster" while a worker is repaired
-      When the operator runs "homelab fleet-repair --node dev-one --repair providers --apply --yes"
+      When the operator runs "homelab repair --node dev-one --repair providers --apply --yes"
       Then every request to a worker names the workspace "/home/dev/workspace"
       And it exits with 1
       And it answers with at least:

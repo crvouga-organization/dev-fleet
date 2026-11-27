@@ -59,7 +59,7 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
       And the refusal says each of:
         | Nothing was changed                          |
         | worker-three did not say which mise it runs  |
-        | homelab fleet-node-park                     |
+        | homelab park                     |
         | --node                                       |
         | --allow-mise-downgrade                       |
 
@@ -172,7 +172,7 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
     pin and exits with 67 when it would be replaced; then it asks the
     homelab installed on the manager, which is the code the manager runs
     now and not the revision's, the same question about the manager and
-    every worker the request selects (fleet-sync --measure-mise). What that
+    every worker the request selects (converge --measure-mise). What that
     refuses is printed and ends the hand-off. An installed homelab that
     cannot answer, because it is from before the question or there is none,
     is never a pass: the guard exits with 68, reported as
@@ -216,7 +216,7 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
       And the homelab installed on the manager answers that no mise would be replaced
       When the mise guard of a hand-off runs on the manager for the commit "earlier", for a request with "--node worker-one --node worker-two --json"
       Then the guard exits with 0
-      And the homelab installed on the manager was asked "fleet-sync --measure-mise --revision <earlier> --node worker-one --node worker-two --json"
+      And the homelab installed on the manager was asked "converge --measure-mise --revision <earlier> --node worker-one --node worker-two --json"
 
     @bash
     Scenario: A worker's newer mise ends the hand-off, with the report of the installed homelab
@@ -300,7 +300,7 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
       And the homelab installed on the manager answers that no mise would be replaced
       When the mise guard of a hand-off runs on the manager for the commit "earlier"
       Then the guard exits with 0
-      And the homelab installed on the manager was asked "fleet-sync --measure-mise --revision <earlier>"
+      And the homelab installed on the manager was asked "converge --measure-mise --revision <earlier>"
 
   Rule: --allow-mise-downgrade reaches the bootstrap of a revision that keeps a newer mise
     The run that was given the flag tells the run script in its environment,

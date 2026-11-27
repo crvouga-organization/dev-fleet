@@ -3,7 +3,7 @@ import type { SecretName, SecretsProvider } from './secrets';
 import type { Check, NodeReport } from './types';
 import { unreadSecret } from './secrets-blocked';
 
-/** Where fleet-watch sends a notification. The address of each target is a
+/** Where notify sends a notification. The address of each target is a
  * secret, read by purpose: a webhook or ntfy URL often carries its own token.
  */
 export const NOTIFY_TARGETS = {
@@ -260,7 +260,7 @@ export async function deliver(
             status: 'fail',
             summary: 'NOTIFY_DELIVERY_FAILED',
             remedy: {
-              action: `Check that the ${target} target answers, then run homelab fleet-watch --test.`,
+              action: `Check that the ${target} target answers, then run homelab notify --test.`,
             },
           }
     );

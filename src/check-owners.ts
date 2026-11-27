@@ -38,7 +38,7 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 't3:mesh-*',
     manual:
-      'Verify the enrolled identities and their tailnet connections, then run fleet-sync to reconcile the directed grants declared by t3.meshAccess.',
+      'Verify the enrolled identities and their tailnet connections, then run converge to reconcile the directed grants declared by t3.meshAccess.',
   },
   // The checks that fail when a machine breaks.
   { pattern: 'worker:service-recovery', repair: 'recovery' },
@@ -57,7 +57,7 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'beszel:*',
     manual:
-      'The monitoring hub and its accounts are converged by fleet-sync on the manager; follow the remedy, then run fleet-sync.',
+      'The monitoring hub and its accounts are converged by fleet-sync on the manager; follow the remedy, then run converge.',
   },
   {
     pattern: 'tailscale:*',
@@ -84,12 +84,12 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'worker:reboot',
     manual:
-      'A reboot ends running agent turns, so it waits for them: rerun fleet-sync --maintenance-reboot once they end, or with --force.',
+      'A reboot ends running agent turns, so it waits for them: rerun converge --maintenance-reboot once they end, or with --force.',
   },
   {
     pattern: 'worker:tailscale-upgrade',
     manual:
-      'Upgrading Tailscale can drop the SSH session, so it waits for a maintenance run: rerun fleet-sync --maintenance-reboot once the remedy is followed.',
+      'Upgrading Tailscale can drop the SSH session, so it waits for a maintenance run: rerun converge --maintenance-reboot once the remedy is followed.',
   },
   {
     pattern: 'worker:t3-deadline-restarts',
@@ -156,7 +156,7 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 't3:desktop-installed',
     manual:
-      'Run fleet-sync to install the verified desktop and switch a running manager desktop to that release.',
+      'Run converge to install the verified desktop and switch a running manager desktop to that release.',
   },
   {
     pattern: 't3:*',
@@ -213,7 +213,7 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'accounts:roster-current',
     manual:
-      'The roster reaches every node with homelab fleet-sync --only accounts, run from the manager.',
+      'The roster reaches every node with homelab converge --only accounts, run from the manager.',
   },
   { pattern: 'accounts:native-login', manual: IDENTITY },
   { pattern: 'accounts:verification', manual: EVIDENCE },
@@ -236,12 +236,12 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'restore:*',
     manual:
-      'fleet-restore rebuilds a replacement manager from the bucket; what it needs first (the project’s fleet.json, the bucket’s credentials, Git, Docker Desktop, a tailnet sign-in) is the operator’s: follow the remedy, then run fleet-restore again.',
+      'recover rebuilds a replacement manager from the bucket; what it needs first (the project’s fleet.json, the bucket’s credentials, Git, Docker Desktop, a tailnet sign-in) is the operator’s: follow the remedy, then run recover again.',
   },
   {
     pattern: 'watch:*',
     manual:
-      'The heartbeat is kept in the bucket fleet.json names: name it, or restore access to it, then run fleet-watch again.',
+      'The heartbeat is kept in the bucket fleet.json names: name it, or restore access to it, then run notify again.',
   },
 ];
 

@@ -105,4 +105,4 @@ Feature: What a manager kept in files before the fleet state existed moves into 
         """
       And the enrollment was stored as '{"version":1}'
       When the enrollment of the manager is loaded, with "~/manager" as where it was kept before
-      Then it is refused with "fleet-state --restore"
+      Then it is refused with "state --restore"

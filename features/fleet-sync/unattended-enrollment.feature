@@ -1,6 +1,6 @@
 Feature: A run without a person enrolls a worker only when every fact is verified
   Machines appear without a person present: from a pipeline, a scheduled sync
-  or an agent that runs fleet-sync --json. Such a run enrolls a declared
+  or an agent that runs converge --json. Such a run enrolls a declared
   worker when its pinned host key matched (every session is strict), sudo -n
   works, and exactly one tailnet device matches it, or none when the fleet
   declares a tailnet control plane that joins it during the run. Anything

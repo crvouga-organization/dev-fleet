@@ -237,7 +237,7 @@ async function nativeSsh(
   const address = playbookAddress(node);
   const remedy = {
     action:
-      'Use the open-source tailscaled distribution on macOS with noninteractive authorization for its SSH preference. Verify the enrolled SSH host keys and authorize unconditional SSH access between the two declared accounts in the tailnet policy. Rerun fleet-sync.',
+      'Use the open-source tailscaled distribution on macOS with noninteractive authorization for its SSH preference. Verify the enrolled SSH host keys and authorize unconditional SSH access between the two declared accounts in the tailnet policy. Rerun converge.',
   };
   if (!address || !worker?.network)
     return {

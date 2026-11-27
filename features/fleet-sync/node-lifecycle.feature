@@ -131,7 +131,7 @@ Feature: A worker is replaced or retired with one command
         | worker-two | worker-two.tail0a1b2c.ts.net |
       And the manager's T3 forgot the environment "0b0c0d0e-1111-4222-8333-444455556666"
       And the roster records no T3 environment of "worker-one"
-      And the report has the check "t3:link" skipped, saying "homelab fleet-sync --node worker-one pairs the manager with it once it runs"
+      And the report has the check "t3:link" skipped, saying "homelab converge --node worker-one pairs the manager with it once it runs"
       And the fleet state asks for a T3 pairing of "worker-one"
       And the control plane was asked to delete only the device "old-one"
       And the report has the check "tailscale:device" passed, saying "The tailnet no longer holds the device old-one"
@@ -194,7 +194,7 @@ Feature: A worker is replaced or retired with one command
       And the T3 of "worker-one" runs the environment "7a7b7c7d-1111-4222-8333-444455556666"
       And the manager's T3 links the environment it is handed a code for
       When fleet-sync pairs the T3 of "worker-one" if it was asked to
-      Then fleet-sync reports:
+      Then converge reports:
         | id      | status |
         | t3:link | pass   |
       And the roster records the T3 environment "7a7b7c7d-1111-4222-8333-444455556666" of "worker-one"
@@ -208,7 +208,7 @@ Feature: A worker is replaced or retired with one command
       And the T3 of "worker-one" runs the environment "7a7b7c7d-1111-4222-8333-444455556666"
       And the manager's T3 links the environment it is handed a code for
       When fleet-sync pairs the T3 of "worker-one" if it was asked to
-      Then fleet-sync reports:
+      Then converge reports:
         | id      | status |
         | t3:link | pass   |
       And the roster records the T3 environment "7a7b7c7d-1111-4222-8333-444455556666" of "worker-one"
@@ -217,7 +217,7 @@ Feature: A worker is replaced or retired with one command
       A worker's first pairing is approved by a person in the manager's T3.
       Given the T3 of "worker-one" runs the environment "7a7b7c7d-1111-4222-8333-444455556666"
       When fleet-sync pairs the T3 of "worker-one" if it was asked to
-      Then fleet-sync reports:
+      Then converge reports:
         | id | status |
       And no pairing code was minted on "worker-one"
 
@@ -287,7 +287,7 @@ Feature: A worker is replaced or retired with one command
       Given the fleet state records that "worker-three" was enrolled from a worker record, bound to the device "old-three"
       And the monitoring hub watches "worker-three" at "worker-three.tail0a1b2c.ts.net"
       When fleet-sync reads the worker records
-      Then fleet-sync reports:
+      Then converge reports:
         | id                | status |
         | enrollment:record | pass   |
       And the roster does not hold "worker-three"
@@ -298,7 +298,7 @@ Feature: A worker is replaced or retired with one command
     Scenario: A preview only plans the retirement
       Given the fleet state records that "worker-three" was enrolled from a worker record, bound to the device "old-three"
       When fleet-sync reads the worker records to preview them
-      Then fleet-sync reports:
+      Then converge reports:
         | id                | status |
         | enrollment:record | skip   |
       And the roster holds "worker-three"
@@ -306,6 +306,6 @@ Feature: A worker is replaced or retired with one command
     Scenario: A worker removed from fleet.json by hand is not retired by itself
       Given the roster still holds "worker-three", which fleet.json listed by hand
       When fleet-sync reads the worker records
-      Then fleet-sync reports:
+      Then converge reports:
         | id | status |
       And the roster holds "worker-three"

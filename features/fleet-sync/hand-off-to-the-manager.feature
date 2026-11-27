@@ -9,7 +9,7 @@ Feature: fleet-sync started on a worker is handed to the manager
   Rule: The hand-off is one SSH command that cannot hand off again
 
     Scenario: The hand-off reaches the manager over verified SSH and never hands off again
-      When a worker prepares to hand "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      When a worker prepares to hand "converge --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then the SSH command connects as the user "dev" to "manager-mac-1.tail0a1b2c.ts.net"
       And the SSH command has these arguments:
         | StrictHostKeyChecking=yes |
@@ -25,7 +25,7 @@ Feature: fleet-sync started on a worker is handed to the manager
         #!/bin/sh
         echo run
         """
-      When a worker prepares to hand "fleet-sync --node w1 --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      When a worker prepares to hand "converge --node w1 --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then what the manager is asked to run contains:
         | fleet-manager-run                        |
         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
@@ -38,23 +38,23 @@ Feature: fleet-sync started on a worker is handed to the manager
         #!/bin/sh
         echo run
         """
-      When a worker prepares to hand "fleet-sync" with no revision to the manager
-      Then what the manager is asked to run names "homelab" directly followed by "fleet-sync"
+      When a worker prepares to hand "converge" with no revision to the manager
+      Then what the manager is asked to run names "homelab" directly followed by "converge"
       But what the manager is asked to run does not contain "fleet-manager-run"
 
     Scenario: The hand-off preserves the request
-      When a worker prepares to hand "fleet-sync --node w1 --node w2 --dry-run --json --schedule status" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      When a worker prepares to hand "converge --node w1 --node w2 --dry-run --json --schedule status" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then the manager is asked for exactly "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --node w1 --node w2 --schedule status --dry-run --json"
 
     Scenario: The hand-off keeps the request to restart a busy T3
-      When a worker prepares to hand "fleet-sync --restart-busy --dry-run" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      When a worker prepares to hand "converge --restart-busy --dry-run" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then the manager is asked for exactly "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --restart-busy --dry-run"
 
     Scenario: The hand-off keeps the request to take the manager lease over
       fleet-sync also runs itself again from the checkout of the revision;
       a replacement manager that asked for the lease must still hold the
       request there, or it is told to ask for what it asked for.
-      When a worker prepares to hand "fleet-sync --take-over --yes" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      When a worker prepares to hand "converge --take-over --yes" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then the manager is asked for exactly "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --yes --take-over"
 
   Rule: Every option of the request reaches the manager, or is known not to
@@ -64,7 +64,7 @@ Feature: fleet-sync started on a worker is handed to the manager
     Scenario: No option of fleet-sync is dropped without a reason
       An option added to fleet-sync fails here until it is listed with what
       the manager is asked for.
-      When the options the "fleet-sync" command line offers are handed off by a worker
+      When the options the "converge" command line offers are handed off by a worker
       Then each option reaches the manager like this:
         | option                 | started on a worker with                    | the manager is asked for                                                |
         | --all                  | --all                                       | --all                                                                   |
@@ -100,19 +100,19 @@ Feature: fleet-sync started on a worker is handed to the manager
         #!/bin/sh
         echo run
         """
-      When a worker prepares to hand "fleet-sync --only accounts --node w1 --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
-      Then the manager is asked to run exactly "homelab fleet-sync --node w1 --only accounts --json"
+      When a worker prepares to hand "converge --only accounts --node w1 --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      Then the manager is asked to run exactly "homelab converge --node w1 --only accounts --json"
       But what the manager is asked to run does not contain "fleet-revision-guard"
       And what the manager is asked to run does not contain "fleet-manager-run"
 
-    Scenario: fleet-sync --only accounts started on a worker runs the accounts-only sync on the manager
+    Scenario: converge --only accounts started on a worker runs the accounts-only sync on the manager
       Given this machine is a worker, where no command is found
       And the manager answers the hand-off with exit code 0 and:
         """
         {"ok":true}
         """
       When fleet-sync is started with "--only accounts --json"
-      Then the manager was asked to run exactly "homelab fleet-sync --only accounts --json"
+      Then the manager was asked to run exactly "homelab converge --only accounts --json"
       And the result is exactly exit code 0 and the report:
         """
         {"ok":true}
@@ -131,7 +131,7 @@ Feature: fleet-sync started on a worker is handed to the manager
         """
 
     Scenario: The guard runs first, against the manager's own copy of the source repository
-      When a worker prepares to hand "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      When a worker prepares to hand "converge --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then what the manager is asked to run contains:
         | $HOME/.local/share/personal/fleet/manager/source |
         | merge-base --is-ancestor                         |
@@ -150,22 +150,22 @@ Feature: fleet-sync started on a worker is handed to the manager
 
       Examples:
         | command                            | next                 |
-        | fleet-sync --json                  | fleet-revision-guard |
-        | fleet-sync --allow-unmerged --json | fleet-manager-run    |
+        | converge --json                  | fleet-revision-guard |
+        | converge --allow-unmerged --json | fleet-manager-run    |
 
     Scenario: --allow-unmerged skips the guard, and the manager is told rather than given a flag
       The run on the manager is the revision's own code, which may be older
       than the flag: it is told what selected its revision instead.
       Given the worker "worker-one" selected the revision from "checkout" with --allow-unmerged
-      When a worker prepares to hand "fleet-sync --allow-unmerged --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      When a worker prepares to hand "converge --allow-unmerged --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then what the manager is asked to run does not contain "fleet-revision-guard"
       And what the manager is asked to run contains:
         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:checkout@worker-one+unmerged |
       And the manager is asked for exactly "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --json"
 
     Scenario: With no revision to say it about, --allow-unmerged reaches the manager's launcher
-      When a worker prepares to hand "fleet-sync --allow-unmerged" with no revision to the manager
-      Then what the manager is asked to run names "fleet-sync" directly followed by "--allow-unmerged"
+      When a worker prepares to hand "converge --allow-unmerged" with no revision to the manager
+      Then what the manager is asked to run names "converge" directly followed by "--allow-unmerged"
 
     Scenario Outline: "<request>" converges nothing, so the guard is left out
       When a worker prepares to hand "fleet-sync <request>" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
@@ -181,7 +181,7 @@ Feature: fleet-sync started on a worker is handed to the manager
       Words and the worker's fleet id only: the run on the manager is always
       given --revision, which says nothing about who chose it.
       Given the worker "worker-one" selected the revision from "checkout"
-      When a worker prepares to hand "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      When a worker prepares to hand "converge --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then what the manager is asked to run contains:
         | HOMELAB_SELECTED_BY                                        |
         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:checkout@worker-one |
@@ -191,22 +191,22 @@ Feature: fleet-sync started on a worker is handed to the manager
       mise would replace a newer one with the older one it pins: the
       manager's, which the guard compares itself, or a worker's, which it
       asks the homelab installed on the manager to measure.
-      When a worker prepares to hand "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      When a worker prepares to hand "converge --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then what the manager is asked to run contains:
         | $HOME/.local/bin/mise                    |
-        | homelab fleet-sync --measure-mise       |
+        | homelab converge --measure-mise       |
         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
       And what the manager is asked to run names "fleet-revision-guard" before "fleet-mise-guard"
       And what the manager is asked to run names "fleet-mise-guard" before "fleet-manager-run"
 
     Scenario: The mise guard is given the workers the request selects, so the same machines are measured
-      When a worker prepares to hand "fleet-sync --node worker-one --node worker-two --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      When a worker prepares to hand "converge --node worker-one --node worker-two --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then the mise guard on the manager is given exactly "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --node worker-one --node worker-two --json"
 
     Scenario: --allow-mise-downgrade skips the mise guard, and the manager is told rather than given a flag
       The run on the manager is the revision's own code, which may be older
       than the flag: it is told in its environment, about the one revision.
-      When a worker prepares to hand "fleet-sync --allow-mise-downgrade --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      When a worker prepares to hand "converge --allow-mise-downgrade --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then what the manager is asked to run does not contain "fleet-mise-guard"
       And what the manager is asked to run contains:
         | HOMELAB_MISE_DOWNGRADE_ALLOWED=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
@@ -214,17 +214,17 @@ Feature: fleet-sync started on a worker is handed to the manager
       And the manager is asked for exactly "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --json"
 
     Scenario: With no revision to say it about, --allow-mise-downgrade reaches the manager's launcher
-      When a worker prepares to hand "fleet-sync --allow-mise-downgrade" with no revision to the manager
-      Then what the manager is asked to run names "fleet-sync" directly followed by "--allow-mise-downgrade"
+      When a worker prepares to hand "converge --allow-mise-downgrade" with no revision to the manager
+      Then what the manager is asked to run names "converge" directly followed by "--allow-mise-downgrade"
 
     Scenario: A request about the schedule converges nothing now, so the mise guard is left out
       The runs the schedule starts are asked when they start.
-      When a worker prepares to hand "fleet-sync --schedule enable --apply --yes" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
+      When a worker prepares to hand "converge --schedule enable --apply --yes" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then what the manager is asked to run does not contain "fleet-mise-guard"
 
     Scenario: A mise guard that exits with 67 is reported as FLEET_MISE_DOWNGRADE, and nothing ran
       Given the manager answers the hand-off with exit code 67 and nothing
-      When "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
+      When "converge --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
       Then the command exits with 1
       And the report has:
         | code     | FLEET_MISE_DOWNGRADE                     |
@@ -235,7 +235,7 @@ Feature: fleet-sync started on a worker is handed to the manager
       The homelab installed on the manager could not say which mise the
       workers run: that is never a pass.
       Given the manager answers the hand-off with exit code 68 and nothing
-      When "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
+      When "converge --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
       Then the command exits with 1
       And the report has:
         | code     | FLEET_MISE_UNMEASURED                    |
@@ -250,7 +250,7 @@ Feature: fleet-sync started on a worker is handed to the manager
         """
         {"version":1,"ok":false,"code":"FLEET_MISE_DOWNGRADE","error":"it would replace the newer one on worker-one (2026.11.11)"}
         """
-      When "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
+      When "converge --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
       Then the command exits with 1
       And the report has:
         | code | FLEET_MISE_DOWNGRADE |
@@ -268,7 +268,7 @@ Feature: fleet-sync started on a worker is handed to the manager
 
     Scenario Outline: A guard that exits with <exit> is reported as <code>, and nothing ran
       Given the manager answers the hand-off with exit code <exit> and nothing
-      When "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
+      When "converge --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
       Then the command exits with 1
       And the report has:
         | code     | <code>                                   |
@@ -282,7 +282,7 @@ Feature: fleet-sync started on a worker is handed to the manager
 
     Scenario: A copy of another repository the manager could not replace is reported as such, not as an unmerged revision
       Given the manager answers the hand-off with exit code 69 and nothing
-      When "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
+      When "converge --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
       Then the command exits with 1
       And the report has:
         | code     | FLEET_SOURCE_MISMATCH                    |
@@ -307,14 +307,14 @@ Feature: fleet-sync started on a worker is handed to the manager
 
     Scenario: An unreachable manager is reported, not a partial run on the worker
       Given the manager answers the hand-off with exit code 255 and nothing
-      When "fleet-sync" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
+      When "converge" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
       Then the command exits with 1
       And the report has:
         | code | FLEET_MANAGER_UNREACHABLE |
 
     Scenario: A test can never reach the real manager
       Given nothing stands in for the SSH connection to the manager
-      When "fleet-sync" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
+      When "converge" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
       Then the hand-off is refused with "FLEET_FORWARD_IN_TEST"
 
     Scenario: Off the manager with hand-off disabled, nothing runs

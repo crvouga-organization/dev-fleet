@@ -33,7 +33,7 @@ const guardsRunning: Probe = async (run) => {
   if (!timer.ok || timer.stdout.trim() !== 'enabled')
     return [
       'DISK_GC_TIMER_MISSING',
-      'Run fleet-sync for this worker to enable its hourly disk GC timer.',
+      'Run converge for this worker to enable its hourly disk GC timer.',
     ];
   return diskGcRecent(run);
 };
@@ -75,7 +75,7 @@ const diskGcRecent: Probe = async (run) => {
   )
     return [
       'DISK_GC_RUN_STALE',
-      'Inspect the disk GC service journal and run fleet-sync for this worker.',
+      'Inspect the disk GC service journal and run converge for this worker.',
     ];
   return undefined;
 };
@@ -124,7 +124,7 @@ const agentSliceBounded: Probe = async (run) => {
   if (!slice.ok || fields['LoadState'] !== 'loaded')
     return [
       'AGENT_SLICE_MISSING',
-      'Run fleet-sync and verify T3 uses app-t3code-agents.slice.',
+      'Run converge and verify T3 uses app-t3code-agents.slice.',
     ];
   const mib = Math.floor(
     Number(/^MemTotal:\s+(\d+) kB$/m.exec(memory.stdout)?.[1]) / 1024
@@ -146,7 +146,7 @@ const agentSliceBounded: Probe = async (run) => {
   )
     return [
       'AGENT_LIMIT_OVERRIDDEN',
-      'Run fleet-sync to restore the aggregate T3 agent limits, then inspect higher-priority drop-ins if the check still fails.',
+      'Run converge to restore the aggregate T3 agent limits, then inspect higher-priority drop-ins if the check still fails.',
     ];
   return undefined;
 };
@@ -174,7 +174,7 @@ const swapActive: Probe = async (run) => {
   )
     return [
       'ZRAM_PRIORITY_MISMATCH',
-      'Run fleet-sync and inspect dev-zram0.swap and the priority of the disk swap.',
+      'Run converge and inspect dev-zram0.swap and the priority of the disk swap.',
     ];
   const tuning = await run([
     'cat',
@@ -187,7 +187,7 @@ const swapActive: Probe = async (run) => {
   )
     return [
       'ZRAM_RECLAIM_MISMATCH',
-      'Run fleet-sync to restore the reclaim settings for compressed swap.',
+      'Run converge to restore the reclaim settings for compressed swap.',
     ];
   return undefined;
 };
@@ -345,11 +345,11 @@ async function managerHandsDownIo(
 
 const PROTECTION_REMEDY = {
   unobserved:
-    'No process of the worker user was found listening on the T3 port, so there is no reserve to measure: T3 is stopped or restarting. Check worker:t3-recovery and worker:t3-health, then rerun homelab fleet-status --workers.',
+    'No process of the worker user was found listening on the T3 port, so there is no reserve to measure: T3 is stopped or restarting. Check worker:t3-recovery and worker:t3-health, then rerun homelab check --workers.',
   manager:
-    'The user manager does not hand the io controller down: fleet-sync declares it for the user manager, which takes it on its next start. Reboot the worker while it runs no agent turn (homelab fleet-sync --maintenance-reboot). Restarting T3 does not change it, and the CPU and memory reserve are already in place.',
+    'The user manager does not hand the io controller down: fleet-sync declares it for the user manager, which takes it on its next start. Reboot the worker while it runs no agent turn (homelab converge --maintenance-reboot). Restarting T3 does not change it, and the CPU and memory reserve are already in place.',
   undeclared:
-    'Run homelab fleet-sync on this worker: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. If the check still fails, the listener runs outside the units fleet-sync declares; inspect its cgroup.',
+    'Run homelab converge on this worker: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. If the check still fails, the listener runs outside the units fleet-sync declares; inspect its cgroup.',
 };
 
 /** The cgroup of the process listening on the T3 port; undefined when none

@@ -133,7 +133,7 @@ export async function inspectBootstrap(
               : {
                   remedy: {
                     action:
-                      'Resize the machine to at least the minimum worker size docs/worker-contract.md states, then run fleet-sync. Nothing was installed.',
+                      'Resize the machine to at least the minimum worker size docs/worker-contract.md states, then run converge. Nothing was installed.',
                   },
                 }),
           },

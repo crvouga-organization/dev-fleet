@@ -83,7 +83,7 @@ export function declaredFor<
 }
 
 /** What switching a worker from one set of features to another removes,
- * in the words `fleet-sync --dry-run` prints. Turning a feature on removes
+ * in the words `converge --dry-run` prints. Turning a feature on removes
  * nothing; turning the session to headless retires the desktop unit and keeps
  * ~/.t3. */
 export function featureRemovals(
@@ -178,7 +178,7 @@ export function featuresCheck(
       summary: `${REMOVAL_INCOMPLETE}: ${declared}; still present: ${remaining.join(', ')}.`,
       remedy: {
         action:
-          'Rerun fleet-sync, which removes what homelab installed for a feature that is off, and read the ubuntu:baseline output. A package another package depends on stays until a person removes that one.',
+          'Rerun converge, which removes what homelab installed for a feature that is off, and read the ubuntu:baseline output. A package another package depends on stays until a person removes that one.',
       },
     };
   const removed = before

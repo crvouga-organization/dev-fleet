@@ -481,11 +481,11 @@ export function claimLease(
 }
 
 export const DIVERGED_REMEDY =
-  'This machine and the bucket both changed the fleet state. The bucket is the source of truth: keep a copy of anything you still need (homelab fleet-state --export), then run homelab fleet-state --restore --yes.';
+  'This machine and the bucket both changed the fleet state. The bucket is the source of truth: keep a copy of anything you still need (homelab state --export), then run homelab state --restore --yes.';
 
 /** Makes one change on top of the bucket's current version and uploads it.
  * A bucket that cannot be reached does not stop the change: this copy stays
- * ahead and the next change, or `fleet-state --push`, uploads it.
+ * ahead and the next change, or `state --push`, uploads it.
  */
 export function mutateState<T>(
   context: StateContext,
