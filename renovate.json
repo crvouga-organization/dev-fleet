@@ -67,6 +67,7 @@
         "aqua:anomalyco/opencode",
         "http:grok",
         "http:antigravity",
+        "http:cursor-agent",
         "anomalyco/opencode",
         "openai/codex",
         "anthropics/claude-code",

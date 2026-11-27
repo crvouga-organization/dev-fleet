@@ -438,7 +438,9 @@ send whichever model is picked, so their launcher runs a loopback relay
 Antigravity names its model in the Gemini request path, where the same relay
 adds it. Requests without a prefix (Grok, the pooled OpenCode provider, health
 checks) still use the whole pool, fill-first. Cursor is not part of the
-fleet (its backend cannot be proxied). Native Muse Code is not used: it only
+proxy (its backend cannot be proxied). Every node still installs the same
+`cursor-agent` CLI (`http:cursor-agent` in `mise.toml`); its login stays on
+that machine. Native Muse Code is not used: it only
 talks to Meta's own catalog endpoint, so Muse models run through OpenCode.
 
 ### Checkout project actions
