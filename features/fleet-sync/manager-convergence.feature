@@ -85,6 +85,33 @@ Feature: The manager converges itself before any worker
         {"personal_grok_proxy":{"driver":"grok"}}
         """
 
+    Scenario: A credential playbook that cannot run says so
+      The account probe used to report only T3_PROVIDERS_UNVERIFIED, so a
+      worker whose credential playbook failed looked like every other failure.
+      Given T3 on the manager is configured with:
+        """
+        {"providerInstances":{"antigravity":{}}}
+        """
+      And the provider credential playbook cannot run
+      When the providers of "manager-mac" are applied
+      Then the check's status is "fail"
+      And the check's summary is "T3_PROVIDERS_UNVERIFIED"
+      And the check's remedy contains "Could not reconcile the local T3 provider credentials."
+
+    Scenario: An unexpected provider failure is not copied into the report
+      The failure can carry a credential. The check names the code and the
+      dry-run, not the exception.
+      Given T3 on the manager is configured with:
+        """
+        {"providerInstances":{"antigravity":{}}}
+        """
+      And provider reconciliation fails with "proxy-client-key=secret-value"
+      When the providers of "manager-mac" are applied
+      Then the check's status is "fail"
+      And the check's summary is "T3_PROVIDERS_UNVERIFIED"
+      And the check's remedy contains "t3-apply --dry-run"
+      And the checks do not mention "secret-value"
+
   Rule: The manager applies every proxy agent profile the workers get
 
     One command applies them all: each start of the pinned Bun costs about
