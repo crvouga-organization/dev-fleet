@@ -2294,6 +2294,14 @@
       }
     },
     {
+      "id": "worker:package:fwupd",
+      "meaning": "The pinned Ubuntu package is installed at or past its pin.",
+      "severity": "required",
+      "repair": {
+        "manual": "Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision."
+      }
+    },
+    {
       "id": "worker:package:git",
       "meaning": "The pinned Ubuntu package is installed at or past its pin.",
       "severity": "required",
@@ -2402,7 +2410,7 @@
       "meaning": "The worker powers on after AC loss.",
       "severity": "required",
       "repair": {
-        "manual": "It is a property of the hardware, the firmware or the operating system release, which no command changes."
+        "recipe": "power"
       }
     },
     {

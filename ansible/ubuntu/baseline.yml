@@ -83,8 +83,12 @@
       when: "'web' in worker_tool_profiles | default([])"
     - name: Keep the always-on services running
       ansible.builtin.import_tasks: tasks/services.yml
+    # fleet-repair re-applies this alone (--tags power) for
+    # worker:power-loss-recovery. The release assert above is tagged always,
+    # so it still runs.
     - name: Apply the power policy
       ansible.builtin.import_tasks: tasks/power.yml
+      tags: [power]
     - name: Configure the development user
       ansible.builtin.import_tasks: tasks/user.yml
     # After the user lingers: the limit is a unit of the user's own manager.
