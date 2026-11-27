@@ -207,6 +207,14 @@ export const REPAIR_RECIPES: RepairRecipe[] = [
     ],
   },
   playbook({
+    id: 'power',
+    title: 'Re-apply the worker power policy',
+    path: 'ansible/ubuntu/baseline.yml',
+    tag: 'power',
+    action:
+      'Sets the recognized restore-after-AC-loss firmware setting on a physical worker (worker:power-loss-recovery). The firmware applies it at the next boot; the repair never reboots the worker.',
+  }),
+  playbook({
     id: 'recovery',
     title: 'Re-apply the worker recovery policy',
     path: 'ansible/ubuntu/recovery.yml',

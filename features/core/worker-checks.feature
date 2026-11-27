@@ -121,10 +121,28 @@ Feature: What is measured on a worker
     Scenario: A worker whose firmware powers on after a power loss passes
       Given every command prints:
         """
-        {"BiosSettings":[{"Name":"AfterPowerLoss","CurrentValue":"Power On"}]}
+        {"BiosSettings":[{"Name":"AfterPowerLoss","BiosSettingCurrentValue":"Power On"}]}
         """
       When the recovery of the worker after a power loss is checked
       Then the check "worker:power-loss-recovery" passes
+
+    Scenario: A setting written and waiting for the next boot already counts
+      Given every command prints:
+        """
+        {"BiosSettings":[{"Name":"AfterPowerLoss","BiosSettingCurrentValue":"Power Off","BiosSettingTargetValue":"Power On"}]}
+        """
+      When the recovery of the worker after a power loss is checked
+      Then the check "worker:power-loss-recovery" passes
+
+    Scenario: A worker whose firmware stays off after a power loss fails
+      Given every command prints:
+        """
+        {"BiosSettings":[{"Name":"AfterPowerLoss","BiosSettingCurrentValue":"Stay Off","BiosSettingPossibleValues":["Stay Off","Power On"]}]}
+        """
+      When the recovery of the worker after a power loss is checked
+      Then the check "worker:power-loss-recovery" fails
+      And the summary of the check "worker:power-loss-recovery" mentions "POWER_LOSS_RECOVERY_UNSET"
+      And the remedy of the check "worker:power-loss-recovery" mentions "fleet-sync"
 
   Rule: The recovery watchdog counts only when its script is there and its last run succeeded
     The unit runs a copy installed outside every revision, so pruning old

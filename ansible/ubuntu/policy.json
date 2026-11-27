@@ -32,7 +32,8 @@
         "ansible-core": "2.16.3-0ubuntu2",
         "systemd-zram-generator": "1.1.2-3",
         "systemd-oomd": "255.4-1ubuntu8.18",
-        "nftables": "1.0.9-1ubuntu0.1"
+        "nftables": "1.0.9-1ubuntu0.1",
+        "fwupd": "2.0.20-1ubuntu2~24.04.2"
       },
       "browserPackages": {
         "fonts-liberation": "1:2.1.5-3",
@@ -83,7 +84,8 @@
     "ansible-core": "2.20.1-1",
     "systemd-zram-generator": "1.2.1-2",
     "systemd-oomd": "259.9-0ubuntu0.1",
-    "nftables": "1.1.6-1"
+    "nftables": "1.1.6-1",
+    "fwupd": "2.1.1-1ubuntu3.1"
   },
   "tailscale": {
     "version": "1.104.7",
@@ -93,6 +95,15 @@
   "minimumFreeInodes": 10000,
   "t3RestartMaxDeferralHours": 24,
   "alwaysOnServices": ["ssh", "tailscaled", "docker", "beszel-agent"],
+  "powerLossRecovery": {
+    "settings": [
+      "RestoreACPowerLoss",
+      "AfterPowerLoss",
+      "PowerOnAfterPowerFail",
+      "ACPowerRecovery"
+    ],
+    "values": ["Power On", "Always On", "PowerOn", "On"]
+  },
   "features": {
     "containers": {
       "packages": ["docker.io", "docker-compose-v2", "docker-buildx"],
