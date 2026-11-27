@@ -21,11 +21,12 @@ concurrency:
 jobs:
   affected:
     name: Affected paths
-    # The tier, and which jobs this diff needs. A pull request aims to finish
-    # in under five minutes, a release in under ten. The night
-    # (.github/workflows/nightly.yml) holds the full fresh-worker matrix.
+    # The tier, and which jobs this diff needs. A pull request is killed at
+    # five minutes and a release at ten: this job and Required checks take
+    # one minute each, and every job between them takes what remains. The
+    # night (.github/workflows/nightly.yml) is killed at forty-five.
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 1
     outputs:
       tier: ${{ steps.plan.outputs.tier }}
       check: ${{ steps.plan.outputs.check }}
@@ -79,7 +80,7 @@ jobs:
     needs: [affected]
     if: needs.affected.outputs.check == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 8 || 12 }}
+    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 3 || needs.affected.outputs.tier == 'release' && 8 }}
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
     steps:
@@ -145,7 +146,7 @@ jobs:
     needs: [affected]
     if: needs.affected.outputs.state == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 8 || 12 }}
+    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 3 || needs.affected.outputs.tier == 'release' && 8 }}
     services:
       # A throwaway S3 API. It accepts any credential, so this proves the
       # protocol and the layout in the bucket, not a provider's access rules.
@@ -176,7 +177,7 @@ jobs:
     needs: [affected]
     if: needs.affected.outputs.workflows == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 8 || 12 }}
+    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 3 || needs.affected.outputs.tier == 'release' && 8 }}
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
     steps:
@@ -194,7 +195,7 @@ jobs:
     needs: [affected]
     if: needs.affected.outputs.ansible == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 8 || 12 }}
+    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 3 || needs.affected.outputs.tier == 'release' && 8 }}
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
     steps:
@@ -237,7 +238,7 @@ jobs:
     needs: [affected]
     if: needs.affected.outputs.manager == 'true'
     runs-on: macos-latest
-    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 8 || 12 }}
+    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 3 || needs.affected.outputs.tier == 'release' && 8 }}
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
     steps:
@@ -312,7 +313,7 @@ jobs:
       matrix:
         include: ${{ fromJSON(needs.affected.outputs.fresh_matrix) }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 8 || 12 }}
+    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 3 || needs.affected.outputs.tier == 'release' && 8 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -343,11 +344,11 @@ jobs:
     # The same machine runs the pinned T3 server (downloaded too) in a user
     # manager, to prove the declared limit on agent sessions against it.
     # A pull request skips this: a cold run is longer than the pull request
-    # budget. A release and the night run it.
+    # limit. A release and the night run it.
     needs: [affected]
     if: needs.affected.outputs.agent == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 8 || 12 }}
+    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 3 || needs.affected.outputs.tier == 'release' && 8 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -375,7 +376,7 @@ jobs:
     needs: [affected]
     if: needs.affected.outputs.proxy == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 8 || 12 }}
+    timeout-minutes: ${{ needs.affected.outputs.tier == 'pr' && 3 || needs.affected.outputs.tier == 'release' && 8 }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -406,7 +407,7 @@ jobs:
         proxy-box,
       ]
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 1
     permissions:
       contents: read
       actions: write

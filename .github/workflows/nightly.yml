@@ -10,7 +10,9 @@ jobs:
   affected:
     name: Affected paths
     # A dispatch of this workflow is still the night: every accepted Ubuntu
-    # release and architecture, and both fresh-worker features.
+    # release and architecture, and both fresh-worker features. The night is
+    # killed at forty-five minutes: five here, thirty for a worker and ten
+    # for the result.
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:

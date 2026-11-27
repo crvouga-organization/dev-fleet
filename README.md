@@ -541,11 +541,17 @@ contact a real machine.
 Checks run in three tiers ([`ci.yml`](.github/workflows/ci.yml),
 [`nightly.yml`](.github/workflows/nightly.yml)):
 
-| Tier         | When                                             | Target           | What runs                                                                                                                                                                                                              |
-| ------------ | ------------------------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Pull request | A pull request, or a dispatch off `main`         | Under 5 minutes  | Format, typecheck, lint and the features the diff affects. Fleet state, workflows, playbooks, the manager, one fresh worker and the proxy run only when the diff reaches them. The monitoring agent does not run here. |
-| Release      | A push to `main`, or a dispatch on `main`        | Under 10 minutes | The full feature suite, fleet state, workflows, playbooks, the manager on macOS, the monitoring agent, and a fresh worker of the newest Ubuntu on amd64 and arm64.                                                     |
-| Nightly      | 07:17 UTC, or a dispatch of the Nightly workflow | Under 45 minutes | Every accepted Ubuntu release and architecture, both fresh-worker features, and the monitoring agent.                                                                                                                  |
+| Tier         | When                                             | Limit      | What runs                                                                                                                                                                                                              |
+| ------------ | ------------------------------------------------ | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pull request | A pull request, or a dispatch off `main`         | 5 minutes  | Format, typecheck, lint and the features the diff affects. Fleet state, workflows, playbooks, the manager, one fresh worker and the proxy run only when the diff reaches them. The monitoring agent does not run here. |
+| Release      | A push to `main`, or a dispatch on `main`        | 10 minutes | The full feature suite, fleet state, workflows, playbooks, the manager on macOS, the monitoring agent, and a fresh worker of the newest Ubuntu on amd64 and arm64.                                                     |
+| Nightly      | 07:17 UTC, or a dispatch of the Nightly workflow | 45 minutes | Every accepted Ubuntu release and architecture, both fresh-worker features, and the monitoring agent.                                                                                                                  |
+
+The limit is a hard stop. A run is cancelled and fails when its jobs would
+outlast it. On a pull request or a release the plan and the result take one
+minute each, and every job between them takes only the minutes that remain.
+The night gives five minutes to the plan, thirty to each worker and ten to
+the result.
 
 A pull request that changes the bootstrap runs one fresh worker: the newest
 Ubuntu, amd64, and the single-machine feature. The night runs the other
@@ -568,7 +574,7 @@ is added, renamed or split is required from the pull request that does it.
 A failed job opens or updates one issue, `CI failure: <tier> / <job>`, and
 the next green run of that same job and tier closes it. The publish workflow
 still runs the Ubuntu VM and the tailnet test after the release tier; those
-are not part of the ten-minute budget.
+are not part of the ten-minute limit.
 
 A pull request needs nobody attending
 ([`pull-requests.feature`](features/rules/pull-requests.feature)):

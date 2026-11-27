@@ -27,19 +27,6 @@ const RUNNER: Record<string, string> = {
   arm64: 'ubuntu-24.04-arm',
 };
 
-const TIERED = [
-  'check',
-  'state',
-  'workflows',
-  'ansible',
-  'manager',
-  'fresh-box',
-  'agent-box',
-  'proxy-box',
-];
-
-const CEILING = "${{ needs.affected.outputs.tier == 'pr' && 8 || 12 }}";
-
 When('the pull request tier is planned for:', (world, table: DataTable) => {
   plans.set(world, planTier('pr', table.list()));
 });
@@ -169,15 +156,43 @@ Then(
   }
 );
 
-Then('each tiered job times out at the tier ceiling', (world) => {
-  for (const name of TIERED)
-    expect(String(jobOf(world, name)['timeout-minutes'])).toBe(CEILING);
-});
-
 Then(
-  'its {string} job times out after {int} minutes',
+  'its {string} job times out after {int} minute(s)',
   (world, name: string, minutes: number) => {
     expect(jobOf(world, name)['timeout-minutes']).toBe(minutes);
+  }
+);
+
+Then(
+  'every job except {string} and {string} times out after {int} minutes on {string} and {int} minutes on {string}',
+  (
+    world,
+    first: string,
+    second: string,
+    firstMinutes: number,
+    firstTier: string,
+    secondMinutes: number,
+    secondTier: string
+  ) => {
+    const jobs = jobsOf(world);
+    const spared = new Set([first, second]);
+    for (const name of spared)
+      if (!jobs[name]) throw new Error(`The workflow has no ${name} job.`);
+    const limited = Object.keys(jobs).filter((name) => !spared.has(name));
+    if (limited.length === 0)
+      throw new Error(
+        'The workflow has no job between the plan and the result.'
+      );
+    const ceiling = `\${{ needs.affected.outputs.tier == '${firstTier}' && ${firstMinutes} || needs.affected.outputs.tier == '${secondTier}' && ${secondMinutes} }}`;
+    for (const name of limited)
+      expect(String(jobs[name]?.['timeout-minutes'])).toBe(ceiling);
+  }
+);
+
+Then(
+  'the longest chain of jobs on {string} is at most {int} minutes',
+  (world, tier: string, limit: number) => {
+    expect(longestChain(jobsOf(world), tier)).toBeLessThanOrEqual(limit);
   }
 );
 
@@ -215,9 +230,65 @@ interface JobShape {
 }
 
 function jobOf(world: RulesWorld, name: string): JobShape {
-  const found = world.workflow?.jobs[name] as JobShape | undefined;
+  const found = jobsOf(world)[name];
   if (!found) throw new Error(`The workflow has no ${name} job.`);
   return found;
+}
+
+function jobsOf(world: RulesWorld): Record<string, JobShape> {
+  const jobs = world.workflow?.jobs;
+  if (!jobs) throw new Error('No workflow is loaded.');
+  return jobs as Record<string, JobShape>;
+}
+
+/** Minutes a job may run on `tier`. A missing timeout can outlast the limit. */
+function timeoutMinutes(name: string, value: unknown, tier: string): number {
+  if (typeof value === 'number') {
+    if (!Number.isInteger(value) || value < 1)
+      throw new Error(`${name} times out after ${String(value)} minutes.`);
+    return value;
+  }
+  if (typeof value !== 'string') throw new Error(`${name} has no timeout.`);
+  const match =
+    /^\$\{\{ needs\.affected\.outputs\.tier == '([^']+)' && (\d+) \|\| needs\.affected\.outputs\.tier == '([^']+)' && (\d+) \}\}$/.exec(
+      value
+    );
+  if (!match) throw new Error(`${name} has no timeout (${value}).`);
+  const firstTier = match[1];
+  const firstMinutes = match[2];
+  const secondTier = match[3];
+  const secondMinutes = match[4];
+  if (!firstTier || !firstMinutes || !secondTier || !secondMinutes)
+    throw new Error(`${name} has no timeout (${value}).`);
+  if (tier === firstTier) return Number(firstMinutes);
+  if (tier === secondTier) return Number(secondMinutes);
+  throw new Error(`${name} has no timeout on the ${tier} tier.`);
+}
+
+/** The longest path of job timeouts. Parallel jobs share a link of the path. */
+function longestChain(jobs: Record<string, JobShape>, tier: string): number {
+  const memo = new Map<string, number>();
+  const visiting = new Set<string>();
+  const visit = (name: string): number => {
+    const cached = memo.get(name);
+    if (cached !== undefined) return cached;
+    if (visiting.has(name)) throw new Error(`The job ${name} needs itself.`);
+    const job = jobs[name];
+    if (!job) throw new Error(`The chain needs a missing job ${name}.`);
+    visiting.add(name);
+    let before = 0;
+    for (const need of [job.needs ?? []].flat())
+      before = Math.max(before, visit(need));
+    visiting.delete(name);
+    const total = before + timeoutMinutes(name, job['timeout-minutes'], tier);
+    memo.set(name, total);
+    return total;
+  };
+  let longest = 0;
+  for (const name of Object.keys(jobs))
+    longest = Math.max(longest, visit(name));
+  if (longest < 1) throw new Error('The workflow has no job.');
+  return longest;
 }
 
 async function workflowNamed(
