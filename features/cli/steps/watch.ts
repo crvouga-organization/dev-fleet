@@ -238,13 +238,10 @@ Then('nothing the receiver got contains {string}', (world, text: string) => {
     expect(entry.body + JSON.stringify(entry.headers)).not.toContain(text);
 });
 
-Then(
-  'nothing notify reported contains {string}',
-  (world, text: string) => {
-    expect(JSON.stringify(outcome(world).data)).not.toContain(text);
-    expect(outcome(world).text ?? '').not.toContain(text);
-  }
-);
+Then('nothing notify reported contains {string}', (world, text: string) => {
+  expect(JSON.stringify(outcome(world).data)).not.toContain(text);
+  expect(outcome(world).text ?? '').not.toContain(text);
+});
 
 Then(
   /^notify exits with (\d+) and its check "([^"]+)" (passes|fails|warns)$/,

@@ -16,7 +16,7 @@ step added here must be added there too, with the check that verifies it.
 | ---------------------------------------------------------------------------------------------------------- | ------------------------------------- | --------------------- |
 | Install Docker Desktop at the release `mise.toml` pins and sign in to it                                   | A licence and an account              | `manager:docker`      |
 | Sign this Mac in to Tailscale and approve it                                                               | A tailnet account and device approval | `tailscale:discovery` |
-| Pass the bucket credentials (`HOMELAB_BUCKET_*`) or save them with `state --init`                   | Credentials of an account you own     | `state:bucket`        |
+| Pass the bucket credentials (`HOMELAB_BUCKET_*`) or save them with `state --init`                          | Credentials of an account you own     | `state:bucket`        |
 | Log the manager in to Vault                                                                                | A password or an identity provider    | `auth:vault`          |
 | Grant the power settings once: `ansible-playbook -e user=$(id -un) -K ansible/macos/manager-privilege.yml` | An administrator password             | `manager:power`       |
 

@@ -372,8 +372,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'rollout:evidence': "A worker's rollout produced verification evidence.",
   'rollout:next':
     'Names the command that converges a worker after it was replaced.',
-  'rollout:node':
-    'The converge of one worker that resume runs ended ready.',
+  'rollout:node': 'The converge of one worker that resume runs ended ready.',
   'rollout:operation': 'The remote rollout operation completed.',
   'rollout:prerequisites': "A worker met the rollout's prerequisites.",
   'rollout:promotion':

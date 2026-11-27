@@ -212,9 +212,7 @@ const allowing = (flag: string | undefined) =>
 const ALLOWING = '(?: with (--allow-unmerged|--allow-mise-downgrade))?';
 
 Given(
-  new RegExp(
-    `^converge (runs|ran) for revision "([a-f0-9]{40})"${ALLOWING}$`
-  ),
+  new RegExp(`^converge (runs|ran) for revision "([a-f0-9]{40})"${ALLOWING}$`),
   (world, verb: string, revision: string, flag: string | undefined) =>
     act(world, verb, () => run(world, { revision, ...allowing(flag) }))
 );

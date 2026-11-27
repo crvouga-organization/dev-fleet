@@ -42,8 +42,7 @@ if (import.meta.main) {
   const log = {
     info: (event: string, fields: Record<string, unknown>) =>
       process.stdout.write(
-        JSON.stringify({ name: 'homelab-worker-auth', event, ...fields }) +
-          '\n'
+        JSON.stringify({ name: 'homelab-worker-auth', event, ...fields }) + '\n'
       ),
   };
   const started = Date.now();

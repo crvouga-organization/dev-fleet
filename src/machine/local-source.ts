@@ -14,8 +14,7 @@ export function sameRepository(remote: string, declared: string): boolean {
   const left = name(remote);
   const right = name(declared);
   // GitHub keeps the old repository name as a redirect after a rename.
-  const renamed = (value: string) =>
-    value.replace(/\/dev-fleet$/, '/homelab');
+  const renamed = (value: string) => value.replace(/\/dev-fleet$/, '/homelab');
   return left === right || renamed(left) === renamed(right);
 }
 

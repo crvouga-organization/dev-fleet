@@ -9,10 +9,10 @@ The fleet has exactly two roles, declared in
 your project's `fleet.json` (version 3, checked by [the schema](../schema/fleet.schema.json)) and validated by
 [`src/definition.ts`](../src/definition.ts):
 
-| Role        | How many    | Machine                                        | Holds state | Runs                                                                                     |
-| ----------- | ----------- | ---------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------- |
+| Role        | How many    | Machine                                        | Holds state | Runs                                                                               |
+| ----------- | ----------- | ---------------------------------------------- | ----------- | ---------------------------------------------------------------------------------- |
 | **manager** | exactly one | the human's macOS machine (`manager`)          | yes         | `sync`, the T3 desktop that links to every worker, and **every singleton service** |
-| **workers** | any         | Linux boxes (`workers`, Ubuntu 26.04 or 24.04) | no          | the T3 desktop app (UI plus server), agent tools, the Beszel agent; clients only         |
+| **workers** | any         | Linux boxes (`workers`, Ubuntu 26.04 or 24.04) | no          | the T3 desktop app (UI plus server), agent tools, the Beszel agent; clients only   |
 
 ## Manager
 

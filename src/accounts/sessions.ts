@@ -170,9 +170,7 @@ export async function accountSessionChecks(
             `${account.tool} account ${index(instance)}`,
             result === 'cooling-down' ? clears : undefined
           ) + remembered(foundMinutesAgo),
-        ...(action
-          ? { remedy: { action, command: 'homelab accounts' } }
-          : {}),
+        ...(action ? { remedy: { action, command: 'homelab accounts' } } : {}),
         durationMs,
         // Nothing was run: what an earlier session found is repeated.
         ...(foundMinutesAgo === undefined

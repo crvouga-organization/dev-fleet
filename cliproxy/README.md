@@ -61,8 +61,8 @@ homelab proxy status
 
 On the manager the installer runs as the logged-in user (never sudo). It links the tracked `launchd/*.plist` agents into `~/Library/LaunchAgents`, reloads them with `launchctl bootout`/`enable`/`bootstrap gui/$UID`, and starts the stack through the same `service-start` script the service agent runs. It records the installing user's UID/GID in the generated `.env` so containers own their bind-mounted state; the legacy Linux host keeps UID/GID 1000. It stops with `DOCKER_DESKTOP_NOT_RUNNING` (or `DOCKER_CLI_MISSING`) when Docker Desktop is unavailable. On Linux the installer still uses sudo and systemd.
 
-| launchd label (manager)              | systemd unit (legacy Linux)   | Schedule                        |
-| ------------------------------------ | ----------------------------- | ------------------------------- |
+| launchd label (manager)             | systemd unit (legacy Linux)   | Schedule                        |
+| ----------------------------------- | ----------------------------- | ------------------------------- |
 | `dev.homelab.cliproxy-fleet`        | `cliproxy-fleet.service`      | at load/login; retried on error |
 | `dev.homelab.cliproxy-monitor`      | `cliproxy-monitor.timer`      | every 5 minutes                 |
 | `dev.homelab.cliproxy-vault-renew`  | `cliproxy-vault-renew.timer`  | at load, then every 15 minutes  |

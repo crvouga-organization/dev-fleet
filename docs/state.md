@@ -7,9 +7,9 @@ cannot rebuild from Git is the **fleet state**:
 | Document     | What it is                                                                                                                                                                    |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `roster`     | The enrolled connection to each worker (SSH alias, Tailscale device)                                                                                                          |
-| `enrollment` | The revision `sync` approved, what selected it and when, and the one it last applied                                                                                    |
-| `definition` | The fleet configuration `sync` last applied: your `fleet.json`                                                                                                          |
-| `history`    | The last 90 days of `sync` runs (at most 500), each with what selected its revision, and the schedule                                                                   |
+| `enrollment` | The revision `sync` approved, what selected it and when, and the one it last applied                                                                                          |
+| `definition` | The fleet configuration `sync` last applied: your `fleet.json`                                                                                                                |
+| `history`    | The last 90 days of `sync` runs (at most 500), each with what selected its revision, and the schedule                                                                         |
 | `workers`    | Per worker: its pinned SSH host key, whether it is parked and since when, whether it came from a worker record, and whether the manager is to pair its T3 after a replacement |
 
 The `enrollment` says what selected the approved revision, under
@@ -224,17 +224,17 @@ it records what it applied. Its report carries the result as the
 
 `state` reports one of these:
 
-| Standing       | Meaning                                                | What happens                                               |
-| -------------- | ------------------------------------------------------ | ---------------------------------------------------------- |
-| `in-sync`      | The bucket and this machine hold the same version      | Nothing to do                                              |
-| `local-only`   | No bucket is configured                                | A warning on every `sync`; name one in `fleet.json`  |
-| `empty`        | Neither side holds any state                           | The first `sync` records it                          |
-| `unpublished`  | The bucket holds nothing yet                           | The next change, or `--push`, seeds it                     |
-| `local-ahead`  | This machine has changes the bucket has not received   | The next change, or `--push`, uploads them                 |
-| `bucket-ahead` | Another manager changed the bucket; this copy is stale | The next change or `sync` takes the bucket's version |
-| `unreachable`  | The bucket did not answer, or did not take an upload   | Changes still apply locally and are uploaded later         |
-| `corrupt`      | The bucket answered with a version that cannot be read | Changes apply locally; `--restore --timestamp` repairs it  |
-| `diverged`     | Both sides changed                                     | Refused. `--restore --yes` takes the bucket's version      |
+| Standing       | Meaning                                                | What happens                                              |
+| -------------- | ------------------------------------------------------ | --------------------------------------------------------- |
+| `in-sync`      | The bucket and this machine hold the same version      | Nothing to do                                             |
+| `local-only`   | No bucket is configured                                | A warning on every `sync`; name one in `fleet.json`       |
+| `empty`        | Neither side holds any state                           | The first `sync` records it                               |
+| `unpublished`  | The bucket holds nothing yet                           | The next change, or `--push`, seeds it                    |
+| `local-ahead`  | This machine has changes the bucket has not received   | The next change, or `--push`, uploads them                |
+| `bucket-ahead` | Another manager changed the bucket; this copy is stale | The next change or `sync` takes the bucket's version      |
+| `unreachable`  | The bucket did not answer, or did not take an upload   | Changes still apply locally and are uploaded later        |
+| `corrupt`      | The bucket answered with a version that cannot be read | Changes apply locally; `--restore --timestamp` repairs it |
+| `diverged`     | Both sides changed                                     | Refused. `--restore --yes` takes the bucket's version     |
 
 A stale copy never overwrites the bucket. A machine that was offline while
 another one changed the fleet is brought up to date before it can change
@@ -249,12 +249,12 @@ report warns, and the next command uploads what is pending.
 The fleet state covers what `sync` itself needs. The manager also holds
 state that is replicated differently or not at all:
 
-| State                                                | Where                                                    | If the manager is lost                                                                                 |
-| ---------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Secrets                                              | Your `secrets` provider (`vault`, `sops`, `file`, `env`) | Unaffected for `vault`; `file` and `env` secrets must be supplied again                                |
-| CLI proxy: provider logins, keys, Tailscale identity | `~/Library/Application Support/cliproxy-fleet/state`     | Restored from its own encrypted restic snapshots ([cliproxy](../cliproxy/README.md)); needs `vault`    |
-| Monitoring hub (Beszel) database                     | `~/Library/Application Support/personal-beszel`          | `sync` recreates accounts and systems; metric history, alerts and settings made by hand are lost |
-| T3 ownership record                                  | `~/.t3/userdata/personal-managed.json`                   | `t3-reconcile --import ID` adopts instances again                                                          |
+| State                                                | Where                                                    | If the manager is lost                                                                              |
+| ---------------------------------------------------- | -------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Secrets                                              | Your `secrets` provider (`vault`, `sops`, `file`, `env`) | Unaffected for `vault`; `file` and `env` secrets must be supplied again                             |
+| CLI proxy: provider logins, keys, Tailscale identity | `~/Library/Application Support/cliproxy-fleet/state`     | Restored from its own encrypted restic snapshots ([cliproxy](../cliproxy/README.md)); needs `vault` |
+| Monitoring hub (Beszel) database                     | `~/Library/Application Support/personal-beszel`          | `sync` recreates accounts and systems; metric history, alerts and settings made by hand are lost    |
+| T3 ownership record                                  | `~/.t3/userdata/personal-managed.json`                   | `t3-reconcile --import ID` adopts instances again                                                   |
 
 The manager reaches a worker that has no SSH alias against
 `~/.local/share/homelab/ssh/known_hosts` (beside the state directory): a
@@ -271,14 +271,14 @@ once `sync` has fetched it back.
 
 ## Reference
 
-| Setting                                                              | Meaning                                                      |
-| -------------------------------------------------------------------- | ------------------------------------------------------------ |
-| `state` in `fleet.json`                                              | Where the bucket is                                          |
+| Setting                                                            | Meaning                                                      |
+| ------------------------------------------------------------------ | ------------------------------------------------------------ |
+| `state` in `fleet.json`                                            | Where the bucket is                                          |
 | `HOMELAB_BUCKET_ACCESS_KEY_ID`, `HOMELAB_BUCKET_SECRET_ACCESS_KEY` | The bucket's credentials, for the command they are passed to |
-| `HOMELAB_CONFIG`                                                    | A configuration file, instead of the project's `fleet.json`  |
-| `HOMELAB_STATE`                                                     | Another state directory. Earlier files are not read for it   |
-| `HOMELAB_BUCKET`                                                    | Another `bucket.json`                                        |
-| `HOMELAB_MANAGER_HOLDER`                                            | How the manager lease names this machine                     |
+| `HOMELAB_CONFIG`                                                   | A configuration file, instead of the project's `fleet.json`  |
+| `HOMELAB_STATE`                                                    | Another state directory. Earlier files are not read for it   |
+| `HOMELAB_BUCKET`                                                   | Another `bucket.json`                                        |
+| `HOMELAB_MANAGER_HOLDER`                                           | How the manager lease names this machine                     |
 
 How a command reaches the bucket:
 

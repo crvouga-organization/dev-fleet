@@ -27,10 +27,10 @@ storage bucket you own. Nothing else has to be kept:
 | What                                                                                    | Where it lives                                                     |
 | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | The fleet configuration                                                                 | `fleet.json`, in your repository                                   |
-| The version of homelab                                                                | The `@crvouga/homelab` dependency in your `package.json`         |
+| The version of homelab                                                                  | The `@crvouga/homelab` dependency in your `package.json`           |
 | The fleet state: the enrolled workers, the approved revision, the configuration applied | Your bucket (any S3-compatible service)                            |
 | Secrets                                                                                 | The provider `fleet.json` names (`vault`, `sops`, `file` or `env`) |
-| The source, checkouts, tools and reports homelab puts on a machine                    | A cache: delete it and `sync` rebuilds it                    |
+| The source, checkouts, tools and reports homelab puts on a machine                      | A cache: delete it and `sync` rebuilds it                          |
 
 The CLI proxy and the monitoring hub on the manager still keep data of their
 own; [known limits](#known-limits) says what is lost with the manager.
@@ -531,7 +531,7 @@ fleet.json contents.
 | `bootstrap/` | Toolchain bootstrap and the manager and worker entry scripts            |
 | `schema/`    | JSON schemas for `fleet.json`, the roster and command output; check IDs |
 | `examples/`  | A complete example configuration                                        |
-| `features/`  | What homelab does, as Gherkin features: the tests                     |
+| `features/`  | What homelab does, as Gherkin features: the tests                       |
 | `bin/`       | The entry point of the published package                                |
 
 ## Develop

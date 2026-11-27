@@ -88,22 +88,22 @@ Then('the report lists these checks:', (world, table: DataTable) => { … });
 A scenario that cannot run everywhere says so in a tag, and is reported as
 skipped where it cannot.
 
-| Tag            | Runs                                                                                     |
-| -------------- | ---------------------------------------------------------------------------------------- |
-| `@slow`        | With ten times the area's timeout                                                        |
+| Tag            | Runs                                                                                    |
+| -------------- | --------------------------------------------------------------------------------------- |
+| `@slow`        | With ten times the area's timeout                                                       |
 | `@fresh-box`   | When `HOMELAB_TEST_FRESH_BOX` is set; needs Docker and an SSH client                    |
 | `@agent-box`   | When `HOMELAB_TEST_AGENT_BOX` is set; needs Docker that can run systemd                 |
 | `@tailnet-box` | When `HOMELAB_TEST_TAILNET_BOX` is set; needs Docker that can run systemd and `openssl` |
 | `@proxy-box`   | When `HOMELAB_TEST_PROXY_BOX` is set; needs Docker with host networking (Linux)         |
-| `@litestream`  | Where the pinned Litestream is installed; required in CI                                 |
+| `@litestream`  | Where the pinned Litestream is installed; required in CI                                |
 | `@s3`          | Where `HOMELAB_TEST_S3` names a throwaway S3 service                                    |
 | `@vault`       | Where `vault` is on PATH, or `HOMELAB_TEST_VAULT=required`; a dev server                |
 | `@ansible`     | Where `uv` is on PATH, or `HOMELAB_TEST_ANSIBLE=required`; the locked Ansible project   |
 | `@required`    | Only where `HOMELAB_TEST_LITESTREAM=required`, to prove nothing was skipped             |
 | `@t3-desktop`  | On macOS with `HOMELAB_TEST_MANAGER_DESKTOP` set; stages the pinned app temporarily     |
-| `@macos`       | On macOS only; the manager job of CI runs them                                           |
-| `@posix`       | Not on Windows                                                                           |
-| `@linux`       | On Linux only                                                                            |
-| `@bash`        | Where `/bin/bash` exists                                                                 |
-| `@zsh`         | Where `/bin/zsh` exists                                                                  |
+| `@macos`       | On macOS only; the manager job of CI runs them                                          |
+| `@posix`       | Not on Windows                                                                          |
+| `@linux`       | On Linux only                                                                           |
+| `@bash`        | Where `/bin/bash` exists                                                                |
+| `@zsh`         | Where `/bin/zsh` exists                                                                 |
 | `@pwsh`        | Where `pwsh` is on PATH, or `HOMELAB_TEST_PWSH=required`; the machine's own PowerShell  |

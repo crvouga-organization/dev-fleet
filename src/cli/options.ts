@@ -77,9 +77,7 @@ export function validateOptions(command: string, options: CliOptions): void {
 
 function validateMutation(command: string, options: CliOptions): void {
   if (options.apply && !['add', 'repair'].includes(command))
-    throw new FleetUsageError(
-      '--apply is only valid for enroll and repair.'
-    );
+    throw new FleetUsageError('--apply is only valid for enroll and repair.');
   if (options.apply && !options.yes)
     throw new FleetUsageError('Mutation requires both --apply and --yes.');
 }

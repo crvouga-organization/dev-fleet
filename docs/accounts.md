@@ -56,7 +56,7 @@ A session check that does not pass says which of these it found:
 | ------------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
 | `AGENT_ACCOUNT_COOLING_DOWN`          | warn   | The provider limited the account. It clears on its own                                         |
 | `AGENT_ACCOUNT_VERIFICATION_REQUIRED` | fail   | The provider answers "Verify your account": a person completes it with the provider            |
-| `AGENT_ACCOUNT_AUTH_REJECTED`         | fail   | The account's credentials were refused; `accounts` says whether it needs a login         |
+| `AGENT_ACCOUNT_AUTH_REJECTED`         | fail   | The account's credentials were refused; `accounts` says whether it needs a login               |
 | `AGENT_ACCOUNT_SESSION_TIMED_OUT`     | fail   | The session never ended, and the proxy named no cooldown and no refusal. Not a sign-in failure |
 | `AGENT_ACCOUNT_SESSION_FAILED`        | fail   | Anything else                                                                                  |
 

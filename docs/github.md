@@ -14,7 +14,7 @@ provider your `fleet.json` names, like every other secret:
 
 | Provider | Shared token                                                              | Per-node token (`"credential": "per-node"`) |
 | -------- | ------------------------------------------------------------------------- | ------------------------------------------- |
-| `env`    | `HOMELAB_SECRET_GITHUB_TOKEN`                                            | `HOMELAB_SECRET_GITHUB_TOKEN_<NODE>`       |
+| `env`    | `HOMELAB_SECRET_GITHUB_TOKEN`                                             | `HOMELAB_SECRET_GITHUB_TOKEN_<NODE>`        |
 | `file`   | `github-token`                                                            | `github-token-<node>`                       |
 | `sops`   | key `github-token`                                                        | key `github-token-<node>`                   |
 | `vault`  | `locations["github-token"]`, or field `GITHUB_TOKEN` beside the proxy key | the same location, field `<FIELD>_<NODE>`   |
@@ -82,7 +82,7 @@ A `sync` fails with `github:sync` when the node cannot be signed in.
 | `github:git-credential` | git asks gh for its GitHub credential.                                                                                                                                  |
 | `worker:github-sync`    | Why a worker is not signed in: `GITHUB_TOKEN_MISSING`, `GITHUB_TOKEN_REJECTED`, `GITHUB_LOGIN_MISMATCH`, `GITHUB_UNREACHABLE`.                                          |
 | `auth:copilot`          | Copilot CLI uses the node's GitHub sign-in; fails `not-signed-in` without one and `COPILOT_TOKEN_UNSUPPORTED` for a classic token.                                      |
-| `github:workflow`       | From `check-github`: the first step of clone, branch, commit, push, pull request, checks and comment that failed.                                                |
+| `github:workflow`       | From `check-github`: the first step of clone, branch, commit, push, pull request, checks and comment that failed.                                                       |
 
 ## Copilot CLI
 

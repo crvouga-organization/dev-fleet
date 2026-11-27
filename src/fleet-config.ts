@@ -99,7 +99,8 @@ export function installConfig(home = homedir()): boolean {
     mkdirSync(dirname(installedPath(home)), { recursive: true, mode: 0o700 });
     renameSync(previous, installedPath(home));
     const previousRecord = `${previous}.sha256`;
-    if (existsSync(previousRecord)) renameSync(previousRecord, recordPath(home));
+    if (existsSync(previousRecord))
+      renameSync(previousRecord, recordPath(home));
   }
   const body = installedDefinition(fleet);
   const changed = writePrivate(installedPath(home), body);

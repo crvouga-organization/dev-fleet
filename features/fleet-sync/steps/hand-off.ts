@@ -172,10 +172,7 @@ Then(
       const asked = row['the manager is asked for']!;
       // The option is in the request it is said to be handed off from.
       expect(given.split(' ')).toContain(row['option']!);
-      const forwarded = forwardedFlags(
-        request(`converge ${given}`),
-        undefined
-      );
+      const forwarded = forwardedFlags(request(`converge ${given}`), undefined);
       if (asked.startsWith('--')) expect(forwarded).toEqual(asked.split(' '));
       else {
         expect(asked).toMatch(/^nothing: \S/);

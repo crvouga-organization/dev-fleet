@@ -1516,16 +1516,13 @@ function quoted(text: string): string[] {
   return [...blocks, ...spans];
 }
 
-When(
-  'the homelab commands quoted in the documents are read',
-  async (world) => {
-    world.found = [];
-    for (const path of await documents())
-      for (const code of quoted(read(path)))
-        for (const match of code.matchAll(/\bhomelab ([a-z][a-z0-9-]*)/g))
-          world.found.push(`${path}: ${match[1]!}`);
-  }
-);
+When('the homelab commands quoted in the documents are read', async (world) => {
+  world.found = [];
+  for (const path of await documents())
+    for (const code of quoted(read(path)))
+      for (const match of code.matchAll(/\bhomelab ([a-z][a-z0-9-]*)/g))
+        world.found.push(`${path}: ${match[1]!}`);
+});
 
 Then('each is a command of the homelab CLI', async (world) => {
   const { COMMANDS } = await import('../../src/cli/registry');

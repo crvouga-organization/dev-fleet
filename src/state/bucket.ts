@@ -116,7 +116,6 @@ export function parseBucket(value: unknown): Bucket {
 export const ACCESS_KEY_ID_ENV = 'HOMELAB_BUCKET_ACCESS_KEY_ID';
 export const SECRET_ACCESS_KEY_ENV = 'HOMELAB_BUCKET_SECRET_ACCESS_KEY';
 
-
 /** Where a fleet configuration says its state is kept: a bucket's location
  * without credentials, which never belong in a file kept in Git.
  */

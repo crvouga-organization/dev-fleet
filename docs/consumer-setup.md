@@ -26,11 +26,11 @@ version in `package.json` is the commit every machine runs.
 
 | Concept     | Meaning                                                                                                        |
 | ----------- | -------------------------------------------------------------------------------------------------------------- |
-| manager     | The one macOS machine you run `homelab converge` on. Hosts the CLI proxy and the monitoring hub.            |
+| manager     | The one macOS machine you run `homelab converge` on. Hosts the CLI proxy and the monitoring hub.               |
 | worker      | An Ubuntu 26.04 or 24.04 machine the manager converges over SSH. Stateless: rebuilt from Git and your secrets. |
 | fleet state | One SQLite database (roster, approved revision, configuration last applied) replicated to your bucket.         |
 | bucket      | Any S3-compatible bucket you own, or a directory. The source of truth for the fleet state.                     |
-| revision    | The homelab commit the installed package was published from (`npx homelab --version`).                      |
+| revision    | The homelab commit the installed package was published from (`npx homelab --version`).                         |
 
 ## Rules for agents
 
@@ -161,7 +161,7 @@ Then replace every placeholder. Each field, from
 | Field                                                 | Value                                                                                                                    |
 | ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `version`                                             | `3`                                                                                                                      |
-| `source.repository`                                   | `https://github.com/crvouga/homelab.git`, or your fork if you publish one. Machines only accept code from it.          |
+| `source.repository`                                   | `https://github.com/crvouga/homelab.git`, or your fork if you publish one. Machines only accept code from it.            |
 | `state`                                               | `{ "bucket", "endpoint"?, "region"?, "prefix"? }` or `{ "directory": "/absolute/path" }`. Never credentials.             |
 | `secrets`                                             | See [secrets](#secrets).                                                                                                 |
 | `manager.id`                                          | A short lowercase id, `^[a-z][a-z0-9-]{0,62}$`, e.g. `manager-mac`.                                                      |
@@ -206,11 +206,11 @@ homelab asks for four secrets by purpose: `proxy-client-key`,
 `monitoring-account-password`, `monitoring-tunnel-token` and
 `proxy-tunnel-token`. `secrets.provider` says where they are:
 
-| Provider | `fleet.json`                                                                                                                                         | Where the values are                                                    |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| `vault`  | `{ "provider": "vault", "address": "https://vault.example.com", "mount": "secret", "locations": { NAME: { "path", "field" } } }` with all four names | A Vault KV v2 mount. Each worker gets its own renewable token.          |
-| `sops`   | `{ "provider": "sops", "file": "secrets.enc.yaml" }`                                                                                                 | One encrypted document with one top-level key per name.                 |
-| `file`   | `{ "provider": "file" }` (optional `"directory"`)                                                                                                    | One private file per name, default `~/.config/homelab/secrets/NAME`.  |
+| Provider | `fleet.json`                                                                                                                                         | Where the values are                                                   |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `vault`  | `{ "provider": "vault", "address": "https://vault.example.com", "mount": "secret", "locations": { NAME: { "path", "field" } } }` with all four names | A Vault KV v2 mount. Each worker gets its own renewable token.         |
+| `sops`   | `{ "provider": "sops", "file": "secrets.enc.yaml" }`                                                                                                 | One encrypted document with one top-level key per name.                |
+| `file`   | `{ "provider": "file" }` (optional `"directory"`)                                                                                                    | One private file per name, default `~/.config/homelab/secrets/NAME`.   |
 | `env`    | `{ "provider": "env" }`                                                                                                                              | `HOMELAB_SECRET_PROXY_CLIENT_KEY` and so on (upper case, `_` for `-`). |
 
 A fifth, `github-token`, is the GitHub token of `worker.githubLogin`: every node
@@ -374,16 +374,16 @@ Read `summary` and `remedy.action` of the failing check. The common ones:
 
 | Code or check                             | Meaning and remedy                                                                                                             |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `FLEET_MANAGER_ENROLLMENT_REQUIRED`       | No worker is enrolled yet. The human runs the first `sync` in a terminal.                                                |
+| `FLEET_MANAGER_ENROLLMENT_REQUIRED`       | No worker is enrolled yet. The human runs the first `sync` in a terminal.                                                      |
 | `FLEET_NOT_MANAGER`                       | You are not on the machine `manager` names. Run there, or from a worker that can SSH to it.                                    |
-| `FLEET_REVISION_REQUIRED`                 | No revision to converge to. Run the installed package (`npx homelab`), not a copy of its source.                              |
+| `FLEET_REVISION_REQUIRED`                 | No revision to converge to. Run the installed package (`npx homelab`), not a copy of its source.                               |
 | `FLEET_REVISION_UNMERGED`                 | The revision is not on the default branch of the source repository. Nothing changed; a release always is.                      |
 | `FLEET_MISE_DOWNGRADE`                    | The revision's bootstrap would replace a newer mise with the older one it pins. Nothing changed; the human decides.            |
 | `FLEET_MISE_UNMEASURED`                   | Such a revision, and a worker's mise could not be measured. Nothing changed; follow the remedy, or the human decides.          |
 | `FLEET_SOURCE_UNAVAILABLE`                | The revision could not be fetched from `source.repository`. Check the network and that the URL is right.                       |
 | `FLEET_SOURCE_MISMATCH`                   | The manager's copy of the source is of another repository and could not be replaced. Check access to `source.repository`.      |
-| `FLEET_STATE_DIVERGED`                    | This machine and the bucket hold different fleet states. `state --json` explains; never pick one without the human.      |
-| `FLEET_CONFIGURATION_COPY_CHANGED`        | `~/.config/homelab/fleet.json` was edited by hand. The remedy says how to keep the edit or discard it; the human chooses.    |
+| `FLEET_STATE_DIVERGED`                    | This machine and the bucket hold different fleet states. `state --json` explains; never pick one without the human.            |
+| `FLEET_CONFIGURATION_COPY_CHANGED`        | `~/.config/homelab/fleet.json` was edited by hand. The remedy says how to keep the edit or discard it; the human chooses.      |
 | `FLEET_MANAGER_LOCKED`                    | Another run holds the manager's lock. Wait for it; do not delete the lock while a run is alive.                                |
 | `FLEET_PLAN_STALE`                        | The plan changed after it was approved. Preview again.                                                                         |
 | `ssh:host-key`                            | Host key unknown or changed. The human verifies the fingerprint out of band; never disable checking.                           |

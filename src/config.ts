@@ -176,9 +176,7 @@ export async function loadConfig(path: string): Promise<FleetConfig> {
 
 export function selectNodes(config: FleetConfig, ids: string[]): FleetNode[] {
   if (ids.some((id) => !config.nodes.some((node) => node.id === id))) {
-    throw new FleetUsageError(
-      'Unknown node selection. Run workers --json.'
-    );
+    throw new FleetUsageError('Unknown node selection. Run workers --json.');
   }
   return ids.length === 0
     ? config.nodes

@@ -158,9 +158,6 @@ Then('converge ran for {string} only', (world, id: string) => {
   expect(parking(world).synced).toEqual([`--node ${id}`]);
 });
 
-Then(
-  'the converge of the resume was given {string}',
-  (world, text: string) => {
-    expect(parking(world).synced).toEqual([text]);
-  }
-);
+Then('the converge of the resume was given {string}', (world, text: string) => {
+  expect(parking(world).synced).toEqual([text]);
+});
