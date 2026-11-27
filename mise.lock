@@ -1373,10 +1373,10 @@ backend = "npm:@devcontainers/cli"
 specifiers = ["0.91.0"]
 
 [[tools."npm:@modelcontextprotocol/inspector"]]
-version = "2.16.0"
-aube = { path = ".mise/locks/npm-modelcontextprotocol-inspector/2.16.0~4c109bea", digest = "sha256:e222ed151f510f057405459b56cba6dc1acc309a26941f3fddf272870f954289" }
+version = "2.17.0"
+aube = { path = ".mise/locks/npm-modelcontextprotocol-inspector/2.17.0~4c109bea", digest = "sha256:e55d6723b45ca7ac16778ae6efc5592ec20a4504abcbd6ac6d24165b694c1cfa" }
 backend = "npm:@modelcontextprotocol/inspector"
-specifiers = ["2.16.0"]
+specifiers = ["2.17.0"]
 
 [tools."npm:@modelcontextprotocol/inspector".options]
 trust_policy_excludes = '["pino@9.14.0"]'
