@@ -4,7 +4,7 @@ import { record } from '../config';
 /** The IDEs dev-fleet supports. The support matrix in the README lists the
  * same; enabling one on the fleet is `ides` in fleet.json, not new code.
  */
-export const SUPPORTED_IDES = ['t3', 'super'] as const;
+export const SUPPORTED_IDES = ['t3', 'super', 'orca', 'paradev'] as const;
 export type IdeId = (typeof SUPPORTED_IDES)[number];
 
 /** What `t3` in fleet.json declares for every machine's T3. */

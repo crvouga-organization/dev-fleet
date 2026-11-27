@@ -14,6 +14,8 @@ import {
   hostKeyAlias,
   renderKnownHosts,
 } from '../ssh-connection';
+import { idesOf } from '../ide/definition';
+import { removeParadevHost } from '../ide/remote-mesh';
 import { removeSuperWorkspace } from '../ide/super';
 import { changeWorkers, readPins, readWorkerStates } from '../state/workers';
 import { hubUrl } from '../topology';
@@ -202,6 +204,33 @@ export async function fleetNodeRetire(
   return retireWorker(worker, entry, services, !preview(options));
 }
 
+/** Advisory like every paradev:* check: a closed CLI never blocks a
+ * retirement. `hosts remove` stops the service hosts add installed and
+ * revokes the key it created; the host stays listed until Settings.
+ */
+async function removeParadev(
+  worker: MachineDefinition,
+  run: Runner
+): Promise<Check> {
+  if (!idesOf(fleet).includes('paradev') || !worker.network)
+    return {
+      id: 'paradev:host',
+      status: 'skip',
+      summary: `Paradev is not enabled, so ${worker.id} has no host to remove.`,
+    };
+  const target =
+    worker.ssh ?? `${worker.network.user}@${worker.network.tailscaleName}`;
+  const removed = await removeParadevHost(run, target);
+  if (removed.status === 'pass') return removed;
+  return {
+    ...removed,
+    remedy: {
+      action:
+        `${removed.remedy?.action ?? ''} Then run \`paradev hosts remove ${target} --yes\` on the manager.`.trim(),
+    },
+  };
+}
+
 /** Advisory like every super:* check: a closed app never blocks a
  * retirement, so the warning names the workspace left to delete. */
 async function removeOwnedWorkspace(
@@ -239,10 +268,15 @@ export async function retireWorker(
         ...(owned
           ? [planned('super:workspace', 'delete the fleet-created workspace')]
           : []),
+        ...(idesOf(fleet).includes('paradev')
+          ? [planned('paradev:host', `remove the Paradev host of ${worker.id}`)]
+          : []),
       ],
       false
     );
   const checks: Check[] = [];
+  if (idesOf(fleet).includes('paradev'))
+    checks.push(await removeParadev(worker, services.run));
   if (owned) checks.push(await removeOwnedWorkspace(owned, services.run));
   if (services.vault())
     checks.push(await revokeWorkerToken(worker.id, services.run));

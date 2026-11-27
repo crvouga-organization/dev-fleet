@@ -373,10 +373,12 @@ settings on each machine, the manager's own copy (pinned version and policy)
 and what the manager measures of each worker. Enabling one is `ides` in
 `fleet.json`.
 
-| IDE               | `ides`  | Manager                                        | Workers                                          |
-| ----------------- | ------- | ---------------------------------------------- | ------------------------------------------------ |
-| T3 Code           | `t3`    | Pinned CLI and signed desktop, updates off     | Pinned desktop app, locked policy, pairing       |
-| super.engineering | `super` | Your own install; one SSH workspace per worker | Reached over SSH; nothing installed by dev-fleet |
+| IDE               | `ides`    | Manager                                             | Workers                                          |
+| ----------------- | --------- | --------------------------------------------------- | ------------------------------------------------ |
+| T3 Code           | `t3`      | Pinned CLI and signed desktop, updates off          | Pinned desktop app, locked policy, pairing       |
+| super.engineering | `super`   | Your own install; one SSH workspace per worker      | Reached over SSH; nothing installed by dev-fleet |
+| Orca              | `orca`    | Your own install; every worker as an SSH host       | Each worker lists the others; nothing installed  |
+| Paradev           | `paradev` | Your own install, signed in; `hosts add` per worker | Each worker adds every other machine over SSH    |
 
 On the macOS manager, sync stages the checksum-pinned T3 desktop under
 `~/Applications/dev-fleet/`. Its installed signature and version appear as
@@ -415,6 +417,25 @@ start the manager's own CLIs, which dev-fleet leaves as they are.
 What it does not do yet: dev-fleet never removes a workspace, so delete a
 retired worker's in the app. Projects are yours to add to a workspace, and the
 app installs and updates its helper on the worker itself.
+
+`"ides": ["t3", "orca"]` adds [Orca](https://www.onorca.dev/docs/ssh) beside
+T3 Code. Orca has no command that adds an SSH target: you add each worker
+under Settings → SSH, using the SSH alias `fleet.json` gives it. Every
+`fleet-sync` then reads `orca host list` on the manager and on each worker,
+and warns (`ORCA_SSH_TARGET_MISSING`, `orca:host`) for a machine that is not
+listed. On Linux the CLI is `orca-ide`, because GNOME owns `orca`. The
+`orca:*` checks only warn.
+
+`"ides": ["t3", "paradev"]` adds [Paradev](https://docs.paradev.com/remote-access)
+(formerly Superset). You install it and sign in (`paradev auth login`, or
+`SUPERSET_API_KEY`) on the manager. Every `fleet-sync` then starts the host
+(`paradev start --daemon --auto-update`) and runs `paradev hosts add` from
+the manager to each worker and from each worker to every other machine,
+named after the node. `hosts add` installs the CLI on that machine, signs it
+in with a new key sent over SSH, and repairs a later run. A key it prints
+never reaches a report. On Linux, lingering keeps the host after logout;
+the remedy names `loginctl enable-linger` and fleet-sync does not run it.
+Retirement runs `paradev hosts remove`. The `paradev:*` checks only warn.
 
 Under `t3.profile`, `fleet.json` names top-level T3 settings every machine
 holds the same, such as tool servers. A setting not named there stays the

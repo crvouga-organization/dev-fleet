@@ -6,6 +6,7 @@ import { meshChecks } from '../t3/mesh';
 import { authorizeFirstPairing } from './fleet-sync-pairing';
 import { createHash } from 'node:crypto';
 import { previewSuperWorkspaces } from '../ide/super';
+import { remoteMeshChecks } from '../ide/remote-sync';
 import { stateContext } from '../state/sync';
 import { IDES } from '../ide';
 import { enabled, workerChecks } from '../ide/orchestrate';
@@ -192,6 +193,9 @@ export async function selected(
   reportSelection(report, options);
   notes.push(
     ...(await meshChecks(canonical, nodes, run, Boolean(options.apply)))
+  );
+  notes.push(
+    ...(await remoteMeshChecks(canonical, nodes, run, Boolean(options.apply)))
   );
   report.checks.push(...notes);
   // A worker that could not be retired, like any other failed check of the
