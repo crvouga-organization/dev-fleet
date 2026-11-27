@@ -5,6 +5,7 @@ import {
   npmIsRecent,
   plan,
   seedTag,
+  seedVersion,
   type Deps,
   type Exec,
   type Result,
@@ -258,6 +259,19 @@ When('what is already done is measured', async (world) => {
   await world.attempt(() => measure(exec, state.target));
 });
 
+When(
+  'the package this one replaced is at {string}',
+  (world, predecessor: string) => {
+    setup(world).state.logs = [
+      seedVersion(predecessor || null, releaseGit(world)),
+    ];
+  }
+);
+
+Then('the seed version is {string}', (world, version: string) => {
+  expect(setup(world).state.logs).toEqual([version]);
+});
+
 When('the setup is planned', (world) => {
   const { state, exec } = setup(world);
   state.steps = plan(measure(exec, state.target)).map((step) => step.id);
@@ -287,7 +301,7 @@ const release = part(() => ({
 /** git as the release sees it: its tags, whether HEAD is in the last
  * release, and the commit messages since.
  */
-const git =
+export const releaseGit =
   (world: BootstrapWorld): Git =>
   (args) => {
     const state = release(world);
@@ -354,7 +368,7 @@ Given(/^the commits since the last tag are (.+)$/, (world, commits: string) => {
 });
 
 When('the last release is looked up', (world) => {
-  release(world).latest = latestTag(git(world));
+  release(world).latest = latestTag(releaseGit(world));
 });
 
 Then('the last release is {string}', (world, tag: string) => {
@@ -372,7 +386,7 @@ Given(/^npm holds the versions (.+)$/, (world, versions: string) => {
 When('the release is decided', (world) => {
   const state = release(world);
   state.decision = decide(
-    git(world),
+    releaseGit(world),
     newestPublished(state.npm),
     (tag) => !state.unfinished.includes(tag)
   );

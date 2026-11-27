@@ -119,3 +119,22 @@ Feature: The one-time npm setup for publishing
         | publish |
         | trust   |
         | tag     |
+
+  Rule: A renamed package continues the version line it replaced
+    The seed is the version the Release workflow would publish next, counted
+    from the newest stable version of the package this one replaced. The
+    commits since that version pick the bump, the same way a later release
+    does. A prerelease, or no predecessor, starts a new line at 0.1.0.
+
+    Scenario Outline: After <predecessor>, the seed is <seed>
+      Given git lists the tags "v<predecessor>", newest first
+      And the commits since the last tag are <commits>
+      When the package this one replaced is at "<predecessor>"
+      Then the seed version is "<seed>"
+
+      Examples:
+        | predecessor | commits    | seed   |
+        |             | "fix: a"   | 0.1.0  |
+        | 0.21.0      | "fix: a"   | 0.21.1 |
+        | 0.21.0      | "feat!: a" | 0.22.0 |
+        | 1.2.3-rc.1  | "fix: a"   | 0.1.0  |

@@ -130,13 +130,15 @@ not exist yet. One command does the one-time work with your own npm login, from
 bun run bootstrap
 ```
 
-It signs in to npm (browser approval), runs `bun run check`, publishes `0.1.0`
-from a throwaway checkout of `HEAD` (so your working tree is never edited),
-makes `release.yml` the package's trusted publisher, and tags `v0.1.0` on the
-commit npm recorded. When npm recorded none (as for the `0.1.0` that is on
-npm), there is nothing to tag: until the first tag exists, the Release
-workflow counts from the newest version on npm and every commit up to `HEAD`
-picks the bump. Every step measures first and skips what is already done,
+It signs in to npm (browser approval), runs `bun run check`, publishes the
+seed version from a throwaway checkout of `HEAD` (so your working tree is
+never edited), makes `release.yml` the package's trusted publisher, and tags
+that version on the commit npm recorded. A new package starts at `0.1.0`. A
+package that replaces another (`@crvouga/dev-fleet`) starts at the next patch
+after that package's newest version, so the new name continues the line the
+tags already follow. When npm recorded no commit, there is nothing to tag:
+until the first tag exists, the Release workflow counts from the newest
+version on npm and every commit up to `HEAD` picks the bump. Every step measures first and skips what is already done,
 so run it again after any interruption. It needs npm 11.10 or newer (for
 `npm trust`) and an npm account that owns the `@crvouga` scope. Flags: `--yes`
 skips the confirmation, `--skip-check` skips `bun run check`.
