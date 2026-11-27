@@ -173,7 +173,7 @@ Then(
 );
 
 Then('its {string} job may write issues', (world, name: string) => {
-  expect(jobOf(world, name).permissions?.issues).toBe('write');
+  expect(jobOf(world, name).permissions?.['issues']).toBe('write');
 });
 
 Then(
