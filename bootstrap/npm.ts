@@ -18,6 +18,11 @@ import { join, resolve } from 'node:path';
 import { confirm } from '@inquirer/prompts';
 
 export const SEED_VERSION = '0.1.0';
+/** The package this one replaced. Its newest stable version is the seed when
+ * the renamed package does not exist yet, so the first release continues the
+ * line instead of publishing 0.1.0 beside a newer tag.
+ */
+export const PREDECESSOR = '@crvouga/dev-fleet';
 export const WORKFLOW_FILE = 'release.yml';
 const MIN_NPM = [11, 10] as const;
 
@@ -112,12 +117,12 @@ export function measure(exec: Exec, target: Target): State {
   const { name, repo, root } = target;
   const npm = exec.capture(['npm', '--version']);
   const whoami = exec.capture(['npm', 'whoami']);
-  const view = exec.capture([
-    'npm',
-    'view',
-    `${name}@${SEED_VERSION}`,
-    'gitHead',
-  ]);
+  const version = seedVersion(
+    publishedVersion(
+      exec.capture(['npm', 'view', PREDECESSOR, 'version']).stdout
+    )
+  );
+  const view = exec.capture(['npm', 'view', `${name}@${version}`, 'gitHead']);
   const any = exec.capture(['npm', 'view', name, 'name']);
   if (!any.ok && !/E404/.test(any.stderr))
     throw new Error('Could not reach the npm registry. Check the network.');
@@ -162,13 +167,14 @@ export function measure(exec: Exec, target: Target): State {
   };
 }
 
-export function plan(state: State): Step[] {
+export function plan(state: State, version = SEED_VERSION): Step[] {
   const needsLogin = state.user === null;
   const publishBlocked = !state.clean
     ? 'The working tree has uncommitted changes; the seed is published from a commit.'
     : !state.onMain
       ? 'HEAD is not origin/main. Merge the change, then run this on main.'
       : null;
+  const tag = `v${version}`;
   return [
     {
       id: 'login',
@@ -178,7 +184,7 @@ export function plan(state: State): Step[] {
     },
     {
       id: 'publish',
-      title: `Publish ${SEED_VERSION}, the seed version`,
+      title: `Publish ${version}, the seed version`,
       done: state.published,
       blocked: state.published ? null : publishBlocked,
     },
@@ -190,7 +196,7 @@ export function plan(state: State): Step[] {
     },
     {
       id: 'tag',
-      title: `Tag ${seedTag} on the commit that was published`,
+      title: `Tag ${tag} on the commit that was published`,
       // npm recorded no commit for a seed published without one, so there is
       // nothing to tag: the Release workflow then counts from the newest
       // version on npm (bootstrap/release-version.ts).
@@ -204,9 +210,24 @@ export function plan(state: State): Step[] {
 export interface Deps {
   exec: Exec;
   /** Publish the seed version from a checkout of HEAD. */
-  seed(target: Target): boolean;
+  seed(target: Target, version: string): boolean;
   log(line: string): void;
   ask(question: string): Promise<boolean>;
+}
+
+const STABLE = /^(\d+)\.(\d+)\.(\d+)$/;
+
+/** The newest stable version of a package, read from `npm view <name> version`. */
+export function publishedVersion(stdout: string): string | null {
+  const version = stdout.trim();
+  return STABLE.test(version) ? version : null;
+}
+
+/** What the one-time publish is: the newest stable version of the package this
+ * one replaced, or 0.1.0 when there is no such line to continue.
+ */
+export function seedVersion(predecessor: string | null): string {
+  return predecessor ?? SEED_VERSION;
 }
 
 interface Options {
@@ -227,7 +248,7 @@ function show(deps: Deps, state: State, steps: Step[]): void {
 /** Publish from a throwaway checkout of HEAD so the working tree is never
  * edited and npm records the commit it published.
  */
-function publishSeed(exec: Exec, target: Target): boolean {
+function publishSeed(exec: Exec, target: Target, version: string): boolean {
   const dir = mkdtempSync(join(tmpdir(), 'homelab-seed-'));
   const checkout = join(dir, 'checkout');
   try {
@@ -243,7 +264,7 @@ function publishSeed(exec: Exec, target: Target): boolean {
       .stdout.trim();
     writeFileSync(
       file,
-      `${JSON.stringify({ ...manifest, version: SEED_VERSION, gitHead }, null, 2)}\n`
+      `${JSON.stringify({ ...manifest, version, gitHead }, null, 2)}\n`
     );
     return exec.interactive(['npm', 'publish', '--access', 'public'], checkout);
   } finally {
@@ -255,17 +276,22 @@ function publishSeed(exec: Exec, target: Target): boolean {
   }
 }
 
-function tagPublished(exec: Exec, target: Target, state: State): boolean {
+function tagPublished(
+  exec: Exec,
+  target: Target,
+  state: State,
+  version: string
+): boolean {
   const commit =
     state.publishedCommit ??
     exec
-      .capture(['npm', 'view', `${target.name}@${SEED_VERSION}`, 'gitHead'])
+      .capture(['npm', 'view', `${target.name}@${version}`, 'gitHead'])
       .stdout.trim();
   if (!commit) return false;
-  if (!state.tagLocal)
-    exec.capture(['git', 'tag', seedTag, commit], target.root);
+  const tag = `v${version}`;
+  if (!state.tagLocal) exec.capture(['git', 'tag', tag, commit], target.root);
   return exec.interactive(
-    ['git', 'push', 'origin', `refs/tags/${seedTag}`],
+    ['git', 'push', 'origin', `refs/tags/${tag}`],
     target.root
   );
 }
@@ -276,8 +302,13 @@ export async function bootstrap(
   options: Options
 ): Promise<number> {
   const { exec, log } = deps;
+  const version = seedVersion(
+    publishedVersion(
+      exec.capture(['npm', 'view', PREDECESSOR, 'version']).stdout
+    )
+  );
   let state = measure(exec, target);
-  const steps = plan(state);
+  const steps = plan(state, version);
   show(deps, state, steps);
   if (!npmIsRecent(state.npmVersion)) {
     log(
@@ -303,28 +334,29 @@ export async function bootstrap(
   }
   for (const step of todo) {
     log(`→ ${step.title}`);
-    if (!(await run(step.id, deps, target, state))) {
+    if (!(await run(step.id, deps, target, state, version))) {
       log(`✗ ${step.title} failed; run bun run bootstrap again to continue.`);
       return 1;
     }
     state = measure(exec, target);
   }
-  show(deps, state, plan(state));
-  return plan(state).every((step) => step.done) ? 0 : 1;
+  show(deps, state, plan(state, version));
+  return plan(state, version).every((step) => step.done) ? 0 : 1;
 }
 
 async function run(
   id: StepId,
   deps: Deps,
   target: Target,
-  state: State
+  state: State,
+  version: string
 ): Promise<boolean> {
   const { exec } = deps;
   switch (id) {
     case 'login':
       return exec.interactive(['npm', 'login', '--auth-type=web']);
     case 'publish':
-      return deps.seed(target);
+      return deps.seed(target, version);
     case 'trust':
       for (const id of state.staleTrust)
         if (
@@ -344,7 +376,7 @@ async function run(
         '--yes',
       ]);
     case 'tag':
-      return tagPublished(exec, target, state);
+      return tagPublished(exec, target, state, version);
   }
 }
 
@@ -382,7 +414,7 @@ if (import.meta.main) {
   process.exitCode = await bootstrap(
     {
       exec: system,
-      seed: (target) => publishSeed(system, target),
+      seed: (target, version) => publishSeed(system, target, version),
       log: (line) => console.log(line),
       ask: (message) => confirm({ message, default: true }),
     },
