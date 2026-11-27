@@ -136,3 +136,40 @@ Feature: Checks run in tiers and a failure stays queued
     Then the "Nightly" workflow runs on "schedule"
     And no job of it times out
     And the readme names the "Nightly" goal as "45 minutes"
+
+  Scenario: A failed publish is queued, and a run that released nothing is not
+    A failed job of a release is work, the same way a failed check is. One
+    open issue names the tier and the job, and the next green run of that
+    job closes it. A run that releases nothing, because CI on main did not
+    pass, skips its pack job and leaves any open issue as it is.
+    Then the "Release" workflow's "queue" job needs "pack", "smoke", "vm", "tailnet" and "release"
+    And its "queue" job runs "bun .github/scripts/ci-issues.ts"
+    And its "queue" job sets "TIER" to "publish"
+    And its "queue" job runs unless "pack" was skipped
+    And its "queue" job may write issues
+    And its "vm" job passes "queue" as "false"
+    And its "tailnet" job passes "queue" as "false"
+    And its "vm" job may write issues
+    And its "tailnet" job may write issues
+
+  Scenario: A weekly machine test queues a failure, and the copy a release calls does not
+    The release queues the job it called. The weekly run has no caller to
+    do it, so it queues its own.
+    Then the "Ubuntu VM" workflow's "queue" job needs "vm"
+    And its "queue" job runs "bun .github/scripts/ci-issues.ts"
+    And its "queue" job sets "TIER" to "vm"
+    And its "queue" job queues unless a caller said not to
+    And its "queue" job may write issues
+    Then the "Tailnet" workflow's "queue" job needs "tailnet"
+    And its "queue" job runs "bun .github/scripts/ci-issues.ts"
+    And its "queue" job sets "TIER" to "tailnet"
+    And its "queue" job queues unless a caller said not to
+    And its "queue" job may write issues
+
+  Scenario: Catch-up queues a failure of its own
+    A failure here means main is not checked and the release never starts.
+    Then the "Catch up main" workflow's "queue" job needs "reconcile"
+    And its "queue" job runs "bun .github/scripts/ci-issues.ts"
+    And its "queue" job sets "TIER" to "catch-up"
+    And its "queue" job runs whatever became of them
+    And its "queue" job may write issues

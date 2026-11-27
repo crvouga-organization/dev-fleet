@@ -142,20 +142,29 @@ jobs:
   vm:
     needs: pack
     if: needs.pack.outputs.version != ''
+    # The called workflow queues a failure when it runs on its own. That
+    # job asks to write issues, which a caller can only grant, not gain,
+    # so this call grants it. The call skips that job and queues here.
     permissions:
       contents: read
+      issues: write
     uses: ./.github/workflows/vm.yml
     with:
       ref: ${{ needs.pack.outputs.commit }}
+      queue: false
   # A worker joining a self-hosted tailnet, for the commit being released.
   tailnet:
     needs: pack
     if: needs.pack.outputs.version != ''
+    # Same grant as vm, for the same reason: the weekly run queues its
+    # own failure, and this call skips that job.
     permissions:
       contents: read
+      issues: write
     uses: ./.github/workflows/tailnet.yml
     with:
       ref: ${{ needs.pack.outputs.commit }}
+      queue: false
   # Publish the tarball the jobs above passed, then tag. A re-run after a
   # failed tag push finds the version on npm, skips the publish and pushes
   # the tag.
@@ -208,3 +217,29 @@ jobs:
           fi
           gh release view "$TAG" >/dev/null 2>&1 ||
             gh release create "$TAG" --notes-file "$NOTES" --verify-tag
+  # A failed job is work to queue: one open issue, closed by the next
+  # green run of that same job. A run that releases nothing, because CI
+  # on main did not pass, skips pack and leaves any open issue as it is.
+  queue:
+    name: Queue a failure
+    if: always() && needs.pack.result != 'skipped'
+    needs: [pack, smoke, vm, tailnet, release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Queue a failure or close it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TIER: publish
+          RESULTS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: bun .github/scripts/ci-issues.ts

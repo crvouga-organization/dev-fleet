@@ -591,9 +591,14 @@ The ruleset of `main` requires one check, **Required checks**, which passes
 when every job passed or was skipped, and fails when one failed. A job that
 is added, renamed or split is required from the pull request that does it.
 A failed job opens or updates one issue, `CI failure: <tier> / <job>`, and
-the next green run of that same job and tier closes it. The publish workflow
-still runs the Ubuntu VM and the tailnet test after the release tier; those
-are not part of the ten-minute limit.
+the next green run of that same job and tier closes it. A pull request is
+`pr`, CI on `main` is `release` and a night is `nightly`. The same queue
+covers the workflows that follow: the publish workflow (`publish`), the
+weekly Ubuntu VM (`vm`), the weekly tailnet test (`tailnet`) and catch-up
+(`catch-up`). A publish run that releases nothing, because CI on `main` did
+not pass, changes no issue. The publish workflow calls the Ubuntu VM and
+the tailnet test and queues those failures itself; their weekly runs queue
+their own. Those tests sit outside the ten-minute limit.
 
 A pull request needs nobody attending
 ([`pull-requests.feature`](features/rules/pull-requests.feature)):
