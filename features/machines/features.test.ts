@@ -4,6 +4,7 @@ import './steps/ansible';
 import './steps/launchd';
 import './steps/manager';
 import './steps/platforms';
+import './steps/power';
 import './steps/session-limit';
 import './steps/t3';
 import './steps/tailscale';

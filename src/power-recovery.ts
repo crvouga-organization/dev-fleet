@@ -1,5 +1,17 @@
+import policy from '../ansible/ubuntu/policy.json';
 import { record } from './config';
 import type { Check, Runner } from './types';
+
+/** The value the firmware is set to, including one written and waiting for
+ * the next boot: fwupd reports that as BiosSettingTargetValue. */
+function firmwareValue(setting: Record<string, unknown>): string {
+  const pending = setting['BiosSettingTargetValue'];
+  return String(
+    typeof pending === 'string' && pending
+      ? pending
+      : (setting['BiosSettingCurrentValue'] ?? setting['CurrentValue'] ?? '')
+  );
+}
 
 /** Only recognize named firmware settings; an enabled OS service is not proof of AC recovery. */
 export async function powerRecoveryCheck(run: Runner): Promise<Check> {
@@ -16,27 +28,25 @@ export async function powerRecoveryCheck(run: Runner): Promise<Check> {
     const observed = settings.find(
       (item) =>
         record(item) &&
-        [
-          'RestoreACPowerLoss',
-          'AfterPowerLoss',
-          'PowerOnAfterPowerFail',
-          'ACPowerRecovery',
-        ].includes(String(item['Name']))
+        policy.powerLossRecovery.settings.includes(String(item['Name']))
     );
     if (result.ok && record(observed)) {
-      const enabled = ['Power On', 'Always On', 'PowerOn', 'On'].includes(
-        String(observed['CurrentValue'])
-      );
+      const value = firmwareValue(observed);
+      const enabled = policy.powerLossRecovery.values.includes(value);
       return {
         id: 'worker:power-loss-recovery',
         status: enabled ? 'pass' : 'fail',
         summary: enabled
           ? 'Firmware reports an enabled restore-after-AC-loss setting; a real power-loss test remains distinct from configuration evidence.'
-          : 'Firmware restore-after-AC-loss is disabled.',
-        remedy: {
-          action:
-            'Enable the machine firmware restore-after-AC-loss setting or configure its VM host power recovery.',
-        },
+          : 'POWER_LOSS_RECOVERY_UNSET',
+        ...(!enabled
+          ? {
+              remedy: {
+                action:
+                  'Run devfleet fleet-sync: it sets the recognized restore-after-AC-loss firmware setting. The firmware applies it at the next boot.',
+              },
+            }
+          : {}),
       };
     }
   } catch {

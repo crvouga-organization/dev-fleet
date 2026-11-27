@@ -49,3 +49,55 @@
     - hibernate.target
     - hybrid-sleep.target
     - suspend-then-hibernate.target
+# A virtual machine has no firmware its guest can read; its provider
+# restarts it. On a physical machine the recognized restore-after-AC-loss
+# setting is written when the firmware exposes one, and only that setting.
+# fwupd refuses a value the setting does not offer. Nothing is rebooted:
+# firmware applies the value at the next boot, and worker:reboot reports
+# when one is pending. A machine with no such setting is left as it is;
+# worker:power-loss-recovery then skips it.
+- name: Read the firmware settings this machine exposes
+  ansible.builtin.command:
+    argv: [fwupdmgr, get-bios-settings, --json]
+  register: firmware_settings
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: ansible_facts.virtualization_role | default('NA') != 'guest'
+- name: Select the restore-after-AC-loss setting and the value it offers
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - '-c'
+      - |
+        import json, os, sys
+        data = json.load(sys.stdin)
+        settings = data.get('BiosSettings')
+        wanted = json.loads(os.environ['POWER_LOSS_SETTINGS'])
+        values = json.loads(os.environ['POWER_LOSS_VALUES'])
+        found = next((item for item in settings if isinstance(item, dict) and item.get('Name') in wanted), None) if isinstance(settings, list) else None
+        offered = found.get('BiosSettingPossibleValues') if isinstance(found, dict) else None
+        value = next((item for item in values if isinstance(offered, list) and item in offered), None)
+        current = found.get('BiosSettingCurrentValue') if isinstance(found, dict) else None
+        pending = found.get('BiosSettingTargetValue') if isinstance(found, dict) else None
+        print(json.dumps({'name': found.get('Name'), 'value': value} if isinstance(found, dict) and isinstance(found.get('Name'), str) and value and current != value and pending != value else {}))
+  args:
+    stdin: '{{ firmware_settings.stdout | trim }}'
+  environment:
+    POWER_LOSS_SETTINGS: '{{ powerLossRecovery.settings | to_json }}'
+    POWER_LOSS_VALUES: '{{ powerLossRecovery.values | to_json }}'
+  register: power_loss_selection
+  changed_when: false
+  check_mode: false
+  when: firmware_settings is not skipped and firmware_settings.rc == 0
+- name: Write the restore-after-AC-loss setting the firmware offers
+  ansible.builtin.command:
+    argv:
+      - fwupdmgr
+      - set-bios-setting
+      - '{{ (power_loss_selection.stdout | from_json).name }}'
+      - '{{ (power_loss_selection.stdout | from_json).value }}'
+      - --no-reboot-check
+  register: power_loss_write
+  changed_when: power_loss_write.rc == 0
+  when: power_loss_selection is not skipped and (power_loss_selection.stdout | from_json) != {}
