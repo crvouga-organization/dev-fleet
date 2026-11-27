@@ -1,0 +1,109 @@
+name: Nightly
+on:
+  # After catch-up (06:37 UTC) and not on the Ubuntu VM's Monday (04:17).
+  schedule:
+    - cron: '17 7 * * *'
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  affected:
+    name: Affected paths
+    # A dispatch of this workflow is still the night: every accepted Ubuntu
+    # release and architecture, and both fresh-worker features. The night aims
+    # to finish in forty-five minutes. That is a goal: a job that runs past
+    # it is not cancelled.
+    runs-on: ubuntu-latest
+    outputs:
+      tier: ${{ steps.plan.outputs.tier }}
+      fresh: ${{ steps.plan.outputs.fresh }}
+      agent: ${{ steps.plan.outputs.agent }}
+      fresh_matrix: ${{ steps.plan.outputs.fresh_matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Decide the nightly jobs
+        id: plan
+        run: bun .github/scripts/affected.ts nightly
+  fresh-box:
+    name: Fresh worker over SSH (${{ matrix.release }}, ${{ matrix.architecture }}, ${{ matrix.feature }})
+    needs: [affected]
+    if: needs.affected.outputs.fresh == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.affected.outputs.fresh_matrix) }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cache/devfleet-fresh
+          key: fresh-${{ runner.arch }}-${{ matrix.release }}-${{ hashFiles('mise.lock', 'mise.toml', 'ansible/ubuntu/policy.json', 'features/fresh-box/Dockerfile', 'bun.lock') }}
+          restore-keys: |
+            fresh-${{ runner.arch }}-${{ matrix.release }}-
+      - run: bun install --frozen-lockfile
+      - name: Bootstrap a fresh machine over SSH
+        run: bun test features/fresh-box
+        env:
+          DEVFLEET_TEST_FRESH_BOX: required
+          DEVFLEET_TEST_FRESH_BOX_RELEASE: ${{ matrix.release }}
+          DEVFLEET_TEST_FRESH_BOX_FEATURE: ${{ matrix.feature }}
+          DEVFLEET_FRESH_BOX_CACHE: '1'
+  agent-box:
+    name: Monitoring agent on systemd
+    needs: [affected]
+    if: needs.affected.outputs.agent == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cache/devfleet-downloads
+          key: downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'features/monitoring/support/agent-box.Dockerfile', 'mise.toml', 'ansible/monitoring/lock.json') }}
+          restore-keys: |
+            downloads-${{ runner.os }}-${{ runner.arch }}-
+      - run: bun install --frozen-lockfile
+      - name: Apply the agent playbook on a systemd machine
+        run: bun test features/monitoring
+        env:
+          DEVFLEET_TEST_AGENT_BOX: required
+          DEVFLEET_DOWNLOAD_CACHE: '1'
+  gate:
+    name: Nightly result
+    if: always()
+    needs: [affected, fresh-box, agent-box]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Queue a failure, then require every job passed or was skipped
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TIER: ${{ needs.affected.outputs.tier }}
+          RESULTS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          bun .github/scripts/ci-issues.ts
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$RESULTS"
+          jq -e 'all(.[]; .result == "success" or .result == "skipped")' <<< "$RESULTS" > /dev/null ||
+            { echo '::error::A job of this run did not pass.'; exit 1; }

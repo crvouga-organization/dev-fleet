@@ -3,7 +3,9 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
   # By hand, by catch-up.yml for a merge to main that started no run of its
-  # own, and by pins.yml for the pull request it opens.
+  # own, and by pins.yml for the pull request it opens. A dispatch on the
+  # default branch is the release tier. A dispatch on any other branch is
+  # the pull request tier.
   workflow_dispatch: {}
   push:
     branches: [main]
@@ -17,10 +19,66 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  affected:
+    name: Affected paths
+    # The tier, and which jobs this diff needs. A pull request aims to finish
+    # in five minutes and a release in ten. Those are goals: a job that runs
+    # past its goal is not cancelled. The night
+    # (.github/workflows/nightly.yml) aims at forty-five.
+    runs-on: ubuntu-latest
+    outputs:
+      tier: ${{ steps.plan.outputs.tier }}
+      check: ${{ steps.plan.outputs.check }}
+      state: ${{ steps.plan.outputs.state }}
+      workflows: ${{ steps.plan.outputs.workflows }}
+      ansible: ${{ steps.plan.outputs.ansible }}
+      manager: ${{ steps.plan.outputs.manager }}
+      manager_tests: ${{ steps.plan.outputs.manager_tests }}
+      manager_playbook: ${{ steps.plan.outputs.manager_playbook }}
+      fresh: ${{ steps.plan.outputs.fresh }}
+      agent: ${{ steps.plan.outputs.agent }}
+      proxy: ${{ steps.plan.outputs.proxy }}
+      cliproxy: ${{ steps.plan.outputs.cliproxy }}
+      features_all: ${{ steps.plan.outputs.features_all }}
+      features: ${{ steps.plan.outputs.features }}
+      fresh_matrix: ${{ steps.plan.outputs.fresh_matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Decide the tier and the jobs this diff affects
+        id: plan
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          fetch=false
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            fetch=true
+          elif [ "$GITHUB_EVENT_NAME" = workflow_dispatch ] && [ "$GITHUB_REF_NAME" != "$DEFAULT_BRANCH" ]; then
+            fetch=true
+          fi
+          if [ "$fetch" = true ]; then
+            if [ -n "${BASE_SHA:-}" ]; then
+              git fetch --no-tags --depth=1 origin "$BASE_SHA"
+              git diff --name-only "$BASE_SHA" HEAD > "$RUNNER_TEMP/changed.txt"
+            else
+              git fetch --no-tags --depth=1 origin "$DEFAULT_BRANCH"
+              git diff --name-only "origin/$DEFAULT_BRANCH" HEAD > "$RUNNER_TEMP/changed.txt"
+            fi
+          else
+            : > "$RUNNER_TEMP/changed.txt"
+          fi
+          CHANGED="$RUNNER_TEMP/changed.txt" bun .github/scripts/affected.ts
   check:
     name: Check
+    needs: [affected]
+    if: needs.affected.outputs.check == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
     steps:
@@ -28,6 +86,15 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cache/uv
+            ~/.cache/pip
+          key: tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'ansible/uv.lock', 'cliproxy/requirements.lock') }}
+          restore-keys: |
+            tools-${{ runner.os }}-${{ runner.arch }}-
       # The Python, restic and Vault every machine runs, from the same lock:
       # never the runner's own or the distribution's. Vault runs the worker
       # credential scenarios against a development server; uv runs the
@@ -37,30 +104,46 @@ jobs:
         with:
           install_args: python restic vault uv pnpm
       - name: Install dependencies
-        run: |
-          bun install --frozen-lockfile
-          mise exec python -- python3 -m pip install --quiet --require-hashes -r cliproxy/requirements.lock
+        run: bun install --frozen-lockfile
+      - name: Install the proxy package
+        if: needs.affected.outputs.cliproxy == 'true'
+        run: mise exec python -- python3 -m pip install --quiet --require-hashes -r cliproxy/requirements.lock
       - run: bun run format
       - run: bun run tc
       - run: bun run lint
       # The runner's own PowerShell runs bootstrap/bootstrap.ps1 (@pwsh in
       # features/bootstrap): Windows PowerShell is the machine's there too,
       # never a pinned tool. A runner without it fails instead of skipping.
-      - run: mise exec python restic vault uv pnpm -- bun test
+      - name: Run the features this change affects
+        if: needs.affected.outputs.features_all == 'true' || needs.affected.outputs.features != ''
         env:
+          ALL: ${{ needs.affected.outputs.features_all }}
+          FEATURES: ${{ needs.affected.outputs.features }}
           DEVFLEET_TEST_VAULT: required
           DEVFLEET_TEST_PNPM: required
           DEVFLEET_TEST_ANSIBLE: required
           DEVFLEET_TEST_PWSH: required
-      - run: mise exec python restic -- bun run lint:cliproxy
-      - run: mise exec python restic -- bun run test:cliproxy
+        run: |
+          set -euo pipefail
+          if [ "$ALL" = true ]; then
+            mise exec python restic vault uv pnpm -- bun test
+          else
+            read -r -a selected <<< "$FEATURES"
+            mise exec python restic vault uv pnpm -- bun test "${selected[@]}"
+          fi
+      - name: Lint and test the proxy package
+        if: needs.affected.outputs.cliproxy == 'true'
+        run: |
+          mise exec python restic -- bun run lint:cliproxy
+          mise exec python restic -- bun run test:cliproxy
   state:
     name: Fleet state
     # The pinned Litestream itself, replicating the fleet state to a directory
     # and to an S3 API, then restoring it on a second manager. The Check job
     # has no Litestream and skips these.
+    needs: [affected]
+    if: needs.affected.outputs.state == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     services:
       # A throwaway S3 API. It accepts any credential, so this proves the
       # protocol and the layout in the bucket, not a provider's access rules.
@@ -88,8 +171,9 @@ jobs:
           DEVFLEET_TEST_S3: http://127.0.0.1:5000
   workflows:
     name: Workflows
+    needs: [affected]
+    if: needs.affected.outputs.workflows == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
     steps:
@@ -104,8 +188,9 @@ jobs:
     # Every playbook passes ansible-lint in the production profile (which
     # includes its syntax check) and ansible-playbook --syntax-check, with
     # the Ansible the manager runs (ansible/uv.lock).
+    needs: [affected]
+    if: needs.affected.outputs.ansible == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
     steps:
@@ -113,11 +198,23 @@ jobs:
       - uses: ./.github/actions/mise
         with:
           install_args: uv
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cache/uv
+            .cache/devfleet-snapshot-indexes
+          key: ansible-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('ansible/uv.lock', 'ansible/ubuntu/policy.json', 'ansible/ubuntu/tests/snapshot-pins.py') }}
+          restore-keys: |
+            ansible-${{ runner.os }}-${{ runner.arch }}-
       - name: Lint every playbook
         run: mise exec uv -- uv run --project ansible --locked --isolated --group lint ansible-lint
       # A pin moved without its snapshot has no installation candidate on a
       # machine: read the snapshot's own indexes for every pinned package.
+      # The indexes are named by the pinned snapshot date, so a cached copy
+      # cannot be stale.
       - name: Find every pinned Ubuntu package in the pinned snapshot
+        env:
+          SNAPSHOT_CACHE: ${{ github.workspace }}/.cache/devfleet-snapshot-indexes
         run: python3 -I ansible/ubuntu/tests/snapshot-pins.py
       - name: Syntax-check every playbook
         run: |
@@ -128,12 +225,14 @@ jobs:
           done
   manager:
     name: Manager on macOS
-    # The manager runs only on macOS: every feature, the launchd jobs linted
-    # by macOS itself (features/machines/launchd-jobs.feature), and the
-    # manager playbook converged on the runner, then applied again and
-    # checked, which must both report no change.
+    # The manager runs only on macOS: the launchd jobs linted by macOS
+    # itself (features/machines/launchd-jobs.feature) and the manager
+    # playbook converged on the runner, then applied again and checked,
+    # which must both report no change. The macOS features run when the
+    # diff reaches them. The playbook runs when it does.
+    needs: [affected]
+    if: needs.affected.outputs.manager == 'true'
     runs-on: macos-latest
-    timeout-minutes: 30
     env:
       MISE_TRUSTED_CONFIG_PATHS: ${{ github.workspace }}
     steps:
@@ -141,16 +240,25 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cache/uv
+          key: tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'ansible/uv.lock', 'cliproxy/requirements.lock') }}
+          restore-keys: |
+            tools-${{ runner.os }}-${{ runner.arch }}-
       - uses: ./.github/actions/mise
         with:
           install_args: uv
       - run: bun install --frozen-lockfile
-      - run: bun test
+      - name: Run the macOS features
+        if: needs.affected.outputs.manager_tests == 'true'
+        run: bun test features/machines features/ide
         env:
           DEVFLEET_TEST_MANAGER_DESKTOP: required
-          # The runner's PowerShell runs the Windows bootstrap here too.
-          DEVFLEET_TEST_PWSH: required
       - name: Converge the manager playbook, then prove a second run and a dry run change nothing
+        if: needs.affected.outputs.manager_playbook == 'true'
         run: |
           converge() {
             mise exec uv -- uv run --project ansible --locked --isolated \
@@ -173,6 +281,7 @@ jobs:
       - name: Apply the manager's one administrator grant, then prove a second run changes nothing
         # visudo and newsyslog validate the sudoers rule and the log rotation
         # before they are installed (ansible/macos/manager-privilege.yml).
+        if: needs.affected.outputs.manager_playbook == 'true'
         run: |
           grant() {
             mise exec uv -- uv run --project ansible --locked --isolated \
@@ -188,69 +297,29 @@ jobs:
     name: Fresh worker over SSH (${{ matrix.release }}, ${{ matrix.architecture }}, ${{ matrix.feature }})
     # A disposable Ubuntu machine that has only an SSH server and an account
     # with sudo, bootstrapped by the production code over a real SSH
-    # connection: features/fresh-box. It downloads the worker toolchain.
-    # Once for every release ansible/ubuntu/policy.json accepts, on both
-    # architectures, and each feature of features/fresh-box in a job of its
-    # own: side by side they end in the time of the longer one.
+    # connection: features/fresh-box. A pull request runs the newest release
+    # on amd64, and only the single-machine feature. A release adds arm64.
+    # The night runs every accepted release, architecture and feature.
+    needs: [affected]
+    if: needs.affected.outputs.fresh == 'true'
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - {
-              release: '26.04',
-              architecture: amd64,
-              runner: ubuntu-latest,
-              feature: fresh-box,
-            }
-          - {
-              release: '26.04',
-              architecture: amd64,
-              runner: ubuntu-latest,
-              feature: fleet,
-            }
-          - {
-              release: '26.04',
-              architecture: arm64,
-              runner: ubuntu-24.04-arm,
-              feature: fresh-box,
-            }
-          - {
-              release: '26.04',
-              architecture: arm64,
-              runner: ubuntu-24.04-arm,
-              feature: fleet,
-            }
-          - {
-              release: '24.04',
-              architecture: amd64,
-              runner: ubuntu-latest,
-              feature: fresh-box,
-            }
-          - {
-              release: '24.04',
-              architecture: amd64,
-              runner: ubuntu-latest,
-              feature: fleet,
-            }
-          - {
-              release: '24.04',
-              architecture: arm64,
-              runner: ubuntu-24.04-arm,
-              feature: fresh-box,
-            }
-          - {
-              release: '24.04',
-              architecture: arm64,
-              runner: ubuntu-24.04-arm,
-              feature: fleet,
-            }
+        include: ${{ fromJSON(needs.affected.outputs.fresh_matrix) }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cache/devfleet-fresh
+          key: fresh-${{ runner.arch }}-${{ matrix.release }}-${{ hashFiles('mise.lock', 'mise.toml', 'ansible/ubuntu/policy.json', 'features/fresh-box/Dockerfile', 'bun.lock') }}
+          restore-keys: |
+            fresh-${{ runner.arch }}-${{ matrix.release }}-
       - run: bun install --frozen-lockfile
       - name: Bootstrap a fresh machine over SSH
         run: bun test features/fresh-box
@@ -259,6 +328,7 @@ jobs:
           DEVFLEET_TEST_FRESH_BOX: required
           DEVFLEET_TEST_FRESH_BOX_RELEASE: ${{ matrix.release }}
           DEVFLEET_TEST_FRESH_BOX_FEATURE: ${{ matrix.feature }}
+          DEVFLEET_FRESH_BOX_CACHE: '1'
   agent-box:
     name: Monitoring agent on systemd
     # The Beszel agent playbook applied for real on a disposable Ubuntu
@@ -266,25 +336,38 @@ jobs:
     # upgrade, its privileges and a restart. It downloads the pinned agent.
     # The same machine runs the pinned T3 server (downloaded too) in a user
     # manager, to prove the declared limit on agent sessions against it.
+    # A pull request skips this: a cold run is longer than the pull request
+    # goal. A release and the night run it.
+    needs: [affected]
+    if: needs.affected.outputs.agent == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version-file: package.json
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.bun/install/cache
+            ~/.cache/devfleet-downloads
+          key: downloads-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock', 'features/monitoring/support/agent-box.Dockerfile', 'mise.toml', 'ansible/monitoring/lock.json') }}
+          restore-keys: |
+            downloads-${{ runner.os }}-${{ runner.arch }}-
       - run: bun install --frozen-lockfile
       - name: Apply the agent playbook on a systemd machine
         run: bun test features/monitoring
         env:
           DEVFLEET_TEST_AGENT_BOX: required
+          DEVFLEET_DOWNLOAD_CACHE: '1'
   proxy-box:
     name: Pinned CLI proxy with a stand-in provider
     # The proxy image the fleet pins, in a container, with one account whose
     # provider is a stand-in: what the proxy itself answers about an account
     # it holds back, and that the session checks read it.
+    needs: [affected]
+    if: needs.affected.outputs.proxy == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -297,12 +380,14 @@ jobs:
           DEVFLEET_TEST_PROXY_BOX: required
   required:
     name: Required checks
-    # The one check the ruleset of main requires. It passes only when every
-    # job above passed, so a job that is added, renamed or split is required
-    # from the pull request that does it, with no change to the ruleset.
+    # The one check the ruleset of main requires. It passes when every job
+    # above passed or was skipped, so a job the diff does not affect still
+    # lets the pull request pass, and a job that failed does not. A skipped
+    # job whose dependency failed does not hide that failure.
     if: always()
     needs:
       [
+        affected,
         check,
         state,
         workflows,
@@ -313,17 +398,27 @@ jobs:
         proxy-box,
       ]
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     permissions:
       contents: read
       actions: write
+      issues: write
     steps:
-      - name: Every job passed
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Queue a failure, then require every job passed or was skipped
         env:
+          GH_TOKEN: ${{ github.token }}
+          TIER: ${{ needs.affected.outputs.tier }}
           RESULTS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
+          set -euo pipefail
+          bun .github/scripts/ci-issues.ts
           jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$RESULTS"
-          jq -e 'all(.[]; .result == "success")' <<< "$RESULTS" > /dev/null ||
+          jq -e 'all(.[]; .result == "success" or .result == "skipped")' <<< "$RESULTS" > /dev/null ||
             { echo '::error::A job of this run did not pass.'; exit 1; }
       # A run on main that a workflow dispatched with its own token (after a
       # merge auto-merge.yml made) starts no workflow_run when it ends, so the
