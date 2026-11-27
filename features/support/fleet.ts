@@ -26,18 +26,18 @@ export function declareFleet(
   change: (fleet: Record<string, unknown>) => void,
   files: Record<string, string> = {}
 ): string {
-  const directory = mkdtempSync(join(tmpdir(), 'devfleet-declared-'));
+  const directory = mkdtempSync(join(tmpdir(), 'homelab-declared-'));
   const fleet = exampleFleet();
   change(fleet);
   const path = join(directory, 'fleet.json');
   writeFileSync(path, `${JSON.stringify(fleet, null, 2)}\n`);
   for (const [name, text] of Object.entries(files))
     writeFileSync(join(directory, name), text);
-  const earlier = process.env['DEVFLEET_CONFIG'];
-  process.env['DEVFLEET_CONFIG'] = path;
+  const earlier = process.env['HOMELAB_CONFIG'];
+  process.env['HOMELAB_CONFIG'] = path;
   reloadFleet();
   world.defer(() => {
-    process.env['DEVFLEET_CONFIG'] = earlier;
+    process.env['HOMELAB_CONFIG'] = earlier;
     reloadFleet();
     rmSync(directory, { recursive: true, force: true });
   });

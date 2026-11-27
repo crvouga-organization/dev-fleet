@@ -10,20 +10,20 @@ const { Given, When, Then } = orchestration;
 
 const cli = fileURLToPath(new URL('../../../src/cli/cli.ts', import.meta.url));
 
-/** Runs the real CLI in the scenario's directory, as `devfleet …` would. */
-async function devfleet(
+/** Runs the real CLI in the scenario's directory, as `homelab …` would. */
+async function homelab(
   world: OrchestrationWorld,
   line: string
 ): Promise<CommandResult> {
   const [name, ...args] = line.split(' ');
-  if (name !== 'devfleet') throw new Error(`Not a devfleet command: ${line}`);
+  if (name !== 'homelab') throw new Error(`Not a homelab command: ${line}`);
   return runCommand([process.execPath, cli, ...args], {
     cwd: need(world.root, 'a directory'),
   });
 }
 
 Given('the operator has run {string}', async (world, line: string) => {
-  const result = await devfleet(world, line);
+  const result = await homelab(world, line);
   if (!result.ok) throw new Error(`The command failed: ${line}`);
 });
 
@@ -35,7 +35,7 @@ When('the operator runs {string}', async (world, line: string) => {
         entry.name,
         await readFile(join(root, entry.name), 'utf8')
       );
-  world.process = await devfleet(world, line);
+  world.process = await homelab(world, line);
 });
 
 const ran = (world: OrchestrationWorld): CommandResult =>

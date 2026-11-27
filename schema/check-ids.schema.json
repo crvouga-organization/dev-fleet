@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "check-ids.schema.json",
   "title": "The check-ID registry, version 1",
-  "description": "schema/check-ids.json: every check ID dev-fleet reports, generated from the code.",
+  "description": "schema/check-ids.json: every check ID homelab reports, generated from the code.",
   "type": "object",
   "required": ["version", "checks"],
   "properties": {

@@ -1,5 +1,5 @@
 /** Optional download cache for the agent job: the T3 server archive and the
- * agent-box image. Off unless DEVFLEET_DOWNLOAD_CACHE is set. A file is named
+ * agent-box image. Off unless HOMELAB_DOWNLOAD_CACHE is set. A file is named
  * by what it contains, so an older cache entry is never loaded for a new pin. */
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { runCommand } from '../../../src/runner';
 
 export function downloadCacheDir(): string | undefined {
-  const value = process.env['DEVFLEET_DOWNLOAD_CACHE'];
+  const value = process.env['HOMELAB_DOWNLOAD_CACHE'];
   if (!value) return undefined;
   if (value.startsWith('/') || value.startsWith('~'))
     return value.replace(/^~/, homedir());

@@ -30,7 +30,7 @@ const fleetWorkers = scratch<{
 const home = (world: StateWorld, worker: string): string =>
   join(world.root, 'workers', worker);
 const copy = (world: StateWorld, worker: string): string =>
-  join(home(world, worker), '.config/dev-fleet/fleet.json');
+  join(home(world, worker), '.config/homelab/fleet.json');
 
 const answer = (ok: boolean, stdout = ''): CommandResult => ({
   ok,
@@ -74,7 +74,7 @@ function git(argv: string[]): CommandResult {
 }
 
 Given(
-  'fleet-sync runs on a manager with these workers enrolled:',
+  'converge runs on a manager with these workers enrolled:',
   async (world, table: DataTable) => {
     const manager = world.manager();
     world.bind(manager);
@@ -101,7 +101,7 @@ Given(
 );
 
 Given(
-  'fleet-sync last wrote the copy {string} on worker {string}',
+  'converge last wrote the copy {string} on worker {string}',
   (world, text: string, worker: string) => {
     mkdirSync(join(copy(world, worker), '..'), { recursive: true });
     writeFileSync(copy(world, worker), text);
@@ -120,7 +120,7 @@ Given(
 );
 
 When(
-  /^fleet-sync runs for revision "([a-f0-9]{40})" on worker "([^"]+)" only$/,
+  /^converge runs for revision "([a-f0-9]{40})" on worker "([^"]+)" only$/,
   (world, revision: string, worker: string) => {
     const manager = world.manager();
     const run = () =>

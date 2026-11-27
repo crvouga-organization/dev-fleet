@@ -1,7 +1,7 @@
 ---
 # The declared worker features (fleet.json `features`, resolved by
 # bootstrap/worker-features.ts): `worker_containers` and `worker_session` are
-# passed by fleet-sync. Absent, a worker has containers and a desktop session,
+# passed by converge. Absent, a worker has containers and a desktop session,
 # as every worker had before features existed. What a feature that is off
 # would install is left out here, as policy.json `features` lists it.
 - name: Require a known session type

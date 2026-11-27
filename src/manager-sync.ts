@@ -41,7 +41,7 @@ export interface ManagerNode extends NodeReport {
 }
 export interface ManagerReport {
   version: 3;
-  command: 'fleet-sync';
+  command: 'converge';
   execution: 'manager-push';
   ok: boolean;
   applied: boolean;
@@ -133,7 +133,7 @@ export async function inspectBootstrap(
               : {
                   remedy: {
                     action:
-                      'Resize the machine to at least the minimum worker size docs/worker-contract.md states, then run fleet-sync. Nothing was installed.',
+                      'Resize the machine to at least the minimum worker size docs/worker-contract.md states, then run converge. Nothing was installed.',
                   },
                 }),
           },
@@ -172,7 +172,7 @@ export async function synchronizeManager(
   const matches = await matchComputers(input.nodes, tailnet.computers, run);
   const report: ManagerReport = {
     version: 3,
-    command: 'fleet-sync',
+    command: 'converge',
     execution: 'manager-push',
     ok: false,
     applied: false,
@@ -484,7 +484,7 @@ async function inspectManagerNode(
       },
     });
   else {
-    // fleet-sync runs on the manager: the worker's clock is measured
+    // converge runs on the manager: the worker's clock is measured
     // against the manager's own.
     checks.push(...(await inspectBootstrap(node, run, context.clock)));
     checks.push(...identityChecks(node, peer));

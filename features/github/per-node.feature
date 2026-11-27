@@ -38,7 +38,7 @@ Feature: Each node may have a GitHub token of its own
 
     Examples:
       | provider | where                                     |
-      | env      | DEVFLEET_SECRET_GITHUB_TOKEN_WORKER_ONE   |
+      | env      | HOMELAB_SECRET_GITHUB_TOKEN_WORKER_ONE   |
       | file     | github-token-worker-one                   |
       | sops     | github-token-worker-one                   |
       | vault    | fleet/prd GITHUB_TOKEN_WORKER_ONE         |

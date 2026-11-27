@@ -1,5 +1,5 @@
 Feature: The policy a worker's T3 has loaded is measured, never assumed
-  fleet-sync stages the managed policy, and a playbook restarts a running T3
+  converge stages the managed policy, and a playbook restarts a running T3
   that has not loaded it, but only while it runs no agent turn: a busy T3
   keeps its turns and the restart is recorded as pending, for the recovery
   watchdog to apply at the first idle check, or at its deadline when the

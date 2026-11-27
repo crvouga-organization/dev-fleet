@@ -96,7 +96,7 @@ export async function convergeLinux(
   const machine = fleet.workers.find((entry) => entry.id === node);
   if (
     !machine?.screenSharing &&
-    existsSync('/etc/systemd/system/devfleet-rdp-credential.service')
+    existsSync('/etc/systemd/system/homelab-rdp-credential.service')
   ) {
     const user = userInfo();
     const retired = await runAnsible(
@@ -120,7 +120,7 @@ export async function convergeLinux(
           summary: 'RDP_RETIREMENT_FAILED',
           remedy: {
             action:
-              'Restore the enrolled user session and rerun fleet-sync before changing the firewall.',
+              'Restore the enrolled user session and rerun converge before changing the firewall.',
           },
         },
       ];

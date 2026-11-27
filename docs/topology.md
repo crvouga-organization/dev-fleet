@@ -1,4 +1,4 @@
-> This document was written for the fleet dev-fleet was extracted from. Paths and
+> This document was written for the fleet homelab was extracted from. Paths and
 > commands were updated; some statements still describe that fleet and are being
 > revised. The README is authoritative, and what a machine must offer to be a
 > worker is listed only in [worker requirements](worker-requirements.md).
@@ -9,16 +9,16 @@ The fleet has exactly two roles, declared in
 your project's `fleet.json` (version 3, checked by [the schema](../schema/fleet.schema.json)) and validated by
 [`src/definition.ts`](../src/definition.ts):
 
-| Role        | How many    | Machine                                        | Holds state | Runs                                                                                     |
-| ----------- | ----------- | ---------------------------------------------- | ----------- | ---------------------------------------------------------------------------------------- |
-| **manager** | exactly one | the human's macOS machine (`manager`)          | yes         | `fleet-sync`, the T3 desktop that links to every worker, and **every singleton service** |
-| **workers** | any         | Linux boxes (`workers`, Ubuntu 26.04 or 24.04) | no          | the T3 desktop app (UI plus server), agent tools, the Beszel agent; clients only         |
+| Role        | How many    | Machine                                        | Holds state | Runs                                                                               |
+| ----------- | ----------- | ---------------------------------------------- | ----------- | ---------------------------------------------------------------------------------- |
+| **manager** | exactly one | the human's macOS machine (`manager`)          | yes         | `sync`, the T3 desktop that links to every worker, and **every singleton service** |
+| **workers** | any         | Linux boxes (`workers`, Ubuntu 26.04 or 24.04) | no          | the T3 desktop app (UI plus server), agent tools, the Beszel agent; clients only   |
 
 ## Manager
 
-- A singleton. All control happens from it, by the human: `devfleet fleet-sync`
+- A singleton. All control happens from it, by the human: `homelab converge`
   converges the manager **locally** first, then each worker over SSH.
-  Started on a worker, `fleet-sync` hands the same request to the manager over
+  Started on a worker, `sync` hands the same request to the manager over
   host-key-verified SSH (no agent forwarding, no credentials copied) and prints
   the manager's result; with no SSH route it changes nothing and reports
   `FLEET_NOT_MANAGER` or `FLEET_MANAGER_UNREACHABLE`. The manager runs that
@@ -38,7 +38,7 @@ your project's `fleet.json` (version 3, checked by [the schema](../schema/fleet.
   manager; it never names a host.
 - Workers depend on it, so it never sleeps on AC power
   (`pmset` in `ansible/macos/policy.json`, checked as `manager:power` and
-  applied by `ansible/macos/manager.yml` on every `fleet-sync` once an
+  applied by `ansible/macos/manager.yml` on every `sync` once an
   administrator has given the one grant `ansible/macos/manager-privilege.yml`;
   the failed check prints the command, and
   [docs/manager-setup.md](manager-setup.md) lists every step only a person
@@ -53,7 +53,7 @@ your project's `fleet.json` (version 3, checked by [the schema](../schema/fleet.
 
 - Stateless cattle: turn one off, re-image it or add another at will. A worker
   is declared in `workers`, enrolled once (SSH trust, sudo, its own Vault
-  token), and then fully rebuilt by `fleet-sync` from Git and Vault. What a
+  token), and then fully rebuilt by `sync` from Git and Vault. What a
   machine must offer before that is listed in
   [worker requirements](worker-requirements.md).
 - Workers never host a singleton service. The proxy reports any local install
@@ -64,7 +64,7 @@ your project's `fleet.json` (version 3, checked by [the schema](../schema/fleet.
   Work in progress in agent worktrees is pushed to a recovery ref every 15
   minutes; [durability](durability.md) says what a lost machine takes with it.
 - One worker is the rollout canary for a revision new to the fleet: the one
-  `fleet-sync --canary` or `canary` in `fleet.json` names, else the first
+  `converge --canary` or `canary` in `fleet.json` names, else the first
   declared worker. When it cannot be reached (powered off, being rebuilt),
   the next reachable worker in declared order proves the revision instead and
   the unreachable one is reported as offline, never as a blocked rollout. A
@@ -79,56 +79,56 @@ your project's `fleet.json` (version 3, checked by [the schema](../schema/fleet.
 ## Changing the topology
 
 - **Add or replace a worker:** add it to `workers`, enroll it with
-  `fleet-sync`, done. Remove it by deleting the entry.
+  `sync`, done. Remove it by deleting the entry.
 - **Workers an infrastructure tool creates:** `workerRecords` in `fleet.json`
   names a file (relative to `fleet.json`) or a command that returns worker
   records, the provider-neutral description of a machine in
   [`schema/worker-record.schema.json`](../schema/worker-record.schema.json):
   `id`, `tailnetName` or `address`, `user`, `port`, `hostKey` and optional
-  `labels` and `billing`. Their workers join the inline list; dev-fleet only
+  `labels` and `billing`. Their workers join the inline list; homelab only
   reads them and never calls a provider or creates a machine. A record that
-  appears is a declared worker, enrolled by the next `fleet-sync`; one that
+  appears is a declared worker, enrolled by the next `sync`; one that
   disappears (a file that is gone holds none) is retired by the next
-  `fleet-sync` exactly as `fleet-node-retire` retires one. A worker listed by
+  `sync` exactly as `retire` retires one. A worker listed by
   hand is never retired by itself. An invalid record is refused naming its
   field, such as `$.workerRecords[0].workers[1].hostKey`.
   [`examples/workers-from-infrastructure`](../examples/workers-from-infrastructure/main.tf)
   shows the handoff with a local virtual machine, the seed going in and the
   record coming out. The canary stays the one `canary` names, so the order
   of generated records means nothing.
-- **Replace or retire a worker:** `fleet-node-replace` and `fleet-node-retire`
+- **Replace or retire a worker:** `replace` and `retire`
   take everything of the old machine with it: its pinned host key, its
   monitoring system (pointed at the new machine, or deleted), the manager's
   T3 link to its environment, its Vault token and its tailnet device. The
   manager's T3 pairs with the replacement's environment by itself
-  (`t3:link`): at once when its T3 runs, otherwise in the next `fleet-sync`
+  (`t3:link`): at once when its T3 runs, otherwise in the next `sync`
   once it does, and the roster records the new environment. The pairing code
   is minted on the worker over SSH and handed to the manager's own T3 server
   in a request body, never on a command line, in a report or in a log. The device is deleted through the
   control plane fleet.json declares under `tailnet`, asked with the secret
   `tailnet-admin` (workers are not registered as ephemeral devices); without
   either, `tailscale:device` is skipped and names the device to remove in the
-  admin console. `fleet-status --workers` warns about a monitoring system that
-  matches no declared worker (`beszel:leftover`), and `fleet-status` about a
+  admin console. `status --workers` warns about a monitoring system that
+  matches no declared worker (`beszel:leftover`), and `status` about a
   device carrying the worker tag that is no declared worker, parked or not,
   and no device the roster binds (`tailscale:leftover`).
 
 ## Parked and idle workers
 
-A rented worker costs money while it runs. `devfleet fleet-node-park --id ID`
+A rented worker costs money while it runs. `homelab park --id ID`
 records in the fleet state that it is stopped or destroyed on purpose: from
-then on `fleet-sync` and `fleet-status` list it as parked with the time since
+then on `sync` and `status` list it as parked with the time since
 (`worker:parked`, not applicable), never contact it, never make it the
 canary, and it never changes an exit code. Parking refuses while agent turns
-run on it (`WORKER_BUSY`) unless `--force`. `devfleet fleet-node-resume --id
-ID` marks it active and runs `fleet-sync --node ID`, which converges and
+run on it (`WORKER_BUSY`) unless `--force`. `homelab resume --id
+ID` marks it active and runs `converge --node ID`, which converges and
 verifies it (`--allow-unmerged` is passed on to that sync). `parking.stop` and `parking.start` in `fleet.json` name commands
-(an infrastructure tool, never a provider dev-fleet calls) run with the worker
+(an infrastructure tool, never a provider homelab calls) run with the worker
 ID as their last argument. A parked worker found online on the tailnet is a
 warning (`worker:parked-online`); one that comes back as a new machine goes
-through `fleet-node-replace`.
+through `replace`.
 
-`fleet-status` reports, for every worker it reaches, its uptime, the agent
+`status` reports, for every worker it reaches, its uptime, the agent
 turns under way and the time of the last agent activity, read from what T3
 records (status and times, never a session's content), in its text and as
 `workers` in its JSON. With `parking.idleAfterHours`, a worker with no agent
@@ -136,7 +136,7 @@ activity for longer is `worker:idle` (a warning whose remedy is to park it);
 one with a turn under way never is. `billing.hourlyRate` on a worker (or its
 record) is only displayed and summed: `usage` says how many workers run, how
 many are idle and what the idle ones cost per day. `parking.autoPark: true`
-lets `fleet-watch` park idle workers by itself; it is off unless set.
+lets `watch` park idle workers by itself; it is off unless set.
 
 - **Replace the manager:** follow
   [replacing the manager](manager-recovery.md).

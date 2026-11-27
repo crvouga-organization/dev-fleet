@@ -19,7 +19,7 @@ export async function managerQuotaCoverage(
       '--ttl',
       '2m',
       '--label',
-      'dev-fleet quota check',
+      'homelab quota check',
     ]
   );
   return [quotaCoverage(managed, registry.proxy.endpoint, sources)];
@@ -89,7 +89,7 @@ export function quotaCoverage(
         summary: `T3_QUOTA_COVERAGE_MISSING: account positions ${missing.join(', ')} of ${accounts.length}.`,
         remedy: {
           action:
-            'Check the CLI proxy usage-limit source on the manager in T3 Settings. Refresh the affected account on the hub and rerun fleet-sync.',
+            'Check the CLI proxy usage-limit source on the manager in T3 Settings. Refresh the affected account on the hub and rerun converge.',
         },
       }
     : {

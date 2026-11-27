@@ -42,13 +42,13 @@ Then('the state migrations are numbered from 1 without a gap', () => {
   expect(found).toEqual(found.map((_, index) => index + 1));
 });
 Then(
-  'the schema version this dev-fleet writes is that of the last migration',
+  'the schema version this homelab writes is that of the last migration',
   () => {
     expect(SCHEMA_VERSION).toBe(migrations().at(-1)!.version);
   }
 );
 Then(
-  'the state database has the schema version this dev-fleet writes',
+  'the state database has the schema version this homelab writes',
   (world) => {
     expect(userVersion(world.manager().database)).toBe(SCHEMA_VERSION);
   }
@@ -62,7 +62,7 @@ CREATE TABLE head (one INTEGER PRIMARY KEY CHECK (one = 1), id TEXT NOT NULL, se
 
 Given(
   phrase(
-    'the state database was written by a dev-fleet without a schema version, holding the configuration ',
+    'the state database was written by a homelab without a schema version, holding the configuration ',
     TEXT
   ),
   (world, double?: string, single?: string) => {

@@ -1,9 +1,9 @@
 ---
 # The manager's own Vault session renews itself, as every worker's does
 # (personal-worker-auth): without it the session lapses while nobody runs
-# fleet-sync, and the manager can no longer read the secrets its services and
+# converge, and the manager can no longer read the secrets its services and
 # its agents use. The job only renews; a lapsed session needs one login by a
-# person. Measured as manager:vault-renewal. fleet-sync passes vault_address
+# person. Measured as manager:vault-renewal. converge passes vault_address
 # (the fleet configuration's secrets block) and mise (its absolute path).
 #
 # A renewal cannot keep every login alive: Vault extends a token only up to
@@ -20,7 +20,7 @@
   vars_files:
     - policy.json
   vars:
-    renew_label: dev.devfleet.vault-renew
+    renew_label: dev.homelab.vault-renew
     renew_plist: '{{ ansible_facts.env.HOME }}/Library/LaunchAgents/{{ renew_label }}.plist'
     renew_domain: 'gui/{{ ansible_facts.user_uid }}'
   tasks:

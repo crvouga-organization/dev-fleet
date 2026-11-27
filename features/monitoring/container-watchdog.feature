@@ -4,7 +4,7 @@ Feature: A container frozen while it holds its port is restarted by the watchdog
   the manager runs restarts a labelled container its healthcheck reports
   unhealthy, at most a few times an hour. Here a real container is frozen with
   SIGSTOP, so it keeps its port and answers nothing, like a hung CLI proxy.
-  Runs only when DEVFLEET_TEST_AGENT_BOX is set, because it needs Docker.
+  Runs only when HOMELAB_TEST_AGENT_BOX is set, because it needs Docker.
 
   Background:
     Given a labelled container that serves HTTP and checks its health every second

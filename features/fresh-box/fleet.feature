@@ -1,5 +1,5 @@
 @fresh-box @slow
-Feature: One fleet-sync over several fresh machines, and the faults it meets
+Feature: One converge over several fresh machines, and the faults it meets
   The production bootstrap runs over real SSH connections against disposable
   Ubuntu machines, each with only an SSH server and an account that can use
   sudo. Faults are made on the machines themselves: a held lock, a dropped
@@ -13,7 +13,7 @@ Feature: One fleet-sync over several fresh machines, and the faults it meets
   not record the revision as applied.
 
   The machines run the Ubuntu release under test, as in the single-machine
-  feature: DEVFLEET_TEST_FRESH_BOX_RELEASE, or else the newest release the
+  feature: HOMELAB_TEST_FRESH_BOX_RELEASE, or else the newest release the
   Ubuntu policy accepts.
 
   Background:
@@ -23,19 +23,19 @@ Feature: One fleet-sync over several fresh machines, and the faults it meets
     And the tailnet shows each of them online under its own name
 
   Scenario: One run bootstraps every machine and reports each of them in one versioned result
-    When fleet-sync applies the commit under test to every machine in one run
+    When converge applies the commit under test to every machine in one run
     Then the report is version 3 and covers, in order:
       | fleet-a |
       | fleet-b |
     And every machine reached node convergence
     And every machine holds the commit under test
     And no machine is recorded as having the revision applied
-    And no machine has a schedule of its own that runs fleet-sync
+    And no machine has a schedule of its own that runs converge
 
   Scenario: A failed canary stops promotion, and the machine after it is still inspected
     Given every machine has been bootstrapped
     And another fleet operation holds "fleet-a"
-    When fleet-sync applies the commit under test with "fleet-a" as its canary
+    When converge applies the commit under test with "fleet-a" as its canary
     Then "fleet-a" reports "FLEET_REMOTE_LOCKED" with a remedy
     And the checks of "fleet-b" include a passing "ssh:fresh-session"
     And the last check of "fleet-b" says "FLEET_PROMOTION_BLOCKED"
@@ -89,7 +89,7 @@ Feature: One fleet-sync over several fresh machines, and the faults it meets
     Given every machine has been bootstrapped
     And the copy of the fleet configuration on "fleet-b" was edited there
     When the manager bootstraps "fleet-b"
-    Then the bootstrap reports "FLEET_CONFIGURATION_COPY_CHANGED" with a remedy that says "rm ~/.config/dev-fleet/fleet.json"
+    Then the bootstrap reports "FLEET_CONFIGURATION_COPY_CHANGED" with a remedy that says "rm ~/.config/homelab/fleet.json"
     And the edit is still in the copy of the fleet configuration on "fleet-b"
 
   Scenario Outline: A package installation <starter> started and that was interrupted is finished on the next run
@@ -106,7 +106,7 @@ Feature: One fleet-sync over several fresh machines, and the faults it meets
 
     Examples:
       | starter      |
-      | fleet-sync   |
+      | converge   |
       | someone else |
 
   Scenario: A sync cut off while it upgraded one of the bootstrap's own packages is finished by the bootstrap of the next run
@@ -127,7 +127,7 @@ Feature: One fleet-sync over several fresh machines, and the faults it meets
     no package, so it leaves APT alone; the baseline waits for the lock,
     finishes the run once with dpkg --configure -a and checks again.
     Given every machine has been bootstrapped
-    And a package installation fleet-sync started on "fleet-b" was interrupted after unpacking "zip"
+    And a package installation converge started on "fleet-b" was interrupted after unpacking "zip"
     When the manager bootstraps "fleet-b"
     Then the bootstrap reaches node convergence
     And the package database of "fleet-b" is consistent
@@ -137,7 +137,7 @@ Feature: One fleet-sync over several fresh machines, and the faults it meets
     A pin is a minimum: security updates keep flowing, nothing downgrades
     them, and the worker is not turned red by one.
     Given every machine has been bootstrapped
-    And an update outside fleet-sync moved the pinned package "unzip" on "fleet-b" past its pin
+    And an update outside converge moved the pinned package "unzip" on "fleet-b" past its pin
     When the manager bootstraps "fleet-b"
     Then the bootstrap reaches node convergence
     And the bootstrap reports "worker:package:unzip" as a warning that says "PACKAGE_NEWER_THAN_PIN"

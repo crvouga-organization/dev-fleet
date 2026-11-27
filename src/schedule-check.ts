@@ -3,7 +3,7 @@ import type { ManagerDefinition } from './definition';
 import type { History } from './state/history';
 import type { Check } from './types';
 
-/** How often the manager's schedule runs fleet-sync by default. */
+/** How often the manager's schedule runs converge by default. */
 export const SCHEDULE_INTERVAL_SECONDS = macos.fleetSync.intervalMinutes * 60;
 
 /** How often the manager's scheduled jobs run: `manager.schedule` in
@@ -53,7 +53,7 @@ export function scheduleCheck(history: History, now: Date): Check | null {
       : `The schedule has not converged the fleet once since it was turned on, more than two intervals of ${minutes} minutes ago.`,
     remedy: {
       action:
-        'Run devfleet fleet-sync --schedule status on the manager to see the last scheduled runs, then devfleet fleet-report for the failing checks. Re-enable it with devfleet fleet-sync --schedule enable --apply --yes when the manager was replaced.',
+        'Run homelab converge --schedule status on the manager to see the last scheduled runs, then homelab history for the failing checks. Re-enable it with homelab converge --schedule enable --apply --yes when the manager was replaced.',
     },
   };
 }

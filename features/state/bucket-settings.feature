@@ -7,7 +7,7 @@ Feature: Where the fleet state is kept is a few validated settings
 
     Scenario: An S3 bucket with its keys
       Given these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
@@ -15,20 +15,20 @@ Feature: Where the fleet state is kept is a few validated settings
       When the settings are read
       Then the bucket is exactly:
         | kind            | s3                     |
-        | prefix          | dev-fleet              |
-        | bucket          | fleet-state            |
+        | prefix          | homelab              |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
         | secretAccessKey | secret/example+key     |
 
     Scenario: A bucket name alone
-      Given the bucket settings are {"bucket": "fleet-state"}
+      Given the bucket settings are {"bucket": "state"}
       When the settings are read
       Then the bucket is exactly:
         | kind   | s3          |
-        | bucket | fleet-state |
-        | prefix | dev-fleet   |
+        | bucket | state |
+        | prefix | homelab   |
 
     Scenario: A directory
       Given the bucket settings are {"directory": "/Volumes/backup/fleet"}
@@ -47,19 +47,19 @@ Feature: Where the fleet state is kept is a few validated settings
       Examples:
         | why                                 | settings                                                              |
         | no settings at all                  | null                                                                  |
-        | a version this release cannot read  | {"version": 2, "bucket": "fleet-state"}                               |
+        | a version this release cannot read  | {"version": 2, "bucket": "state"}                               |
         | a name no S3 bucket can have        | {"bucket": "Fleet_State"}                                             |
-        | an endpoint over plain HTTP         | {"bucket": "fleet-state", "endpoint": "http://s3.example.com"}        |
-        | an endpoint with a path             | {"bucket": "fleet-state", "endpoint": "https://s3.example.com/path"}  |
-        | a prefix that leaves the bucket     | {"bucket": "fleet-state", "prefix": "../other"}                       |
-        | a prefix that ends in a slash       | {"bucket": "fleet-state", "prefix": "trailing/"}                      |
-        | an access key without its secret    | {"bucket": "fleet-state", "accessKeyId": "only-half"}                 |
-        | a setting nobody knows              | {"bucket": "fleet-state", "token": "unknown"}                         |
+        | an endpoint over plain HTTP         | {"bucket": "state", "endpoint": "http://s3.example.com"}        |
+        | an endpoint with a path             | {"bucket": "state", "endpoint": "https://s3.example.com/path"}  |
+        | a prefix that leaves the bucket     | {"bucket": "state", "prefix": "../other"}                       |
+        | a prefix that ends in a slash       | {"bucket": "state", "prefix": "trailing/"}                      |
+        | an access key without its secret    | {"bucket": "state", "accessKeyId": "only-half"}                 |
+        | a setting nobody knows              | {"bucket": "state", "token": "unknown"}                         |
         | a directory that is not absolute    | {"directory": "relative/path"}                                        |
-        | a directory and a bucket at once    | {"directory": "/a", "bucket": "fleet-state"}                          |
+        | a directory and a bucket at once    | {"directory": "/a", "bucket": "state"}                          |
 
     Scenario: A local S3 service for trying it out is the one plain-HTTP exception
-      Given the bucket settings are {"bucket": "fleet-state", "endpoint": "http://127.0.0.1:9000"}
+      Given the bucket settings are {"bucket": "state", "endpoint": "http://127.0.0.1:9000"}
       When the settings are read
       Then the bucket includes:
         | endpoint | http://127.0.0.1:9000 |
@@ -68,7 +68,7 @@ Feature: Where the fleet state is kept is a few validated settings
 
     Background:
       Given these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
@@ -83,8 +83,8 @@ Feature: Where the fleet state is kept is a few validated settings
       Then the bucket.json of the manager is readable by its owner only
       And the saved bucket of the manager is exactly:
         | kind            | s3                     |
-        | prefix          | dev-fleet              |
-        | bucket          | fleet-state            |
+        | prefix          | homelab              |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
@@ -110,7 +110,7 @@ Feature: Where the fleet state is kept is a few validated settings
 
     Scenario Outline: <what> names neither key
       Given these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
@@ -126,7 +126,7 @@ Feature: Where the fleet state is kept is a few validated settings
 
     Scenario: The keys reach Litestream through its environment
       Given these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
@@ -138,7 +138,7 @@ Feature: Where the fleet state is kept is a few validated settings
         | AWS_SESSION_TOKEN     |                    |
 
     Scenario: Without keys the standard AWS environment is left alone
-      Given the bucket settings are {"bucket": "fleet-state"}
+      Given the bucket settings are {"bucket": "state"}
       When the settings are read
       Then Litestream is handed no environment of its own
 
@@ -152,7 +152,7 @@ Feature: Where the fleet state is kept is a few validated settings
 
     Scenario: An S3 bucket is an "s3" replica under the prefix
       Given these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
@@ -160,8 +160,8 @@ Feature: Where the fleet state is kept is a few validated settings
       When the settings are read
       Then the Litestream configuration of "/state/fleet.db" contains each of:
         | type: s3                         |
-        | bucket: fleet-state              |
-        | path: dev-fleet/fleet.db         |
+        | bucket: state              |
+        | path: homelab/fleet.db         |
         | endpoint: https://s3.example.com |
         | force-path-style: true           |
 

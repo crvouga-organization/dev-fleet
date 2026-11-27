@@ -8,9 +8,9 @@ import { declareFleet } from '../../support/fleet';
 import type { DataTable } from '../../support/gherkin';
 import { cli, outcome, type CliWorld } from './world';
 
-/** The tailnet control plane fleet-status asks for devices tagged as
+/** The tailnet control plane check asks for devices tagged as
  * workers, answered from memory: the HTTP layer is the stand-in, the client
- * is dev-fleet's own.
+ * is homelab's own.
  */
 const { Given, Then } = cli;
 
@@ -31,7 +31,7 @@ function plane(world: CliWorld): Plane {
   return found;
 }
 
-/** What fleet-status asks the control plane with in a scenario. */
+/** What check asks the control plane with in a scenario. */
 export function leftoverControl(
   world: CliWorld
 ): (() => Promise<TailnetControl | null>) | undefined {
@@ -89,7 +89,7 @@ const leftovers = (world: CliWorld) =>
   );
 
 Then(
-  'fleet-status warns of exactly these leftover devices:',
+  'check warns of exactly these leftover devices:',
   (world, table: DataTable) => {
     const found = leftovers(world);
     expect(found.every((check) => check.status === 'warn')).toBe(true);
@@ -101,7 +101,7 @@ Then(
   }
 );
 
-Then('fleet-status reports no leftover device', (world) => {
+Then('check reports no leftover device', (world) => {
   expect(leftovers(world)).toEqual([]);
 });
 

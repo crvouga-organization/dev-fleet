@@ -13,7 +13,7 @@ export function syncPlan(pull: boolean): string[] {
       : []),
     'Run mise exec --locked bun -- bun bootstrap/setup.ts --non-interactive (shared tools, user mise/PATH, frozen dependencies).',
     'Record input hashes only after every step succeeds.',
-    'Run fleet-status afterward; workstation/provider configuration and logins remain explicit ws/operator actions.',
+    'Run check afterward; workstation/provider configuration and logins remain explicit ws/operator actions.',
   ];
 }
 
@@ -25,7 +25,7 @@ export async function syncWorkspace(
   const before = await fingerprint(root, run);
   if (!completeFingerprint(before)) {
     return failed(
-      'Not a complete workspace checkout. Follow fleet-nodes --onboard first.'
+      'Not a complete workspace checkout. Follow workers --onboard first.'
     );
   }
   if (pull) {
@@ -93,7 +93,7 @@ function failed(summary: string): Check[] {
       summary,
       remedy: {
         action:
-          'Resolve locally using docs/machine-setup.md, then review and retry devfleet fleet-repair --repair workspace.',
+          'Resolve locally using docs/machine-setup.md, then review and retry homelab repair --repair workspace.',
       },
     },
   ];

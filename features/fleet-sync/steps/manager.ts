@@ -342,7 +342,7 @@ When('the power settings of the manager are measured', async (world) => {
 interface Playbook {
   check: 'passes' | 'fails';
   apply: 'passes' | 'fails';
-  /** Whether launchd holds the fleet-watch job. */
+  /** Whether launchd holds the notify job. */
   watching: boolean;
   /** Whether fleet.json says storage is disposable. */
   disposable?: boolean;
@@ -726,7 +726,7 @@ async function holdVault(world: FleetSyncWorld, apply: boolean) {
       return succeeded();
     }
   );
-  const scratch = mkdtempSync(join(tmpdir(), 'devfleet-vault-'));
+  const scratch = mkdtempSync(join(tmpdir(), 'homelab-vault-'));
   world.defer(() => rmSync(scratch, { recursive: true, force: true }));
   world.checks = await holdManagerVault(world.commands.run, {
     apply,

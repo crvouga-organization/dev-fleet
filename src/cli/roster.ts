@@ -20,12 +20,12 @@ export async function readRoster(path: string): Promise<FleetConfig | null> {
   } catch (error) {
     if (error instanceof FleetUsageError) throw error;
     throw new FleetUsageError(
-      'Cannot read a valid roster. Use fleet-nodes --schema or choose --config PATH.'
+      'Cannot read a valid roster. Use workers --schema or choose --config PATH.'
     );
   }
 }
 
-/** The roster a fleet-sync needs: a missing one is an error, not an empty fleet. */
+/** The roster a converge needs: a missing one is an error, not an empty fleet. */
 export async function loadRoster(path: string): Promise<FleetConfig> {
   let value: unknown;
   try {
@@ -34,7 +34,7 @@ export async function loadRoster(path: string): Promise<FleetConfig> {
     value = JSON.parse(text);
   } catch {
     throw new FleetUsageError(
-      'Cannot read fleet config. Run devfleet fleet-node-add or use --config PATH.'
+      'Cannot read fleet config. Run homelab enroll or use --config PATH.'
     );
   }
   return parseConfig(value);
@@ -43,7 +43,7 @@ export async function loadRoster(path: string): Promise<FleetConfig> {
 export function nodeFromOptions(options: CliOptions): FleetNode {
   if (!options.id || !options.ssh || !options.path)
     throw new FleetUsageError(
-      'fleet-node-add requires --id NAME --ssh ALIAS --path /absolute/checkout.'
+      'enroll requires --id NAME --ssh ALIAS --path /absolute/checkout.'
     );
   const node = {
     id: options.id,

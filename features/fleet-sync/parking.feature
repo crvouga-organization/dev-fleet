@@ -1,11 +1,11 @@
 Feature: A worker that is off on purpose is parked, not failed
   A rented machine costs money while it runs, so it is stopped overnight or
-  destroyed while nobody needs it. devfleet fleet-node-park records that in
+  destroyed while nobody needs it. homelab park records that in
   the fleet state: the worker is then listed as parked, with the time since,
-  and fleet-sync and fleet-status neither contact it nor fail because of it.
-  devfleet fleet-node-resume brings it back and syncs it. fleet.json may
+  and converge and check neither contact it nor fail because of it.
+  homelab resume brings it back and syncs it. fleet.json may
   declare the commands that stop and start a machine (an infrastructure
-  tool); dev-fleet calls them with the worker ID and never a provider itself.
+  tool); homelab calls them with the worker ID and never a provider itself.
 
   Background:
     Given the manager has enrolled "worker-one" and "worker-two" from the example fleet, bound to the devices "old-one" and "old-two"
@@ -67,18 +67,18 @@ Feature: A worker that is off on purpose is parked, not failed
       And the declared commands ran:
         | infra/machine start worker-one |
       And the fleet state records "worker-one" as active
-      And fleet-sync ran for "worker-one" only
+      And converge ran for "worker-one" only
 
     Scenario: A resume from a revision that is not on the default branch says so to its sync
-      fleet-sync refuses such a revision with FLEET_REVISION_UNMERGED unless
+      converge refuses such a revision with FLEET_REVISION_UNMERGED unless
       it is given --allow-unmerged, and a resume started from a branch
       checkout selects that branch's commit.
       When the operator resumes "worker-one" with --allow-unmerged
       Then the command exits with 0
-      And the fleet-sync of the resume was given "--node worker-one --allow-unmerged"
+      And the converge of the resume was given "--node worker-one --allow-unmerged"
 
     Scenario: A resume whose sync does not end ready fails
-      Given the fleet-sync after a resume does not end ready
+      Given the converge after a resume does not end ready
       When the operator resumes "worker-one"
       Then the command exits with 1
       And the report mentions "WORKER_RESUME_FAILED"

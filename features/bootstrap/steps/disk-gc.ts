@@ -656,10 +656,10 @@ Given(
   }
 );
 
-// ── dev-fleet's own checkouts ───────────────────────────────────────────
+// ── homelab's own checkouts ───────────────────────────────────────────
 
 Given(
-  'the directory {string} holds these dev-fleet checkouts, oldest first:',
+  'the directory {string} holds these homelab checkouts, oldest first:',
   (world, directory: string, table: DataTable) => {
     const target = join(collector(world).home, directory);
     const now = Date.now() / 1000;
@@ -721,7 +721,7 @@ Given(
   }
 );
 
-// ── What fleet-status reads ─────────────────────────────────────────────
+// ── What check reads ─────────────────────────────────────────────
 
 Given(
   'the package store {string} holds a file of {int} MiB, linked into the worktree as {string}',

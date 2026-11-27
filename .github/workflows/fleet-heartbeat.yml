@@ -1,5 +1,5 @@
 name: Fleet heartbeat
-# A check that runs off the manager. Every `devfleet fleet-watch` on the
+# A check that runs off the manager. Every `homelab notify` on the
 # manager stores the time it ran, and the health of each worker, as
 # <prefix>/watch.json in the fleet's bucket. This workflow fails, and GitHub
 # notifies whoever watches the repository, when that heartbeat is older than
@@ -11,11 +11,11 @@ name: Fleet heartbeat
 #     schedule: [{ cron: '*/30 * * * *' }]
 #   jobs:
 #     heartbeat:
-#       uses: crvouga/dev-fleet/.github/workflows/fleet-heartbeat.yml@<release tag>
+#       uses: crvouga/homelab/.github/workflows/fleet-heartbeat.yml@<release tag>
 #       with: { bucket: my-fleet-state, endpoint: https://s3.example.com }
 #       secrets: inherit
 #
-# with DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY as
+# with HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY as
 # repository secrets: a key that can read the bucket is enough.
 on:
   workflow_call:
@@ -35,15 +35,15 @@ on:
       prefix:
         description: The key prefix fleet.json names under "state".
         type: string
-        default: dev-fleet
+        default: homelab
       max-age-minutes:
         description: How old the heartbeat may be before the check fails.
         type: number
         default: 60
     secrets:
-      DEVFLEET_BUCKET_ACCESS_KEY_ID:
+      HOMELAB_BUCKET_ACCESS_KEY_ID:
         required: true
-      DEVFLEET_BUCKET_SECRET_ACCESS_KEY:
+      HOMELAB_BUCKET_SECRET_ACCESS_KEY:
         required: true
 permissions:
   contents: read
@@ -55,8 +55,8 @@ jobs:
     steps:
       - name: Fail when the manager's heartbeat is older than the threshold
         env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.DEVFLEET_BUCKET_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.DEVFLEET_BUCKET_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.HOMELAB_BUCKET_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.HOMELAB_BUCKET_SECRET_ACCESS_KEY }}
           AWS_REGION: ${{ inputs.region }}
           BUCKET: ${{ inputs.bucket }}
           ENDPOINT: ${{ inputs.endpoint }}
@@ -67,7 +67,7 @@ jobs:
           endpoint=()
           if [ -n "$ENDPOINT" ]; then endpoint=(--endpoint-url "$ENDPOINT"); fi
           if ! aws s3 cp "s3://$BUCKET/$PREFIX/watch.json" watch.json --only-show-errors ${endpoint[@]+"${endpoint[@]}"} >/dev/null 2>&1; then
-            echo "::error::FLEET_HEARTBEAT_MISSING: the bucket holds no heartbeat. Run devfleet fleet-watch on the manager."
+            echo "::error::FLEET_HEARTBEAT_MISSING: the bucket holds no heartbeat. Run homelab notify on the manager."
             exit 1
           fi
           python3 -I - "$MAX_AGE_MINUTES" watch.json <<'PY'
@@ -77,7 +77,7 @@ jobs:
               memory = json.load(open(path))
               beat = datetime.datetime.fromisoformat(memory['heartbeatAt'].replace('Z', '+00:00'))
           except Exception:
-              print('::error::FLEET_HEARTBEAT_UNREADABLE: the heartbeat is not one fleet-watch wrote.')
+              print('::error::FLEET_HEARTBEAT_UNREADABLE: the heartbeat is not one notify wrote.')
               sys.exit(1)
           age = (datetime.datetime.now(datetime.timezone.utc) - beat).total_seconds() / 60
           nodes = memory.get('nodes') if isinstance(memory.get('nodes'), dict) else {}

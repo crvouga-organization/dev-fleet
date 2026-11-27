@@ -33,7 +33,7 @@ function check(id: string, ok: boolean, summary: string): Check {
       ? {
           remedy: {
             action:
-              'Apply the approved fleet-sync revision over verified SSH, then rerun fleet-status --workers. No password prompt or state reset is attempted by health.',
+              'Apply the approved converge revision over verified SSH, then rerun check --workers. No password prompt or state reset is attempted by health.',
           },
         }
       : {}),
@@ -55,7 +55,7 @@ export function pinnedPackage(
       summary: `PACKAGE_BELOW_PIN ${name} ${installed}, pinned ${pinned}`,
       remedy: {
         action:
-          'A converge never upgrades an active VPN. Run devfleet fleet-sync --maintenance-reboot: it upgrades Tailscale to the pin in a detached unit on the worker and waits for the worker to answer again.',
+          'A converge never upgrades an active VPN. Run homelab converge --maintenance-reboot: it upgrades Tailscale to the pin in a detached unit on the worker and waits for the worker to answer again.',
       },
     };
   if (order <= 0)
@@ -319,7 +319,7 @@ export async function rebootPendingCheck(
     summary: `REBOOT_PENDING${age}: installed updates apply only after a reboot.`,
     remedy: {
       action:
-        'Reboot the worker when no agent turn is running (sudo systemctl reboot on the worker), then confirm it returns to ready with devfleet fleet-status --workers.',
+        'Reboot the worker when no agent turn is running (sudo systemctl reboot on the worker), then confirm it returns to ready with homelab check --workers.',
     },
   };
 }

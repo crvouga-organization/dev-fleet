@@ -263,7 +263,7 @@ Then(
     const removed = list.findIndex(
       (task) =>
         (task['ansible.builtin.file'] as { path?: string; state?: string })
-          ?.path === '/run/devfleet/tailnet-auth-key' &&
+          ?.path === '/run/homelab/tailnet-auth-key' &&
         (task['ansible.builtin.file'] as { state?: string }).state === 'absent'
     );
     expect(removed).toBeGreaterThan(list.indexOf(joinTask(world)));

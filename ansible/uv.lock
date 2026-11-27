@@ -191,7 +191,7 @@ wheels = [
 ]
 
 [[package]]
-name = "dev-fleet-ansible"
+name = "homelab-ansible"
 version = "0"
 source = { virtual = "." }
 dependencies = [

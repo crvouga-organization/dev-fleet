@@ -2,10 +2,10 @@
 # A worker whose `containers` feature is off (fleet.json features.containers)
 # keeps none of what tasks/docker.yml and the pinned packages gave it: the
 # developer leaves the docker group, the restart drop-in goes, and the Ubuntu
-# Docker packages dev-fleet pinned are removed (not purged: images and volumes
+# Docker packages homelab pinned are removed (not purged: images and volumes
 # under /var/lib/docker stay until a person deletes them). A Docker that
-# another distribution owns (docker-ce) was never dev-fleet's and is left
-# alone. fleet-sync --dry-run lists what this removes; the worker:features
+# another distribution owns (docker-ce) was never homelab's and is left
+# alone. converge --dry-run lists what this removes; the worker:features
 # check reports what it removed.
 - name: Read the members of the groups containers gave the developer
   ansible.builtin.getent:
@@ -34,7 +34,7 @@
   ansible.builtin.systemd_service:
     daemon_reload: true
   when: container_dropins.changed
-- name: Remove the Docker packages dev-fleet pinned
+- name: Remove the Docker packages homelab pinned
   ansible.builtin.apt:
     name: '{{ features.containers.packages }}'
     state: absent

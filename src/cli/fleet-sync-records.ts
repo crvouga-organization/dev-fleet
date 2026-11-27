@@ -12,7 +12,7 @@ import {
 /** The workers of the fleet as worker records describe them come and go
  * with the records: a record that appears is a declared worker, enrolled by
  * the next sync like any other; one that disappears is retired by the same
- * path as fleet-node-retire. fleet-sync calls this before it reads the
+ * path as retire. converge calls this before it reads the
  * roster. It records which workers came from records, so that only those
  * are ever retired by themselves; a worker removed from fleet.json by hand
  * must still be retired first.
@@ -54,7 +54,7 @@ export async function reconcileRecords(
             status: 'fail',
             summary: 'WORKER_RECORD_RETIREMENT_FAILED',
             remedy: {
-              action: `${id}'s worker record disappeared, and retiring it failed at ${failed.map((step) => step.id).join(', ')}. Follow that remedy, then run fleet-sync again.`,
+              action: `${id}'s worker record disappeared, and retiring it failed at ${failed.map((step) => step.id).join(', ')}. Follow that remedy, then run converge again.`,
             },
           }
         : {

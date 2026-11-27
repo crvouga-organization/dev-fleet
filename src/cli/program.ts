@@ -14,7 +14,7 @@ export interface Release {
   version: string;
   /** ISO timestamp recorded when this distribution was built; null for source runs. */
   releasedAt: string | null;
-  /** The commit a published package was built from: what fleet-sync run from
+  /** The commit a published package was built from: what converge run from
    * it converges every machine to. Absent for source runs.
    */
   revision?: string | null;
@@ -33,7 +33,7 @@ export const GLOBAL_OPTIONS = [
   {
     flag: '--workspace <path>',
     description:
-      'A dev-fleet checkout to run from instead of this package (development); does not clone or change it',
+      'A homelab checkout to run from instead of this package (development); does not clone or change it',
   },
   { flag: '--config <path>', description: 'Local, secret-free fleet roster' },
 ];
@@ -56,7 +56,7 @@ function createProgram(
   output: (text: string) => void
 ): Command {
   const program = new Command()
-    .name('devfleet')
+    .name('homelab')
     .description('Developer fleet, T3 and platform operations')
     .version(releaseLabel(release))
     .exitOverride()
@@ -74,10 +74,10 @@ function createProgram(
     [
       '',
       `Release: ${releaseLabel(release)}`,
-      'Groups: fleet-* developer computers · t3-* T3 provider instances · cliproxy the CLI proxy service.',
-      'Apply on invocation (--dry-run previews): fleet-node-sync, t3-apply, t3-cleanup. fleet-sync applies on invocation too; --apply --yes is still accepted.',
-      'Preview until --apply --yes: fleet-repair, fleet-node-add. --json does not make a command read-only.',
-      'Agents: devfleet commands --json. Menu: devfleet --interactive.',
+      'Groups: converge, check, state and the other machine commands · t3 T3 provider instances · proxy the CLI proxy service.',
+      'Apply on invocation (--dry-run previews): converge-local, t3-reconcile, t3-remove. converge applies on invocation too; --apply --yes is still accepted.',
+      'Preview until --apply --yes: repair, enroll. --json does not make a command read-only.',
+      'Agents: homelab commands --json. Menu: homelab --interactive.',
       ...(release.issues
         ? [
             `Bugs and feature requests: ${release.issues}. Report them there; never patch the installed package.`,
@@ -101,7 +101,7 @@ function catalog(options: CliOptions, release: Release): CommandOutcome {
       commands,
       globalOptions: GLOBAL_OPTIONS,
       defaultCommand: 'help',
-      schema: 'devfleet fleet-nodes --schema --json',
+      schema: 'homelab workers --schema --json',
       agent: agentGuide(release),
     },
     text: [
@@ -141,12 +141,39 @@ export async function execute(
     .action((_options, command: Command) => {
       outcome = catalog(command.optsWithGlobals<CliOptions>(), release);
     });
+  // A default action makes Commander treat an unknown first word as an
+  // argument. `--help` on that word is answered before the unknown-command
+  // event, so reject it first. Bare homelab still prints help or, with
+  // --json, the catalog.
+  const outputHelp = program.outputHelp.bind(program);
+  program.outputHelp = (context) => {
+    const pending = program.args.filter((arg) => !arg.startsWith('-'));
+    const unknown =
+      pending[0] === 'help' && pending.length > 1 ? pending[1] : pending[0];
+    if (unknown && unknown !== 'help')
+      throw new FleetUsageError(
+        `Unknown command "${unknown}". Run homelab --help.`
+      );
+    outputHelp(context as (str: string) => string);
+  };
   program.action(() => {
     if (program.opts<CliOptions>().json)
       outcome = catalog(program.opts<CliOptions>(), release);
     else program.help();
   });
   try {
+    const known = new Set(
+      program.commands.flatMap((command) => [
+        command.name(),
+        ...command.aliases(),
+      ])
+    );
+    known.add('help');
+    const first = args.find((arg) => !arg.startsWith('-'));
+    if (first && !known.has(first))
+      throw new FleetUsageError(
+        `Unknown command "${first}". Run homelab --help.`
+      );
     await program.parseAsync(args, { from: 'user' });
     return (
       outcome ?? {

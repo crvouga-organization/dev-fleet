@@ -76,7 +76,7 @@ Feature: A worker refuses agent sessions above a limit its fleet declares
         | app.slice/other.slice                                                                    | max         |
 
     Scenario: Stopping it puts every slice back to no limit
-      This is the way back that needs no fleet-sync:
+      This is the way back that needs no converge:
       `systemctl --user stop personal-fleet-agent-session-limit.service`.
       When the unit that holds 6 scopes runs until it is stopped
       Then the slices hold:
@@ -120,7 +120,7 @@ Feature: A worker refuses agent sessions above a limit its fleet declares
       When the launcher asks whether it may start
       Then the launcher refuses the session, saying:
         """
-        AGENT_SESSION_REFUSED: this worker already runs 4 agent sessions and its limit is 4 (agentSessionLimit in the fleet configuration), so this one was not started. End a session that is no longer needed and send the message again, or raise agentSessionLimit in fleet.json and run devfleet fleet-sync.
+        AGENT_SESSION_REFUSED: this worker already runs 4 agent sessions and its limit is 4 (agentSessionLimit in the fleet configuration), so this one was not started. End a session that is no longer needed and send the message again, or raise agentSessionLimit in fleet.json and run homelab converge.
         """
 
     Scenario Outline: A launcher started <where> is never refused

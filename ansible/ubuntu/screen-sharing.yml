@@ -7,7 +7,7 @@
   vars_files: [policy.json]
   vars:
     rdp_blob: /etc/personal-fleet/rdp-password.cred
-    rdp_unit: devfleet-rdp-credential.service
+    rdp_unit: homelab-rdp-credential.service
     rdp_directory: '{{ development_home }}/.local/share/gnome-remote-desktop'
     rdp_bus:
       XDG_RUNTIME_DIR: '/run/user/{{ development_uid }}'
@@ -62,7 +62,7 @@
         group: root
         mode: '0644'
         content: |
-          # Managed by dev-fleet screen sharing
+          # Managed by homelab screen sharing
           [Unit]
           Description=Publish the fleet desktop sharing credential in the session keyring
           After=user@{{ development_uid }}.service
@@ -107,8 +107,8 @@
           changed_when: false
         - name: Preserve an existing configured identity
           ansible.builtin.set_fact:
-            rdp_cert: '{{ (rdp_paths.results[0].stdout | trim("''")) or (rdp_directory ~ ''/devfleet.crt'') }}'
-            rdp_key: '{{ (rdp_paths.results[1].stdout | trim("''")) or (rdp_directory ~ ''/devfleet.key'') }}'
+            rdp_cert: '{{ (rdp_paths.results[0].stdout | trim("''")) or (rdp_directory ~ ''/homelab.crt'') }}'
+            rdp_key: '{{ (rdp_paths.results[1].stdout | trim("''")) or (rdp_directory ~ ''/homelab.key'') }}'
         - name: Inspect both parts of the desktop identity
           ansible.builtin.stat:
             path: '{{ item }}'

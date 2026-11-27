@@ -1,7 +1,7 @@
 Feature: The image of the fresh machines is built before any scenario
   The fresh-box features run against disposable machines made from one
   image. Building it downloads a base image and packages, which fails when a
-  registry or an archive does for a moment. That says nothing about dev-fleet,
+  registry or an archive does for a moment. That says nothing about homelab,
   so the build is tried again, and a build that still fails is reported once,
   as the runner's, before any scenario runs.
 

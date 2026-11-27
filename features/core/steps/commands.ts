@@ -267,7 +267,7 @@ Then(
   'the remedy of the check {string} names the fleet.json this process reads, by its path',
   (world, id: string) => {
     expect(checkNamed(world, id).remedy?.action).toContain(
-      `in fleet.json (${process.env['DEVFLEET_CONFIG']})`
+      `in fleet.json (${process.env['HOMELAB_CONFIG']})`
     );
   }
 );

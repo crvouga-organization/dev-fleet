@@ -75,7 +75,7 @@ Given('the T3 of the manager has no links', (world) => {
   links(world, []);
 });
 
-/** What fleet-sync's pairing does in a scenario: nothing was asked for
+/** What converge's pairing does in a scenario: nothing was asked for
  * (undefined), or pairing links the environment and passes. */
 const pairings = new WeakMap<
   IdeWorld,

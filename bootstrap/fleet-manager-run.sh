@@ -1,6 +1,6 @@
 #!/bin/sh
-# Every fleet-sync on the manager runs through this, whether started there or
-# handed off from a worker over strict SSH. Runs fleet-sync from a clean,
+# Every converge on the manager runs through this, whether started there or
+# handed off from a worker over strict SSH. Runs converge from a clean,
 # fleet-owned checkout of the exact approved revision, so the result never
 # depends on the working tree it was started in (uncommitted edits, another
 # branch, a removed worktree). Checkouts are reused when warm and pruned to two:
@@ -11,8 +11,8 @@ revision=$1
 shift
 case "$revision" in *[!a-f0-9]*|'') exit 2;; esac
 [ "${#revision}" = 40 ] || exit 2
-say() { printf 'fleet-sync (manager): %s\n' "$1" >&2; }
-# A preview (--dry-run) changes nothing outside dev-fleet's own disposable
+say() { printf 'converge (manager): %s\n' "$1" >&2; }
+# A preview (--dry-run) changes nothing outside homelab's own disposable
 # caches: it never publishes the global mise configuration, never edits shell
 # profiles and never prunes run checkouts. Only an apply does.
 preview=false
@@ -21,24 +21,24 @@ for arg in "$@"; do [ "$arg" != --dry-run ] || preview=true; done
 # revision: the toolchain bootstrap installs the mise the revision pins even
 # when the manager runs a newer one. Without it a newer mise is kept.
 downgrade=''
-[ "${DEVFLEET_MISE_DOWNGRADE_ALLOWED:-}" != "$revision" ] || downgrade=--allow-mise-downgrade
+[ "${HOMELAB_MISE_DOWNGRADE_ALLOWED:-}" != "$revision" ] || downgrade=--allow-mise-downgrade
 # mise is installed here by the toolchain step below; a login shell is not
 # required to find it.
 export PATH="$HOME/.local/bin:$PATH"
 fleet="$HOME/.local/share/personal/fleet"
-# The repository to take the revision from. Nobody keeps a clone of dev-fleet:
-# fleet-sync names the one it prepared, and a hand-off (which names none) uses
-# the manager's own copy of the source repository, or the checkout the devfleet
+# The repository to take the revision from. Nobody keeps a clone of homelab:
+# converge names the one it prepared, and a hand-off (which names none) uses
+# the manager's own copy of the source repository, or the checkout the homelab
 # launcher is linked into.
-repo=${DEVFLEET_REPO:-}
+repo=${HOMELAB_REPO:-${DEVFLEET_REPO:-}}
 if [ -z "$repo" ] && git -C "$fleet/manager/source" rev-parse --git-dir >/dev/null 2>&1; then
   repo="$fleet/manager/source"
 fi
 if [ -z "$repo" ]; then
-  launcher=$(command -v devfleet) || { say 'this manager has no copy of the source yet; run fleet-sync once on the manager itself, from the project that holds your fleet.json.'; exit 3; }
+  launcher=$(command -v homelab) || { say 'this manager has no copy of the source yet; run converge once on the manager itself, from the project that holds your fleet.json.'; exit 3; }
   repo=$(dirname "$(readlink -f "$launcher")")
 fi
-repo=$(git -C "$repo" rev-parse --show-toplevel) || { say 'cannot read the source repository on the manager; run fleet-sync once on the manager itself to fetch it again.'; exit 3; }
+repo=$(git -C "$repo" rev-parse --show-toplevel) || { say 'cannot read the source repository on the manager; run converge once on the manager itself to fetch it again.'; exit 3; }
 runs="$fleet/manager-runs"
 dir="$runs/$revision"
 ready() {
@@ -77,7 +77,7 @@ failed() {
 if [ "$preview" = true ]; then
   # The revision's own locked Bun is enough to preview; mise keeps it beside
   # its other versions without making it the global one.
-  command -v mise >/dev/null 2>&1 || { say 'this manager has no toolchain yet, so a preview cannot run; fleet-sync without --dry-run installs it.'; exit 6; }
+  command -v mise >/dev/null 2>&1 || { say 'this manager has no toolchain yet, so a preview cannot run; converge without --dry-run installs it.'; exit 6; }
   mise install --locked bun >"$log" 2>&1 || failed
 elif [ -n "$downgrade" ] || [ "$(cat "$stamp" 2>/dev/null)" != "$key" ] || [ -z "$(find "$stamp" -mmin -1440 2>/dev/null)" ]; then
   rm -f -- "$stamp"
@@ -100,7 +100,7 @@ if [ "$preview" = false ]; then
   applied=$(basename "$(readlink "$(dirname "$runs")/current" 2>/dev/null || true)")
   # Older launchers can point inside a nested checkout in a previous run.
   # Keep that run until the manager playbook links the launcher to current.
-  launcher=$(readlink -f "$HOME/.local/bin/devfleet" 2>/dev/null || true)
+  launcher=$(readlink -f "$HOME/.local/bin/homelab" 2>/dev/null || true)
   runs_real=$(cd "$runs" && pwd -P)
   kept=0
   if [ -n "$applied" ] && [ "$applied" != "$revision" ] && [ -d "$runs/$applied" ]; then kept=1; fi
@@ -118,4 +118,4 @@ if [ "$preview" = false ]; then
   git -C "$repo" worktree prune
 fi
 export PERSONAL_WORKSPACE="$dir" PERSONAL_FLEET_RUN_CHECKOUT="$revision"
-exec mise exec --locked bun -- bun src/cli/cli.ts fleet-sync --revision "$revision" "$@"
+exec mise exec --locked bun -- bun src/cli/cli.ts converge --revision "$revision" "$@"

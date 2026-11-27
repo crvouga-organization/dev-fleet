@@ -10,13 +10,13 @@ export async function syncT3(
   settings: Settings
 ): Promise<CommandOutcome> {
   try {
-    return await t3Command('t3-apply', options, settings);
+    return await t3Command('t3-reconcile', options, settings);
   } catch (error) {
     return {
       exitCode: 1,
       data: {
         version: 1,
-        command: 'fleet-node-sync',
+        command: 'converge-local',
         ok: false,
         applied: true,
         stage: 't3',
@@ -28,7 +28,7 @@ export async function syncT3(
             ? error.message
             : 'T3 reconciliation failed; inspect local configuration and ownership state.',
         progress:
-          'Tools, launcher and profile steps completed. Node receipt was not advanced. Fix the T3 conflict and repeat fleet-node-sync.',
+          'Tools, launcher and profile steps completed. Node receipt was not advanced. Fix the T3 conflict and repeat converge-local.',
       },
     };
   }

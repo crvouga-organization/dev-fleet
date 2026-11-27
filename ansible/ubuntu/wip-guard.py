@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Push work in progress of every agent worktree to a recovery ref.
 
-Managed by personal fleet-sync (tasks/recovery.yml) as
+Managed by personal converge (tasks/recovery.yml) as
 personal-worker-wip-guard.service, started by personal-worker-wip-guard.timer.
 
 Workers are disposable: a worker lost mid-task must lose at most one interval
@@ -34,9 +34,9 @@ from pathlib import Path
 
 GIT = ['git', '-c', 'safe.directory=*']
 AUTHOR = {
-    'GIT_AUTHOR_NAME': 'dev-fleet work-in-progress guard',
+    'GIT_AUTHOR_NAME': 'homelab work-in-progress guard',
     'GIT_AUTHOR_EMAIL': 'wip-guard@example.invalid',
-    'GIT_COMMITTER_NAME': 'dev-fleet work-in-progress guard',
+    'GIT_COMMITTER_NAME': 'homelab work-in-progress guard',
     'GIT_COMMITTER_EMAIL': 'wip-guard@example.invalid',
 }
 
@@ -83,7 +83,7 @@ def snapshot(path):
     if tree == git(path, 'rev-parse', 'HEAD^{tree}').stdout.strip():
         return head, head
     commit = git(path, 'commit-tree', tree, '-p', head, '-m',
-                 'Work in progress saved by the dev-fleet guard', env=AUTHOR)
+                 'Work in progress saved by the homelab guard', env=AUTHOR)
     return head, commit.stdout.strip() or None
 
 

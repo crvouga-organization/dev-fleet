@@ -30,7 +30,7 @@ import { managerT3, type T3Transport } from '../../../src/t3/peer-link';
 import { pairIfRequested } from '../../../src/t3/pairing';
 import type { FleetNode } from '../../../src/types';
 
-/** fleet-node-replace and fleet-node-retire, against a Vault, a tailnet and
+/** replace and retire, against a Vault, a tailnet and
  * Ansible that answer from memory.
  */
 const { Given, When, Then } = fleetSync;
@@ -80,15 +80,15 @@ const TICKET = `placeholder-ticket-${randomUUID()}`;
 function lifecycle(world: FleetSyncWorld): Lifecycle {
   let found = lifecycles.get(world);
   if (found) return found;
-  const directory = mkdtempSync(join(tmpdir(), 'devfleet-lifecycle-'));
-  const earlier = process.env['DEVFLEET_STATE'];
-  process.env['DEVFLEET_STATE'] = join(directory, 'state');
-  // As the devfleet CLI does at start: every SSH session renders the
+  const directory = mkdtempSync(join(tmpdir(), 'homelab-lifecycle-'));
+  const earlier = process.env['HOMELAB_STATE'];
+  process.env['HOMELAB_STATE'] = join(directory, 'state');
+  // As the homelab CLI does at start: every SSH session renders the
   // fleet-owned known_hosts from the keys the fleet state pins.
   readPinsWith(() => readPins());
   world.defer(() => {
     readPinsWith(null);
-    process.env['DEVFLEET_STATE'] = earlier;
+    process.env['HOMELAB_STATE'] = earlier;
     rmSync(directory, { recursive: true, force: true });
   });
   found = {
@@ -416,14 +416,14 @@ Given('the operator has replaced {string}', async (world, id: string) => {
 });
 
 When(
-  /^the operator runs fleet-node-retire for "([^"]+)"( with --apply --yes)?$/,
+  /^the operator runs retire for "([^"]+)"( with --apply --yes)?$/,
   async (world, id: string, apply: string | undefined) => {
     world.outcome = await retire(world, Boolean(apply), id);
   }
 );
 
 When(
-  /^the operator runs fleet-node-replace for "([^"]+)"(?: with the host key "([^"]+)" and| with) --apply --yes$/,
+  /^the operator runs replace for "([^"]+)"(?: with the host key "([^"]+)" and| with) --apply --yes$/,
   async (world, id: string, hostKey: string | undefined) => {
     world.outcome = await printing(world, () => replace(world, id, hostKey));
     // What the command prints is its report's text.
@@ -697,7 +697,7 @@ Given(
 );
 
 When(
-  /^fleet-sync reads the worker records( to preview them)?$/,
+  /^converge reads the worker records( to preview them)?$/,
   async (world, preview: string | undefined) => {
     world.checks = await reconcileRecords(
       fleet,
@@ -708,7 +708,7 @@ When(
   }
 );
 
-Then('fleet-sync reports:', (world, table: DataTable) => {
+Then('converge reports:', (world, table: DataTable) => {
   expect<object[]>(
     world.checks.map((check) => ({ id: check.id, status: check.status }))
   ).toEqual(table.hashes());
@@ -770,7 +770,7 @@ Given(
         JSON.stringify({
           id: randomUUID(),
           credential: PAIRING_CODE,
-          label: 'dev-fleet manager',
+          label: 'homelab manager',
         })
       )
     );
@@ -805,7 +805,7 @@ Given('the fleet authorizes first T3 pairing on enrollment', (world) => {
 });
 
 When(
-  'fleet-sync pairs the T3 of {string} if it was asked to',
+  'converge pairs the T3 of {string} if it was asked to',
   async (world, id: string) => {
     const state = lifecycle(world);
     const node = roster(world).nodes.find((entry) => entry.id === id)!;
@@ -867,7 +867,7 @@ Then('the session issued for the link was revoked', (world) => {
       '--scope',
       'access:write',
       '--label',
-      'dev-fleet pairing',
+      'homelab pairing',
     ],
     ['t3', 'auth', 'session', 'revoke', SESSION_ID],
   ]);

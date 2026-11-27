@@ -36,17 +36,17 @@ Feature: The toolchain of a checkout is checked tool by tool
     And the remedy of the check "tool:mise" mentions "--allow-mise-downgrade"
     And nothing reported contains "private-token"
 
-  Scenario: A mise older than the revision pins fails, and says to run fleet-sync
+  Scenario: A mise older than the revision pins fails, and says to run converge
     Given the doctor of the checkout reports ok, with these checks:
       | id   | status | detail        |
       | mise | fail   | private-token |
     When the toolchain of the checkout at "/repo" is checked
     Then the check "tool:mise" fails
-    And the remedy of the check "tool:mise" mentions "devfleet fleet-sync"
+    And the remedy of the check "tool:mise" mentions "homelab converge"
     And nothing reported contains "private-token"
 
-  Scenario: A global mise configuration that is not dev-fleet's says to run fleet-sync
-    On a fleet machine the global mise configuration belongs to dev-fleet.
+  Scenario: A global mise configuration that is not homelab's says to run converge
+    On a fleet machine the global mise configuration belongs to homelab.
     The report says so in its own words and never repeats what the doctor
     printed.
     Given the doctor of the checkout reports ok, with these checks:
@@ -54,6 +54,6 @@ Feature: The toolchain of a checkout is checked tool by tool
       | global-mise-config | fail   | private-token |
     When the toolchain of the checkout at "/repo" is checked
     Then the check "tool:global-mise-config" fails
-    And the remedy of the check "tool:global-mise-config" mentions "devfleet fleet-sync"
+    And the remedy of the check "tool:global-mise-config" mentions "homelab converge"
     And the remedy of the check "tool:global-mise-config" mentions "project mise.toml"
     And nothing reported contains "private-token"

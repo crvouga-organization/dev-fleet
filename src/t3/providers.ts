@@ -13,7 +13,7 @@ import { stablePath, stableWorkspace } from '../platform/t3-policy';
  * the fixed ones plus one per account signed in on the CLI proxy. T3 watches
  * its settings, so providers appear (and retired ones disappear) at once,
  * without a restart. Workers additionally lock the same instances through T3
- * administrator policy. The ownership-safe t3-apply engine preserves unrelated
+ * administrator policy. The ownership-safe t3-reconcile engine preserves unrelated
  * settings and unmanaged instances; an existing unowned instance of the same
  * ID is reported, never overwritten.
  */
@@ -30,7 +30,7 @@ export async function machineProviders(
 ): Promise<Check> {
   const remedy = {
     action:
-      'Run devfleet t3-apply --dry-run on this machine and review any conflicting instance; adopt it with t3-apply --import ID only if it should be managed.',
+      'Run homelab t3-reconcile --dry-run on this machine and review any conflicting instance; adopt it with t3-reconcile --import ID only if it should be managed.',
   };
   try {
     const target = paths(options, workspace);

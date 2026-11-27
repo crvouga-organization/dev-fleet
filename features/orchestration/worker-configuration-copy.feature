@@ -1,7 +1,7 @@
 @linux
 Feature: A worker's copy of the configuration that was edited there is refused, not replaced
-  fleet-sync sends every worker the fleet configuration, and the remote
-  bootstrap installs it at ~/.config/dev-fleet/fleet.json before anything
+  converge sends every worker the fleet configuration, and the remote
+  bootstrap installs it at ~/.config/homelab/fleet.json before anything
   else. Beside the copy it keeps its record, fleet.json.sha256: what the copy
   was when it was last written. A copy that no longer matches its record was
   edited on the worker. A worker takes its configuration from the manager, so
@@ -128,4 +128,4 @@ Feature: A worker's copy of the configuration that was edited there is refused, 
 
   Scenario: The refusal needs a person and names where the change belongs
     Then the diagnostic of "FLEET_CONFIGURATION_COPY_CHANGED" is not retryable
-    And the remedy the bootstrap prints for "FLEET_CONFIGURATION_COPY_CHANGED" mentions "rm ~/.config/dev-fleet/fleet.json"
+    And the remedy the bootstrap prints for "FLEET_CONFIGURATION_COPY_CHANGED" mentions "rm ~/.config/homelab/fleet.json"

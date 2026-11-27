@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Stop the user process group that is filling the disk before it runs out.
 
-Managed by personal fleet-sync (tasks/resources.yml) as
+Managed by personal converge (tasks/resources.yml) as
 personal-fleet-disk-guard.service. Every interval it measures free space on the
 watched filesystems (bytes and inodes) and the bytes each leaf cgroup under user.slice wrote. When
 any watched filesystem is below the floor of free bytes or of free inodes, it

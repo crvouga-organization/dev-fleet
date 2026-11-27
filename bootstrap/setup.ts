@@ -6,7 +6,7 @@ import {
 } from './worker-tools';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-/** Used by both OS bootstraps, dev-fleet tools sync and dev-fleet update. No workspace dependencies. */
+/** Used by both OS bootstraps, homelab tools sync and homelab update. No workspace dependencies. */
 import { setupStatus, setupFailureCode, type SetupPhase } from './setup-status';
 import { spawnSync } from 'node:child_process';
 import {
@@ -69,7 +69,7 @@ if (import.meta.main) {
         report(phase, 'running');
       },
       worker,
-      // The tool profiles of the fleet configuration fleet-sync installed.
+      // The tool profiles of the fleet configuration converge installed.
       worker && node >= 0
         ? installedSelection(process.argv[node + 1])
         : NO_SELECTION

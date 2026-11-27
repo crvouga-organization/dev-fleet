@@ -2,7 +2,7 @@ Feature: Every machine's T3 holds the declared profile
   Beyond the provider instances, fleet.json can declare top-level T3
   settings under t3.profile: tool servers, projects, selected preferences.
   Each declared key converges on every machine. A key nobody declared is the
-  machine's own. A key changed on the machine since dev-fleet last wrote it is
+  machine's own. A key changed on the machine since homelab last wrote it is
   reported, never overwritten.
 
   Background:
@@ -39,7 +39,7 @@ Feature: Every machine's T3 holds the declared profile
       | mcpServers | unchanged |
     And T3's settings file was not rewritten
 
-  Scenario: A declared change replaces what dev-fleet wrote before
+  Scenario: A declared change replaces what homelab wrote before
     Given the fleet declares the T3 profile:
       """
       { "mcpServers": { "docs": { "command": "docs-server" } } }
@@ -71,7 +71,7 @@ Feature: Every machine's T3 holds the declared profile
       14
       """
 
-  Scenario: A setting the user changed after dev-fleet wrote it is kept
+  Scenario: A setting the user changed after homelab wrote it is kept
     Given the fleet declares the T3 profile:
       """
       { "theme": "dark" }
@@ -136,7 +136,7 @@ Feature: Every machine's T3 holds the declared profile
         """
 
     Scenario: A write T3 interrupts once is planned again and lands
-      Given T3 rewrites its settings while dev-fleet merges, 1 time
+      Given T3 rewrites its settings while homelab merges, 1 time
       When the profile is applied
       Then the check "t3:profile" passes
       And T3's setting "theme" is:
@@ -149,7 +149,7 @@ Feature: Every machine's T3 holds the declared profile
         """
 
     Scenario: A file T3 keeps rewriting is reported busy after three tries
-      Given T3 rewrites its settings while dev-fleet merges, 5 times
+      Given T3 rewrites its settings while homelab merges, 5 times
       When the profile is applied
       Then the check "t3:profile" fails with "T3_SETTINGS_BUSY"
       And T3's settings have no "theme"

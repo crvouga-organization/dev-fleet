@@ -262,7 +262,7 @@ Given('the manager has no mise', (world) => {
   rmSync(join(manager(world).home, '.local/bin/mise'));
 });
 
-/** The devfleet installed on a manager: a stand-in on its PATH that records
+/** The homelab installed on a manager: a stand-in on its PATH that records
  * what it is asked, then does what the scenario says.
  */
 function installDevfleet(world: FleetSyncWorld, answer: string): void {
@@ -270,22 +270,22 @@ function installDevfleet(world: FleetSyncWorld, answer: string): void {
   const installed = join(node.home, 'installed');
   mkdirSync(installed, { recursive: true });
   writeFileSync(
-    join(installed, 'devfleet'),
-    `#!/bin/sh\necho "devfleet $*" >> ${join(node.home, 'calls')}\n${answer}\n`
+    join(installed, 'homelab'),
+    `#!/bin/sh\necho "homelab $*" >> ${join(node.home, 'calls')}\n${answer}\n`
   );
-  chmodSync(join(installed, 'devfleet'), 0o755);
+  chmodSync(join(installed, 'homelab'), 0o755);
   node.env['PATH'] = `${installed}:/usr/bin:/bin`;
 }
 
 Given(
-  'the devfleet installed on the manager answers that no mise would be replaced',
+  'the homelab installed on the manager answers that no mise would be replaced',
   (world) => {
     installDevfleet(world, 'echo \'{"version":1,"ok":true}\'\nexit 0');
   }
 );
 
 Given(
-  'the devfleet installed on the manager refuses the question with:',
+  'the homelab installed on the manager refuses the question with:',
   (world, report: string) => {
     const node = manager(world);
     writeFileSync(join(node.home, 'refusal'), `${report}\n`);
@@ -294,7 +294,7 @@ Given(
 );
 
 Given(
-  'the devfleet installed on the manager is from before the question',
+  'the homelab installed on the manager is from before the question',
   (world) => {
     // What a command line that does not know an option does with it.
     installDevfleet(
@@ -333,12 +333,12 @@ const asks = (world: FleetSyncWorld): string[] => {
     .calls()
     .slice(node.before)
     .split('\n')
-    .filter((line) => line.startsWith('devfleet '))
-    .map((line) => line.slice('devfleet '.length));
+    .filter((line) => line.startsWith('homelab '))
+    .map((line) => line.slice('homelab '.length));
 };
 
 Then(
-  'the devfleet installed on the manager was asked {string}',
+  'the homelab installed on the manager was asked {string}',
   (world, command: string) => {
     const node = manager(world);
     expect(asks(world)).toEqual([
@@ -349,7 +349,7 @@ Then(
   }
 );
 
-Then('the devfleet installed on the manager was not asked', (world) => {
+Then('the homelab installed on the manager was not asked', (world) => {
   expect(asks(world)).toEqual([]);
 });
 

@@ -389,7 +389,7 @@ Then('the agents play was run {int} time(s)', (world, count: number) => {
 });
 
 Then(
-  'the profile holds exactly the files dev-fleet specifies, and its receipt',
+  'the profile holds exactly the files homelab specifies, and its receipt',
   async (world) => {
     const { directory, files } = await plan(context(world));
     expect(await filesUnder(directory)).toEqual(
@@ -399,7 +399,7 @@ Then(
 );
 
 Then(
-  'every file of the profile holds, byte for byte, what dev-fleet specifies for it',
+  'every file of the profile holds, byte for byte, what homelab specifies for it',
   async (world) => {
     const { directory } = await plan(context(world));
     const specified = render(context(world).selection);
@@ -429,7 +429,7 @@ Then(
 );
 
 Then(
-  'its receipt is, byte for byte, the one dev-fleet records for it',
+  'its receipt is, byte for byte, the one homelab records for it',
   async (world) => {
     const result = await plan(context(world));
     expect(await readFile(result.receiptPath, 'utf8')).toBe(

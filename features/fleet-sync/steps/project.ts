@@ -60,9 +60,9 @@ Given('an environment that names nothing', (world) => {
 });
 
 Given(
-  'an environment that names {string} as DEVFLEET_CONFIG',
+  'an environment that names {string} as HOMELAB_CONFIG',
   (world, path: string) => {
-    project(world).env = { DEVFLEET_CONFIG: path };
+    project(world).env = { HOMELAB_CONFIG: path };
   }
 );
 
@@ -74,7 +74,7 @@ When(
   }
 );
 
-When('devfleet is run in {string}', (world, directory: string) => {
+When('homelab is run in {string}', (world, directory: string) => {
   const { root, env } = project(world);
   project(world).found = useProjectConfig(env, join(root, directory));
 });
@@ -94,21 +94,21 @@ Then('no fleet configuration is found', (world) => {
 });
 
 Then(
-  /^(?:the fleet configuration found is|devfleet uses) the project's "([^"]*)"$/,
+  /^(?:the fleet configuration found is|homelab uses) the project's "([^"]*)"$/,
   (world, path: string) => {
     expect(project(world).found).toBe(join(project(world).root, path));
   }
 );
 
-Then('devfleet uses no project configuration', (world) => {
+Then('homelab uses no project configuration', (world) => {
   expect(project(world).found).toBeNull();
 });
 
 Then(
-  "the environment names the project's {string} as DEVFLEET_CONFIG",
+  "the environment names the project's {string} as HOMELAB_CONFIG",
   (world, path: string) => {
     const { root, env } = project(world);
-    expect(env['DEVFLEET_CONFIG']).toBe(join(root, path));
+    expect(env['HOMELAB_CONFIG']).toBe(join(root, path));
   }
 );
 

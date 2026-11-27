@@ -1,33 +1,33 @@
-> This document was written for the fleet dev-fleet was extracted from. Paths and
+> This document was written for the fleet homelab was extracted from. Paths and
 > commands were updated; some statements still describe that fleet and are being
 > revised. The README is authoritative, and what a machine must offer to be a
 > worker is listed only in [worker requirements](worker-requirements.md).
 
 # Developer fleet
 
-`devfleet` diagnoses development computers: SSH, VS Code Remote-SSH,
+`homelab` diagnoses development computers: SSH, VS Code Remote-SSH,
 per-machine authentication, T3 Connect and shared toolchain/dependency drift.
 It is a local CLI, not a library, a daemon or a cloud manager. It reuses the
 existing mise/workstation owners rather than introducing another installer.
 
 The fleet is one singleton **manager** (the human's macOS machine, which runs
-`fleet-sync` and every singleton service such as the CLI proxy and Beszel hub)
+`sync` and every singleton service such as the CLI proxy and Beszel hub)
 and stateless Linux **workers**. See [topology](topology.md).
 
-See [Ubuntu fleet-sync implementation and operator status](ubuntu-sync.md) for
+See [Ubuntu converge implementation and operator status](ubuntu-sync.md) for
 the manager-driven public command and its outstanding full-machine gates.
 
 ## Worker contract
 
-Use `devfleet fleet-sync` to reconcile all declared workers and
-`devfleet fleet-status --workers` to inspect remaining gaps. See
+Use `homelab converge` to reconcile all declared workers and
+`homelab check --workers` to inspect remaining gaps. See
 [worker-contract.md](worker-contract.md) for bootstrap, ownership and the exact
-scope of readiness. `fleet-status` without flags diagnoses the local roster.
+scope of readiness. `status` without flags diagnoses the local roster.
 Workers are Ubuntu 26.04 or 24.04; the manager is macOS and never sleeps on AC power
 (`ansible/macos/manager.yml`). Machine policy (never sleep, no automatic
 logout, always-on Tailscale/SSH/Docker/Beszel, memory and disk safety, per-node
 credential renewal) is
-declared in Ansible and measured by `fleet-status --workers`, which also verifies
+declared in Ansible and measured by `status --workers`, which also verifies
 the centralized Beszel dashboard. See the
 [platform matrix](ubuntu-sync.md#machine-policy-by-platform).
 
@@ -36,19 +36,19 @@ the centralized Beszel dashboard. See the
 Run from the repository root after `bun install --frozen-lockfile`:
 
 ```sh
-devfleet fleet-node-add --id dev-linux --ssh dev-linux --path /home/dev/workspace --json
-devfleet fleet-node-add --id dev-linux --ssh dev-linux --path /home/dev/workspace --apply --yes --json
-devfleet fleet-nodes --json                        # validate the roster; no network
-devfleet fleet-nodes --onboard --node dev-linux --json
-devfleet fleet-status --json                       # manager + all roster nodes
-devfleet fleet-status --node dev-linux --json
-devfleet fleet-status --local --json               # no roster/SSH needed
-devfleet fleet-repair --node dev-linux --repair workspace --json   # plan only
-devfleet fleet-repair --node dev-linux --repair workspace --apply --yes --json
+homelab enroll --id dev-linux --ssh dev-linux --path /home/dev/workspace --json
+homelab enroll --id dev-linux --ssh dev-linux --path /home/dev/workspace --apply --yes --json
+homelab workers --json                        # validate the roster; no network
+homelab workers --onboard --node dev-linux --json
+homelab check --json                       # manager + all roster nodes
+homelab check --node dev-linux --json
+homelab check --local --json               # no roster/SSH needed
+homelab repair --node dev-linux --repair workspace --json   # plan only
+homelab repair --node dev-linux --repair workspace --apply --yes --json
 ```
 
-dev-fleet is a command with no library API: run it as `npx devfleet` from the
-project that holds your `fleet.json` (`./devfleet` from a checkout of dev-fleet
+homelab is a command with no library API: run it as `npx homelab` from the
+project that holds your `fleet.json` (`./homelab` from a checkout of homelab
 itself). Schema, roster
 listing, onboarding and repair previews do not contact nodes or auth services.
 Status never opens a login flow.
@@ -63,7 +63,7 @@ remains the sole cloud resource owner; fleet creates no networks, hosts or secre
 
 ```json
 {
-  "$schema": "./node_modules/@crvouga/dev-fleet/schema/roster.schema.json",
+  "$schema": "./node_modules/@crvouga/homelab/schema/roster.schema.json",
   "version": 1,
   "nodes": [
     {
@@ -90,12 +90,12 @@ remains the sole cloud resource owner; fleet creates no networks, hosts or secre
   `[]` still checks checkout/dependencies/SSH. Unknown fields fail closed.
 
 The manager reference defaults to where the CLI runs from: the published
-package, or the dev-fleet checkout a source run is started in. `--workspace PATH`
+package, or the homelab checkout a source run is started in. `--workspace PATH`
 changes that reference/local sync target. Nodes are compared to **that checkout**,
 including uncommitted lockfile edits, not an implicitly fetched origin/main.
 Manager capabilities default to all five; headless managers can pass
 `--require github,vault,t3,toolchain` or `--require none`. This does not override
-remote nodes' required lists. Run `fleet-nodes --schema` for editor/agent validation.
+remote nodes' required lists. Run `workers --schema` for editor/agent validation.
 
 ## Evidence and diagnosis
 
@@ -139,7 +139,7 @@ With `tailnet` in `fleet.json` and the secret `tailnet-admin`, nothing needs
 renewing: every worker joins with a key that carries the fleet's tag, and a
 tagged device has key expiry disabled on the hosted Tailscale. For an enrolled
 worker whose key still expires (one that joined before it was tagged),
-`fleet-sync` disables expiry through the control plane
+`sync` disables expiry through the control plane
 (`tailscale:key-expiry-policy`); `tailscale:key-expiry` measures the result on
 the next run. Headscale gives a node registered with a pre-authorised key no
 expiry.
@@ -147,19 +147,19 @@ expiry.
 ### Maintenance reboots
 
 Kernel and library updates apply only after a reboot (`worker:reboot-pending`).
-`devfleet fleet-sync --maintenance-reboot` reboots each worker that has one
+`homelab converge --maintenance-reboot` reboots each worker that has one
 pending: one at a time, the canary first, only while it runs no agent turn
 (`--force` ends them), through `ansible/ubuntu/reboot.yml`. Each worker is
 converged again once it answers; a worker that does not come back ready stops
 the ones after it. A new worker that was never ready is rebooted once after its
-first converge in any `fleet-sync`, so it reaches ready in one run; a worker
+first converge in any `sync`, so it reaches ready in one run; a worker
 that was ready before is rebooted only by `--maintenance-reboot`.
 
 A converge never upgrades Tailscale on a worker that is older than its pin
 (`TAILSCALE_UPGRADE_PENDING`): restarting tailscaled can drop the SSH session
 the converge runs in. `--maintenance-reboot` takes it to the pin first, through
 `ansible/ubuntu/tailscale-upgrade.yml`: the worker's own Tailscale play runs in
-a detached unit (`devfleet-tailscale-upgrade.service`), the manager waits for
+a detached unit (`homelab-tailscale-upgrade.service`), the manager waits for
 the worker to answer again and for the unit to end, then converges it once
 more. An upgrade that did not complete (`WORKER_TAILSCALE_UPGRADE_FAILED`)
 stops the workers after it.
@@ -170,7 +170,7 @@ only a person's identity can authorise a device:
 1. On the worker's console, run `sudo tailscale up` and open the link it
    prints, signed in to the fleet's tailnet.
 2. In the admin console, disable key expiry for the worker, or tag it.
-3. From the manager, run `devfleet fleet-sync`: `ansible/ubuntu/tailscale.yml`
+3. From the manager, run `homelab converge`: `ansible/ubuntu/tailscale.yml`
    verifies the login and `tailscale:key-expiry` passes.
 
 An SSH shell is not proof that VS Code or T3 Connect works. Diagnostics check
@@ -198,7 +198,7 @@ need normal repository validation. A green install is not a healthy fleet.
    fingerprint out of band. Never expose public SSH or copy private keys/auth
    folders. Cloud provisioning remains an OpenTofu task.
 3. Configure the manager's SSH alias, append the node to the local roster,
-   then run `fleet-nodes` and `fleet-nodes --onboard --node ID --json`. Onboarding
+   then run `workers` and `workers --onboard --node ID --json`. Onboarding
    emits a ready-to-edit SSH stanza, VS Code settings and ordered instructions;
    it does not overwrite user config. Test `ssh ALIAS` manually first.
 4. Ensure noninteractive shell startup is quiet and Node (or explicit Bun runtime) is reachable. Fleet
@@ -207,7 +207,7 @@ need normal repository validation. A green install is not a healthy fleet.
 5. Authenticate separately: GitHub, Git SSH, Vault, coding providers and T3 pairing
    are distinct sessions. Use gh auth login/setup-git, approved vault login and
    operator-driven t3 up --connect as needed. Never put secrets in reports.
-   Workstation and provider configuration are applied by `devfleet fleet-sync`.
+   Workstation and provider configuration are applied by `homelab converge`.
 6. In VS Code's local profile install Remote-SSH, select the same SSH binary,
    alias/config, enable its login terminal temporarily and inspect Output →
    Remote - SSH. Restart after PATH/agent changes. Check disk space, remote
@@ -236,10 +236,10 @@ serially; diagnostics run at most four remote probes concurrently.
   and existing config conflict guards in the shared bootstrap runbook.
 - Record input hashes only after success and stable checkout inputs. Failed
   setup can leave partial installs, which the next sync completes. Going back
-  is `fleet-sync --rollback`, as the [README](../README.md#the-version) says. Trusted checkout
+  is `converge --rollback`, as the [README](../README.md#the-version) says. Trusted checkout
   package lifecycle scripts can execute during installation.
 - No other application repos, credentials, provider settings or cloud resources
-  are synchronized. `devfleet fleet-sync` remains the broader convergence.
+  are synchronized. `homelab converge` remains the broader convergence.
 - Run doctor again afterward; successful sync does not prove connectivity/auth.
 
 Subprocesses have deadlines and a combined 1 MiB output cap. SSH probes default
@@ -270,7 +270,7 @@ sync/repairs.
 
 ## Notifications and the heartbeat
 
-`devfleet fleet-watch` runs `fleet-status --workers`, compares the result with
+`homelab notify` runs `status --workers`, compares the result with
 the previous run and notifies only when a worker changes between ready and
 degraded, and again every `repeatHours` (default 24) while it stays degraded.
 It also notifies once when the approved revision of the fleet is another one
@@ -289,16 +289,16 @@ the secret provider like any other:
 
 A notification carries node and check IDs only; `revision-changed` adds
 `revision` (`approved`, `replaced`, and `selectedBy` in the fixed words of the
-fleet state). `devfleet fleet-watch --test`
+fleet state). `homelab notify --test`
 sends one test notification to every target.
 
 Every run stores what it saw, and when, as `watch.json` beside the fleet state
 in the bucket. That time is the manager's heartbeat. Nobody has to run it:
-`fleet-sync` installs it on the manager as the launchd job
-`dev.devfleet.fleet-watch` (`ansible/macos/manager.yml`), which runs every
+`sync` installs it on the manager as the launchd job
+`dev.homelab.notify` (`ansible/macos/manager.yml`), which runs every
 `manager.schedule.watchMinutes` minutes of `fleet.json` (15 by default) from
-the checkout `fleet-sync` last applied, and `manager:watch` fails when it is
-not loaded. It reads the bucket credentials `fleet-state --init` saved.
+the checkout `sync` last applied, and `manager:watch` fails when it is
+not loaded. It reads the bucket credentials `state --init` saved.
 
 A watcher on the manager notices nothing when the manager itself is off, so
 call the reusable `fleet-heartbeat.yml` workflow from the repository that
@@ -314,7 +314,7 @@ The CLI proxy is checked off the manager the same way:
 `uses:` line. It needs no stored secret: it reads the Vault address and the
 proxy endpoint from your `fleet.json`, logs in to Vault with GitHub's OIDC
 token (the read-only role `vault-role` names, `github-actions` by default) and
-runs the checks of the dev-fleet release your `package.json` pins. Copy
+runs the checks of the homelab release your `package.json` pins. Copy
 [`cliproxy/docs/health-workflow.example.yml`](../cliproxy/docs/health-workflow.example.yml)
 into `.github/workflows/` and name the release tag in its `uses:` line; it
 runs the free readiness check every 15 minutes, a light inference check hourly
@@ -322,11 +322,11 @@ and the full suite nightly, and keeps one tracking issue in your repository.
 
 ### The logs of the manager's scheduled jobs
 
-`fleet-sync --schedule` and the watch job write to
+`converge --schedule` and the watch job write to
 `~/.local/share/personal/fleet/manager/logs/<label>.{out,err}.log`. newsyslog
 rotates each once it passes `jobLogs.maxKiB` of `ansible/macos/policy.json`
 (1024 KiB) and keeps `jobLogs.keep` compressed archives, from the drop-in
-`/etc/newsyslog.d/dev-fleet-USER.conf` that the manager's one administrator
+`/etc/newsyslog.d/homelab-USER.conf` that the manager's one administrator
 grant (`ansible/macos/manager-privilege.yml`) installs. `manager:job-logs`
 warns when the drop-in is missing, or a log has grown past twice that size.
 
@@ -345,11 +345,11 @@ Tests inject results/use temporary fixtures; they do not contact nodes, login or
 change global config. The transport smoke test runs the bundled probe locally
 against a temporary checkout, not an SSH server.
 
-## Tailscale fleet-status --tailnet in the public CLI
+## Tailscale check --tailnet in the public CLI
 
-`devfleet fleet-discover --json` lists computers visible to the local signed-in
+`homelab tailnet --json` lists computers visible to the local signed-in
 Tailscale daemon, including offline devices, while explicitly excluding iOS,
-Android and tvOS. `devfleet fleet-status --tailnet --json` checks them all and reports
+Android and tvOS. `homelab check --tailnet --json` checks them all and reports
 unregistered/ambiguous computers and registered nodes missing from the inventory.
 Register actual SSH aliases and checkout paths; the checker does not guess them.
 Existing verified-host-key SSH policy and bounded probes apply. Tailscale daemon
@@ -367,8 +367,8 @@ authorization. Warnings/skips fail the strict whole-tailnet health coverage gate
 
 ## Repair planning and shared access
 
-The public CLI exposes `devfleet fleet-repair --list` (static catalog) and
-`devfleet fleet-repair` (read-only inspection/plan by default). The repair library
+The public CLI exposes `homelab repair --list` (static catalog) and
+`homelab repair` (read-only inspection/plan by default). The repair library
 in this package only executes allowlisted existing owner commands. Native
 account logins and unknown/manual checks always remain operator steps.
 
@@ -393,12 +393,12 @@ existing Vault session. For process-scoped shared secret access, use the existin
 project/config. Infrastructure, access policy and secret seeding remain owned by
 OpenTofu. No OAuth/session/keychain/SSH credential transfer is implemented.
 
-All commands are in the `devfleet` entry point.
+All commands are in the `homelab` entry point.
 
 ## Reviewed workstation configuration rollout
 
-`devfleet fleet-node-sync --revision FULL_SHA --dry-run` previews this node's
-reviewed configuration; without `--dry-run` it applies. `devfleet fleet-sync
+`homelab converge-local --revision FULL_SHA --dry-run` previews this node's
+reviewed configuration; without `--dry-run` it applies. `homelab converge
 --revision FULL_SHA` rolls the same reviewed revision out to the enrolled fleet
 after approval. The [setup runbook](../agents/setup.md)
 covers canaries, offline/partial failures, per-node receipts and rollback. Both

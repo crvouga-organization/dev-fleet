@@ -90,7 +90,7 @@ jobs:
         run: |
           # The version lives in the tag; package.json keeps 0.0.0-development.
           npm version "$VERSION" --no-git-tag-version
-          # The package says which commit it is: fleet-sync run from it
+          # The package says which commit it is: converge run from it
           # converges every machine to exactly this revision.
           npm pkg set gitHead="$(git rev-parse HEAD)"
           mkdir -p "$RUNNER_TEMP/release"

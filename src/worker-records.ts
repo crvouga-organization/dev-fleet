@@ -6,7 +6,7 @@ import { DefinitionError, HOST_KEY } from './definition';
 
 /** One worker as an infrastructure tool describes it, without naming the
  * tool or the provider: schema/worker-record.schema.json. A file or command
- * `workerRecords` in fleet.json names returns a list of them; dev-fleet only
+ * `workerRecords` in fleet.json names returns a list of them; homelab only
  * reads it and never creates a machine.
  */
 export interface WorkerRecord {
@@ -19,7 +19,7 @@ export interface WorkerRecord {
   /** The port sshd listens on; 22 when absent. */
   port?: number;
   /** The SSH host public key, "TYPE BASE64": pinned, never learned.
-   * Without one the key is the one the fleet state pins (fleet-node-seed
+   * Without one the key is the one the fleet state pins (provision
    * --apply --yes), and until then every session is refused.
    */
   hostKey?: string;
@@ -260,7 +260,7 @@ function readSource(
 }
 
 /** fleet.json with the workers its record sources return appended to the
- * inline list, and `workerRecords` itself gone: what the rest of dev-fleet
+ * inline list, and `workerRecords` itself gone: what the rest of homelab
  * reads, installs and stores. A record whose ID is already declared is
  * refused, naming the record.
  */

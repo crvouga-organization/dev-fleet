@@ -360,12 +360,12 @@ class CommandLine(unittest.TestCase):
         self.assertNotIn("pull_request", workflow)
         self.assertNotIn("vault.example.com", workflow)
         self.assertIn(".secrets.address", workflow)  # the Vault address is the caller's fleet.json's
-        self.assertIn("node_modules/@crvouga/dev-fleet/cliproxy/scripts", workflow)  # the release it pins
+        self.assertIn("node_modules/@crvouga/homelab/cliproxy/scripts", workflow)  # the release it pins
         self.assertIn("--ignore-scripts", workflow)
 
     def test_caller_runs_inference_hourly_at_most(self):
         workflow = (support.PACKAGE / "docs/health-workflow.example.yml").read_text()
-        self.assertIn("uses: crvouga/dev-fleet/.github/workflows/cliproxy-health.yml@", workflow)
+        self.assertIn("uses: crvouga/homelab/.github/workflows/cliproxy-health.yml@", workflow)
         self.assertNotIn("pull_request", workflow)
         crons = [line.split("cron:")[1].strip(" '\n") for line in workflow.splitlines() if "cron:" in line]
         self.assertEqual(crons, ["7,22,37,52 * * * *", "17 * * * *", "41 3 * * *"])

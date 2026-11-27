@@ -8,7 +8,7 @@ Feature: The T3 providers a machine gets
     Scenario: Paths and the name of the machine are substituted as they are written
       Given the T3 definition the package ships
       And no account is signed in on the CLI proxy
-      When the providers are worked out for the machine "test-node" with dev-fleet at '/repo/with "quotes"'
+      When the providers are worked out for the machine "test-node" with homelab at '/repo/with "quotes"'
       Then exactly these providers are declared:
         | personal_gateway_models |
         | personal_grok_proxy     |
@@ -19,7 +19,7 @@ Feature: The T3 providers a machine gets
       one a real key, or name a driver the fleet does not manage.
       Given the T3 definition the package ships, edited to set "<field>" to <value>
       And no account is signed in on the CLI proxy
-      When the providers are worked out for the machine "node" with dev-fleet at "/repo"
+      When the providers are worked out for the machine "node" with homelab at "/repo"
       Then it is refused with "Invalid"
 
       Examples:
@@ -37,7 +37,7 @@ Feature: The T3 providers a machine gets
         | tool     | email         | prefix                    | models |
         | claude   | a@example.com | claude-a@example.com      | m      |
         | antigravity | a@example.com | antigravity-a@example.com | g      |
-      When the providers are worked out for the machine "node" with dev-fleet at "/repo"
+      When the providers are worked out for the machine "node" with homelab at "/repo"
       Then the provider "personal_claude_a_example_com" is declared exactly as:
         """
         {
@@ -70,7 +70,7 @@ Feature: The T3 providers a machine gets
       Providers are never dropped because the accounts could not be read.
       Given the T3 definition the package ships
       And the CLI proxy does not answer: "credential-private-sentinel"
-      When the providers are worked out for the machine "node" with dev-fleet at "/repo"
+      When the providers are worked out for the machine "node" with homelab at "/repo"
       Then it is refused with "T3_ACCOUNT_ROSTER_UNAVAILABLE"
-      And the T3 failure provides check "t3:account-roster" and remedy containing "devfleet fleet-accounts"
+      And the T3 failure provides check "t3:account-roster" and remedy containing "homelab accounts"
       And the T3 failure withholds "credential-private-sentinel"

@@ -1,4 +1,4 @@
-Feature: One support matrix says which platforms dev-fleet runs on
+Feature: One support matrix says which platforms homelab runs on
   docs/support-matrix.md is generated from the policies the code reads: the
   macOS and Ubuntu policies name what is supported, ansible/platforms.json
   what is best effort or refused. A platform the code or the features name

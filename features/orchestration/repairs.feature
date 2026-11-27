@@ -1,10 +1,10 @@
 Feature: Every check that did not pass has a repair or an operator step
-  A repair plan accounts for every check that did not pass. dev-fleet runs
+  A repair plan accounts for every check that did not pass. homelab runs
   only the repairs it owns, with commands fixed in its catalog: never a login,
   never Docker, never a decision about trust, and never a command a check or
   a registration suggested.
 
-  Rule: The plan covers every check and automates only what dev-fleet owns
+  Rule: The plan covers every check and automates only what homelab owns
 
     Background:
       Given a checkout at commit "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

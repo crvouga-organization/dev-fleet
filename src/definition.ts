@@ -90,13 +90,13 @@ export interface WorkerBilling {
 export interface ParkingPolicy {
   /** A worker with no agent activity for this long is `worker:idle`. */
   idleAfterHours?: number;
-  /** fleet-watch parks a worker idle longer than idleAfterHours. Off unless
+  /** notify parks a worker idle longer than idleAfterHours. Off unless
    * true.
    */
   autoPark?: boolean;
   /** Run with the worker ID as the last argument when a worker is parked
    * (stop) or resumed (start): an infrastructure tool, never a provider API
-   * dev-fleet calls itself.
+   * homelab calls itself.
    */
   stop?: string[];
   start?: string[];
@@ -114,7 +114,7 @@ export interface FeaturesDefinition {
   containers?: boolean;
   session?: Session;
 }
-/** The singleton manager: the human's machine. It runs fleet-sync and hosts
+/** The singleton manager: the human's machine. It runs converge and hosts
  * every singleton service; it is never converged over SSH. */
 export interface ManagerDefinition {
   id: string;
@@ -126,7 +126,7 @@ export interface ManagerDefinition {
 }
 export interface FleetDefinition {
   version: 3;
-  /** The Git repository machines take dev-fleet's code from. */
+  /** The Git repository machines take homelab's code from. */
   source: { repository: string };
   /** Where this fleet keeps its secrets. */
   secrets: SecretsConfig;
@@ -153,7 +153,7 @@ export interface FleetDefinition {
       managerAccount: string;
       /** Read-only Beszel account visitors are signed in as. */
       viewerAccount: string;
-      /** Scheduled off-machine backups fleet-sync sets on the hub. */
+      /** Scheduled off-machine backups converge sets on the hub. */
       backups?: HubBackups;
     };
   };
@@ -167,7 +167,7 @@ export interface FleetDefinition {
    * included, commits and pushes with.
    */
   git?: GitIdentity;
-  /** Where fleet-watch sends notifications; absent, nobody is notified. */
+  /** Where notify sends notifications; absent, nobody is notified. */
   notify?: NotifyConfig;
   /** An Ubuntu release ansible/ubuntu/policy.json accepts, with exactly the
    * architectures the policy names for it. */
@@ -1094,7 +1094,7 @@ const POLICY: Record<string, string> = {
   persistentT3: 'true',
   neverSleep: 'true',
   toolProfiles: 'a list of known tool profiles, each once',
-  tools: 'a list of tool names from dev-fleet’s mise.toml, each once',
+  tools: 'a list of tool names from homelab’s mise.toml, each once',
   exposure: EXPOSURE_EXPECTED,
   features: 'preset, containers and session',
   agentSessionLimit: SESSION_LIMIT_EXPECTED,
@@ -1178,7 +1178,7 @@ export function definitionProblem(value: unknown): DefinitionProblem | null {
 }
 
 /** The configuration as every machine keeps it at
- * ~/.config/dev-fleet/fleet.json: without the bucket. Only the devfleet CLI
+ * ~/.config/homelab/fleet.json: without the bucket. Only the homelab CLI
  * on the manager reaches the bucket, and a launcher that still runs the
  * revision from before the block existed must go on accepting the file while
  * a sync is under way.

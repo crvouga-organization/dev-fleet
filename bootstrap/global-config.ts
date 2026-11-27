@@ -11,7 +11,7 @@ import {
 import { join } from 'node:path';
 import { homedir } from 'node:os';
 
-const MARKER = '# Managed by dev-fleet bootstrap/setup.ts\n';
+const MARKER = '# Managed by homelab bootstrap/setup.ts\n';
 /**
  * Where agent harnesses create a fresh checkout per task. Every new path would
  * need its own `mise trust`, and an untrusted mise.toml makes every mise shim
@@ -82,13 +82,13 @@ export function publishGlobalConfig(dir: string, root = workspaceRoot): void {
 
 /**
  * How the global mise configuration stands against what this revision
- * publishes. On a fleet machine it belongs to dev-fleet: a project pins its
+ * publishes. On a fleet machine it belongs to homelab: a project pins its
  * tools in its own mise.toml and never publishes a global one.
  *
- * - `published`: dev-fleet's marker, this revision's pins and lock
+ * - `published`: homelab's marker, this revision's pins and lock
  * - `missing`: there is no global config.toml
  * - `replaced`: another owner (or nobody's marker) wrote it
- * - `changed`: dev-fleet's marker, but not this revision's content
+ * - `changed`: homelab's marker, but not this revision's content
  */
 export type GlobalConfigStanding =
   'published' | 'missing' | 'replaced' | 'changed';
@@ -165,7 +165,7 @@ export function withTrustedPaths(config: string, paths: string[]): string {
 }
 
 /**
- * A project adds the tools dev-fleet does not ship in its own mise.toml. On a
+ * A project adds the tools homelab does not ship in its own mise.toml. On a
  * fleet machine mise installs those only from the project's mise.lock and
  * refuses a tool the lock does not name; the fleet's own tools are installed
  * with --locked anyway. mise honours `locked_scopes` only in the global

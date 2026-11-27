@@ -21,7 +21,7 @@ Feature: The pinned tools are first on the PATH of every shell
         case $- in *i*) ;; *) return ;; esac
         # user config
 
-        # dev-fleet toolchain
+        # homelab toolchain
         export PATH={pinned directories}:"$PATH"
         """
       And ".bash_profile" in the home directory reads:
@@ -36,7 +36,7 @@ Feature: The pinned tools are first on the PATH of every shell
         case $- in *i*) ;; *) return ;; esac
         # user config
         """
-      And ".bashrc" in the home directory contains "# dev-fleet toolchain" 1 time
+      And ".bashrc" in the home directory contains "# homelab toolchain" 1 time
       And ".bash_profile" in the home directory contains "# existing login config"
       And a noninteractive Bash with the PATH "/usr/bin:/bin" that reads ".bashrc" on startup can run "fleet-tool"
       And it prints "managed"
@@ -113,16 +113,16 @@ Feature: The pinned tools are first on the PATH of every shell
       Given ".bashrc" in the home directory reads:
         """
         # user config
-        # pinned tool shims first (dev-fleet, keep this last)
+        # pinned tool shims first (homelab, keep this last)
         case "$PATH" in
           '{shims}':*) ;;
           *) export PATH='{shims}':"$PATH" ;;
         esac
         """
       When the shell PATH is set up
-      Then ".bashrc" in the home directory contains "# pinned tool shims first (dev-fleet, keep this last)" 1 time
-      And ".bashrc" in the home directory contains "# a worker's agent commands (dev-fleet)" 1 time
-      And ".bashrc" in the home directory contains "# a worker's agent commands before them (dev-fleet, keep this last)" 1 time
+      Then ".bashrc" in the home directory contains "# pinned tool shims first (homelab, keep this last)" 1 time
+      And ".bashrc" in the home directory contains "# a worker's agent commands (homelab)" 1 time
+      And ".bashrc" in the home directory contains "# a worker's agent commands before them (homelab, keep this last)" 1 time
       And ".bashrc" in the home directory contains "# user config"
       And a noninteractive Bash with the PATH "/usr/bin:/bin" that reads ".bashrc" on startup can run "fleet-tool"
       And it prints "managed"

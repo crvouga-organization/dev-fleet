@@ -1,4 +1,4 @@
-Feature: fleet-sync --dry-run says what a sync would change, and changes nothing
+Feature: converge --dry-run says what a sync would change, and changes nothing
   The preview starts from the fleet state as the bucket holds it, then plans
   from the revision the fleet last applied to the one selected: which tool
   pins change, and what restarts because of them. The plan is read from Git
@@ -139,7 +139,7 @@ Feature: fleet-sync --dry-run says what a sync would change, and changes nothing
 
     Scenario: A preview of an enrolled worker runs only commands that read
       Given every command answers that it succeeded, printing nothing
-      When the manager previews "fleet-sync --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run --json" for the roster:
+      When the manager previews "converge --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run --json" for the roster:
         | id         | ssh        | workspace |
         | worker-one | worker-one | /w        |
       Then every command the preview ran only reads, and each SSH session ran the read-only platform probe

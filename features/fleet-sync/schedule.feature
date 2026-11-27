@@ -41,19 +41,19 @@ Feature: The manager's schedule changes only when that is authorized
       And the platform installs a scheduled job it is asked to
       When the schedule action "enable" is requested with authorization
       Then the command exits with 0
-      And npm installed exactly "@crvouga/dev-fleet@1.4.0"
+      And npm installed exactly "@crvouga/homelab@1.4.0"
       And the scheduled job "personal-fleet-sync" runs, every 30 minutes:
         | /usr/bin/env                                                |
         | node                                                        |
-        | {root}/runtime/node_modules/@crvouga/dev-fleet/bin/devfleet.mjs |
-        | fleet-sync                                                  |
+        | {root}/runtime/node_modules/@crvouga/homelab/bin/homelab.mjs |
+        | converge                                                  |
         | --revision                                                  |
         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa                    |
         | --apply                                                     |
         | --yes                                                       |
         | --non-interactive                                           |
         | --json                                                      |
-      And the scheduled job runs with "DEVFLEET_TRIGGER" set to "schedule"
+      And the scheduled job runs with "HOMELAB_TRIGGER" set to "schedule"
       And the scheduled job's PATH names only the fleet's own tools and the system's
       And the fleet state records the schedule as on, every 30 minutes
       And the report does not mention "raw output"
@@ -81,7 +81,7 @@ Feature: The manager's schedule changes only when that is authorized
     Scenario: The status lists the last three scheduled runs, newest first
       Given the platform says the schedule is installed and supported, with the detail "loaded"
       And the schedule was turned on at "2026-11-01T08:00:00Z", every 30 minutes
-      And fleet-sync recorded these runs:
+      And converge recorded these runs:
         | finished             | trigger  | ok  | failing     |
         | 2026-11-01T09:00:00Z | schedule | yes |             |
         | 2026-11-01T09:30:00Z | schedule | no  | ssh:timeout |
@@ -99,7 +99,7 @@ Feature: The manager's schedule changes only when that is authorized
 
     Scenario Outline: A schedule whose last success was at <last success> is checked at <now>: <outcome>
       Given the schedule was turned on at "2026-11-01T08:00:00Z", every 30 minutes
-      And fleet-sync recorded these runs:
+      And converge recorded these runs:
         | finished         | trigger  | ok  |
         | <last success>   | schedule | yes |
         | 2026-11-01T11:00:00Z | schedule | no  |
@@ -162,8 +162,8 @@ Feature: The manager's schedule changes only when that is authorized
       Then it rotates exactly these logs under "/Users/dev/.local/share/personal/fleet/manager/logs", at 1024 KiB, keeping 3:
         | personal-fleet-sync.out.log      |
         | personal-fleet-sync.err.log      |
-        | dev.devfleet.fleet-watch.out.log |
-        | dev.devfleet.fleet-watch.err.log |
+        | dev.homelab.notify.out.log |
+        | dev.homelab.notify.err.log |
       And it is checked with newsyslog before it is installed
 
     Scenario: Logs under the rotation size pass
@@ -174,7 +174,7 @@ Feature: The manager's schedule changes only when that is authorized
 
     Scenario: A log past twice the rotation size warns that newsyslog does not rotate it
       Given the newsyslog drop-in for the manager's job logs is installed
-      And the job log "dev.devfleet.fleet-watch.err.log" holds 2100 KiB of lines
+      And the job log "dev.homelab.notify.err.log" holds 2100 KiB of lines
       When the manager's job logs are checked
       Then the check "manager:job-logs" warns with "MANAGER_JOB_LOG_OVERSIZED 1 logs"
 

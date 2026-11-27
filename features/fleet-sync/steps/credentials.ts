@@ -14,7 +14,7 @@ import {
 } from '../../../src/worker-credentials';
 import { fleetSync, temporary, type FleetSyncWorld } from '../support/world';
 
-/** A real Vault development server: the policies dev-fleet writes are
+/** A real Vault development server: the policies homelab writes are
  * checked by Vault itself.
  */
 const { Given, When, Then } = fleetSync;

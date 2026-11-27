@@ -12,8 +12,8 @@ import { DOCUMENTS, writeDocument, type DocumentName } from './store';
  * all of them into the state, and nothing reads or writes them afterwards.
  */
 const LEGACY: Record<DocumentName, string> = {
-  // The copy fleet-sync installs; it stays the launchers' copy afterwards.
-  definition: '.config/dev-fleet/fleet.json',
+  // The copy converge installs; it stays the launchers' copy afterwards.
+  definition: '.config/homelab/fleet.json',
   roster: '.config/personal/fleet.json',
   enrollment: '.local/share/personal/fleet/manager/enrollment.json',
 };
@@ -71,7 +71,7 @@ export function adoptEarlier(
 ): DocumentName[] {
   const root = stateRoot(env, home);
   if (existsSync(databasePath(root))) return [];
-  const named = env['DEVFLEET_CONFIG'];
+  const named = env['HOMELAB_CONFIG'] || env['DEVFLEET_CONFIG'];
   const earlier = DOCUMENTS.map((name) => ({
     name,
     text: readLegacy(name, env, home),

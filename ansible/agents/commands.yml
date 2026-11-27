@@ -16,12 +16,12 @@
   become: false
   gather_facts: false
   tasks:
-    - name: Require the link dev-fleet names
+    - name: Require the link homelab names
       ansible.builtin.assert:
         that:
           - agent_commands_link is match('^/.+/agent-commands$')
           - agent_commands_target == 'current/agents/bin'
-        fail_msg: AGENT_COMMANDS_REQUEST_INVALID; dev-fleet passes the link beside the applied revision and its fixed target.
+        fail_msg: AGENT_COMMANDS_REQUEST_INVALID; homelab passes the link beside the applied revision and its fixed target.
     - name: Link the agent commands
       ansible.builtin.file:
         src: '{{ agent_commands_target }}'

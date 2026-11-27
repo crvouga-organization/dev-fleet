@@ -38,7 +38,7 @@ function unattended(world: FleetSyncWorld): Unattended {
   let found = runs.get(world);
   if (!found) {
     found = {
-      roster: join(temporary(world, 'devfleet-enroll-'), 'roster.json'),
+      roster: join(temporary(world, 'homelab-enroll-'), 'roster.json'),
     };
     runs.set(world, found);
   }
@@ -144,7 +144,7 @@ Given('{string} asks for a sudo password', (world, alias: string) => {
   );
 });
 
-When('fleet-sync enrolls without a person', async (world) => {
+When('converge enrolls without a person', async (world) => {
   const state = unattended(world);
   const config = controlPlane(world).config;
   state.result = await enrollManager(state.roster, world.commands.run, {
@@ -212,7 +212,7 @@ Then(
 // ── The report ───────────────────────────────────────────────────────────
 
 Given(
-  'a fleet-sync report of {string} and {string}',
+  'a converge report of {string} and {string}',
   (world, first: string, second: string) => {
     const node = (id: string) => ({
       node: id,
@@ -227,7 +227,7 @@ Given(
     });
     unattended(world).report = {
       version: 3,
-      command: 'fleet-sync',
+      command: 'converge',
       execution: 'manager-push',
       ok: true,
       applied: true,

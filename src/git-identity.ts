@@ -46,7 +46,7 @@ export async function convergeGitIdentity(
         : {
             remedy: {
               action:
-                'Inspect ~/.config/git/config and ~/.gitconfig on this node: a ~/.gitconfig that sets user.name or user.email, or a GitHub credential helper other than gh auth git-credential, wins over the fleet. Remove those lines and rerun fleet-sync; the helper gh auth setup-git writes may stay.',
+                'Inspect ~/.config/git/config and ~/.gitconfig on this node: a ~/.gitconfig that sets user.name or user.email, or a GitHub credential helper other than gh auth git-credential, wins over the fleet. Remove those lines and rerun converge; the helper gh auth setup-git writes may stay.',
             },
           }),
     },
@@ -84,7 +84,7 @@ async function effective(run: Runner, key: string): Promise<string> {
   return (await effectiveGitConfig(run, key))?.pop()?.trim() ?? '';
 }
 
-/** A GitHub credential helper that asks gh, by any path: the one dev-fleet
+/** A GitHub credential helper that asks gh, by any path: the one homelab
  * declares and the one `gh auth setup-git` writes are the same source. The
  * same pattern as `git_gh_helper_pattern` in `ansible/github/git.yml`.
  */
@@ -115,7 +115,7 @@ export async function gitIdentityCheck(
       status: 'warn',
       summary: 'GIT_IDENTITY_UNDECLARED',
       remedy: {
-        action: `Declare git.name and git.email in ${fleetJson()} and rerun fleet-sync; until then commits on this node carry whatever author it happens to have. First remove from ~/.gitconfig on every node any user.name, user.email or GitHub credential helper other than gh auth git-credential (the one gh auth setup-git writes may stay): it wins over the declared block, so git:configuration fails and the canary stops the rollout.`,
+        action: `Declare git.name and git.email in ${fleetJson()} and rerun converge; until then commits on this node carry whatever author it happens to have. First remove from ~/.gitconfig on every node any user.name, user.email or GitHub credential helper other than gh auth git-credential (the one gh auth setup-git writes may stay): it wins over the declared block, so git:configuration fails and the canary stops the rollout.`,
       },
     };
   const name = await effective(run, 'user.name');
@@ -132,7 +132,7 @@ export async function gitIdentityCheck(
     summary: !name || !email ? 'GIT_IDENTITY_MISSING' : 'GIT_IDENTITY_MISMATCH',
     remedy: {
       action:
-        'Rerun fleet-sync: it writes the identity in ~/.config/git/config. A ~/.gitconfig that sets another user.name or user.email wins over it; remove those lines.',
+        'Rerun converge: it writes the identity in ~/.config/git/config. A ~/.gitconfig that sets another user.name or user.email wins over it; remove those lines.',
     },
   };
 }
@@ -163,7 +163,7 @@ async function missingPushCredential(run: Runner, id: string): Promise<Check> {
     summary: 'GIT_CREDENTIAL_HELPER_MISSING',
     remedy: {
       action:
-        'Git has no credential for github.com, so an agent cannot push over HTTPS. Rerun fleet-sync, which declares gh as the credential helper; if gh is signed out, the worker signs in again from its own Vault session (auth:github).',
+        'Git has no credential for github.com, so an agent cannot push over HTTPS. Rerun converge, which declares gh as the credential helper; if gh is signed out, the worker signs in again from its own Vault session (auth:github).',
     },
   };
 }
@@ -219,11 +219,11 @@ export async function gitPushAuthCheck(
  * machine.
  */
 export function signingKey(home: string = homedir()): string {
-  return resolve(home, '.ssh/dev-fleet-git-signing');
+  return resolve(home, '.ssh/homelab-git-signing');
 }
 
 /** What the signing probe signs: a fixed text, so nothing of the node's is. */
-const SIGNING_PROBE = 'dev-fleet signing probe\n';
+const SIGNING_PROBE = 'homelab signing probe\n';
 
 /** With `git.signing` declared, every commit and tag is signed with the
  * node's own key: Git is configured to, and the key really signs. Without it
@@ -250,7 +250,7 @@ export async function gitSigningCheck(
           : 'GIT_SIGNING_OVERRIDDEN',
       remedy: {
         action:
-          'Rerun fleet-sync: it makes the node its own signing key and writes the signing settings in ~/.config/git/config. A ~/.gitconfig that sets gpg.format, user.signingkey or commit.gpgsign wins over it; remove those lines.',
+          'Rerun converge: it makes the node its own signing key and writes the signing settings in ~/.config/git/config. A ~/.gitconfig that sets gpg.format, user.signingkey or commit.gpgsign wins over it; remove those lines.',
       },
     };
   const signed = await run(
@@ -267,14 +267,14 @@ export async function gitSigningCheck(
       summary: 'GIT_SIGNING_FAILED',
       remedy: {
         action:
-          "The node's signing key (~/.ssh/dev-fleet-git-signing) is missing or cannot sign without a prompt. Remove both halves of it and rerun fleet-sync, which makes a new one; then add the new public key to the GitHub account as a signing key.",
+          "The node's signing key (~/.ssh/homelab-git-signing) is missing or cannot sign without a prompt. Remove both halves of it and rerun converge, which makes a new one; then add the new public key to the GitHub account as a signing key.",
       },
     };
   return {
     id,
     status: 'pass',
     summary:
-      'Commits and tags on this node are signed with its own SSH key. GitHub shows them as verified once ~/.ssh/dev-fleet-git-signing.pub is a signing key of the account.',
+      'Commits and tags on this node are signed with its own SSH key. GitHub shows them as verified once ~/.ssh/homelab-git-signing.pub is a signing key of the account.',
   };
 }
 

@@ -224,9 +224,9 @@ Feature: Native agents are verified on every machine
       And the check "agent:service-environment" reports "AGENT_SERVICE_ENVIRONMENT_UNVERIFIED"
       And the check "agent:claude:session" passes
 
-    Scenario Outline: A provider update through a managed launcher directs the operator to fleet-sync
+    Scenario Outline: A provider update through a managed launcher directs the operator to converge
       When the managed "<tool>" launcher receives "<command>"
-      Then the launcher directs the operator to "devfleet fleet-sync"
+      Then the launcher directs the operator to "homelab converge"
 
       Examples:
         | tool     | command |

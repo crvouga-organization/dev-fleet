@@ -10,6 +10,6 @@ Feature: Replacing the manager is described once, in its runbook
     And every one links to "manager-recovery.md"
 
   Scenario: Only the runbook shows the restore command
-    When the tracked documents are searched for "fleet-restore"
+    When the tracked documents are searched for "homelab recover"
     Then only these documents contain it:
       | docs/manager-recovery.md |

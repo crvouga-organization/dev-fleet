@@ -1,4 +1,4 @@
-# Read-only health probe that `dev-fleet net check` pipes to each host over SSH (`sh -s`).
+# Read-only health probe that `homelab net check` pipes to each host over SSH (`sh -s`).
 # Prints key=value lines; works on macOS and Linux (including WSL).
 if [ "$(uname)" = Darwin ]; then
   echo "ncpu=$(sysctl -n hw.ncpu)"
@@ -25,7 +25,7 @@ else
   # from: those sessions cannot be told apart here. A reader that finds no
   # `agentshared` is reading a probe that counted every scope.
   uid=$(id -u)
-  manager="${DEVFLEET_PROBE_CGROUP:-/sys/fs/cgroup}/user.slice/user-$uid.slice/user@$uid.service"
+  manager="${HOMELAB_PROBE_CGROUP:-/sys/fs/cgroup}/user.slice/user-$uid.slice/user@$uid.service"
   agents="$manager/app.slice/app-t3code.slice/app-t3code-agents.slice"
   if [ -d "$agents" ]; then
     scopes=$(find "$agents" -type d -name 't3code-*.scope' ! -name 't3code-terminal-*' ! -name 't3code-preview-browser-*' -printf '%f\n' 2>/dev/null) && {

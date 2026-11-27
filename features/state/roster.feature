@@ -28,7 +28,7 @@ Feature: The roster of enrolled workers is kept in the fleet state
       When a command resolves its settings in the workspace
       Then its roster is the file ".fleet.local.json" in the workspace
 
-  Rule: fleet-node-add writes the roster in the fleet state and reports how it stands with the bucket
+  Rule: enroll writes the roster in the fleet state and reports how it stands with the bucket
 
     Background:
       Given the process runs on a manager with an empty fleet state
@@ -37,8 +37,8 @@ Feature: The roster of enrolled workers is kept in the fleet state
       When the roster "state:roster" is read
       Then there is no roster
 
-    Scenario: A roster that fleet-sync needs and is not there is refused
-      When the roster "state:roster" is loaded for a fleet-sync
+    Scenario: A roster that converge needs and is not there is refused
+      When the roster "state:roster" is loaded for a converge
       Then it is refused with "Cannot read fleet config"
 
     Scenario: A preview shows the roster and writes nothing

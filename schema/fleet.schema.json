@@ -22,7 +22,7 @@
     "manager": {
       "type": "object",
       "additionalProperties": false,
-      "description": "The singleton manager: the human's machine that runs fleet-sync and hosts every singleton service (CLI proxy, Beszel hub).",
+      "description": "The singleton manager: the human's machine that runs converge and hosts every singleton service (CLI proxy, Beszel hub).",
       "required": ["id", "os", "network", "neverSleepOnPower"],
       "properties": {
         "id": {
@@ -63,13 +63,13 @@
               "type": "integer",
               "minimum": 5,
               "maximum": 1440,
-              "description": "fleet-sync --schedule converges the fleet this often (default 30)."
+              "description": "converge --schedule converges the fleet this often (default 30)."
             },
             "watchMinutes": {
               "type": "integer",
               "minimum": 5,
               "maximum": 1440,
-              "description": "fleet-watch checks the fleet and stores its heartbeat this often (default 15). Keep it well under the max-age-minutes of the heartbeat workflow."
+              "description": "notify checks the fleet and stores its heartbeat this often (default 15). Keep it well under the max-age-minutes of the heartbeat workflow."
             }
           }
         }
@@ -91,7 +91,7 @@
           "ssh": {
             "type": "string",
             "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]{0,252}$",
-            "description": "Optional: a Host alias in the operator's own ~/.ssh/config, checked against their own known_hosts. Without one the worker is reached from its network block (user, sshPort, tailscaleName) with a host key pinned in the fleet state or given as network.hostKey, against a known_hosts file dev-fleet owns; the operator's ~/.ssh is neither read for it nor changed."
+            "description": "Optional: a Host alias in the operator's own ~/.ssh/config, checked against their own known_hosts. Without one the worker is reached from its network block (user, sshPort, tailscaleName) with a host key pinned in the fleet state or given as network.hostKey, against a known_hosts file homelab owns; the operator's ~/.ssh is neither read for it nor changed."
           },
           "os": {
             "const": "linux",
@@ -127,7 +127,7 @@
               "hostKey": {
                 "type": "string",
                 "pattern": "^(ssh-ed25519|ecdsa-sha2-nistp256|ssh-rsa) [A-Za-z0-9+/=]{16,}$",
-                "description": "The SSH host public key, \"TYPE BASE64\", given as data (a worker record writes it). It is the pinned key; a worker without one is pinned in the fleet state (fleet-node-replace --host-key, fleet-node-seed --apply)."
+                "description": "The SSH host public key, \"TYPE BASE64\", given as data (a worker record writes it). It is the pinned key; a worker without one is pinned in the fleet state (replace --host-key, provision --apply)."
               }
             }
           },
@@ -141,7 +141,7 @@
               },
               "containers": {
                 "type": "boolean",
-                "description": "Docker on the worker: its packages, service, docker group membership, the docker-cli tool and the Docker step of the disk GC. Default true. Turning it off on an existing worker removes what dev-fleet installed for it; fleet-sync --dry-run lists what."
+                "description": "Docker on the worker: its packages, service, docker group membership, the docker-cli tool and the Docker step of the disk GC. Default true. Turning it off on an existing worker removes what homelab installed for it; converge --dry-run lists what."
               },
               "session": {
                 "enum": ["desktop", "headless"],
@@ -161,7 +161,7 @@
             "items": {
               "enum": ["web", "go", "rust", "jvm"]
             },
-            "description": "Tool profiles this worker installs on top of the fleet-wide ones: web (pnpm, Deno, Yarn), go, rust (with CMake and Ninja), jvm (Temurin). Each is a locked tool set dev-fleet ships."
+            "description": "Tool profiles this worker installs on top of the fleet-wide ones: web (pnpm, Deno, Yarn), go, rust (with CMake and Ninja), jvm (Temurin). Each is a locked tool set homelab ships."
           },
           "exposure": {
             "type": "object",
@@ -242,7 +242,7 @@
               "hourlyRate": {
                 "type": "number",
                 "minimum": 0,
-                "description": "What one hour of running costs, as you declare it. dev-fleet asks no pricing API; it only displays and sums it."
+                "description": "What one hour of running costs, as you declare it. homelab asks no pricing API; it only displays and sums it."
               },
               "currency": {
                 "type": "string",
@@ -253,11 +253,11 @@
                 "pattern": "^[^\\u0000-\\u001f\\u007f]{1,200}$"
               }
             },
-            "description": "What the worker costs while it runs: fleet-status sums it for idle workers."
+            "description": "What the worker costs while it runs: check sums it for idle workers."
           },
           "origin": {
             "const": "records",
-            "description": "Written by dev-fleet for a worker read from workerRecords, in the copy it installs and stores; do not write it."
+            "description": "Written by homelab for a worker read from workerRecords, in the copy it installs and stores; do not write it."
           },
           "screenSharing": {
             "type": "object",
@@ -313,7 +313,7 @@
           }
         ]
       },
-      "description": "Where generated worker records are read: their workers join the list above. An infrastructure tool writes them; dev-fleet only reads them and never creates a machine. A worker whose record disappears is retired by the next fleet-sync."
+      "description": "Where generated worker records are read: their workers join the list above. An infrastructure tool writes them; homelab only reads them and never creates a machine. A worker whose record disappears is retired by the next converge."
     },
     "parking": {
       "type": "object",
@@ -327,7 +327,7 @@
         },
         "autoPark": {
           "type": "boolean",
-          "description": "fleet-watch parks a worker idle longer than idleAfterHours. Off unless true."
+          "description": "notify parks a worker idle longer than idleAfterHours. Off unless true."
         },
         "stop": {
           "type": "array",
@@ -346,7 +346,7 @@
           "description": "Run with the worker ID as its last argument when the worker is resumed."
         }
       },
-      "description": "Workers that are stopped on purpose (fleet-node-park) and when an idle one is reported."
+      "description": "Workers that are stopped on purpose (park) and when an idle one is reported."
     },
     "services": {
       "type": "object",
@@ -435,7 +435,7 @@
               "type": "object",
               "additionalProperties": false,
               "required": ["schedule", "keep", "storage"],
-              "description": "Scheduled off-machine backups of the monitoring hub. fleet-sync sets them through the hub's API, with the keys of the secrets monitoring-backup-access-key and monitoring-backup-secret-key; without this block the hub's backups are only read, and beszel:backup warns.",
+              "description": "Scheduled off-machine backups of the monitoring hub. converge sets them through the hub's API, with the keys of the secrets monitoring-backup-access-key and monitoring-backup-secret-key; without this block the hub's backups are only read, and beszel:backup warns.",
               "properties": {
                 "schedule": {
                   "type": "string",
@@ -496,7 +496,7 @@
           "description": "Exactly the architectures the policy names for that release."
         }
       },
-      "description": "The worker release and its architectures, as the Ubuntu policy of the pinned dev-fleet names them."
+      "description": "The worker release and its architectures, as the Ubuntu policy of the pinned homelab names them."
     },
     "worker": {
       "type": "object",
@@ -562,7 +562,7 @@
             },
             "containers": {
               "type": "boolean",
-              "description": "Docker on the worker: its packages, service, docker group membership, the docker-cli tool and the Docker step of the disk GC. Default true. Turning it off on an existing worker removes what dev-fleet installed for it; fleet-sync --dry-run lists what."
+              "description": "Docker on the worker: its packages, service, docker group membership, the docker-cli tool and the Docker step of the disk GC. Default true. Turning it off on an existing worker removes what homelab installed for it; converge --dry-run lists what."
             },
             "session": {
               "enum": ["desktop", "headless"],
@@ -586,7 +586,7 @@
             "type": "string",
             "pattern": "^[A-Za-z0-9@:/._-]{1,75}$"
           },
-          "description": "Single tools every worker installs: names of tools dev-fleet's mise.toml pins (for example fd or ripgrep). A tool it does not pin is refused; ask for it in an issue."
+          "description": "Single tools every worker installs: names of tools homelab's mise.toml pins (for example fd or ripgrep). A tool it does not pin is refused; ask for it in an issue."
         },
         "exposure": {
           "type": "object",
@@ -658,7 +658,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["repository"],
-      "description": "The Git repository machines take dev-fleet's code from: the one the package you run was published from, or your fork. Nodes only accept source from it.",
+      "description": "The Git repository machines take homelab's code from: the one the package you run was published from, or your fork. Nodes only accept source from it.",
       "properties": {
         "repository": {
           "type": "string",
@@ -710,7 +710,7 @@
       "properties": {
         "profile": {
           "type": "object",
-          "description": "Top-level T3 settings every machine holds the same (tool servers, projects, selected preferences). Keys not named here stay local; a key edited on a machine since dev-fleet last wrote it is reported as a conflict, never overwritten.",
+          "description": "Top-level T3 settings every machine holds the same (tool servers, projects, selected preferences). Keys not named here stay local; a key edited on a machine since homelab last wrote it is reported as a conflict, never overwritten.",
           "propertyNames": {
             "pattern": "^[a-zA-Z][a-zA-Z0-9_-]{0,63}$",
             "not": {
@@ -743,7 +743,7 @@
       }
     },
     "state": {
-      "description": "The bucket that holds the fleet state (the roster, the approved revision and the configuration last applied). Any S3-compatible service, or a directory. Never credentials: a devfleet command reads those from DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY.",
+      "description": "The bucket that holds the fleet state (the roster, the approved revision and the configuration last applied). Any S3-compatible service, or a directory. Never credentials: a homelab command reads those from HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY.",
       "oneOf": [
         {
           "type": "object",
@@ -765,7 +765,7 @@
             },
             "prefix": {
               "type": "string",
-              "description": "Key prefix, so one bucket can hold several fleets. Default: dev-fleet.",
+              "description": "Key prefix, so one bucket can hold several fleets. Default: homelab.",
               "pattern": "^[A-Za-z0-9][A-Za-z0-9._/-]{0,199}$"
             }
           }
@@ -785,7 +785,7 @@
       ]
     },
     "secrets": {
-      "description": "Where this fleet keeps its secrets. env: DEVFLEET_SECRET_<NAME>; file: one file per secret; sops: one encrypted document; vault: a KV v2 location per secret.",
+      "description": "Where this fleet keeps its secrets. env: HOMELAB_SECRET_<NAME>; file: one file per secret; sops: one encrypted document; vault: a KV v2 location per secret.",
       "oneOf": [
         {
           "type": "object",
@@ -954,7 +954,7 @@
                       "pattern": "^[A-Za-z0-9_]+$"
                     }
                   },
-                  "description": "Only with the webhook notify target: the URL fleet-watch POSTs JSON to."
+                  "description": "Only with the webhook notify target: the URL notify POSTs JSON to."
                 },
                 "notify-ntfy-url": {
                   "type": "object",
@@ -970,7 +970,7 @@
                       "pattern": "^[A-Za-z0-9_]+$"
                     }
                   },
-                  "description": "Only with the ntfy notify target: the ntfy topic URL fleet-watch publishes to."
+                  "description": "Only with the ntfy notify target: the ntfy topic URL notify publishes to."
                 },
                 "github-token": {
                   "type": "object",
@@ -1001,7 +1001,7 @@
                       "pattern": "^[A-Za-z0-9_]+$"
                     }
                   },
-                  "description": "Optional: a short-lived, single-use, tagged Tailscale auth key a new worker joins the tailnet with (fleet-node-seed)."
+                  "description": "Optional: a short-lived, single-use, tagged Tailscale auth key a new worker joins the tailnet with (provision)."
                 },
                 "tailnet-admin": {
                   "type": "object",
@@ -1046,7 +1046,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["name", "email"],
-      "description": "The Git identity every node, the manager included, commits with, and the GitHub credential helper it pushes with. fleet-sync writes them in ~/.config/git/config and measures them as worker:git-identity and worker:git-push-auth.",
+      "description": "The Git identity every node, the manager included, commits with, and the GitHub credential helper it pushes with. converge writes them in ~/.config/git/config and measures them as worker:git-identity and worker:git-push-auth.",
       "properties": {
         "name": {
           "type": "string",
@@ -1065,12 +1065,12 @@
         },
         "signing": {
           "enum": ["ssh"],
-          "description": "Sign every commit and tag. ssh: each node makes an SSH key of its own (~/.ssh/dev-fleet-git-signing), which never leaves it, and signs with it; measured as worker:git-signing. GitHub shows the commits as verified once each node's public key is added as a signing key to the account."
+          "description": "Sign every commit and tag. ssh: each node makes an SSH key of its own (~/.ssh/homelab-git-signing), which never leaves it, and signs with it; measured as worker:git-signing. GitHub shows the commits as verified once each node's public key is added as a signing key to the account."
         }
       }
     },
     "notify": {
-      "description": "Where fleet-watch sends a notification when a machine becomes unhealthy or recovers. Each target's address is a secret: notify-webhook-url (a JSON POST) or notify-ntfy-url (an ntfy topic URL).",
+      "description": "Where notify sends a notification when a machine becomes unhealthy or recovers. Each target's address is a secret: notify-webhook-url (a JSON POST) or notify-ntfy-url (an ntfy topic URL).",
       "type": "object",
       "additionalProperties": false,
       "required": ["targets"],
@@ -1149,12 +1149,12 @@
         "sandbox": {
           "type": "string",
           "pattern": "^[a-zA-Z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}$",
-          "description": "owner/name of a repository fleet-github-verify branches, pushes to and opens pull requests on, then cleans up."
+          "description": "owner/name of a repository check-github branches, pushes to and opens pull requests on, then cleans up."
         }
       }
     },
     "tailnet": {
-      "description": "Optional: the tailnet control plane fleet-sync and fleet-node-seed enrol new workers with, without a login on the machine. Its credential is the secret tailnet-admin.",
+      "description": "Optional: the tailnet control plane converge and provision enrol new workers with, without a login on the machine. Its credential is the secret tailnet-admin.",
       "oneOf": [
         {
           "type": "object",

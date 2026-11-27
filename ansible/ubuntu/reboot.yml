@@ -1,9 +1,9 @@
 ---
 # One worker rebooted from the manager, only while its T3 runs no agent turn
 # (a reboot ends every running turn), then waited for until it answers again.
-# fleet-sync applies it for a worker's first converge, which nothing can be
+# converge applies it for a worker's first converge, which nothing can be
 # running on yet, and for --maintenance-reboot, one worker at a time. After
-# it returns, fleet-sync converges the worker again to verify it is ready.
+# it returns, converge converges the worker again to verify it is ready.
 # Variables: target (the SSH alias, or the declared tailnet name), login
 # (empty for the alias's own user), ssh_options (the SSH options every session
 # of the manager takes, src/ssh-connection.ts), home (the account's home
@@ -36,7 +36,7 @@
         reboot_force: '{{ force | default(false) | bool }}'
       changed_when: false
       when: login | default('') == ''
-    # A worker whose account fleet-sync created this run, over an alias that
+    # A worker whose account converge created this run, over an alias that
     # still logs in as root.
     - name: Address the worker by its alias as the declared account
       ansible.builtin.add_host:
@@ -85,5 +85,5 @@
     - name: Reboot, and wait for the worker to answer again
       become: true
       ansible.builtin.reboot:
-        msg: dev-fleet {{ reboot_reason }} reboot
+        msg: homelab {{ reboot_reason }} reboot
         reboot_timeout: 900

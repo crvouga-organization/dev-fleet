@@ -1,8 +1,8 @@
 Feature: Workers add locked tool profiles to their base tools
   Every worker installs the base tools (`worker_tools` in mise.toml). The
   fleet configuration adds named profiles, fleet-wide under `worker` or for
-  one worker, and single tools dev-fleet already pins. Each profile is a tool
-  set dev-fleet ships in mise.toml, so every version still comes from
+  one worker, and single tools homelab already pins. Each profile is a tool
+  set homelab ships in mise.toml, so every version still comes from
   mise.lock, and the doctor checks each added tool as `tool:<name>`.
 
   Background:
@@ -43,7 +43,7 @@ Feature: Workers add locked tool profiles to their base tools
       | cmake |
       | ninja |
 
-  Scenario: A single tool dev-fleet pins is added once, after the profiles
+  Scenario: A single tool homelab pins is added once, after the profiles
     Given the fleet configuration sets "worker.toolProfiles" to ["web"]
     And the fleet configuration sets "worker.tools" to ["fd", "pnpm"]
     When the fleet configuration is read
@@ -66,11 +66,11 @@ Feature: Workers add locked tool profiles to their base tools
 
     Examples:
       | case                              | path                                         | value            |
-      | A profile dev-fleet does not ship | "worker.toolProfiles"                        | ["mobile"]       |
+      | A profile homelab does not ship | "worker.toolProfiles"                        | ["mobile"]       |
       | A profile named twice             | "worker.toolProfiles"                        | ["go", "go"]     |
       | A worker's unknown profile        | the "toolProfiles" of the worker "worker-one" | ["cobol"]       |
 
-  Scenario: A tool dev-fleet does not pin is refused when the worker's tools are chosen
+  Scenario: A tool homelab does not pin is refused when the worker's tools are chosen
     Given the fleet configuration sets "worker.tools" to ["unpinned-tool"]
     When the fleet configuration is read
     Then choosing the tools of the worker "worker-one" is refused with "Ask for it in an issue"

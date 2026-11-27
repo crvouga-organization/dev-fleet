@@ -146,7 +146,7 @@ It runs on amd64 and arm64 (including a Mac with Docker Desktop), needs no KVM,
 takes about three minutes, and runs on every pull request:
 
 ```sh
-DEVFLEET_TEST_FRESH_BOX=1 bun test features/fresh-box
+HOMELAB_TEST_FRESH_BOX=1 bun test features/fresh-box
 ```
 
 It starts a disposable Ubuntu 26.04 container whose only extras are an SSH
@@ -157,7 +157,7 @@ host key, and sends the committed `HEAD` through the production
 the production options. It passes when the machine reaches node convergence
 with the commit, the pinned toolchain, the exact operating system packages and
 the fleet configuration in place, and when a second run transfers nothing and
-finishes within two minutes. `DEVFLEET_TEST_FRESH_BOX=keep` leaves the
+finishes within two minutes. `HOMELAB_TEST_FRESH_BOX=keep` leaves the
 container for inspection.
 
 A container has no systemd, desktop session, Tailscale or Vault login, so the

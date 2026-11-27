@@ -35,7 +35,7 @@ export async function upgradeTailscale(
   const address = playbookAddress(node);
   if (!address)
     return FAILED(
-      'The roster names no workspace under the account home, so Tailscale was not upgraded. Rerun fleet-sync --maintenance-reboot once the worker is enrolled.'
+      'The roster names no workspace under the account home, so Tailscale was not upgraded. Rerun converge --maintenance-reboot once the worker is enrolled.'
     );
   const result = await playbook(
     'ubuntu/tailscale-upgrade.yml',
@@ -51,6 +51,6 @@ export async function upgradeTailscale(
         'Tailscale was upgraded to its pin in a detached unit; the worker answered again and was converged once more.',
     };
   return FAILED(
-    'The upgrade did not complete, or the worker did not answer within 10 minutes. Read journalctl -u devfleet-tailscale-upgrade on the worker, then rerun fleet-sync --maintenance-reboot.'
+    'The upgrade did not complete, or the worker did not answer within 10 minutes. Read journalctl -u homelab-tailscale-upgrade on the worker, then rerun converge --maintenance-reboot.'
   );
 }

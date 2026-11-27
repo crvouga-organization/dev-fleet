@@ -1,19 +1,19 @@
 # Agent notes
 
-- dev-fleet keeps one macOS **manager** and Ubuntu **workers** in sync. Use
+- homelab keeps one macOS **manager** and Ubuntu **workers** in sync. Use
   exactly those words. Read `README.md` first.
-- **Nobody clones this repository to run a fleet.** dev-fleet is used as the
+- **Nobody clones this repository to run a fleet.** homelab is used as the
   published package, from a consumer's project that holds its `fleet.json`
   and pins the package version. The package names the commit it was published
   from (`src/package-info.ts`); machines run fleet-owned checkouts of that
   commit, fetched from the source repository. Nothing may depend on a clone,
   on the directory the CLI was started in, or on where a package manager put
   the package: no path into them is ever written to a machine. A checkout is
-  for developing dev-fleet only.
+  for developing homelab only.
 - **Agents in other projects ask; they never patch.** From a consumer's
-  project a change to dev-fleet is a GitHub issue in this repository, and the
+  project a change to homelab is a GitHub issue in this repository, and the
   tool tells them so: the tracker is `bugs` in `package.json`, printed by
-  `devfleet --help` and carried with the rule in the agent contract
+  `homelab --help` and carried with the rule in the agent contract
   (`support` in `src/cli/agent-guide.ts`). Keep that text true when the way a
   change is requested changes. Issues are public and come from other fleets:
   never copy a hostname, account or domain from one into a tracked file.
@@ -21,7 +21,7 @@
   `exports` and nothing under `src/` is a supported import
   (`features/rules/package.feature`). A consumer that needs a building block
   asks for a command. On a fleet machine the global mise configuration is
-  dev-fleet's; a project pins its tools in its own `mise.toml`.
+  homelab's; a project pins its tools in its own `mise.toml`.
 - **No fleet's identity in this repository.** No account, email, hostname,
   domain, tailnet name or consumer repository in tracked files; they belong in
   the consumer's `fleet.json`, read only through `src/fleet-config.ts`
@@ -46,16 +46,17 @@
   `refresh` then `push`, never a new file under the home directory. The
   configuration says where the bucket is and every command is passed its
   credentials in the environment (`src/state/connection.ts`). Only the
-  devfleet CLI reads the state and looks for a project's `fleet.json`;
-  launchers and the worker probe run under Node and use the copy fleet-sync
+  homelab CLI reads the state and looks for a project's `fleet.json`;
+  launchers and the worker probe run under Node and use the copy converge
   installs, so nothing they import may load `bun:sqlite`.
 - Secrets are read by purpose through `src/secrets.ts`. Never put a secret in
   argv, a report, a log or the fleet configuration.
 - Diagnostics are read-only. Use stable check IDs and structured remedies;
   never serialize raw subprocess output, environment, SSH config or auth
   responses.
-- Keep the CLI flat: `fleet-*`, `t3-*`, `cliproxy`. Add flags, not aliases or
-  nested groups.
+- Keep the CLI flat: short names such as `converge`, `check`, `t3`,
+  `t3-reconcile`, and `proxy`. Add flags, not aliases or nested groups.
+  Old names (`fleet-*`, `sync`, `t3-apply`, `cliproxy`) are not commands.
 - **Behaviour is specified in Gherkin.** Every test of the TypeScript is a
   scenario under `features/` (read `features/README.md` first): the feature
   says what is true in the product's words and carries its inputs and expected
@@ -63,7 +64,7 @@
   `*.test.ts` that is not an area's `features.test.ts`. Scenarios inject every
   subprocess, run against `examples/fleet.json` (without the bucket it names)
   and never contact a real machine. Run `bun run check` before pushing. Verify
-  bootstrap changes with `DEVFLEET_TEST_FRESH_BOX=1 bun test
+  bootstrap changes with `HOMELAB_TEST_FRESH_BOX=1 bun test
 features/fresh-box`, which bootstraps a disposable Ubuntu machine over SSH
   from the `HEAD` commit; CI runs it on every pull request.
 - **A pull request merges itself and is released.** Open the pull request ready (a draft is never merged), with a

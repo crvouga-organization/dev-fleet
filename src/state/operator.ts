@@ -3,9 +3,9 @@ type DefinitionReader = (root: string) => string | null;
 
 let reader: DefinitionReader | null = null;
 
-/** Called by the devfleet CLI. Only it reads the fleet's state directly, so
+/** Called by the homelab CLI. Only it reads the fleet's state directly, so
  * a change to the configuration reaches the manager's launchers and
- * scheduled jobs the way it reaches every worker: as the copy fleet-sync
+ * scheduled jobs the way it reaches every worker: as the copy converge
  * installs. The reader is handed in rather than imported because launchers
  * and the worker probe load the configuration under Node, which cannot open
  * the state database. Null undoes it (tests).

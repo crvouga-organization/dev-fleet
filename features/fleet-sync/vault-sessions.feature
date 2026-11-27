@@ -4,7 +4,7 @@ Feature: Every machine keeps its own Vault session
   from a Vault document of the worker's own and delivers it once over SSH. A
   password login with the fleet's shared Vault user, on the worker's own
   terminal, happens only when the operator opts in. A password never passes
-  through fleet-sync.
+  through converge.
 
   Background:
     Given the roster entry "worker-one", with the workspace "/home/dev/.local/share/personal/fleet"

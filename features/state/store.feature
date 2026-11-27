@@ -43,4 +43,4 @@ Feature: The fleet state is a private database of documents
     Given the configuration was stored as "{}"
     And the state database was overwritten with "not a database"
     When the configuration is read from the fleet state
-    Then it is refused with "fleet-state --restore"
+    Then it is refused with "state --restore"

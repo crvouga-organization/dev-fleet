@@ -23,7 +23,7 @@ export function requestedRepairs(
     ids.some((id) => !AUTOMATED_REPAIRS.includes(id as AutomatedRepair))
   )
     throw new FleetUsageError(
-      '--repair expects workspace,workstation,providers. Native logins require operator approval; inspect fleet-repair --list.'
+      '--repair expects workspace,workstation,providers. Native logins require operator approval; inspect repair --list.'
     );
   return [...new Set(ids)] as AutomatedRepair[];
 }

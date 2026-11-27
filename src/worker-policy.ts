@@ -19,7 +19,7 @@ export interface WorkerPolicy {
   neverSleep: true;
   /** Tool profiles every worker installs on top of the base tools. */
   toolProfiles?: ToolProfile[];
-  /** Single tools pinned in dev-fleet's mise.toml every worker installs. */
+  /** Single tools pinned in homelab's mise.toml every worker installs. */
   tools?: string[];
   /** What every worker opens beyond loopback and the tailnet (src/exposure.ts). */
   exposure?: ExposureDeclaration;

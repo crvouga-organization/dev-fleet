@@ -142,7 +142,7 @@ Feature: What is measured on a worker
       When the recovery of the worker after a power loss is checked
       Then the check "worker:power-loss-recovery" fails
       And the summary of the check "worker:power-loss-recovery" mentions "POWER_LOSS_RECOVERY_UNSET"
-      And the remedy of the check "worker:power-loss-recovery" mentions "fleet-sync"
+      And the remedy of the check "worker:power-loss-recovery" mentions "converge"
 
   Rule: The recovery watchdog counts only when its script is there and its last run succeeded
     The unit runs a copy installed outside every revision, so pruning old
@@ -258,11 +258,11 @@ Feature: What is measured on a worker
       Then the check "worker:t3-deadline-restarts" warns
       And the summary of the check "worker:t3-deadline-restarts" mentions "could not be read"
 
-  Rule: The devfleet launcher is looked for, and nothing a command printed is reported
+  Rule: The homelab launcher is looked for, and nothing a command printed is reported
 
     Scenario: A launcher that is there passes, after one command that only reads
       Given every command prints "PRIVATE_SENTINEL"
-      When the public devfleet launcher is checked
+      When the public homelab launcher is checked
       Then the check "workstation:configuration" passes
       And exactly 1 command was run
       And only "test" commands were run
@@ -270,7 +270,7 @@ Feature: What is measured on a worker
 
     Scenario: A launcher that is missing fails
       Given every command fails, printing "PRIVATE_SENTINEL"
-      When the public devfleet launcher is checked
+      When the public homelab launcher is checked
       Then the check "workstation:configuration" fails
       And nothing reported contains "PRIVATE_SENTINEL"
 

@@ -11,7 +11,7 @@ import type { FleetDefinition, MachineDefinition } from './definition';
 import { stateRoot } from './state/paths';
 
 /** How the manager reaches a worker, written once: every direct SSH session
- * (src/ssh.ts) and every Ansible run over SSH (fleet-validate's inventory,
+ * (src/ssh.ts) and every Ansible run over SSH (check-config's inventory,
  * with ansible/ansible.cfg) takes its options from here, so the two cannot
  * drift. Host keys are checked strictly and never learned on first use. A
  * few attempts and keepalives let a short network blip pass without ending
@@ -38,7 +38,7 @@ export const SSH_SESSION: readonly (readonly [string, string])[] = [
 ];
 
 /** The name a worker's host key is pinned under, whatever its address. */
-export const hostKeyAlias = (id: string): string => `devfleet-${id}`;
+export const hostKeyAlias = (id: string): string => `homelab-${id}`;
 
 /** The fleet-owned known_hosts file: a cache rendered from the pinned keys
  * (declared in a worker record, or in the fleet state). The operator's own
@@ -63,7 +63,7 @@ export function declaredConnection(
     : null;
 }
 
-/** Host keys pinned in the fleet state, by worker ID. Only the devfleet CLI
+/** Host keys pinned in the fleet state, by worker ID. Only the homelab CLI
  * reads the state (it registers the reader); launchers and the worker probe
  * run under Node, which cannot open the state database.
  */
@@ -91,7 +91,7 @@ export function pinnedKeys(
 
 export function knownHostsText(keys: Record<string, string>): string {
   return [
-    '# Managed by dev-fleet: rendered from the fleet state and worker records. Do not edit.',
+    '# Managed by homelab: rendered from the fleet state and worker records. Do not edit.',
     ...Object.entries(keys)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([id, key]) => `${hostKeyAlias(id)} ${key}`),

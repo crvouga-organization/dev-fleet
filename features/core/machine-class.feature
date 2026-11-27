@@ -53,5 +53,5 @@ Feature: What a virtual machine does not have is not applicable to it
         | ubuntu:lid-policy          | not-applicable | Not applicable: a virtual machine has no lid.               |
         | worker:power-loss-recovery | not-applicable | Not applicable: a virtual machine (kvm) has no firmware ... |
         | worker:capacity:disk       | pass           | 30 GB free                                                  |
-      When the "fleet-status" report is made
+      When the "check" report is made
       Then a strict run exits with 0

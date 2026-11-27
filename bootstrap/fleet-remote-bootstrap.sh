@@ -12,11 +12,11 @@ bundle_sha=$2
 node=$3
 source_mode=${4:-transfer}
 releases=${5:-}
-# Whether a worker's T3 restarts while agent turns run (fleet-sync
+# Whether a worker's T3 restarts while agent turns run (converge
 # --restart-busy); an older manager passes nothing and turns are kept.
 t3_restart=${6:-keep-turns}
 # Whether the toolchain bootstrap installs the mise this revision pins even
-# when the worker runs a newer one (fleet-sync --allow-mise-downgrade);
+# when the worker runs a newer one (converge --allow-mise-downgrade);
 # without it a newer mise is kept.
 mise_downgrade=${7:-}
 case "$source_mode" in cached|transfer) ;; *) exit 2;; esac
@@ -43,27 +43,27 @@ die() { failure_code=$1; exit 1; }
 # One remedy per failure: what the operator does next. Never raw output.
 remedy() {
   case "$1" in
-    FLEET_REMOTE_LOCKED) echo 'Another fleet operation holds this machine. Wait for it to finish; rerun fleet-sync afterwards. Never remove the lock while its holder runs.';;
-    ROOT_DEVELOPMENT_USER_REJECTED) echo 'Connect as the non-root developer account the fleet configuration names (workers[].network.user). With that account declared, fleet-sync creates it once over the root login (ansible/ubuntu/worker-account.yml) and continues as it.';;
-    FIRST_BOOT_PENDING) echo 'The machine is still finishing its first boot (cloud-init). Nothing was changed; rerun fleet-sync in a few minutes.';;
+    FLEET_REMOTE_LOCKED) echo 'Another fleet operation holds this machine. Wait for it to finish; rerun converge afterwards. Never remove the lock while its holder runs.';;
+    ROOT_DEVELOPMENT_USER_REJECTED) echo 'Connect as the non-root developer account the fleet configuration names (workers[].network.user). With that account declared, converge creates it once over the root login (ansible/ubuntu/worker-account.yml) and continues as it.';;
+    FIRST_BOOT_PENDING) echo 'The machine is still finishing its first boot (cloud-init). Nothing was changed; rerun converge in a few minutes.';;
     FIRST_BOOT_FAILED) echo 'The first boot of the machine (cloud-init) ended in an error, so it is half-provisioned and was not converged. Read cloud-init status --long on the worker, fix the image or its user data, and recreate the machine.';;
-    TAILNET_KEY_INVALID|TAILNET_KEY_DELIVERY_FAILED) echo 'The single-use tailnet key could not be handed to the worker. Rerun fleet-sync; it mints a new one. The worker needs passwordless sudo to receive it.';;
-    UBUNTU_BASELINE_MISMATCH|UBUNTU_ARCHITECTURE_UNSUPPORTED|PLATFORM_UNSUPPORTED) echo 'Workers run an Ubuntu release docs/support-matrix.md lists, on x86_64 or aarch64. Reinstall the machine; fleet-sync never upgrades an operating system.';;
+    TAILNET_KEY_INVALID|TAILNET_KEY_DELIVERY_FAILED) echo 'The single-use tailnet key could not be handed to the worker. Rerun converge; it mints a new one. The worker needs passwordless sudo to receive it.';;
+    UBUNTU_BASELINE_MISMATCH|UBUNTU_ARCHITECTURE_UNSUPPORTED|PLATFORM_UNSUPPORTED) echo 'Workers run an Ubuntu release docs/support-matrix.md lists, on x86_64 or aarch64. Reinstall the machine; converge never upgrades an operating system.';;
     WORKER_ENVIRONMENT_UNSUPPORTED) echo 'WSL2 is not a worker. Run the worker on a physical or virtual machine of its own (docs/support-matrix.md).';;
     FLEET_STATE_PATH_UNSAFE) echo 'A fleet state directory under ~/.local/share/personal is a symbolic link. Replace it with a real directory.';;
-    BOOTSTRAP_CAPACITY_UNVERIFIED|BOOTSTRAP_DISK_CAPACITY_REQUIRED) echo 'Free at least 2 GiB and 50000 inodes on the home file system, then rerun fleet-sync.';;
-    SOURCE_DIGEST_MISMATCH) echo 'The bundle changed in transit. Rerun fleet-sync; if it repeats, check the SSH route.';;
-    SUDO_AUTHORIZATION_REQUIRED) echo 'Grant the developer account passwordless sudo, or run fleet-sync interactively once to authorize it.';;
-    APT_LOCK_CONTENDED) echo 'Another package operation held the APT lock past the bounded wait. Let it finish (it is never killed), then rerun fleet-sync.';;
-    APT_DNS_UNAVAILABLE) echo 'The worker cannot resolve the Ubuntu archive. Restore its DNS, then rerun fleet-sync.';;
-    APT_REPOSITORY_UNAVAILABLE) echo 'The Ubuntu archive could not be reached. Check the network or archive status, then rerun fleet-sync.';;
-    APT_DISK_FULL) echo 'Package installation ran out of disk space. Free space under /var and /usr, then rerun fleet-sync.';;
-    DPKG_INTERRUPTED) echo 'An interrupted package installation could not be finished: dpkg --configure -a, run once and bounded, left the package database inconsistent. Read sudo dpkg --audit on the worker, repair the packages it names, then rerun fleet-sync.';;
-    APT_UPDATE_FAILED|APT_INSTALL_FAILED|APT_UPDATE_TIMEOUT|APT_INSTALL_TIMEOUT) echo 'Run sudo apt-get update and install the bootstrap packages by hand to see the error, then rerun fleet-sync.';;
-    SOURCE_CACHE_CHANGED|SOURCE_STATUS_FAILED|SOURCE_CHECKOUT_CONFLICT) echo 'The fleet-owned checkout of this revision holds changes fleet-sync did not make. Inspect and remove that revisions directory, then rerun fleet-sync.';;
-    FLEET_CONFIGURATION_COPY_CHANGED) echo 'The copy of the fleet configuration on this worker (~/.config/dev-fleet/fleet.json) was edited there since fleet-sync last wrote it, so it was not replaced and nothing was installed. A worker takes its configuration from the manager: make the change in the fleet.json the fleet is synced from, then delete the copy on this worker (rm ~/.config/dev-fleet/fleet.json) and rerun fleet-sync.';;
-    CONFIGURATION_INSTALL_FAILED) echo 'The fleet configuration could not be written under ~/.config/dev-fleet. Check that directory, then rerun fleet-sync.';;
-    TOOLCHAIN_*) echo 'The pinned toolchain did not converge. Rerun fleet-sync; it resumes where it stopped. If it repeats, run devfleet fleet-status --node for this worker.';;
+    BOOTSTRAP_CAPACITY_UNVERIFIED|BOOTSTRAP_DISK_CAPACITY_REQUIRED) echo 'Free at least 2 GiB and 50000 inodes on the home file system, then rerun converge.';;
+    SOURCE_DIGEST_MISMATCH) echo 'The bundle changed in transit. Rerun converge; if it repeats, check the SSH route.';;
+    SUDO_AUTHORIZATION_REQUIRED) echo 'Grant the developer account passwordless sudo, or run converge interactively once to authorize it.';;
+    APT_LOCK_CONTENDED) echo 'Another package operation held the APT lock past the bounded wait. Let it finish (it is never killed), then rerun converge.';;
+    APT_DNS_UNAVAILABLE) echo 'The worker cannot resolve the Ubuntu archive. Restore its DNS, then rerun converge.';;
+    APT_REPOSITORY_UNAVAILABLE) echo 'The Ubuntu archive could not be reached. Check the network or archive status, then rerun converge.';;
+    APT_DISK_FULL) echo 'Package installation ran out of disk space. Free space under /var and /usr, then rerun converge.';;
+    DPKG_INTERRUPTED) echo 'An interrupted package installation could not be finished: dpkg --configure -a, run once and bounded, left the package database inconsistent. Read sudo dpkg --audit on the worker, repair the packages it names, then rerun converge.';;
+    APT_UPDATE_FAILED|APT_INSTALL_FAILED|APT_UPDATE_TIMEOUT|APT_INSTALL_TIMEOUT) echo 'Run sudo apt-get update and install the bootstrap packages by hand to see the error, then rerun converge.';;
+    SOURCE_CACHE_CHANGED|SOURCE_STATUS_FAILED|SOURCE_CHECKOUT_CONFLICT) echo 'The fleet-owned checkout of this revision holds changes converge did not make. Inspect and remove that revisions directory, then rerun converge.';;
+    FLEET_CONFIGURATION_COPY_CHANGED) echo 'The copy of the fleet configuration on this worker (~/.config/homelab/fleet.json) was edited there since converge last wrote it, so it was not replaced and nothing was installed. A worker takes its configuration from the manager: make the change in the fleet.json the fleet is synced from, then delete the copy on this worker (rm ~/.config/homelab/fleet.json) and rerun converge.';;
+    CONFIGURATION_INSTALL_FAILED) echo 'The fleet configuration could not be written under ~/.config/homelab. Check that directory, then rerun converge.';;
+    TOOLCHAIN_*) echo 'The pinned toolchain did not converge. Rerun converge; it resumes where it stopped. If it repeats, run homelab check --node for this worker.';;
     *) echo 'Inspect the remote operation lock and rerun the approved revision. No success receipt advanced.';;
   esac
 }
@@ -140,7 +140,7 @@ operation() {
 # compares modification times.
 prior=$(sed -n 's/^{.*"revision":"\([a-f0-9]\{40\}\)".*$/\1/p' "$root/remote-operation.json" 2>/dev/null | head -n 1) || prior=''
 # shellcheck disable=SC3013
-[ ! "$HOME/.config/dev-fleet/fleet.json" -nt "$root/remote-operation.json" ] || prior=''
+[ ! "$HOME/.config/homelab/fleet.json" -nt "$root/remote-operation.json" ] || prior=''
 # prior-operation: end
 operation lock
 # The fleet configuration is installed under the lock, so two overlapping
@@ -157,14 +157,21 @@ if [ "${8:-}" = client-preferences ]; then
   [ -n "$client_preferences" ] || die CONFIGURATION_INSTALL_FAILED
 fi
 if [ -n "$configuration" ]; then
-  config_dir="$HOME/.config/dev-fleet"
+  config_dir="$HOME/.config/homelab"
+  # A machine converged before the repository was renamed keeps its copy here.
+  if [ -f "$HOME/.config/dev-fleet/fleet.json" ] && [ ! -f "$config_dir/fleet.json" ]; then
+    mkdir -p "$config_dir" || die CONFIGURATION_INSTALL_FAILED
+    mv "$HOME/.config/dev-fleet/fleet.json" "$config_dir/fleet.json"
+    record=$(printf '%s.%s' "$HOME/.config/dev-fleet/fleet.json" sha256)
+    [ ! -f "$record" ] || mv "$record" "$config_dir/fleet.json.$(printf '%s' sha256)"
+  fi
   # configuration-install: begin
   mkdir -p "$config_dir" || die CONFIGURATION_INSTALL_FAILED
   printf '%s' "$configuration" | base64 -d >"$config_dir/fleet.json.new" || die CONFIGURATION_INSTALL_FAILED
   sent=$(sha256sum <"$config_dir/fleet.json.new" | cut -d' ' -f1)
   [ "${#sent}" = 64 ] || die CONFIGURATION_INSTALL_FAILED
   # configuration-copy-decision: begin
-  # Beside the copy is its record: the SHA-256 of the copy as fleet-sync last
+  # Beside the copy is its record: the SHA-256 of the copy as converge last
   # wrote it. A copy that no longer matches its record was edited on this
   # machine, and is refused instead of replaced unless it already is what is
   # being installed. A copy from before the record existed is replaced, as it
@@ -342,8 +349,8 @@ toolchain_key=$(git rev-parse HEAD:mise.toml HEAD:mise.lock HEAD:.mise HEAD:bun.
 [ -n "$toolchain_key" ] || toolchain_key=$revision
 # The tool profiles of the fleet configuration choose what is installed, so a
 # changed configuration runs the setup again.
-if [ -f "$HOME/.config/dev-fleet/fleet.json" ]; then
-  toolchain_key="$toolchain_key$(cksum <"$HOME/.config/dev-fleet/fleet.json" | cut -d' ' -f1)"
+if [ -f "$HOME/.config/homelab/fleet.json" ]; then
+  toolchain_key="$toolchain_key$(cksum <"$HOME/.config/homelab/fleet.json" | cut -d' ' -f1)"
 fi
 # A requested mise downgrade is the bootstrap's to do, so it runs.
 if [ -z "$mise_downgrade" ] && [ "$(cat "$ready_file" 2>/dev/null)" = "$toolchain_key" ] && [ -n "$(find "$ready_file" -mmin -1440 2>/dev/null)" ]; then
@@ -396,7 +403,7 @@ phase=tailnet-key
 # stdin, so it never appears in a process's arguments.
 if [ -n "$tailnet_key" ]; then
   case "$tailnet_key" in *[!A-Za-z0-9_-]*) die TAILNET_KEY_INVALID;; esac
-  printf '%s\n' "$tailnet_key" | sudo -n sh -c 'umask 077 && mkdir -p /run/devfleet && cat >/run/devfleet/tailnet-auth-key' || die TAILNET_KEY_DELIVERY_FAILED
+  printf '%s\n' "$tailnet_key" | sudo -n sh -c 'umask 077 && mkdir -p /run/homelab && cat >/run/homelab/tailnet-auth-key' || die TAILNET_KEY_DELIVERY_FAILED
 fi
 tailnet_key=''
 phase=configuration

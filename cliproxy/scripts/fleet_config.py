@@ -2,7 +2,7 @@
 
 Nothing here is a default: the endpoint, the Vault address, its paths and the
 login all come from the fleet configuration every machine keeps at
-~/.config/dev-fleet/fleet.json (or DEVFLEET_CONFIG).
+~/.config/homelab/fleet.json (or HOMELAB_CONFIG).
 """
 import json
 import os
@@ -10,8 +10,8 @@ import pathlib
 
 
 def path():
-    return pathlib.Path(os.environ.get('DEVFLEET_CONFIG')
-                        or pathlib.Path.home() / '.config/dev-fleet/fleet.json')
+    return pathlib.Path(os.environ.get('HOMELAB_CONFIG')
+                        or pathlib.Path.home() / '.config/homelab/fleet.json')
 
 
 def load():

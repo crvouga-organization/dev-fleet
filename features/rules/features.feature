@@ -1,4 +1,4 @@
-Feature: What dev-fleet does is specified in Gherkin
+Feature: What homelab does is specified in Gherkin
   A feature says what is true in the words of someone who runs a fleet, and
   the steps beside it check it. The TypeScript has no other tests.
 

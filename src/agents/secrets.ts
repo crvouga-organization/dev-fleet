@@ -8,7 +8,7 @@ import { secret } from '../fleet-config';
  * readable by its user alone. Disposable: the next successful read rewrites it.
  */
 export const lastProxyKeyPath = (home = homedir()): string =>
-  join(home, '.cache/dev-fleet/proxy-client-key');
+  join(home, '.cache/homelab/proxy-client-key');
 
 /** The key every node presents to the CLI proxy, from this fleet's secrets
  * provider with this node's own access. The provider stays the source: a key

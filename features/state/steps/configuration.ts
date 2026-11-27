@@ -42,7 +42,7 @@ Then('a copy of the configuration equals the example fleet', () => {
 });
 
 Given('the process is pointed at a fleet.json that does not exist', (world) => {
-  world.setEnv('DEVFLEET_CONFIG', join(world.root, 'absent.json'));
+  world.setEnv('HOMELAB_CONFIG', join(world.root, 'absent.json'));
   reloadFleet();
 });
 
@@ -57,7 +57,7 @@ Given(
   /^the example fleet (is|was) written there with "([^"]+)" renamed "([^"]+)"$/,
   (_world, _verb: string, from: string, to: string) => {
     writeFileSync(
-      process.env['DEVFLEET_CONFIG']!,
+      process.env['HOMELAB_CONFIG']!,
       readFileSync(EXAMPLE, 'utf8').replaceAll(from, to)
     );
   }
@@ -73,7 +73,7 @@ Then(
 When(
   'the process is pointed back at the example fleet and forgets what it read',
   () => {
-    process.env['DEVFLEET_CONFIG'] = EXAMPLE;
+    process.env['HOMELAB_CONFIG'] = EXAMPLE;
     reloadFleet();
   }
 );
@@ -91,21 +91,21 @@ Given(
   }
 );
 
-Given('the process is the devfleet CLI', (world) => {
+Given('the process is the homelab CLI', (world) => {
   actAsOperator((root) => readDocument(databasePath(root), 'definition'));
   world.defer(() => actAsOperator(null));
 });
 Given('the process is passed no fleet.json of its own', (world) => {
-  const before = process.env['DEVFLEET_CONFIG'];
-  delete process.env['DEVFLEET_CONFIG'];
+  const before = process.env['HOMELAB_CONFIG'];
+  delete process.env['HOMELAB_CONFIG'];
   reloadFleet();
   world.defer(() => {
-    if (before === undefined) delete process.env['DEVFLEET_CONFIG'];
-    else process.env['DEVFLEET_CONFIG'] = before;
+    if (before === undefined) delete process.env['HOMELAB_CONFIG'];
+    else process.env['HOMELAB_CONFIG'] = before;
     reloadFleet();
   });
 });
-Then('the process is not the devfleet CLI', () => {
+Then('the process is not the homelab CLI', () => {
   expect(isOperator()).toBe(false);
 });
 
@@ -157,10 +157,10 @@ Then('the path is {string}', (world, path: string) => {
   expect(world.outcome<string>()).toBe(world.expand(path, world.manager()));
 });
 Then(
-  phrase('commands on ', WHO, ' are now passed DEVFLEET_CONFIG "([^"]+)"'),
+  phrase('commands on ', WHO, ' are now passed HOMELAB_CONFIG "([^"]+)"'),
   (world, name: string | undefined, path: string) => {
     const manager = world.manager(name);
-    expect(manager.env['DEVFLEET_CONFIG']).toBe(world.expand(path, manager));
+    expect(manager.env['HOMELAB_CONFIG']).toBe(world.expand(path, manager));
   }
 );
 
@@ -184,15 +184,15 @@ Then(
   (world, name: string | undefined, path: string) => {
     const manager = world.manager(name);
     expect(fleetJson(manager.env, manager.home)).toBe(
-      `fleet.json (the one in the project the fleet is synced from, on the manager; not ${world.expand(path, manager)}, the copy fleet-sync installs from it)`
+      `fleet.json (the one in the project the fleet is synced from, on the manager; not ${world.expand(path, manager)}, the copy converge installs from it)`
     );
   }
 );
 
-// ── The copy fleet-sync installs ─────────────────────────────────────────
+// ── The copy converge installs ─────────────────────────────────────────
 
 Given(
-  phrase('fleet-sync (installs|installed) the configuration on ', WHO),
+  phrase('converge (installs|installed) the configuration on ', WHO),
   (world, verb: string, name: string | undefined) =>
     act(world, verb, () => installConfig(world.manager(name).home))
 );

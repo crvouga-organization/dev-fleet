@@ -34,7 +34,7 @@ export async function attempt(
   }
 }
 
-/** The `devfleet` launcher (linked to the applied revision, never copied) and
+/** The `homelab` launcher (linked to the applied revision, never copied) and
  * this worker's own credential refresh: its Vault session and, apart from it,
  * its GitHub sign-in. Identical on Linux and macOS.
  */
@@ -67,7 +67,7 @@ export async function configureWorkstation(
       id: 'workstation:configuration',
       status: 'pass',
       summary:
-        'The devfleet launcher is linked to the applied revision; authentication remains a separate gate.',
+        'The homelab launcher is linked to the applied revision; authentication remains a separate gate.',
     },
     await convergeGithub(root, run, node, {
       secrets: secretVia(run),

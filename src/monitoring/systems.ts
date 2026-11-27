@@ -73,7 +73,7 @@ export async function moveSystem(
   if (!found[0])
     return check(
       'pass',
-      `The hub holds no system for ${node}; fleet-sync enrolls the new machine.`
+      `The hub holds no system for ${node}; converge enrolls the new machine.`
     );
   if (found[0].host === host)
     return check('pass', `The hub's system ${node} already watches ${host}.`);
@@ -119,7 +119,7 @@ export async function removeSystem(
 }
 
 /** A system no declared worker (and not the manager) is named after: what a
- * worker removed by hand, or destroyed outside dev-fleet, leaves behind.
+ * worker removed by hand, or destroyed outside homelab, leaves behind.
  */
 export function leftoverSystems(
   found: HubSystem[],
@@ -132,7 +132,7 @@ export function leftoverSystems(
       status: 'warn' as const,
       summary: `The hub watches ${system.name}, which is no declared worker.`,
       remedy: {
-        action: `If ${system.name} left the fleet, retire it (devfleet fleet-node-retire --id ${system.name} --apply --yes while it is still declared) or delete the system in the dashboard.`,
+        action: `If ${system.name} left the fleet, retire it (homelab retire --id ${system.name} --apply --yes while it is still declared) or delete the system in the dashboard.`,
       },
     }));
 }

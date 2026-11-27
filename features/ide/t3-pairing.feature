@@ -28,7 +28,7 @@ Feature: The roster remembers which T3 environment each worker runs
     And the roster enrolls "dev-one" with no T3 environment
 
   Rule: The manager pairs with a worker it cannot reach only when asked to
-    fleet-node-replace asks for it; the pairing itself is
+    replace asks for it; the pairing itself is
     features/fleet-sync/node-lifecycle.feature. First pairing requires the fleet's policy or terminal approval.
 
     Background:

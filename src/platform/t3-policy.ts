@@ -90,7 +90,7 @@ export async function verifyT3Policy(
       : 'T3_POLICY_RESTART_PENDING',
     remedy: {
       action:
-        'T3 did not load the installed policy after a restart. Inspect systemctl --user status t3code-desktop.service on the node, then rerun fleet-sync.',
+        'T3 did not load the installed policy after a restart. Inspect systemctl --user status t3code-desktop.service on the node, then rerun converge.',
     },
   };
 }

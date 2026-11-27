@@ -1,5 +1,5 @@
 Feature: The GitHub work of an agent is verified end to end
-  fleet-github-verify does on the declared sandbox repository what an agent
+  check-github does on the declared sandbox repository what an agent
   does: clone, branch, commit, push, open a draft pull request, read its
   checks and comment. It then closes the pull request and deletes the branch,
   whatever failed, and names the first step that failed.

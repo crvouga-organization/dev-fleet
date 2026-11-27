@@ -264,7 +264,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'bootstrap:source-transfer':
     'The source bundle arrived with the digest the manager sent.',
   'bootstrap:source-verification':
-    'The fleet-owned checkout holds exactly the revision, with no change fleet-sync did not make.',
+    'The fleet-owned checkout holds exactly the revision, with no change converge did not make.',
   'bootstrap:tailnet-key':
     'The single-use tailnet key was handed to the worker in a root-only file.',
   'bootstrap:toolchain': 'The pinned toolchain converged.',
@@ -299,10 +299,10 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'github:principal': 'The node is signed in to GitHub as its declared login.',
   'github:rate-limit': 'The GitHub rate limit left is above the warning floor.',
   'github:sync':
-    'fleet-sync signed this node in to GitHub from the stored credential.',
+    'converge signed this node in to GitHub from the stored credential.',
   'github:token-current': 'The node uses the GitHub token the store holds now.',
   'github:workflow':
-    'fleet-github-verify completed clone, branch, commit, push, pull request, checks and comment on the sandbox repository.',
+    'check-github completed clone, branch, commit, push, pull request, checks and comment on the sandbox repository.',
   'manager:boot-recovery':
     'The manager comes back by itself after a power cut or reboot.',
   'manager:clock': 'The manager keeps its clock on network time.',
@@ -320,7 +320,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
     'The manager playbook passed its check-mode run and was applied, or is unchanged since and its postconditions hold.',
   'manager:power': 'The manager never sleeps on AC power.',
   'manager:preflight':
-    'fleet-sync could start on the manager; its summary names the reason when not.',
+    'converge could start on the manager; its summary names the reason when not.',
   'manager:release':
     'The manager runs at least the macOS release the macOS policy requires.',
   'manager:schedule':
@@ -329,7 +329,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'manager:vault-renewal':
     'The manager is logged in to Vault and its launch agent renews the session.',
   'manager:watch':
-    'fleet-watch runs on the manager on a schedule, so the heartbeat reaches the bucket.',
+    'notify runs on the manager on a schedule, so the heartbeat reaches the bucket.',
   'notify:*': 'A notification target fleet.json names took the notification.',
   'notify:configured':
     'Every notification target fleet.json names has its address available as a secret.',
@@ -372,8 +372,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'rollout:evidence': "A worker's rollout produced verification evidence.",
   'rollout:next':
     'Names the command that converges a worker after it was replaced.',
-  'rollout:node':
-    'The fleet-sync of one worker that fleet-node-resume runs ended ready.',
+  'rollout:node': 'The converge of one worker that resume runs ended ready.',
   'rollout:operation': 'The remote rollout operation completed.',
   'rollout:prerequisites': "A worker met the rollout's prerequisites.",
   'rollout:promotion':
@@ -485,13 +484,13 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'vscode:forwarding':
     'VS Code Remote-SSH forwarding, which needs an operator test.',
   'watch:heartbeat':
-    "fleet-watch stored its heartbeat and each machine's health in the bucket.",
+    "notify stored its heartbeat and each machine's health in the bucket.",
   'worker:account':
     "The declared worker account was created over a root login, with the manager's key and the fleet's sudo rule.",
   'worker:agent-sessions':
     'How many agent sessions this worker runs (a terminal or a preview browser is not one, and a process Codex or OpenCode serves all its sessions from is counted once and named as that), how many its memory policy supports at the estimated size of a session, and how that estimate compares with the agents running now; warns when more run than it supports. Nothing refuses a session unless the fleet configuration declares agentSessionLimit; a declared limit the worker does not hold fails.',
   'worker:auto-park':
-    'fleet-watch parked a worker idle longer than declared (only with parking.autoPark).',
+    'notify parked a worker idle longer than declared (only with parking.autoPark).',
   'worker:browser':
     'A headless browser starts on a worker whose tool profiles include web.',
   'worker:capacity': 'CPU, memory and disk evidence is available.',
@@ -519,7 +518,7 @@ export const CHECK_MEANINGS: Record<string, string> = {
   'worker:exposure':
     'Nothing listens on the worker beyond loopback and the tailnet but what the declared exposure policy allows, and the fleet firewall that closes the rest is loaded; not applicable without an address outside the tailnet.',
   'worker:features':
-    'The worker has the features fleet.json declares, and nothing dev-fleet installed for a feature that is off (containers) remains.',
+    'The worker has the features fleet.json declares, and nothing homelab installed for a feature that is off (containers) remains.',
   'worker:git-identity':
     "The worker's global Git identity is the one fleet.json declares.",
   'worker:git-push-auth':
@@ -571,8 +570,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
     "The worker's T3 service is active, enabled for boot and restarts after a failure.",
   'worker:ubuntu': 'Required Ubuntu release and architecture.',
   'worker:vault-renewal': 'The worker renews its Vault identity unattended.',
-  'workstation:configuration': 'The devfleet launcher is installed and linked.',
-  'workstation:installation': 'The devfleet launcher could be installed.',
+  'workstation:configuration': 'The homelab launcher is installed and linked.',
+  'workstation:installation': 'The homelab launcher could be installed.',
   // An agent CLI that signs in through the proxy has no login to check.
   ...Object.fromEntries(
     Object.keys(PROXY_ROUTED).map((id) => [
@@ -686,7 +685,7 @@ export function renderCheckRegistry(root = PACKAGE_ROOT): string {
   return `${JSON.stringify(
     {
       $comment:
-        'Generated by `bun src/check-registry.ts > schema/check-ids.json` from the checks the code reports; features/rules/contracts.feature fails when this file differs. Every check ID dev-fleet reports: what a passing check means; severity, required (a failure blocks readiness unless the run marks the check out of scope) or advisory (reported as a warning or as not required, never blocking); and repair, the fleet-repair recipe that repairs it or the reason only a person can (manual); requirement, a requirement docs/worker-requirements.md lists. A * stands for a name taken from the fleet configuration, a machine or a tool at run time.',
+        'Generated by `bun src/check-registry.ts > schema/check-ids.json` from the checks the code reports; features/rules/contracts.feature fails when this file differs. Every check ID homelab reports: what a passing check means; severity, required (a failure blocks readiness unless the run marks the check out of scope) or advisory (reported as a warning or as not required, never blocking); and repair, the repair recipe that repairs it or the reason only a person can (manual); requirement, a requirement docs/worker-requirements.md lists. A * stands for a name taken from the fleet configuration, a machine or a tool at run time.',
       version: 1,
       checks,
     },

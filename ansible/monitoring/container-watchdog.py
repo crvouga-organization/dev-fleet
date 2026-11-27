@@ -1,11 +1,11 @@
 #!/usr/bin/python3
 """Restart a fleet container that stays unhealthy, a bounded number of times.
 
-Managed by fleet-sync (ansible/monitoring/hub-darwin.yml) as the per-user
-launchd agent dev.devfleet.container-watchdog on the manager. Docker restarts
+Managed by converge (ansible/monitoring/hub-darwin.yml) as the per-user
+launchd agent dev.homelab.container-watchdog on the manager. Docker restarts
 a container that exits, never one that hangs while it still holds its port.
 Every run reads the health of each container labelled
-dev.devfleet.watchdog=restart. One that was unhealthy for --unhealthy-checks
+dev.homelab.watchdog=restart. One that was unhealthy for --unhealthy-checks
 runs in a row is restarted, at most --max-restarts-per-hour times an hour.
 Past that cap it is left alone and recorded as capped: a restart storm is a
 failing check (manager:container-watchdog), not a loop.
@@ -24,7 +24,7 @@ import sys
 import time
 
 HOUR = 3600
-LABEL = 'dev.devfleet.watchdog=restart'
+LABEL = 'dev.homelab.watchdog=restart'
 
 
 def log(**event):

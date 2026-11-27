@@ -19,7 +19,7 @@ import fleet_config
 
 DECOMMISSION = ('Workers never host singletons. Fence and decommission this local proxy with '
                 'cliproxy/docs/migration.md (disable timers, drain, stop, disable, '
-                'final backup); fleet-sync never stops it automatically.')
+                'final backup); converge never stops it automatically.')
 
 
 def execute(args, timeout=120):
@@ -91,7 +91,7 @@ def inspect(root, node, owner, revision, run=execute, audit_fn=audit, compatible
         return inspect_worker(root, backend, run)
     if backend.name != 'launchd':
         return [phase('PROXY_PLATFORM_MISMATCH', 'action-required',
-                      'The manager hosts the proxy on macOS with launchd; run fleet-sync for the manager on the manager.',
+                      'The manager hosts the proxy on macOS with launchd; run converge for the manager on the manager.',
                       'macOS launchd owner backend', backend.name)]
     if identity is not None and identity != owner:
         return [phase('PROXY_IDENTITY_MISMATCH', 'action-required',
@@ -228,7 +228,7 @@ def reconcile(root, node, owner, revision, apply=False, run=execute, audit_fn=au
                             'Verify the existing endpoint/client credential. Provider inference is a separate gate; routine checks never attempt management logins.',
                             'Authenticated public gateway client route',
                             'Verified' if verified else 'Endpoint or authentication unavailable', True))
-    return {'version': 1, 'command': 'cliproxy fleet-sync', 'node': node,
+    return {'version': 1, 'command': 'cliproxy converge', 'node': node,
             'role': 'manager' if node == owner else 'worker', 'owner': owner,
             'backend': backend.name, 'ok': all(item['status'] == 'unchanged' for item in checks),
             'changed': changed, 'desiredRevision': revision, 'phases': checks,

@@ -9,8 +9,8 @@ provider through the proxy.
 ## The roster
 
 ```sh
-npx devfleet fleet-accounts            # provider, index, label, state, cooldowns and when they clear
-npx devfleet fleet-accounts --diff     # and what this machine offers against it
+npx @crvouga/homelab accounts            # provider, index, label, state, cooldowns and when they clear
+npx @crvouga/homelab accounts --diff     # and what this machine offers against it
 ```
 
 Each account has one state, derived from its credential file and the proxy's
@@ -56,7 +56,7 @@ A session check that does not pass says which of these it found:
 | ------------------------------------- | ------ | ---------------------------------------------------------------------------------------------- |
 | `AGENT_ACCOUNT_COOLING_DOWN`          | warn   | The provider limited the account. It clears on its own                                         |
 | `AGENT_ACCOUNT_VERIFICATION_REQUIRED` | fail   | The provider answers "Verify your account": a person completes it with the provider            |
-| `AGENT_ACCOUNT_AUTH_REJECTED`         | fail   | The account's credentials were refused; `fleet-accounts` says whether it needs a login         |
+| `AGENT_ACCOUNT_AUTH_REJECTED`         | fail   | The account's credentials were refused; `accounts` says whether it needs a login               |
 | `AGENT_ACCOUNT_SESSION_TIMED_OUT`     | fail   | The session never ended, and the proxy named no cooldown and no refusal. Not a sign-in failure |
 | `AGENT_ACCOUNT_SESSION_FAILED`        | fail   | Anything else                                                                                  |
 
@@ -76,7 +76,7 @@ so: "… is rate limited until 2027-01-15T09:30:00Z". The instant is read from
 the `Retry-After` of the proxy's 429 (else the `reset_seconds` of its
 `model_cooldown` error), or from the instant the fleet's relay prints when it
 refuses a request for an account it holds back. An answer that names no time
-adds none to the summary; `fleet-accounts` still lists `until` per model. The
+adds none to the summary; `accounts` still lists `until` per model. The
 proxy names a time when the provider did: a limit the provider gave no time
 for is held for a moment and asked again.
 
@@ -109,7 +109,7 @@ preferred defaults, in order (`proxy.accounts` in `agents/registry.json`): an
 account's launcher and its T3 instance start on the first one the account
 serves. In T3, an account's instance hides the models of T3's catalogue that
 its account does not serve (`providerModelPreferences` in T3's settings), so
-it shows only what works; `fleet-sync` writes that, and shows a model again
+it shows only what works; `sync` writes that, and shows a model again
 when the account serves it. T3 opens an instance on its own catalogue's
 default when the account serves it, and on the first preferred default
 otherwise.
@@ -121,9 +121,9 @@ nothing of T3's catalogue.
 ## Adding, signing in again, removing
 
 ```sh
-npx devfleet fleet-accounts --add claude
-npx devfleet fleet-accounts --relogin codex 2
-npx devfleet fleet-accounts --remove codex 2
+npx @crvouga/homelab accounts --add claude
+npx @crvouga/homelab accounts --relogin codex 2
+npx @crvouga/homelab accounts --remove codex 2
 ```
 
 A sign-in writes into a staging directory beside the credentials; only a
@@ -134,7 +134,7 @@ change is then propagated to every node.
 ## Propagation without a full sync
 
 ```sh
-npx devfleet fleet-sync --only accounts
+npx @crvouga/homelab converge --only accounts
 ```
 
 On the manager and every worker at once, each node re-reads the proxy's
@@ -197,18 +197,18 @@ lease fences the old holder.
 
 ## Client keys
 
-`devfleet cliproxy issue-key|rotate-key|retire-key|revoke-key NODE` keep one
+`homelab proxy issue-key|rotate-key|retire-key|revoke-key NODE` keep one
 proxy client key per node in the manager's key ring. A rotation keeps the old
 key accepted until `retire-key`, so no running agent fails while nodes move
 over. Revoking one node's key leaves the others working.
-`devfleet cliproxy client-keys` reports each node's key by fingerprint only.
+`homelab proxy client-keys` reports each node's key by fingerprint only.
 
 ## Not yet done
 
 - The proxy does not notify anyone when an account turns `needs-login`, and
   no watcher on the manager triggers propagation or a checkpoint when a
-  credential file changes. Run `fleet-sync --only accounts` or
-  `fleet-accounts` instead.
+  credential file changes. Run `converge --only accounts` or
+  `accounts` instead.
 - Nothing forces a refresh of every account after a restore. The digest
   comparison above is offline.
 - The lease is not yet taken by the proxy service at start, and its

@@ -9,7 +9,7 @@ import { Commands, failed, succeeded } from '../../support/commands';
 import type { DataTable } from '../../support/gherkin';
 import { attempt, cli, json, part, put, type CliWorld } from './world';
 
-/** fleet-validate and the pinned Ansible it may run. */
+/** check-config and the pinned Ansible it may run. */
 const { Given, When, Then } = cli;
 
 const validation = part(() => ({

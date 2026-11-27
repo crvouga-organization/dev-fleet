@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
-/** The machine's own identifier, which survives a reinstall of dev-fleet
+/** The machine's own identifier, which survives a reinstall of homelab
  * and differs between two Macs given the same host name.
  */
 function machineId(platform: NodeJS.Platform): string | null {
@@ -28,14 +28,14 @@ function machineId(platform: NodeJS.Platform): string | null {
 const known = new Map<string, string | null>();
 
 /** This machine, as the manager lease names it: a digest of its machine ID,
- * never the ID itself. `DEVFLEET_MANAGER_HOLDER` names it instead (a test, a
+ * never the ID itself. `HOMELAB_MANAGER_HOLDER` names it instead (a test, a
  * container without a machine ID). Null when it cannot be told apart.
  */
 export function managerHolder(
   env: NodeJS.ProcessEnv = process.env,
   platform: NodeJS.Platform = process.platform
 ): string | null {
-  const named = env['DEVFLEET_MANAGER_HOLDER'];
+  const named = env['HOMELAB_MANAGER_HOLDER'] || env['DEVFLEET_MANAGER_HOLDER'];
   if (named) return named;
   if (!known.has(platform)) {
     const id = machineId(platform);

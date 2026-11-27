@@ -8,7 +8,7 @@ Feature: The pinned CLI proxy says of an account it holds back what the session 
   runs: the check asks the proxy before it would launch a session, and
   what the proxy says is the result.
 
-  Runs only when DEVFLEET_TEST_PROXY_BOX is set, because it downloads the
+  Runs only when HOMELAB_TEST_PROXY_BOX is set, because it downloads the
   pinned proxy image.
 
   Background:
@@ -77,7 +77,7 @@ Feature: The pinned CLI proxy says of an account it holds back what the session 
     And the session of the account "a@example.com" runs into its deadline
     When this node's account sessions are verified
     Then the check "agent:claude:account-1:session" fails saying "AGENT_ACCOUNT_VERIFICATION_REQUIRED: claude account 1"
-    And the check "agent:claude:account-1:session" asks to run "devfleet fleet-accounts"
+    And the check "agent:claude:account-1:session" asks to run "homelab accounts"
     And no check repeats what the provider said
     And the provider was asked 1 time
 

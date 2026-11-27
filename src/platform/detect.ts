@@ -1,6 +1,6 @@
 import type { PlatformName } from './types';
 
-/** Map `process.platform` onto the dev-fleet platform names. Pure — unit-tested. */
+/** Map `process.platform` onto the homelab platform names. Pure — unit-tested. */
 export function detectPlatformName(
   platform: NodeJS.Platform = process.platform
 ): PlatformName {

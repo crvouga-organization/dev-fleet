@@ -21,9 +21,9 @@ const bindings = ['keybindings-migrations', 'keybindings.json'];
 const theme = /^themes\/[a-z0-9-]+\.(?:json|webp|png|jpe?g)$/;
 const limit = 1024 * 1024;
 const invalid = () => new Error('T3_CUSTOMIZATIONS_INVALID');
-const marker = '.devfleet-customizations';
+const marker = '.homelab-customizations';
 export const managerMarker = (userdata: string) => join(userdata, marker);
-const markerBody = 'dev-fleet\n';
+const markerBody = 'homelab\n';
 
 export function customizationDocument(value: unknown): Customizations {
   if (!record(value) || Buffer.byteLength(JSON.stringify(value)) > limit)

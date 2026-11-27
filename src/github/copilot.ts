@@ -31,7 +31,7 @@ export async function copilotCheck(run: Runner): Promise<Check> {
         'not-signed-in: this node holds no GitHub credential for Copilot CLI to use.',
       remedy: {
         action:
-          'Run fleet-sync: it signs the node in to GitHub from the stored credential, and Copilot CLI uses that sign-in. No copilot login is needed.',
+          'Run converge: it signs the node in to GitHub from the stored credential, and Copilot CLI uses that sign-in. No copilot login is needed.',
       },
     };
   if (CLASSIC.test(token) || !ACCEPTED.test(token))
@@ -42,7 +42,7 @@ export async function copilotCheck(run: Runner): Promise<Check> {
         'COPILOT_TOKEN_UNSUPPORTED: the node’s GitHub token is of a kind Copilot CLI refuses (a classic personal access token).',
       remedy: {
         action:
-          'Store a fine-grained token with the Copilot Requests permission as github-token and run fleet-sync; every node and Copilot CLI then use it.',
+          'Store a fine-grained token with the Copilot Requests permission as github-token and run converge; every node and Copilot CLI then use it.',
       },
     };
   return {

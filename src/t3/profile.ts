@@ -166,7 +166,7 @@ export async function profileCheck(
         status: 'warn',
         summary: 'T3_PROFILE_CONFLICT',
         ...remedy(
-          `These T3 settings were changed on this machine since dev-fleet last wrote them, or existed before they were declared, and were left as they are: ${conflicts.map((change) => change.key).join(', ')}. Put the value every machine should hold under t3.profile in ${fleetJson()}, or remove the setting on this machine, then run fleet-sync.`
+          `These T3 settings were changed on this machine since homelab last wrote them, or existed before they were declared, and were left as they are: ${conflicts.map((change) => change.key).join(', ')}. Put the value every machine should hold under t3.profile in ${fleetJson()}, or remove the setting on this machine, then run converge.`
         ),
       };
     const pending = result.changes.filter(
@@ -178,7 +178,7 @@ export async function profileCheck(
         status: 'warn',
         summary: 'T3_PROFILE_PENDING',
         ...remedy(
-          `fleet-sync would change these T3 settings: ${pending.map((change) => `${change.key} (${change.action})`).join(', ')}.`
+          `converge would change these T3 settings: ${pending.map((change) => `${change.key} (${change.action})`).join(', ')}.`
         ),
       };
     return {
@@ -196,8 +196,8 @@ export async function profileCheck(
       summary: busy ? 'T3_SETTINGS_BUSY' : 'T3_PROFILE_UNVERIFIED',
       ...remedy(
         busy
-          ? 'T3 kept rewriting its settings while dev-fleet merged the profile. Run fleet-sync again; nothing was overwritten.'
-          : 'Repair T3’s settings.json (or restore personal-profile.json from a backup) on this machine, then run fleet-sync.'
+          ? 'T3 kept rewriting its settings while homelab merged the profile. Run converge again; nothing was overwritten.'
+          : 'Repair T3’s settings.json (or restore personal-profile.json from a backup) on this machine, then run converge.'
       ),
     };
   }

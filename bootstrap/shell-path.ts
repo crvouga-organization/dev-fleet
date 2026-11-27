@@ -61,8 +61,8 @@ export function configurePosixShellPath(
   const agents = agentCommands(home);
   const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
   const paths = quote(`${shims}:${bin}`);
-  const legacy = `# dev-fleet toolchain\nexport PATH=${paths}:"$PATH"`;
-  const block = `# dev-fleet toolchain\ncase ":$PATH:" in\n  *${quote(`:${shims}:${bin}:`)}*) ;;\n  *) export PATH=${paths}:"$PATH" ;;\nesac`;
+  const legacy = `# homelab toolchain\nexport PATH=${paths}:"$PATH"`;
+  const block = `# homelab toolchain\ncase ":$PATH:" in\n  *${quote(`:${shims}:${bin}:`)}*) ;;\n  *) export PATH=${paths}:"$PATH" ;;\nesac`;
   const targets = new Set([
     join(home, '.profile'),
     ...['.bash_profile', '.bash_login']
@@ -106,10 +106,10 @@ export function configurePosixShellPath(
   }
 }
 
-const TAIL_MARKER = '# pinned tool shims first (dev-fleet, keep this last)';
-const AGENTS_MARKER = "# a worker's agent commands (dev-fleet)";
+const TAIL_MARKER = '# pinned tool shims first (homelab, keep this last)';
+const AGENTS_MARKER = "# a worker's agent commands (homelab)";
 const AGENTS_TAIL_MARKER =
-  "# a worker's agent commands before them (dev-fleet, keep this last)";
+  "# a worker's agent commands before them (homelab, keep this last)";
 
 export function configureShellPath(): void {
   const bin = join(homedir(), '.local', 'bin');
@@ -123,6 +123,6 @@ export function configureShellPath(): void {
     `'${value.replaceAll('\\', '\\\\').replaceAll("'", "\\'")}'`;
   appendOnce(
     join(homedir(), '.config/fish/config.fish'),
-    `# dev-fleet toolchain\nfish_add_path --prepend ${fishQuote(shims)} ${fishQuote(bin)}`
+    `# homelab toolchain\nfish_add_path --prepend ${fishQuote(shims)} ${fishQuote(bin)}`
   );
 }

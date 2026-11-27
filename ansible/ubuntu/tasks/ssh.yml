@@ -124,5 +124,5 @@
       - "'passwordauthentication no' in ssh_verified.stdout_lines"
       - "'kbdinteractiveauthentication no' in ssh_verified.stdout_lines"
       - "'permitrootlogin no' in ssh_verified.stdout_lines"
-    fail_msg: SSH_HARDENING_OVERRIDDEN; an earlier sshd_config fragment or Match block keeps password or root login; remove it, then rerun fleet-sync.
+    fail_msg: SSH_HARDENING_OVERRIDDEN; an earlier sshd_config fragment or Match block keeps password or root login; remove it, then rerun converge.
   when: not ansible_check_mode

@@ -228,7 +228,7 @@ function show(deps: Deps, state: State, steps: Step[]): void {
  * edited and npm records the commit it published.
  */
 function publishSeed(exec: Exec, target: Target): boolean {
-  const dir = mkdtempSync(join(tmpdir(), 'dev-fleet-seed-'));
+  const dir = mkdtempSync(join(tmpdir(), 'homelab-seed-'));
   const checkout = join(dir, 'checkout');
   try {
     exec.capture(

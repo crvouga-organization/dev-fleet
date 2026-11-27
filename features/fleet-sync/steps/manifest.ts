@@ -13,7 +13,7 @@ import { succeeded } from '../../support/commands';
 import type { DataTable } from '../../support/gherkin';
 import { fleetSync, type FleetSyncWorld } from '../support/world';
 
-/** fleet-manifest, with the worker's listings written in the scenario. */
+/** measure, with the worker's listings written in the scenario. */
 const { Given, When, Then } = fleetSync;
 
 interface Measuring {
@@ -61,7 +61,7 @@ Given(
   'a worker with every package and service policy.json declares, and these tools:',
   async (world, table: DataTable) => {
     const policy = await ubuntuPolicy();
-    const directory = mkdtempSync(join(tmpdir(), 'devfleet-manifest-'));
+    const directory = mkdtempSync(join(tmpdir(), 'homelab-manifest-'));
     world.defer(() => rmSync(directory, { recursive: true, force: true }));
     measurings.set(world, {
       directory,
@@ -133,7 +133,7 @@ When(
 );
 
 When(
-  /^the operator runs fleet-manifest for "([^"]+)"( against the fresh build)?$/,
+  /^the operator runs measure for "([^"]+)"( against the fresh build)?$/,
   async (world, id: string, fresh: string | null) => {
     const state = measuring(world);
     const roster = join(state.directory, 'roster.json');

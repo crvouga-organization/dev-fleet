@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Private macOS workstation installer; invoke with dev-fleet tools docker-setup.
+# Private macOS workstation installer; invoke with homelab tools docker-setup.
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 case "$(uname -s)/$(uname -m)" in
@@ -30,4 +30,4 @@ if [[ ! -d /Applications/Docker.app ]]; then
   ditto "$docker_mount/Docker.app" /Applications/Docker.app
 fi
 open -a /Applications/Docker.app
-printf '%s\n' 'Docker Desktop opened. Complete any first-run agreement/setup in the app, then rerun dev-fleet tools check --docker.'
+printf '%s\n' 'Docker Desktop opened. Complete any first-run agreement/setup in the app, then rerun homelab tools check --docker.'

@@ -18,7 +18,7 @@ import {
 
 const { Given, When, Then } = fleetSync;
 
-/** A report as fleet-sync builds it, and what was printed of it. */
+/** A report as converge builds it, and what was printed of it. */
 interface Printing {
   report: ManagerReport | undefined;
   printed: string;
@@ -36,7 +36,7 @@ function state(world: FleetSyncWorld): Printing {
 }
 
 Given(
-  'a fleet-sync report that applied the revision {string}, with the dashboard {string}',
+  'a converge report that applied the revision {string}, with the dashboard {string}',
   (world, revision: string, dashboardUrl: string) => {
     state(world).report = {
       ok: true,

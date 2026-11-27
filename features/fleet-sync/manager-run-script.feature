@@ -1,8 +1,8 @@
-Feature: Every fleet-sync on the manager runs through the manager run script
-  Whether started on the manager or handed off from a worker, fleet-sync runs
+Feature: Every converge on the manager runs through the manager run script
+  Whether started on the manager or handed off from a worker, converge runs
   from a clean, fleet-owned checkout of the exact revision, so the result never
   depends on the working tree it was started in. Nobody keeps a clone of
-  dev-fleet: the run script takes the revision from the repository fleet-sync
+  homelab: the run script takes the revision from the repository converge
   prepared, or from the manager's own copy of the source repository.
 
   Background:
@@ -11,16 +11,16 @@ Feature: Every fleet-sync on the manager runs through the manager run script
 
   Rule: The revision is checked out of a repository the manager owns
 
-    Scenario: Started by fleet-sync, the revision is checked out of the repository fleet-sync prepared
+    Scenario: Started by converge, the revision is checked out of the repository converge prepared
       The toolchain bootstrap installs mise where there is none, then the CLI
       runs from the checkout.
       Given the manager has its own copy of the source repository
-      When the run script is started for the commit "first" with "--json", from the repository fleet-sync prepared
+      When the run script is started for the commit "first" with "--json", from the repository converge prepared
       Then the run script exits with 0
       And the run checkout of the commit "first" is at that commit
       And the file "file" in the run checkout of the commit "first" holds "first"
       And the run script ran "bash bootstrap/bootstrap.sh --tools-only"
-      And the last thing the run script ran is "mise exec --locked bun -- bun src/cli/cli.ts fleet-sync --revision {first} --json", where {first} is that commit
+      And the last thing the run script ran is "mise exec --locked bun -- bun src/cli/cli.ts converge --revision {first} --json", where {first} is that commit
 
     Scenario: Handed off from a worker, a revision newer than anything the manager has fetched is fetched
       Nothing names a repository, so the manager's own copy is used.
@@ -41,14 +41,14 @@ Feature: Every fleet-sync on the manager runs through the manager run script
     Scenario: Without any source on the manager the hand-off says how to get one and changes nothing
       When the run script is started for the commit "first" with "--json"
       Then the run script exits with 3
-      And the run script says "run fleet-sync once on the manager itself"
+      And the run script says "run converge once on the manager itself"
       And there is no directory of run checkouts
 
     Scenario: Anything but a full commit is refused
       When the run script is started for the revision "main" with "--json"
       Then the run script exits with 2
 
-  Rule: A preview changes nothing outside dev-fleet's own caches
+  Rule: A preview changes nothing outside homelab's own caches
 
     Scenario: A preview runs on the revision's locked Bun and never sets up the toolchain
       The toolchain setup publishes the global mise configuration and edits
@@ -58,7 +58,7 @@ Feature: Every fleet-sync on the manager runs through the manager run script
       Then the run script exits with 0
       And the run script ran "mise install --locked bun"
       And this time the run script ran nothing that names "bootstrap.sh"
-      And the last thing the run script ran is "mise exec --locked bun -- bun src/cli/cli.ts fleet-sync --revision {first} --dry-run --json", where {first} is that commit
+      And the last thing the run script ran is "mise exec --locked bun -- bun src/cli/cli.ts converge --revision {first} --dry-run --json", where {first} is that commit
 
     Scenario: A preview leaves older run checkouts for the next apply to prune
       Given the manager has its own copy of the source repository
@@ -101,7 +101,7 @@ Feature: Every fleet-sync on the manager runs through the manager run script
         | 1111111111111111111111111111111111111111 | 2020-01-01 |
         | 2222222222222222222222222222222222222222 | 2020-01-02 |
         | 3333333333333333333333333333333333333333 | 2020-01-03 |
-      And the public launcher points at "node_modules/.fleet-revisions/old/bootstrap/devfleet" inside the old run "1111111111111111111111111111111111111111"
+      And the public launcher points at "node_modules/.fleet-revisions/old/bootstrap/homelab" inside the old run "1111111111111111111111111111111111111111"
       When the run script is started for the commit "first" with "--json"
       Then the run script exits with 0
       And the public launcher still runs

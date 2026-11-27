@@ -12,7 +12,7 @@ export interface SupportRow {
   note: string;
 }
 
-/** Every platform and what dev-fleet does with it, from the policies the code
+/** Every platform and what homelab does with it, from the policies the code
  * reads: the supported rows from the macOS and Ubuntu policies, the rest from
  * ansible/platforms.json. docs/support-matrix.md is this table. */
 export function supportMatrix(): SupportRow[] {

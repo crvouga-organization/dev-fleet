@@ -38,7 +38,7 @@ const IDENTITY = {
 export interface Manager {
   home: string;
   origin: string;
-  /** The manager's own copy of the source repository, as fleet-sync makes it. */
+  /** The manager's own copy of the source repository, as converge makes it. */
   cache: string;
   runs: string;
   env: Record<string, string>;
@@ -93,7 +93,7 @@ function start(
 Given(
   /^a manager's home with nothing on it but Git, where "mise" and "bash" only record how they are called$/,
   (world) => {
-    // No dev-fleet clone and no mise: the stand-ins let the script run to its
+    // No homelab clone and no mise: the stand-ins let the script run to its
     // last line without installing a toolchain.
     const home = temporary(world, 'fleet-manager-run-');
     const bin = join(home, '.local/bin');
@@ -170,14 +170,14 @@ Given(
     const executable = join(node.runs, old, path);
     mkdirSync(dirname(executable), { recursive: true });
     writeFileSync(executable, '#!/bin/sh\nexit 0\n', { mode: 0o755 });
-    symlinkSync(executable, join(node.home, '.local/bin/devfleet'));
+    symlinkSync(executable, join(node.home, '.local/bin/homelab'));
   }
 );
 
 Then('the public launcher still runs', (world) => {
   const node = manager(world);
   expect(
-    Bun.spawnSync([join(node.home, '.local/bin/devfleet')], { env: node.env })
+    Bun.spawnSync([join(node.home, '.local/bin/homelab')], { env: node.env })
       .exitCode
   ).toBe(0);
 });
@@ -209,14 +209,14 @@ When(
 );
 
 When(
-  'the run script is started for the commit {string} with {string}, from the repository fleet-sync prepared',
+  'the run script is started for the commit {string} with {string}, from the repository converge prepared',
   (world, message: string, flags: string) => {
-    // fleet-sync names the repository it prepared: the manager's own copy.
+    // converge names the repository it prepared: the manager's own copy.
     startRunScript(
       world,
       (node) => sha(node, message),
       flags,
-      (node) => ({ DEVFLEET_REPO: node.cache })
+      (node) => ({ HOMELAB_REPO: node.cache })
     );
   }
 );

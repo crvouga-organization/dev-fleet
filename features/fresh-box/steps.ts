@@ -31,7 +31,7 @@ export class FreshBoxWorld extends World {
   /** MiB measured on the machine, by what was measured. */
   measured: Record<string, number> = {};
 
-  /** A command on the machine, over the same SSH transport fleet-sync uses. */
+  /** A command on the machine, over the same SSH transport converge uses. */
   remote(command: string): Promise<{ ok: boolean; stdout: string }> {
     return remote(this.machine, command);
   }
@@ -144,7 +144,7 @@ Then(
   'the machine holds the fleet configuration, without the bucket it names',
   async (world) => {
     const installed = JSON.parse(
-      (await world.remote('cat "$HOME/.config/dev-fleet/fleet.json"')).stdout
+      (await world.remote('cat "$HOME/.config/homelab/fleet.json"')).stdout
     ) as Record<string, unknown>;
     const example = JSON.parse(
       await readFile(resolve(repo, 'examples/fleet.json'), 'utf8')
@@ -157,7 +157,7 @@ Then(
 );
 
 Then('the machine holds the record of that copy beside it', async (world) => {
-  const copy = '"$HOME/.config/dev-fleet/fleet.json"';
+  const copy = '"$HOME/.config/homelab/fleet.json"';
   expect(
     (await world.remote(`sha256sum <${copy} | cut -d' ' -f1`)).stdout
   ).toBe((await world.remote(`cat ${copy}.sha256`)).stdout);
@@ -176,8 +176,8 @@ Then('the machine runs the mise release mise.toml pins', async (world) => {
   ).toStartWith(pinned);
 });
 
-Then('the devfleet launcher is installed on the machine', async (world) => {
-  expect((await world.remote('test -x "$HOME/.local/bin/devfleet"')).ok).toBe(
+Then('the homelab launcher is installed on the machine', async (world) => {
+  expect((await world.remote('test -x "$HOME/.local/bin/homelab"')).ok).toBe(
     true
   );
 });
@@ -280,7 +280,7 @@ function report(world: FreshBoxWorld, what: string, mib: number): void {
   );
 }
 
-When('the disk dev-fleet uses on the machine is measured', async (world) => {
+When('the disk homelab uses on the machine is measured', async (world) => {
   report(world, 'tools', await mebibytes(world, MISE));
   report(world, 'checkouts', await mebibytes(world, `${FLEET}/revisions`));
 });

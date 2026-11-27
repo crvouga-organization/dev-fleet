@@ -1,6 +1,6 @@
 Feature: A run without a person enrolls a worker only when every fact is verified
   Machines appear without a person present: from a pipeline, a scheduled sync
-  or an agent that runs fleet-sync --json. Such a run enrolls a declared
+  or an agent that runs converge --json. Such a run enrolls a declared
   worker when its pinned host key matched (every session is strict), sudo -n
   works, and exactly one tailnet device matches it, or none when the fleet
   declares a tailnet control plane that joins it during the run. Anything
@@ -18,7 +18,7 @@ Feature: A run without a person enrolls a worker only when every fact is verifie
       | nWorkerOne | worker-one.example.ts.net     |
     And "worker-one" answers a fresh SSH session with the home "/home/dev"
     And "worker-one" has passwordless sudo
-    When fleet-sync enrolls without a person
+    When converge enrolls without a person
     Then the run enrolled:
       | worker-one |
     And the roster binds "worker-one" to the tailnet device "nWorkerOne", with the workspace "/home/dev/.local/share/personal/fleet"
@@ -30,7 +30,7 @@ Feature: A run without a person enrolls a worker only when every fact is verifie
       | nOldOne    | worker-one.example.ts.net     |
     And "worker-one" answers a fresh SSH session with the home "/home/dev"
     And "worker-one" has passwordless sudo
-    When fleet-sync enrolls without a person
+    When converge enrolls without a person
     Then the run enrolled nobody
     And the run reports "worker-one" with "TAILSCALE_IDENTITY_CONFLICT"
 
@@ -40,7 +40,7 @@ Feature: A run without a person enrolls a worker only when every fact is verifie
       | nWorkerOne | worker-one.example.ts.net     |
     And "worker-one" answers a fresh SSH session with the home "/home/dev"
     And "worker-one" asks for a sudo password
-    When fleet-sync enrolls without a person
+    When converge enrolls without a person
     Then the run enrolled nobody
     And the run reports "worker-one" with "SUDO_AUTHORIZATION_REQUIRED"
 
@@ -48,7 +48,7 @@ Feature: A run without a person enrolls a worker only when every fact is verifie
     Given the tailnet shows no devices
     And "worker-one" answers a fresh SSH session with the home "/home/dev"
     And "worker-one" has passwordless sudo
-    When fleet-sync enrolls without a person
+    When converge enrolls without a person
     Then the run enrolled nobody
     And the run reports "worker-one" with "TAILSCALE_ENROLLMENT_REQUIRED"
 
@@ -60,7 +60,7 @@ Feature: A run without a person enrolls a worker only when every fact is verifie
     And the tailnet shows no devices
     And "worker-one" answers a fresh SSH session with the home "/home/dev"
     And "worker-one" has passwordless sudo
-    When fleet-sync enrolls without a person
+    When converge enrolls without a person
     Then the run enrolled:
       | worker-one |
     And the roster lets "worker-one" bootstrap over SSH, with the workspace "/home/dev/.local/share/personal/fleet"
@@ -72,7 +72,7 @@ Feature: A run without a person enrolls a worker only when every fact is verifie
     And "worker-one" refuses the declared account until the account playbook runs, then answers with the home "/home/dev"
     And "worker-one" has passwordless sudo
     And the playbook "ubuntu/worker-account.yml" succeeds
-    When fleet-sync enrolls without a person
+    When converge enrolls without a person
     Then the playbook "ubuntu/worker-account.yml" was applied with:
       | variable | value      |
       | target   | worker-one |
@@ -83,7 +83,7 @@ Feature: A run without a person enrolls a worker only when every fact is verifie
     And the run reports "worker-one" with "Created the declared account dev"
 
   Scenario: The report names the workers a run enrolled, in its text and in its JSON
-    Given a fleet-sync report of "worker-one" and "worker-two"
+    Given a converge report of "worker-one" and "worker-two"
     When the run's enrollment of "worker-one" is added to it
     Then the report lists "worker-one" as enrolled
     And its text says "enrolled   worker-one"

@@ -8,6 +8,7 @@ import { runCommand } from '../runner';
 import { hostId } from '../topology';
 import type { Runner } from '../types';
 import type { CommandOutcome } from './contracts';
+import { commandNames } from './names';
 
 /** Runs the GitHub workflow an agent depends on from this machine against
  * the declared sandbox repository, and cleans up after itself.
@@ -43,7 +44,7 @@ export function registerGithubVerify(
   complete: (outcome: CommandOutcome) => void
 ): void {
   program
-    .command('fleet-github-verify')
+    .command(commandNames('check-github').name)
     .description(
       'Prove this machine can clone, push, open a pull request, read checks and comment on GitHub'
     )

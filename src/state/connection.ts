@@ -12,7 +12,7 @@ import {
 } from './bucket';
 import { bucketPath } from './paths';
 
-/** How a devfleet command reaches the bucket, and where each part came from.
+/** How a homelab command reaches the bucket, and where each part came from.
  * Never a credential itself.
  */
 export interface Connection {
@@ -21,7 +21,7 @@ export interface Connection {
    * `saved`: this machine's bucket.json.
    */
   location: 'configuration' | 'saved' | null;
-  /** `environment`: the two `DEVFLEET_BUCKET_*` variables. `saved`: this
+  /** `environment`: the two `HOMELAB_BUCKET_*` variables. `saved`: this
    * machine's bucket.json. `ambient`: none given, so the standard AWS
    * environment or profile.
    */
@@ -32,8 +32,10 @@ export interface Connection {
 export function environmentCredentials(
   env: NodeJS.ProcessEnv
 ): { accessKeyId: string; secretAccessKey: string } | null {
-  const accessKeyId = env[ACCESS_KEY_ID_ENV];
-  const secretAccessKey = env[SECRET_ACCESS_KEY_ENV];
+  const accessKeyId =
+    env[ACCESS_KEY_ID_ENV] || env['DEVFLEET_BUCKET_ACCESS_KEY_ID'];
+  const secretAccessKey =
+    env[SECRET_ACCESS_KEY_ENV] || env['DEVFLEET_BUCKET_SECRET_ACCESS_KEY'];
   if (!accessKeyId && !secretAccessKey) return null;
   if (!accessKeyId || !secretAccessKey)
     throw new FleetUsageError(
@@ -44,7 +46,7 @@ export function environmentCredentials(
 
 /** The configuration says where the bucket is; credentials are passed to the
  * command. A machine that runs unattended (the schedule, a hand-off from a
- * worker) gets no environment, so `fleet-state --init` may save both there:
+ * worker) gets no environment, so `state --init` may save both there:
  * a saved location is used when the configuration names none, and saved
  * credentials only for the bucket they were saved for.
  */

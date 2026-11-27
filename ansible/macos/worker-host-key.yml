@@ -1,9 +1,9 @@
 ---
-# A worker's pinned SSH host key in the manager's known_hosts. fleet-sync
+# A worker's pinned SSH host key in the manager's known_hosts. converge
 # connects with StrictHostKeyChecking=yes, so this is the only way a key is
-# trusted: devfleet fleet-node-replace pins the key of a replacement worker
+# trusted: homelab replace pins the key of a replacement worker
 # (given by the operator, or by the seed that created it with
-# fleet-node-seed) and devfleet fleet-node-retire forgets it. A key is never
+# provision) and homelab retire forgets it. A key is never
 # learned on first use. Variables: host (the name ssh connects to, with
 # [host]:port for another port), pin (present or absent), key (with present:
 # "TYPE BASE64") and known_hosts (the file).

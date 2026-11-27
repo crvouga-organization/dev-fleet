@@ -22,7 +22,11 @@ export async function managerCustomizations(
   const { value } = await mutateState(context, async () => {
     const saved = readDocument(file, 't3-customizations');
     const initialized = await read(managerMarker(userdata));
-    if (initialized !== null && initialized !== 'dev-fleet\n')
+    if (
+      initialized !== null &&
+      initialized !== 'homelab\n' &&
+      initialized !== 'dev-fleet\n'
+    )
       throw new Error('T3_CUSTOMIZATIONS_CONFLICT');
     const snapshot =
       saved !== null && initialized === null

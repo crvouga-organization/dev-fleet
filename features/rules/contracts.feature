@@ -1,5 +1,5 @@
 Feature: What a command prints with --json is published, and checked against what it prints
-  An agent parses dev-fleet's output by its published schema, not by
+  An agent parses homelab's output by its published schema, not by
   guesswork. Each schema under schema/output is checked here against what the
   command really prints, and every check ID the code can report is listed in
   schema/check-ids.json, generated from the code: what it means, whether it
@@ -7,32 +7,32 @@ Feature: What a command prints with --json is published, and checked against wha
 
   Rule: Each command's output matches its schema
 
-    Scenario: A fleet-sync report is version 3
-      When fleet-sync stops before it reaches a machine
+    Scenario: A converge report is version 3
+      When converge stops before it reaches a machine
       Then what it prints matches "schema/output/fleet-sync.schema.json"
 
-    Scenario: A fleet-sync report that says it is version 1 does not match
-      Given a fleet-sync report that says it is version 1
+    Scenario: A converge report that says it is version 1 does not match
+      Given a converge report that says it is version 1
       Then it does not match "schema/output/fleet-sync.schema.json"
 
-    Scenario: A fleet-status report is a version 1 diagnostic report
-      When fleet-status checks this manager only, where every command succeeds
+    Scenario: A check report is a version 1 diagnostic report
+      When check checks this manager only, where every command succeeds
       Then what it prints matches "schema/output/report.schema.json"
 
-    Scenario: A fleet-repair preview is a version 1 diagnostic report
-      When fleet-repair previews the repairs of this manager only, where every command succeeds
+    Scenario: A repair preview is a version 1 diagnostic report
+      When repair previews the repairs of this manager only, where every command succeeds
       Then what it prints matches "schema/output/report.schema.json"
 
-    Scenario: A fleet-state report is a version 1 diagnostic report
-      When fleet-state checks a fleet state whose bucket cannot be reached
+    Scenario: A state report is a version 1 diagnostic report
+      When state checks a fleet state whose bucket cannot be reached
       Then what it prints matches "schema/output/report.schema.json"
 
-    Scenario: fleet-state --example prints a fleet configuration, not a report
-      When fleet-state prints the example configuration
+    Scenario: state --example prints a fleet configuration, not a report
+      When state prints the example configuration
       Then what it prints matches "schema/output/fleet-state-definition.schema.json"
       And it does not match "schema/output/report.schema.json"
 
-    Scenario Outline: fleet-sync --schedule <action> is a version 2 schedule report, not a fleet-sync report
+    Scenario Outline: converge --schedule <action> is a version 2 schedule report, not a converge report
       When the manager schedule is asked to <action>
       Then what it prints matches "schema/output/fleet-sync-schedule.schema.json"
       And it does not match "schema/output/fleet-sync.schema.json"
@@ -42,8 +42,8 @@ Feature: What a command prints with --json is published, and checked against wha
         | report its status            |
         | pause, without authorization |
 
-    Scenario: fleet-report's output matches its schema
-      When fleet-report reads a history of two runs
+    Scenario: history's output matches its schema
+      When history reads a history of two runs
       Then what it prints matches "schema/output/fleet-report.schema.json"
 
     Scenario: A refused command prints an error document

@@ -1,5 +1,5 @@
 Feature: A fleet is a project of your own, run with the published package
-  A fleet is a fleet.json in a project, and the devfleet CLI run from inside
+  A fleet is a fleet.json in a project, and the homelab CLI run from inside
   it. The CLI names that file for the whole command and for everything the
   command starts in another directory. The package itself says which commit it
   was published from: that is the revision every machine has to run.
@@ -27,16 +27,16 @@ Feature: A fleet is a project of your own, run with the published package
         | machines/notes |
 
     Scenario: The project's fleet.json is named for the command and everything it starts
-      fleet-sync re-runs itself from another directory, so the file is named in
+      converge re-runs itself from another directory, so the file is named in
       the environment the command passes on.
       Given the project's "fleet.json" holds:
         """
         {"version":3,"manager":{"id":"manager-mac"}}
         """
       And an environment that names nothing
-      When devfleet is run in "machines/notes"
-      Then devfleet uses the project's "fleet.json"
-      And the environment names the project's "fleet.json" as DEVFLEET_CONFIG
+      When homelab is run in "machines/notes"
+      Then homelab uses the project's "fleet.json"
+      And the environment names the project's "fleet.json" as HOMELAB_CONFIG
 
     Scenario: Another tool's fleet.json is passed over
       The two files below the project's own are closer to the working
@@ -56,21 +56,21 @@ Feature: A fleet is a project of your own, run with the published package
       When the fleet configuration is looked for from "machines/notes"
       Then the fleet configuration found is the project's "fleet.json"
 
-    Scenario: A file named in DEVFLEET_CONFIG wins, and a relative one is anchored where the command is run
-      It is anchored because fleet-sync re-runs itself from another directory.
+    Scenario: A file named in HOMELAB_CONFIG wins, and a relative one is anchored where the command is run
+      It is anchored because converge re-runs itself from another directory.
       Given the project's "fleet.json" holds:
         """
         {"version":3,"manager":{"id":"manager-mac"}}
         """
-      And an environment that names "other/fleet.json" as DEVFLEET_CONFIG
-      When devfleet is run in "machines/notes"
-      Then devfleet uses the project's "machines/notes/other/fleet.json"
-      And the environment names the project's "machines/notes/other/fleet.json" as DEVFLEET_CONFIG
+      And an environment that names "other/fleet.json" as HOMELAB_CONFIG
+      When homelab is run in "machines/notes"
+      Then homelab uses the project's "machines/notes/other/fleet.json"
+      And the environment names the project's "machines/notes/other/fleet.json" as HOMELAB_CONFIG
 
     Scenario: Outside a project nothing is named and the stored configuration is used
       Given an environment that names nothing
-      When devfleet is run in "machines/notes"
-      Then devfleet uses no project configuration
+      When homelab is run in "machines/notes"
+      Then homelab uses no project configuration
       And the environment still names nothing
 
   Rule: A published package knows the commit it is; a checkout does not
@@ -84,11 +84,11 @@ Feature: A fleet is a project of your own, run with the published package
     Scenario: A published package names its version and the commit it was published from
       Given a package whose manifest is:
         """
-        {"name":"@scope/dev-fleet","version":"1.4.0","gitHead":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+        {"name":"@scope/homelab","version":"1.4.0","gitHead":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
         """
       When the package says what it is
       Then it says exactly:
-        | name     | @scope/dev-fleet                         |
+        | name     | @scope/homelab                         |
         | version  | 1.4.0                                    |
         | revision | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
         | issues   | null                                     |
@@ -96,20 +96,20 @@ Feature: A fleet is a project of your own, run with the published package
     Scenario Outline: A fork sends its users to its own issue tracker, in either npm form
       Given a package whose manifest is:
         """
-        {"name":"@scope/dev-fleet","version":"1.4.0","gitHead":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bugs":<bugs>}
+        {"name":"@scope/homelab","version":"1.4.0","gitHead":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bugs":<bugs>}
         """
       When the package says what it is
-      Then its issue tracker is "https://git.example.com/scope/dev-fleet/issues"
+      Then its issue tracker is "https://git.example.com/scope/homelab/issues"
 
       Examples:
         | bugs                                                     |
-        | "https://git.example.com/scope/dev-fleet/issues"         |
-        | {"url":"https://git.example.com/scope/dev-fleet/issues"} |
+        | "https://git.example.com/scope/homelab/issues"         |
+        | {"url":"https://git.example.com/scope/homelab/issues"} |
 
     Scenario Outline: Anything but an https address is no issue tracker
       Given a package whose manifest is:
         """
-        {"name":"@scope/dev-fleet","version":"1.4.0","gitHead":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bugs":<bugs>}
+        {"name":"@scope/homelab","version":"1.4.0","gitHead":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","bugs":<bugs>}
         """
       When the package says what it is
       Then it names no issue tracker
@@ -123,7 +123,7 @@ Feature: A fleet is a project of your own, run with the published package
     Scenario Outline: Anything but a full commit is no revision to converge a fleet to
       Given a package whose manifest is:
         """
-        {"name":"@scope/dev-fleet","version":"1.4.0","gitHead":<gitHead>}
+        {"name":"@scope/homelab","version":"1.4.0","gitHead":<gitHead>}
         """
       When the package says what it is
       Then it names no revision
@@ -138,7 +138,7 @@ Feature: A fleet is a project of your own, run with the published package
     Scenario: A manifest without a commit names no revision
       Given a package whose manifest is:
         """
-        {"name":"@scope/dev-fleet","version":"1.4.0"}
+        {"name":"@scope/homelab","version":"1.4.0"}
         """
       When the package says what it is
       Then it names no revision
@@ -154,10 +154,10 @@ Feature: A fleet is a project of your own, run with the published package
       When the account probe reads its package root from standard input in that revision
       Then the package root is the revision
 
-  Rule: Code run from a checkout uses the dev-fleet checkout the command is started in
+  Rule: Code run from a checkout uses the homelab checkout the command is started in
 
     Scenario: The workspace is the checkout above the working directory
-      A dev-fleet checkout, as opposed to any other project, is the one that
+      A homelab checkout, as opposed to any other project, is the one that
       holds the manager run script.
       Given the project's "bootstrap/fleet-manager-run.sh" holds:
         """
