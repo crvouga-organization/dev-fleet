@@ -1409,10 +1409,10 @@ backend = "npm:@yarnpkg/cli-dist"
 specifiers = ["4.19.0"]
 
 [[tools."npm:vercel"]]
-version = "67.0.0"
-aube = { path = ".mise/locks/npm-vercel/67.0.0", digest = "sha256:da09bd91af86cbcf5c405dd24ded964c96666d5b7064b07a218acf5eb8273c4c" }
+version = "68.0.0"
+aube = { path = ".mise/locks/npm-vercel/68.0.0", digest = "sha256:4c7370060dab24e4348f8f03764ee3d4804c8ab74c2a41eaafbe77d32234c150" }
 backend = "npm:vercel"
-specifiers = ["67.0.0"]
+specifiers = ["68.0.0"]
 
 [[tools."npm:wrangler"]]
 version = "4.169.0"
