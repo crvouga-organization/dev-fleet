@@ -10,6 +10,8 @@ Reads the Packages indexes of snapshot.ubuntu.com; changes nothing.
 """
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
+import hashlib
+import os
 import subprocess
 import gzip
 import json
@@ -26,7 +28,28 @@ ATTEMPTS = 5
 WORKERS = 4
 
 
+def cache_path(url):
+    """Where a fetched index is kept. The URL names the pinned snapshot date,
+    so a hit cannot be a newer or older snapshot than the policy."""
+    configured = os.environ.get('SNAPSHOT_CACHE')
+    directory = Path(configured).expanduser() if configured else Path.home() / '.cache' / 'devfleet-snapshot-indexes'
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory / hashlib.sha256(url.encode()).hexdigest()
+
+
 def fetch(url):
+    """The body at url, from the snapshot cache or the mirror."""
+    cached = cache_path(url)
+    if cached.is_file():
+        return cached.read_bytes()
+    body = fetch_remote(url)
+    temporary = Path(str(cached) + '.part')
+    temporary.write_bytes(body)
+    temporary.replace(cached)
+    return body
+
+
+def fetch_remote(url):
     """The body at url, retrying the mirror's transient 5xx and timeouts."""
     for attempt in range(1, ATTEMPTS + 1):
         try:

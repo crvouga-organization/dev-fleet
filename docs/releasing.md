@@ -96,7 +96,9 @@ until one passes: npm stays at the last version. GitHub emails the failure;
 its redacted results and the guest's logs as an artifact of the run
 (`gh run download <run>`). The next passing release publishes everything
 since the last tag. The same holds for CI on `main`, which the release waits
-for.
+for. CI on `main` is the release tier and aims to finish in ten minutes. A
+job that runs longer is not cancelled. The publish workflow then still runs
+the Ubuntu VM and the tailnet test, which sit outside that goal.
 
 A pull request is merged by a workflow, and a merge made with a workflow's
 own token starts no CI on `main`. [`catch-up.yml`](../.github/workflows/catch-up.yml)

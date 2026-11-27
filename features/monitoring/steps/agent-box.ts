@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import lock from '../../../ansible/monitoring/lock.json';
 import { runCommand } from '../../../src/runner';
+import { loadImageTar, saveImageTar } from './download-cache';
 import type { DataTable } from '../../support/gherkin';
 import { monitoring, type MonitoringWorld } from './world';
 
@@ -46,17 +47,22 @@ export const on = (container: string, command: string) =>
     timeoutMs: 600_000,
   });
 
+const AGENT_DOCKERFILE = 'features/monitoring/support/agent-box.Dockerfile';
+
 async function createBox(): Promise<Box> {
-  await must([
-    'docker',
-    'build',
-    '-q',
-    '-t',
-    image,
-    '-f',
-    'features/monitoring/support/agent-box.Dockerfile',
-    'features/monitoring/support',
-  ]);
+  if (!(await loadImageTar(AGENT_DOCKERFILE, root))) {
+    await must([
+      'docker',
+      'build',
+      '-q',
+      '-t',
+      image,
+      '-f',
+      AGENT_DOCKERFILE,
+      'features/monitoring/support',
+    ]);
+    await saveImageTar(AGENT_DOCKERFILE, image, root);
+  }
   const container = `fleet-agent-box-${process.pid}`;
   // systemd as PID 1 needs the host's cgroups.
   await must([

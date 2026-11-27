@@ -12,6 +12,13 @@ import { runCommand } from '../../../src/runner';
 import { sshArgs } from '../../../src/ssh';
 import type { Check, FleetNode, Runner } from '../../../src/types';
 import { buildImage } from './image';
+import {
+  freshCacheEnabled,
+  loadFreshImage,
+  prepareFreshCache,
+  saveFreshImage,
+  seedCaches,
+} from './cache';
 
 /** Disposable Ubuntu machines for the fresh-box features. Creating and
  * bootstrapping one is slow, so each is made once per run, by name, and every
@@ -66,6 +73,8 @@ export interface Box {
   present: string[];
   /** The first bootstrap, shared by every scenario that needs one. */
   first?: Promise<Bootstrap>;
+  /** Copies this machine's apt and mise caches back, then deletes them. */
+  giveBack?: (remove: boolean) => Promise<void>;
 }
 
 export interface BoxOptions {
@@ -162,7 +171,25 @@ async function authorize(container: string, name: string): Promise<void> {
  * build fails, and a failure of the runner when it still does (./image.ts).
  */
 export function freshImage(): Promise<void> {
-  built ??= buildImage(async () => {
+  built ??= (async () => {
+    if (freshCacheEnabled()) {
+      try {
+        if (await loadFreshImage(RELEASE_UNDER_TEST, repo)) return;
+      } catch (error) {
+        console.warn(
+          `Fresh image cache skipped: ${error instanceof Error ? error.message : error}`
+        );
+      }
+    }
+    await buildFreshImage();
+    if (freshCacheEnabled())
+      await saveFreshImage(image, RELEASE_UNDER_TEST, repo);
+  })();
+  return built;
+}
+
+function buildFreshImage(): Promise<void> {
+  return buildImage(async () => {
     const result = await runCommand(
       [
         'docker',
@@ -185,29 +212,36 @@ export function freshImage(): Promise<void> {
       );
     return result.ok;
   });
-  return built;
 }
 
 async function createBox(name: string, options: BoxOptions): Promise<Box> {
   await freshImage();
+  const seeded = await seedFreshCaches();
   const container = `fleet-${name}-${process.pid}`;
-  await must([
-    'docker',
-    'run',
-    '-d',
-    '--rm',
-    '--name',
-    container,
-    '-p',
-    '127.0.0.1::22',
-    ...(options.smallHome
-      ? [
-          '--mount',
-          'type=tmpfs,destination=/home/fleettest/.local,tmpfs-size=67108864,tmpfs-mode=1777',
-        ]
-      : []),
-    image,
-  ]);
+  try {
+    await must([
+      'docker',
+      'run',
+      '-d',
+      '--rm',
+      '--name',
+      container,
+      '-p',
+      '127.0.0.1::22',
+      ...(options.smallHome
+        ? [
+            '--mount',
+            'type=tmpfs,destination=/home/fleettest/.local,tmpfs-size=67108864,tmpfs-mode=1777',
+          ]
+        : []),
+      ...(seeded?.args ?? []),
+      image,
+    ]);
+  } catch (error) {
+    await seeded?.giveBack(true);
+    throw error;
+  }
+  if (seeded) await prepareFreshCache(container);
   const registered = adding.then(() => authorize(container, name));
   adding = registered.catch(() => undefined);
   await registered;
@@ -227,7 +261,23 @@ async function createBox(name: string, options: BoxOptions): Promise<Box> {
   for (const command of BEFOREHAND)
     if ((await transport([...sshArgs(node), `command -v ${command}`])).ok)
       present.push(command);
-  return { name, container, node, present };
+  return seeded
+    ? { name, container, node, present, giveBack: seeded.giveBack }
+    : { name, container, node, present };
+}
+
+async function seedFreshCaches(): Promise<
+  { args: string[]; giveBack: (remove: boolean) => Promise<void> } | undefined
+> {
+  if (!freshCacheEnabled()) return undefined;
+  try {
+    return await seedCaches();
+  } catch (error) {
+    console.warn(
+      `Fresh package caches skipped: ${error instanceof Error ? error.message : error}`
+    );
+    return undefined;
+  }
 }
 
 /** The machine of that name, created on first use. */
@@ -244,9 +294,11 @@ export async function discardBoxes(): Promise<void> {
   for (const created of boxes.values()) {
     const machine = await created.catch(() => null);
     if (!machine) continue;
-    if (process.env['HOMELAB_TEST_FRESH_BOX'] === 'keep')
-      console.log(`Kept ${machine.container} (docker exec -it … sh).`);
+    const keep = process.env['HOMELAB_TEST_FRESH_BOX'] === 'keep';
+    // Unmount the caches before removing them. apt owns files inside them.
+    if (keep) console.log(`Kept ${machine.container} (docker exec -it … sh).`);
     else await runCommand(['docker', 'rm', '-f', machine.container]);
+    await machine.giveBack?.(!keep);
   }
   if (client) {
     const { scratch } = await client;
