@@ -699,9 +699,9 @@
       "minItems": 1,
       "uniqueItems": true,
       "items": {
-        "enum": ["t3", "super"]
+        "enum": ["t3", "super", "orca", "paradev"]
       },
-      "description": "The IDEs the fleet runs. Defaults to [\"t3\"]; the README's support matrix lists the supported ones. \"super\" is super.engineering on the manager, with every worker as one of its remote SSH workspaces."
+      "description": "The IDEs the fleet runs. Defaults to [\"t3\"]; the README's support matrix lists the supported ones. \"super\" is super.engineering on the manager, with every worker as one of its remote SSH workspaces. \"orca\" is Orca and \"paradev\" is Paradev: each machine holds every other machine as a remote host."
     },
     "t3": {
       "type": "object",
