@@ -1,5 +1,7 @@
 #!/bin/sh
 # Links ~/.local/bin/homelab to this checkout (or the one given). Idempotent.
+# homelab is the command. The fleet is the set of machines it keeps.
+# A leftover symlink of the previous command name is removed.
 set -eu
 root=${1:-$(cd "$(dirname "$0")/.." && pwd)}
 [ -x "$root/bootstrap/homelab" ] || exit 1
@@ -8,5 +10,10 @@ root=${1:-$(cd "$(dirname "$0")/.." && pwd)}
 [ -e "$root/.git" ] || { echo 'The homelab launcher links to a checkout of homelab; converge installs it.' >&2; exit 1; }
 mkdir -p "$HOME/.local/bin"
 ln -sfn "$root/bootstrap/homelab" "$HOME/.local/bin/homelab"
-# The name this command had before the repository was renamed.
-ln -sfn "$root/bootstrap/homelab" "$HOME/.local/bin/devfleet"
+# Drop the previous command only when it still points at this launcher.
+legacy="$HOME/.local/bin/devfleet"
+if [ -L "$legacy" ]; then
+  case $(readlink "$legacy") in
+    */bootstrap/homelab | */bootstrap/devfleet) rm -f "$legacy" ;;
+  esac
+fi

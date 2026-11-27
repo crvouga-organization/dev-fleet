@@ -254,17 +254,18 @@ planted key is never used or printed. The suite passes under `python -X dev -W e
 sockets), with a hostile environment, and 8-way parallel with CPU hogs running.
 
 ```bash
-# T3 project action (runs the shared bootstrap first, then the personal CLI)
-bash bootstrap/project-action.sh infra-cliproxy model-suite --target mock --profile manual
-bash bootstrap/project-action.sh infra-cliproxy model-health          # live, needs a key
+# T3 project action (warms the shared toolchain, then homelab proxy)
+bash bootstrap/project-action.sh proxy model-suite --target mock --profile manual
+bash bootstrap/project-action.sh proxy model-health          # live, needs a key
 
 # Unit tests only, through the pinned toolchain
 mise exec -- bun run --filter @pkgs/cliproxy-fleet test:models
 mise exec -- bun run --filter @pkgs/cliproxy-fleet lint
 ```
 
-Suggested T3 script labels: `Infra: Cliproxy model health` (`infra-cliproxy model-health`) and
-`Infra: Cliproxy model suite` (`infra-cliproxy model-suite`). The full package `test` still needs
+Suggested T3 script labels: `Homelab: Proxy model health` (`proxy model-health`) and
+`Homelab: Proxy model suite` (`proxy model-suite`). `infra-cliproxy` is the
+same action. The full package `test` still needs
 Restic and PyYAML for the older backup and recovery tests; `test:models` does not.
 
 ## Emulator and contract tests

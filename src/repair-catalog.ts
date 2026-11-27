@@ -70,7 +70,7 @@ export const REPAIR_RECIPES: RepairRecipe[] = [
     owner: 'homelab',
     automatic: true,
     action:
-      'Links ~/.local/bin/homelab to this checkout of homelab (refused for an installed package, which is not one). Nothing is copied and no configuration is changed.',
+      'Links ~/.local/bin/homelab to this checkout of homelab and removes a leftover symlink of the previous command name (refused for an installed package, which is not one). Nothing is copied and no configuration is changed.',
     commands: [['sh', 'bootstrap/install-launcher.sh']],
   },
   {

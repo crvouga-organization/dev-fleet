@@ -10,7 +10,7 @@ import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runCommand } from '../../../src/runner';
 
-const ROOT = join(homedir(), '.cache', 'devfleet-fresh');
+const ROOT = join(homedir(), '.cache', 'homelab-fresh');
 
 export function freshCacheEnabled(): boolean {
   return (

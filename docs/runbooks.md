@@ -357,7 +357,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_QUOTA_COVERAGE_MISSING`: the manager could not match a hub quota reading to each declared Antigravity account. Check its T3 usage-limit source and the account on the proxy.
 - `T3_CLI_MISSING`: the provider check could not start the T3 CLI from PATH or its user installation. Restore the executable and rerun converge to verify the account sessions.
 - `T3_ANTIGRAVITY_SESSION_UNVERIFIED`: T3 could not open an authenticated ACP session for the reported account positions. Check that T3 is running on this machine, refresh those instances in Settings > Providers, and compare their proxy account session checks before rerunning converge.
-- `T3_PROVIDERS_UNVERIFIED`: provider reconciliation stopped before it could report a plan. The remedy is the authored cause (a stale plan, a held lock, or the credential playbook). An unexpected error stays out of the report, because it can carry a secret. Run `devfleet t3-reconcile --dry-run` on the machine.
+- `T3_PROVIDERS_UNVERIFIED`: provider reconciliation stopped before it could report a plan. The remedy is the authored cause (a stale plan, a held lock, or the credential playbook). An unexpected error stays out of the report, because it can carry a secret. Run `homelab t3-reconcile --dry-run` on the machine.
 - `T3_PROVIDER_CONFLICT`: t3 provider conflict.
 - `T3_PROVIDER_NAMES_PENDING`: t3 provider names pending.
 - `T3_PROVIDER_NAMES_UNVERIFIED`: t3 provider names unverified.
@@ -398,27 +398,27 @@ write `1` to that agent scope’s `cgroup.kill`.
 ## Orca
 
 - **Meaning:** A fleet that lists `orca` under `ides` runs Orca with every machine listed as an SSH host of every other machine. Orca has no command that adds an SSH target, so a missing one is a warning. These checks never fail a sync.
-- **Confirm:** The `orca:*` checks of `devfleet converge`. On the manager, `orca status --json` and `orca host list --json`. On Linux the CLI is `orca-ide`.
-- **Fix:** Follow the remedy, then run `devfleet converge`.
+- **Confirm:** The `orca:*` checks of `homelab converge`. On the manager, `orca status --json` and `orca host list --json`. On Linux the CLI is `orca-ide`.
+- **Fix:** Follow the remedy, then run `homelab converge`.
 - **Escalate:** When Orca is running, the SSH target is in Settings → SSH, and `orca:host` still warns.
 
-- `ORCA_NOT_INSTALLED`: a warning of `orca:app` or `orca:host`: the CLI is not on the machine the check names. Install Orca from <https://www.onorca.dev/download>, start it once, then run `devfleet converge`. **Needs a person.**
-- `ORCA_NOT_RUNNING`: a warning of `orca:app` or `orca:host`: the CLI is there and no running app answers it. Start Orca, then run `devfleet converge`.
-- `ORCA_REFUSED`: a warning of `orca:app` or `orca:host`: Orca answered with an error dev-fleet does not know. The remedy names the code and nothing else. Update Orca and start it again.
+- `ORCA_NOT_INSTALLED`: a warning of `orca:app` or `orca:host`: the CLI is not on the machine the check names. Install Orca from <https://www.onorca.dev/download>, start it once, then run `homelab converge`. **Needs a person.**
+- `ORCA_NOT_RUNNING`: a warning of `orca:app` or `orca:host`: the CLI is there and no running app answers it. Start Orca, then run `homelab converge`.
+- `ORCA_REFUSED`: a warning of `orca:app` or `orca:host`: Orca answered with an error homelab does not know. The remedy names the code and nothing else. Update Orca and start it again.
 - `ORCA_SSH_TARGET_MISSING`: a warning of `orca:host`: `orca host list` does not include that machine. In Orca open Settings → SSH and add the SSH destination the remedy names. **Needs a person.**
 
 ## Paradev
 
 - **Meaning:** A fleet that lists `paradev` under `ides` runs Paradev (formerly Superset) with every machine set up as a host of every other machine by `paradev hosts add`. These checks never fail a sync.
-- **Confirm:** The `paradev:*` checks of `devfleet converge`. On the manager, `paradev auth whoami --json`, `paradev status --json` and `paradev hosts list --json`.
-- **Fix:** Follow the remedy, then run `devfleet converge`. It starts the host and adds any machine that is missing.
+- **Confirm:** The `paradev:*` checks of `homelab converge`. On the manager, `paradev auth whoami --json`, `paradev status --json` and `paradev hosts list --json`.
+- **Fix:** Follow the remedy, then run `homelab converge`. It starts the host and adds any machine that is missing.
 - **Escalate:** When the manager is signed in, `paradev hosts add` succeeds from a terminal, and `paradev:host` still warns.
 
 - `PARADEV_NOT_INSTALLED`: a warning of `paradev:app`, `paradev:host` or `paradev:service`: the CLI is not on the machine the check names. Install Paradev (<https://docs.paradev.com/remote-access>) and start it once. **Needs a person.**
-- `PARADEV_NOT_SIGNED_IN`: a warning of `paradev:app`: `paradev auth whoami` failed. Run `paradev auth login`, or set `SUPERSET_API_KEY`, then run `devfleet converge`. **Needs a person.**
+- `PARADEV_NOT_SIGNED_IN`: a warning of `paradev:app`: `paradev auth whoami` failed. Run `paradev auth login`, or set `SUPERSET_API_KEY`, then run `homelab converge`. **Needs a person.**
 - `PARADEV_NOT_RUNNING`: a warning of `paradev:service`: the CLI answered and the host is not running, and starting it failed. Start it with `paradev start --daemon --auto-update`.
 - `PARADEV_HOST_OFFLINE`: a warning of `paradev:host`: the host is listed and offline. Start Paradev on that machine. On Linux, lingering keeps it after logout (`loginctl enable-linger`); converge does not enable lingering. **Needs a person.**
-- `PARADEV_REFUSED`: a warning of `paradev:app`, `paradev:host` or `paradev:service`: Paradev answered with an error dev-fleet does not know. The remedy names the code. A key printed by `hosts add` is not kept.
+- `PARADEV_REFUSED`: a warning of `paradev:app`, `paradev:host` or `paradev:service`: Paradev answered with an error homelab does not know. The remedy names the code. A key printed by `hosts add` is not kept.
 
 ## Monitoring (Beszel)
 

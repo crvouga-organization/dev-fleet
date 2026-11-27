@@ -32,7 +32,7 @@ def cache_path(url):
     """Where a fetched index is kept. The URL names the pinned snapshot date,
     so a hit cannot be a newer or older snapshot than the policy."""
     configured = os.environ.get('SNAPSHOT_CACHE')
-    directory = Path(configured).expanduser() if configured else Path.home() / '.cache' / 'devfleet-snapshot-indexes'
+    directory = Path(configured).expanduser() if configured else Path.home() / '.cache' / 'homelab-snapshot-indexes'
     directory.mkdir(parents=True, exist_ok=True)
     return directory / hashlib.sha256(url.encode()).hexdigest()
 

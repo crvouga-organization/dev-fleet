@@ -10,8 +10,15 @@ import { AgentConfigurationError } from '../src/agents/errors';
 import { pinnedPath } from '../src/agents/toolchain';
 import { REFUSED_EXIT_CODE, admission, refusal } from '../src/agents/admission';
 
-const SYNC_HINT =
-  'Run homelab converge from a terminal to repair this machine.';
+/** What a person does next. A missing proxy account is a login on the
+ * manager; `homelab accounts` propagates it to the fleet. Every other
+ * refusal from this launcher is drift `homelab converge` repairs.
+ */
+export function managedRepairHint(reason: string): string {
+  if (reason.includes('not signed in on the CLI proxy'))
+    return 'On the manager, run homelab accounts. Signing that account in is the one step a person does (homelab accounts --relogin PROVIDER INDEX). The fleet then offers it on every machine.';
+  return 'Run homelab converge from a terminal to repair this machine.';
+}
 
 export function managedUpdateRemedy(tool: string, args: string[]) {
   const command = args[0];
@@ -96,7 +103,7 @@ async function startManaged(
       error instanceof AgentConfigurationError
         ? error.message
         : 'Managed provider proxy unavailable.';
-    process.stderr.write(`${reason} ${SYNC_HINT}\n`);
+    process.stderr.write(`${reason} ${managedRepairHint(reason)}\n`);
     process.exitCode = 1;
   }
 }
