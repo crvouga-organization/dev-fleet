@@ -187,6 +187,7 @@ Feature: What a machine becomes is declared, once
         | opencode |
         | grok |
         | antigravity |
+        | cursor |
 
     Scenario: Renovate moves the tunnel image of the monitoring hub by tag and digest
       Then a custom manager of Renovate reads the tag and digest of "tunnelImage" in "ansible/monitoring/lock.json"
@@ -199,11 +200,16 @@ Feature: What a machine becomes is declared, once
       Then a custom manager of Renovate reads the version of "tailscale" in "ansible/ubuntu/policy.json" as a release of "tailscale/tailscale"
       And Renovate moves "tailscale/tailscale" only to a release at least "14 days" old
 
+    Scenario: Renovate keeps no dependency dashboard issue
+      An issue that lists every pending update stays open for the life of
+      the repository. Pending updates are the pull requests Renovate opens.
+      Then Renovate keeps no dependency dashboard
+
     Scenario: Renovate reads security advisories that its token can see
       Renovate runs with the workflow's own token, which GitHub gives no
-      access to Dependabot alerts: asking for them puts a warning on the
-      dependency dashboard. Advisories come from the public OSV database
-      instead, and a fix for one still opens its own pull request.
+      access to Dependabot alerts. Asking for them fails the run. Advisories
+      come from the public OSV database instead, and a fix for one still
+      opens its own pull request.
       Then Renovate does not ask GitHub for Dependabot alerts
       And Renovate reads security advisories from OSV
 

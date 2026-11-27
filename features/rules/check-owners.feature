@@ -24,7 +24,7 @@ Feature: Every check is repaired by a recipe, or says why only a person can
       | auth:codex              | login:codex  |
       | tailscale:identity      | a person     |
       | ssh:host-key            | a person     |
-      | worker:power-loss-recovery | a person  |
+      | worker:power-loss-recovery | power     |
 
   Scenario: A machine repair runs one tag of a playbook the machine already applies
     Then every recipe that repairs a machine names a playbook, a tag and nothing else

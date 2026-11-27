@@ -41,6 +41,7 @@ const COMMANDS: Record<string, string> = {
   'npm:@devcontainers/cli': 'devcontainer',
   'http:grok': 'grok',
   'http:antigravity': 'antigravity',
+  'http:cursor-agent': 'cursor-agent',
 };
 const VERSION_ARGS: Record<string, string[]> = {
   tmux: ['-V'],

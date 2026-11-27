@@ -1,4 +1,5 @@
 import { expect } from 'bun:test';
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { projectConfig, useProjectConfig } from '../../../src/cli/project';
@@ -6,6 +7,7 @@ import { resolveSettings } from '../../../src/cli/settings';
 import { packageInfo, type PackageInfo } from '../../../src/package-info';
 import type { DataTable } from '../../support/gherkin';
 import {
+  ROOT,
   fleetSync,
   nested,
   temporary,
@@ -22,6 +24,7 @@ interface Project {
   workspace: string | undefined;
   package: string | undefined;
   info: PackageInfo | undefined;
+  observedRoot: string | undefined;
 }
 const projects = new WeakMap<FleetSyncWorld, Project>();
 
@@ -35,6 +38,7 @@ function project(world: FleetSyncWorld): Project {
       workspace: undefined,
       package: undefined,
       info: undefined,
+      observedRoot: undefined,
     };
     projects.set(world, found);
   }
@@ -150,4 +154,48 @@ Then('it names no issue tracker', (world) => {
 
 Then('it names no revision', (world) => {
   expect(project(world).info?.revision).toBeNull();
+});
+
+// ── The probe on standard input ──────────────────────────────────────────
+
+Given('an applied revision whose package is only in that revision', (world) => {
+  const parent = temporary(world, 'fleet-revisions-');
+  const revision = join(parent, 'revisions', 'applied');
+  mkdirSync(revision, { recursive: true });
+  writeFileSync(
+    join(revision, 'package.json'),
+    '{"name":"@crvouga/dev-fleet","version":"0.0.0"}\n'
+  );
+  project(world).package = revision;
+});
+
+When(
+  'the account probe reads its package root from standard input in that revision',
+  async (world) => {
+    const revision = project(world).package!;
+    const entry = join(revision, 'probe-entry.ts');
+    writeFileSync(
+      entry,
+      `import { PACKAGE_ROOT } from ${JSON.stringify(join(ROOT, 'src/package-info.ts'))};\nconsole.log(PACKAGE_ROOT);\n`
+    );
+    const built = await Bun.build({
+      entrypoints: [entry],
+      target: 'node',
+      minify: true,
+    });
+    const bundle = built.outputs[0];
+    if (!built.success || !bundle) throw new Error('Cannot bundle the probe.');
+    const ran = spawnSync('node', ['--input-type=module', '-'], {
+      cwd: revision,
+      input: await bundle.text(),
+      encoding: 'utf8',
+    });
+    if (ran.status !== 0)
+      throw new Error(ran.stderr || 'The probe on standard input failed.');
+    project(world).observedRoot = ran.stdout.trim();
+  }
+);
+
+Then('the package root is the revision', (world) => {
+  expect(project(world).observedRoot).toBe(project(world).package);
 });

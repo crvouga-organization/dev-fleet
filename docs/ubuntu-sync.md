@@ -251,6 +251,11 @@ consistency, declares snapshot sources for managed transactions, and pins its
 selected APT packages. Unrelated applications and package sources are preserved.
 
 Power policy masks sleep/hibernate targets and declares logind sleep/lid defaults.
+On a physical worker it also sets the recognized restore-after-AC-loss
+firmware setting when the firmware exposes one (`powerLossRecovery` in
+`ansible/ubuntu/policy.json`, applied by `tasks/power.yml`). The firmware
+applies the value at the next boot; the play never reboots. A virtual
+machine is left to its provider.
 GNOME lock/idle changes apply to the designated user only. Effective running
 session/logind behavior still needs a maintenance/reboot acceptance check; writing
 a file does not prove logout/reboot survival. The sudoers fragment is validated
@@ -438,7 +443,9 @@ send whichever model is picked, so their launcher runs a loopback relay
 Antigravity names its model in the Gemini request path, where the same relay
 adds it. Requests without a prefix (Grok, the pooled OpenCode provider, health
 checks) still use the whole pool, fill-first. Cursor is not part of the
-fleet (its backend cannot be proxied). Native Muse Code is not used: it only
+proxy (its backend cannot be proxied). Every node still installs the same
+`cursor-agent` CLI (`http:cursor-agent` in `mise.toml`); its login stays on
+that machine. Native Muse Code is not used: it only
 talks to Meta's own catalog endpoint, so Muse models run through OpenCode.
 
 ### Checkout project actions
