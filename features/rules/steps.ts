@@ -841,6 +841,9 @@ const NOT_CONVERGENCE = [
   'bootstrap/doctor.ts',
   'bootstrap/setup-status.ts',
   'bootstrap/homelab',
+  // A checkout entry for T3 project scripts. It warms through bootstrap.sh,
+  // which is listed, then runs a homelab command. It is not a convergence step.
+  'bootstrap/project-action.sh',
   'bootstrap/fleet-manager-run.sh',
   'bootstrap/verify-t3-archive.py',
   'bootstrap/bootstrap.ps1',
