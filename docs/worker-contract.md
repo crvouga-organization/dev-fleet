@@ -1,15 +1,15 @@
-> This document was written for the fleet dev-fleet was extracted from. Paths and
+> This document was written for the fleet homelab was extracted from. Paths and
 > commands were updated; some statements still describe that fleet and are being
 > revised. The README is authoritative, and what a machine must offer to be a
 > worker is listed only in [worker requirements](worker-requirements.md).
 
 # Declarative remote workers
 
-The public `devfleet` CLI owns two primary operations:
+The public `homelab` CLI owns two primary operations:
 
 ```sh
-devfleet fleet-sync
-devfleet fleet-status --workers
+homelab fleet-sync
+homelab fleet-status --workers
 ```
 
 The manager needs Node/npm, Git, SSH, Tailscale, and its own authorized T3 link.
@@ -64,7 +64,7 @@ What each feature installs is listed once, under `features` in
 `ansible/ubuntu/policy.json`. A worker without it installs none of it, and its
 checks (`worker:package:*`, `worker:service:docker`, `worker:docker-run`,
 `tool:docker-cli`) report **not applicable** with the reason. Turning
-`containers` off on an existing worker removes what dev-fleet installed for it:
+`containers` off on an existing worker removes what homelab installed for it:
 the packages (not purged: images and volumes under `/var/lib/docker` stay
 until a person deletes them), the restart drop-in and the developer's group
 membership. `fleet-sync --dry-run` lists what each worker will lose (`plan`,
@@ -97,7 +97,7 @@ installed and refuses a smaller machine with `WORKER_SIZE_BELOW_MINIMUM`
 (`platform:worker-size`); the baseline asserts the same before it installs a
 package.
 
-The disk dev-fleet itself installs is measured on every pull request: the
+The disk homelab itself installs is measured on every pull request: the
 fresh-box CI job converges a stock Ubuntu image of each accepted release on
 amd64 and arm64, measures what each part takes, and fails when a part
 outgrows its budget in `sizing.footprintMiB`
@@ -252,7 +252,7 @@ only a database still inconsistent stops it with `DPKG_INTERRUPTED`.
 Health does not mutate configuration, renew tokens, log in, install software, or
 make billable inference requests. It audits the immutable desired worker deployment,
 not an unrelated developer branch. Every declared worker must be enrolled and
-reachable, unless it is parked (`devfleet fleet-node-park`): a parked worker
+reachable, unless it is parked (`homelab fleet-node-park`): a parked worker
 is listed as parked and never contacted. Extra service hosts are listed as outside scope. Required failures,
 warnings and unverified checks prevent a ready result; explicitly non-required
 checks remain visible without inventing a pass.

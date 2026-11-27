@@ -213,7 +213,7 @@ export function sessionsCheck(
       summary: `${LIMIT_INACTIVE}: the declared limit of ${limit} agent sessions is not held on this worker: ${fault}. ${facts}`,
       remedy: {
         action:
-          'Run devfleet fleet-sync: it declares the unit that holds the limit in the worker’s user manager. Until then the worker refuses no session. To run without a limit, remove agentSessionLimit from fleet.json and sync.',
+          'Run homelab fleet-sync: it declares the unit that holds the limit in the worker’s user manager. Until then the worker refuses no session. To run without a limit, remove agentSessionLimit from fleet.json and sync.',
       },
     };
   const exceeded = limit !== undefined && (sample.agentScopes ?? 0) > limit;

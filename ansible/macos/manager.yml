@@ -131,12 +131,12 @@
   tasks:
     - name: Find the launcher in the applied checkout
       ansible.builtin.stat:
-        path: '{{ watch_home }}/.local/share/personal/fleet/current/bootstrap/devfleet'
+        path: '{{ watch_home }}/.local/share/personal/fleet/current/bootstrap/homelab'
       register: applied_launcher
     - name: Install the public launcher from the applied checkout
       ansible.builtin.file:
         src: '{{ applied_launcher.stat.path }}'
-        dest: '{{ watch_home }}/.local/bin/devfleet'
+        dest: '{{ watch_home }}/.local/bin/homelab'
         state: link
       when: applied_launcher.stat.executable | default(false)
     - name: Require an interval the schema allows
@@ -160,7 +160,7 @@
         content: |
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <!-- Managed by dev-fleet: fleet-watch -->
+          <!-- Managed by homelab: fleet-watch -->
           <plist version="1.0"><dict>
             <key>Label</key><string>{{ watch_label }}</string>
             <key>ProgramArguments</key><array>
@@ -177,7 +177,7 @@
             <key>WorkingDirectory</key><string>{{ watch_home }}/.local/share/personal/fleet/current</string>
             <key>EnvironmentVariables</key><dict>
               <key>PATH</key><string>{{ watch_home }}/.local/share/mise/shims:{{ watch_home }}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-              <key>DEVFLEET_TRIGGER</key><string>watch</string>
+              <key>HOMELAB_TRIGGER</key><string>watch</string>
             </dict>
             <key>StartInterval</key><integer>{{ watch_minutes | int * 60 }}</integer>
             <key>ProcessType</key><string>Background</string>
@@ -214,7 +214,7 @@
 # ansible/ubuntu/policy.json), as the launchd job diskGc.label, hourly, or
 # every 15 minutes when fleet.json says storage is disposable
 # (fleet_storage_disposable). It runs as the user from a copy outside every
-# revision, since it prunes the manager's dev-fleet checkouts. macOS has no
+# revision, since it prunes the manager's homelab checkouts. macOS has no
 # /proc: lsof names the directories processes run in. Its pressure mode
 # starts where manager:disk warns. manager:disk-gc measures the job and reads
 # the report it leaves.
@@ -261,7 +261,7 @@
         content: |
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <!-- Managed by dev-fleet: disk GC -->
+          <!-- Managed by homelab: disk GC -->
           <plist version="1.0"><dict>
             <key>Label</key><string>{{ gc_label }}</string>
             <key>ProgramArguments</key><array>

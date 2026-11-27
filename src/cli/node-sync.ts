@@ -22,14 +22,14 @@ export async function syncNode(
 ): Promise<CommandOutcome> {
   if (process.platform === 'win32' && !options.dryRun)
     throw new FleetUsageError(
-      'Codex proxy node sync requires macOS/Linux/WSL. Use dev-fleet commands for native Windows configuration.'
+      'Codex proxy node sync requires macOS/Linux/WSL. Use homelab commands for native Windows configuration.'
     );
   const node = nodeId(options.id);
   // An installed package is not a checkout, and the Git repository around it
-  // is the operator's own project: its HEAD is not a dev-fleet revision.
+  // is the operator's own project: its HEAD is not a homelab revision.
   if (packageInfo().revision)
     throw new FleetUsageError(
-      'fleet-node-sync works on a checkout of dev-fleet. Run fleet-sync instead: it converges this machine from a checkout it owns.'
+      'fleet-node-sync works on a checkout of homelab. Run fleet-sync instead: it converges this machine from a checkout it owns.'
     );
   const head = await run(['git', 'rev-parse', '--verify', 'HEAD'], {
     cwd: settings.workspace,
@@ -115,7 +115,7 @@ async function finishSync(
         inference: 'unverified',
         pairing: 'unverified',
       },
-      next: 'Use devfleet t3-status for configuration drift and devfleet fleet-status for machine health.',
+      next: 'Use homelab t3-status for configuration drift and homelab fleet-status for machine health.',
     },
   };
 }

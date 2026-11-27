@@ -157,7 +157,7 @@ async function fetchRemote(
     return { status: outcome === 'restored' ? 'absent' : 'unreachable' };
   } catch (error) {
     discard(file);
-    // A newer dev-fleet wrote it: refused, never taken for damage.
+    // A newer homelab wrote it: refused, never taken for damage.
     if (error instanceof StateNewerError) throw error;
     // The bucket answered, and what it holds cannot be read.
     return { status: 'corrupt' };
@@ -198,7 +198,7 @@ async function observe(
   return { standing: compare(local, remote.head, replicated), local, remote };
 }
 
-/** One devfleet command at a time compares or changes the state. Downloads a
+/** One homelab command at a time compares or changes the state. Downloads a
  * killed command left behind are removed while nothing else can be using one.
  */
 async function locked<T>(
@@ -214,7 +214,7 @@ async function locked<T>(
   } catch (error) {
     if (error instanceof FleetLockError)
       throw new FleetUsageError(
-        'Another devfleet command is using the fleet state. Wait for it to finish, then retry.'
+        'Another homelab command is using the fleet state. Wait for it to finish, then retry.'
       );
     throw error;
   }
@@ -449,7 +449,7 @@ function leaseIn(
 }
 
 export function leaseHeldMessage(lease: Lease): string {
-  return `FLEET_MANAGER_LEASE_HELD: another manager (${lease.holder}) holds the fleet state until ${lease.expiresAt}. Nothing was changed. Run devfleet from that manager; to make this machine the manager instead, repeat with --take-over once the other one is gone (see docs/manager-recovery.md).`;
+  return `FLEET_MANAGER_LEASE_HELD: another manager (${lease.holder}) holds the fleet state until ${lease.expiresAt}. Nothing was changed. Run homelab from that manager; to make this machine the manager instead, repeat with --take-over once the other one is gone (see docs/manager-recovery.md).`;
 }
 
 /** Refuses when another manager holds the lease. Call it before the first
@@ -481,7 +481,7 @@ export function claimLease(
 }
 
 export const DIVERGED_REMEDY =
-  'This machine and the bucket both changed the fleet state. The bucket is the source of truth: keep a copy of anything you still need (devfleet fleet-state --export), then run devfleet fleet-state --restore --yes.';
+  'This machine and the bucket both changed the fleet state. The bucket is the source of truth: keep a copy of anything you still need (homelab fleet-state --export), then run homelab fleet-state --restore --yes.';
 
 /** Makes one change on top of the bucket's current version and uploads it.
  * A bucket that cannot be reached does not stop the change: this copy stays

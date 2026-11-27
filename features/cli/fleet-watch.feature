@@ -166,7 +166,7 @@ Feature: The fleet tells someone when a worker becomes unhealthy
             "replaced": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             "selectedBy": "the HEAD of the checkout fleet-sync was started in, handed off from worker-a (--allow-unmerged)"
           },
-          "text": "dev-fleet: the approved revision of the fleet changed from bbbbbbbbbbbb to cccccccccccc, selected by the HEAD of the checkout fleet-sync was started in, handed off from worker-a (--allow-unmerged)"
+          "text": "homelab: the approved revision of the fleet changed from bbbbbbbbbbbb to cccccccccccc, selected by the HEAD of the checkout fleet-sync was started in, handed off from worker-a (--allow-unmerged)"
         }
         """
 
@@ -200,7 +200,7 @@ Feature: The fleet tells someone when a worker becomes unhealthy
         { "notify": { "targets": ["ntfy"] } }
         """
       When the watcher sends a test notification
-      Then the ntfy receiver got the text "dev-fleet: fleet-watch sent a test notification"
+      Then the ntfy receiver got the text "homelab: fleet-watch sent a test notification"
 
     Scenario: A target that refuses fails, without repeating its answer
       Given a webhook receiver on this machine, answering 500

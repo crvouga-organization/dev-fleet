@@ -12,10 +12,10 @@ import {
 
 const { Given, Then } = fleetSync;
 
-// ── Where devfleet runs ──────────────────────────────────────────────────
+// ── Where homelab runs ──────────────────────────────────────────────────
 
 Given(
-  /^devfleet(?: "([^"]*)")? runs from "([^"]*)" with the roster "([^"]*)"$/,
+  /^homelab(?: "([^"]*)")? runs from "([^"]*)" with the roster "([^"]*)"$/,
   (world, version: string | undefined, workspace: string, config: string) => {
     if (version) world.version = version;
     world.settings = { workspace, config };

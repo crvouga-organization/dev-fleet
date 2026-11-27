@@ -36,7 +36,7 @@ export async function managerDesktop(
     throw new Error('Invalid macOS desktop pin.');
   const parent = join(
     home,
-    'Applications/dev-fleet',
+    'Applications/homelab',
     version + '-' + digest.slice(0, 12)
   );
   const app = join(parent, APP);

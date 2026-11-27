@@ -1,5 +1,5 @@
 #!/bin/sh
-# The devfleet command. ~/.local/bin/devfleet links here; nothing is copied.
+# The homelab command. ~/.local/bin/homelab links here; nothing is copied.
 set -eu
 self=$(readlink -f "$0")
 root=$(cd "$(dirname "$self")/.." && pwd)

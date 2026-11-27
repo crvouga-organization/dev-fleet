@@ -30,7 +30,7 @@ export async function loadEnrollment(
   const enrollment = parseEnrollment(value);
   if (!enrollment)
     throw new FleetUsageError(
-      'Invalid enrollment in the fleet state. Restore it from the bucket with devfleet fleet-state --restore; do not enroll a replacement using another machine’s identity.'
+      'Invalid enrollment in the fleet state. Restore it from the bucket with homelab fleet-state --restore; do not enroll a replacement using another machine’s identity.'
     );
   return enrollment;
 }

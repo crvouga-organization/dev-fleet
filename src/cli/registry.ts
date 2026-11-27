@@ -18,7 +18,7 @@ function group(name: string, entries: Entry[]): CommandSpec[] {
     group: name,
     keywords,
     args: id.split(' '),
-    examples: [`devfleet ${id} --json`],
+    examples: [`homelab ${id} --json`],
     mutation: mutation === true,
   }));
 }
@@ -66,7 +66,7 @@ export const COMMANDS: CommandSpec[] = [
     [
       'fleet-sync',
       'Synchronize the enrolled Ubuntu fleet',
-      'Manager push to all enrolled Ubuntu nodes at one approved revision over verified SSH: the commit the dev-fleet package was published from, with the fleet.json of the project it is run from. Interactive confirmation or --apply --yes. Readiness is verified separately.',
+      'Manager push to all enrolled Ubuntu nodes at one approved revision over verified SSH: the commit the homelab package was published from, with the fleet.json of the project it is run from. Interactive confirmation or --apply --yes. Readiness is verified separately.',
       ['ubuntu', 'enrollment', 'converge', 'sync'],
       true,
     ],
@@ -256,7 +256,7 @@ export const COMMANDS: CommandSpec[] = [
     Object.entries(SOURCE_OPERATIONS).map(([id, operation]) => [
       id,
       operation.title,
-      `${operation.description} Inspect devfleet ${id} help.`,
+      `${operation.description} Inspect homelab ${id} help.`,
       operation.keywords,
       operation.mutation,
     ])

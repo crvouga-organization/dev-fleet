@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /** Internal entry fleet-sync runs on each node for agent profile commands
- * (`agents apply|status|verify|run`). People use `devfleet workstation agents`.
+ * (`agents apply|status|verify|run`). People use `homelab workstation agents`.
  */
 import { Command } from 'commander';
 import { registerAgents } from './command';

@@ -17,7 +17,7 @@ export const REPOSITORY = resolve(import.meta.dir, '../../..');
 /** "The example fleet": examples/fleet.json without the bucket it names, the
  * configuration every scenario runs with (features/support/setup.ts).
  */
-export const EXAMPLE = process.env['DEVFLEET_CONFIG']!;
+export const EXAMPLE = process.env['HOMELAB_CONFIG']!;
 /** "The example fleet.json": the tracked file as it is. It names a bucket. */
 export const EXAMPLE_FILE = join(REPOSITORY, 'examples/fleet.json');
 
@@ -61,11 +61,11 @@ export class Manager {
     };
   }
   /** For the functions that are given an environment and no home directory:
-   * without DEVFLEET_STATE they would use the fleet state of whoever runs
+   * without HOMELAB_STATE they would use the fleet state of whoever runs
    * the scenario.
    */
   get stateEnv(): NodeJS.ProcessEnv {
-    return { ...this.env, DEVFLEET_STATE: this.root };
+    return { ...this.env, HOMELAB_STATE: this.root };
   }
 }
 
@@ -78,7 +78,7 @@ export class StateWorld extends World {
   private refusalRead = false;
   /** A time a scenario noted: `$NOTED` in a command. */
   noted: string | undefined;
-  /** A bucket made on the S3 service DEVFLEET_TEST_S3 names. */
+  /** A bucket made on the S3 service HOMELAB_TEST_S3 names. */
   s3: { origin: string; bucket: string; made: boolean } | undefined;
 
   constructor() {
@@ -169,10 +169,10 @@ export class StateWorld extends World {
    * code that reads them from the process environment.
    */
   bind(manager: Manager): void {
-    this.setEnv('DEVFLEET_STATE', join(manager.home, 'state'));
-    this.setEnv('DEVFLEET_BUCKET', join(manager.home, 'bucket.json'));
-    manager.env['DEVFLEET_STATE'] = process.env['DEVFLEET_STATE'];
-    manager.env['DEVFLEET_BUCKET'] = process.env['DEVFLEET_BUCKET'];
+    this.setEnv('HOMELAB_STATE', join(manager.home, 'state'));
+    this.setEnv('HOMELAB_BUCKET', join(manager.home, 'bucket.json'));
+    manager.env['HOMELAB_STATE'] = process.env['HOMELAB_STATE'];
+    manager.env['HOMELAB_BUCKET'] = process.env['HOMELAB_BUCKET'];
   }
 
   /** Sets a variable of this process until the scenario ends. */

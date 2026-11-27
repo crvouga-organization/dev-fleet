@@ -102,7 +102,7 @@ def revisions(root, references=None):
         references = [
             *(home / ".local/bin").glob("*-fleet"),
             *units.glob("cliproxy-*"),
-            *units.glob("dev.devfleet.cliproxy-*"),
+            *units.glob("dev.homelab.cliproxy-*"),
         ]
     for reference in references:
         if reference.is_symlink():

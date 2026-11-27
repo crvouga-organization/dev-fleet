@@ -117,9 +117,9 @@ Then('the operator was asked exactly:', (world, table: DataTable) => {
   expect(asked(world)).toEqual(table.list());
 });
 
-// The devfleet program itself, with the state directory and bucket.json this
+// The homelab program itself, with the state directory and bucket.json this
 // process was given.
-When('devfleet is started with {string}', (world, line: string) =>
+When('homelab is started with {string}', (world, line: string) =>
   world.attempt(() =>
     execute(
       line.split(' '),

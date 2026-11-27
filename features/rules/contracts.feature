@@ -1,5 +1,5 @@
 Feature: What a command prints with --json is published, and checked against what it prints
-  An agent parses dev-fleet's output by its published schema, not by
+  An agent parses homelab's output by its published schema, not by
   guesswork. Each schema under schema/output is checked here against what the
   command really prints, and every check ID the code can report is listed in
   schema/check-ids.json, generated from the code: what it means, whether it

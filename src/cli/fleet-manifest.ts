@@ -45,7 +45,7 @@ async function reference(path: string): Promise<WorkerManifest> {
     return manifest;
   } catch {
     throw new FleetUsageError(
-      '--reference must name a manifest written by devfleet fleet-manifest --json.'
+      '--reference must name a manifest written by homelab fleet-manifest --json.'
     );
   }
 }

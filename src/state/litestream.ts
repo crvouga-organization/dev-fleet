@@ -94,7 +94,7 @@ export function litestreamEnvironment(bucket: Bucket): Record<string, string> {
     : {};
 }
 
-/** Litestream is run once per change rather than as a daemon: a devfleet
+/** Litestream is run once per change rather than as a daemon: a homelab
  * command that changed the state has not finished until the bucket has it,
  * and nothing has to be kept running on the manager.
  */

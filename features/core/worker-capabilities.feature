@@ -203,13 +203,13 @@ Feature: A worker proves it can do what agents do on it
         | git config --get-all user.email            | example-user@users.noreply.github.com                         |
         | git credential fill                        | password=PRIVATE_SENTINEL                                     |
         | git config --get-all gpg.format            | ssh                                                           |
-        | git config --get-all user.signingkey          | /home/dev/.ssh/dev-fleet-git-signing.pub                   |
+        | git config --get-all user.signingkey          | /home/dev/.ssh/homelab-git-signing.pub                   |
         | git config --get-all commit.gpgsign           | true                                                       |
-        | ssh-keygen -Y sign -n git -f /home/dev/.ssh/dev-fleet-git-signing | -----BEGIN SSH SIGNATURE-----␊PRIVATE_SENTINEL␊-----END SSH SIGNATURE----- |
+        | ssh-keygen -Y sign -n git -f /home/dev/.ssh/homelab-git-signing | -----BEGIN SSH SIGNATURE-----␊PRIVATE_SENTINEL␊-----END SSH SIGNATURE----- |
       When the worker's Git is checked
       Then the check "worker:git-signing" passes
       And the summary of the check "worker:git-signing" mentions "signing key of the account"
-      And the command "ssh-keygen -Y sign" was given "dev-fleet signing probe␊" on standard input
+      And the command "ssh-keygen -Y sign" was given "homelab signing probe␊" on standard input
       And nothing reported contains "PRIVATE_SENTINEL"
 
     Scenario Outline: Signing that is <how> fails worker:git-signing with <code>
@@ -231,9 +231,9 @@ Feature: A worker proves it can do what agents do on it
       Examples:
         | how                          | format  | key                                      | always | code                     |
         | not configured               |         |                                          |        | GIT_SIGNING_MISSING      |
-        | overridden by another file   | openpgp | /home/dev/.ssh/dev-fleet-git-signing.pub | true   | GIT_SIGNING_OVERRIDDEN   |
-        | turned off for commits       | ssh     | /home/dev/.ssh/dev-fleet-git-signing.pub | false  | GIT_SIGNING_OVERRIDDEN   |
-        | configured, without its key  | ssh     | /home/dev/.ssh/dev-fleet-git-signing.pub | true   | GIT_SIGNING_FAILED |
+        | overridden by another file   | openpgp | /home/dev/.ssh/homelab-git-signing.pub | true   | GIT_SIGNING_OVERRIDDEN   |
+        | turned off for commits       | ssh     | /home/dev/.ssh/homelab-git-signing.pub | false  | GIT_SIGNING_OVERRIDDEN   |
+        | configured, without its key  | ssh     | /home/dev/.ssh/homelab-git-signing.pub | true   | GIT_SIGNING_FAILED |
 
   Rule: Without a declared identity
 

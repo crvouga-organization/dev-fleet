@@ -112,10 +112,10 @@ export async function fleetValidate(
   options: FleetValidateOptions,
   services: FleetValidateServices = SERVICES
 ): Promise<CommandOutcome> {
-  const path = options.file ?? services.env['DEVFLEET_CONFIG'];
+  const path = options.file ?? services.env['HOMELAB_CONFIG'];
   if (!path)
     throw new FleetUsageError(
-      'No fleet configuration to validate. Run devfleet from the project that holds your fleet.json, or pass --file PATH.'
+      'No fleet configuration to validate. Run homelab from the project that holds your fleet.json, or pass --file PATH.'
     );
   let definition: FleetDefinition;
   try {
@@ -197,7 +197,7 @@ async function ansibleChecks(
   definition: FleetDefinition,
   services: FleetValidateServices
 ): Promise<Check[]> {
-  const directory = await mkdtemp(join(tmpdir(), 'devfleet-validate-'));
+  const directory = await mkdtemp(join(tmpdir(), 'homelab-validate-'));
   const inventory = join(directory, 'inventory.json');
   try {
     await writeFile(
@@ -224,7 +224,7 @@ async function ansibleChecks(
             summary: 'DEFINITION_INVENTORY_REJECTED',
             remedy: {
               action:
-                'Run devfleet fleet-validate --ansible on the manager after fleet-sync installed the pinned Ansible; report the failure as an issue if it persists.',
+                'Run homelab fleet-validate --ansible on the manager after fleet-sync installed the pinned Ansible; report the failure as an issue if it persists.',
             },
           },
     ];
@@ -250,7 +250,7 @@ async function ansibleChecks(
             summary: `DEFINITION_PLAYBOOK_SYNTAX: ${failed.join(', ')}`,
             remedy: {
               action:
-                'The installed dev-fleet package carries a playbook Ansible cannot parse; report it as an issue.',
+                'The installed homelab package carries a playbook Ansible cannot parse; report it as an issue.',
             },
           }
         : {

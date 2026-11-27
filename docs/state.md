@@ -1,7 +1,7 @@
 # Fleet state
 
 A fleet is described in two places you own. Your project in Git holds
-`fleet.json` and pins the dev-fleet version. Everything else the manager
+`fleet.json` and pins the homelab version. Everything else the manager
 cannot rebuild from Git is the **fleet state**:
 
 | Document     | What it is                                                                                                                                                                    |
@@ -22,7 +22,7 @@ those words only: never an account, a host name or a command line. The
 `fleet-sync` report (`selectedBy`, `replacedRevision`), each run of the
 history and `fleet-watch` (`revision`) repeat it.
 
-`devfleet fleet-watch` also keeps `watch.json` in the bucket, beside the
+`homelab fleet-watch` also keeps `watch.json` in the bucket, beside the
 database: the health of each worker when it last looked, the approved
 revision it saw (`revision`) and when that was (the manager's heartbeat). Losing it costs at most one repeated notification.
 
@@ -34,14 +34,14 @@ whole machine, and the next command brings the fleet back.
 ```
 your project (Git)
     fleet.json                          the configuration; says where the bucket is
-    package.json                        the dev-fleet version
-~/.local/share/dev-fleet/state/         the local copy of the state; safe to delete
+    package.json                        the homelab version
+~/.local/share/homelab/state/         the local copy of the state; safe to delete
     fleet.db                            the database Litestream replicates
     definition.json                     the stored configuration as a file, rewritten from fleet.db
     replicated.json, litestream.yml     bookkeeping
-~/.config/dev-fleet/bucket.json         optional: credentials saved for unattended runs
-~/.config/dev-fleet/fleet.json          the copy fleet-sync installs for launchers; never edited
-~/.config/dev-fleet/fleet.json.sha256   what that copy was when fleet-sync last wrote it
+~/.config/homelab/bucket.json         optional: credentials saved for unattended runs
+~/.config/homelab/fleet.json          the copy fleet-sync installs for launchers; never edited
+~/.config/homelab/fleet.json.sha256   what that copy was when fleet-sync last wrote it
 ```
 
 ## Set it up
@@ -55,20 +55,20 @@ Name the bucket in `fleet.json`:
   "bucket": "my-fleet-state",
   "endpoint": "https://ACCOUNT.r2.cloudflarestorage.com",
   "region": "auto",
-  "prefix": "dev-fleet"
+  "prefix": "homelab"
 }
 ```
 
-Omit `endpoint` for AWS S3. `prefix` defaults to `dev-fleet`; one bucket can
+Omit `endpoint` for AWS S3. `prefix` defaults to `homelab`; one bucket can
 hold several fleets under different prefixes. The block never holds
 credentials, and a `fleet.json` that does is refused.
 
-Every devfleet command reads the credentials from its environment:
+Every homelab command reads the credentials from its environment:
 
 ```sh
-export DEVFLEET_BUCKET_ACCESS_KEY_ID=…
-export DEVFLEET_BUCKET_SECRET_ACCESS_KEY=…
-npx devfleet fleet-sync
+export HOMELAB_BUCKET_ACCESS_KEY_ID=…
+export HOMELAB_BUCKET_SECRET_ACCESS_KEY=…
+npx homelab fleet-sync
 ```
 
 Set both or neither. With neither, and nothing saved on the machine, the
@@ -86,12 +86,12 @@ manager starts a command there that gets no environment and no project. Save
 the credentials on the manager once:
 
 ```sh
-npx devfleet fleet-state --init
+npx homelab fleet-state --init
 ```
 
 It takes the bucket from `fleet.json` and the credentials from the environment,
 or asks for them on the terminal, and writes both to
-`~/.config/dev-fleet/bucket.json` (readable by you alone). Such a run then
+`~/.config/homelab/bucket.json` (readable by you alone). Such a run then
 uses the configuration last applied and the saved credentials. Without them it
 still converges the fleet from the local copy and reports that the bucket was
 not reached; the next run that has credentials uploads what is pending.
@@ -103,19 +103,19 @@ the manager:
 
 ```sh
 mkdir my-fleet && cd my-fleet && git init && npm init -y
-npm install --save-dev --save-exact @crvouga/dev-fleet
-npx devfleet fleet-state --export > fleet.json
+npm install --save-dev --save-exact @crvouga/homelab
+npx homelab fleet-state --export > fleet.json
 ```
 
 Add the `state` block to `fleet.json` with the same bucket, endpoint, region
-and prefix as `~/.config/dev-fleet/bucket.json`, then run
-`npx devfleet fleet-sync`. The credentials already saved for that bucket keep
+and prefix as `~/.config/homelab/bucket.json`, then run
+`npx homelab fleet-sync`. The credentials already saved for that bucket keep
 working.
 
-The clone of dev-fleet the fleet used to run from is then no longer read by
+The clone of homelab the fleet used to run from is then no longer read by
 `fleet-sync`, with one exception: the CLI proxy's installed code is a Git
 worktree of the repository it was installed from. Install the proxy again
-from the project (`npx devfleet cliproxy install`, which takes the revision
+from the project (`npx homelab cliproxy install`, which takes the revision
 `fleet-sync` applied from the manager's own copy of the source) before you
 delete the clone.
 
@@ -134,41 +134,41 @@ way, needs no credentials and is the quickest way to try this out.
 ## Day to day
 
 ```sh
-devfleet fleet-state            # read-only: where the state is, and how it stands with the bucket
-devfleet fleet-state --example  # print a fleet.json to start a project from
-devfleet fleet-report --since 30d  # read-only: how reliably fleet-sync ran, from the history
-devfleet fleet-state --export   # print the configuration fleet-sync last applied
-devfleet fleet-state --push     # upload changes made while the bucket was unreachable
-devfleet fleet-state --restore  # replace the local copy with the bucket's
+homelab fleet-state            # read-only: where the state is, and how it stands with the bucket
+homelab fleet-state --example  # print a fleet.json to start a project from
+homelab fleet-report --since 30d  # read-only: how reliably fleet-sync ran, from the history
+homelab fleet-state --export   # print the configuration fleet-sync last applied
+homelab fleet-state --push     # upload changes made while the bucket was unreachable
+homelab fleet-state --restore  # replace the local copy with the bucket's
 ```
 
 To change the fleet, for example to add a worker, edit `fleet.json`, commit
-and run `devfleet fleet-sync` from the project. `fleet-sync` validates the
+and run `homelab fleet-sync` from the project. `fleet-sync` validates the
 file, installs it on every machine and records it in the state.
 
 Which configuration a command uses, in this order:
 
-1. The file `DEVFLEET_CONFIG` names.
+1. The file `HOMELAB_CONFIG` names.
 2. The closest `fleet.json` in the working directory or above it.
 3. The configuration `fleet-sync` last applied, from the fleet state (the
-   devfleet CLI on the manager).
-4. The copy `fleet-sync` installed at `~/.config/dev-fleet/fleet.json`
+   homelab CLI on the manager).
+4. The copy `fleet-sync` installed at `~/.config/homelab/fleet.json`
    (launchers and scheduled jobs on every machine read only this one).
 
 `fleet-state --import PATH` stores a configuration in the state without
 running `fleet-sync`.
 
 **The installed copy is not the configuration.** `fleet-sync` writes
-`~/.config/dev-fleet/fleet.json` on every machine on every run, and beside it
+`~/.config/homelab/fleet.json` on every machine on every run, and beside it
 `fleet.json.sha256`, the record of what it wrote. A copy that no longer
 matches its record was edited by hand, and replacing it would lose the edit,
 so the run stops with `FLEET_CONFIGURATION_COPY_CHANGED` before anything is
 changed, with or without a person at the terminal, and names the way forward:
 
-- From a project, or with `DEVFLEET_CONFIG`: make the change in that
+- From a project, or with `HOMELAB_CONFIG`: make the change in that
   `fleet.json` (the refusal names it by path).
 - With the configuration kept in the fleet state, import the copy:
-  `devfleet fleet-state --import ~/.config/dev-fleet/fleet.json`.
+  `homelab fleet-state --import ~/.config/homelab/fleet.json`.
   The copy never holds the `state` block, so importing that file keeps the
   bucket the stored configuration names.
 - To discard the edit, delete the copy; the next `fleet-sync` installs it
@@ -208,7 +208,7 @@ copy, the project on the manager.
 
 ## How it stays correct
 
-Litestream does not run as a daemon. A devfleet command that changes the state
+Litestream does not run as a daemon. A homelab command that changes the state
 runs it once, so the command has not finished until the bucket has the change
 and nothing has to be kept running on the manager. Every change follows the
 same three steps:
@@ -257,7 +257,7 @@ state that is replicated differently or not at all:
 | T3 ownership record                                  | `~/.t3/userdata/personal-managed.json`                   | `t3-apply --import ID` adopts instances again                                                          |
 
 The manager reaches a worker that has no SSH alias against
-`~/.local/share/dev-fleet/ssh/known_hosts` (beside the state directory): a
+`~/.local/share/homelab/ssh/known_hosts` (beside the state directory): a
 cache rendered from the host keys the `workers` document pins and the worker
 records declare, rewritten before every session. Delete it and the next
 command writes it again; nothing is ever learned into it.
@@ -266,7 +266,7 @@ Everything else under `~/.local/share/personal/fleet` and
 `~/.local/state/personal/fleet` (the copy of the source repository, run
 checkouts, reports, receipts, logs) is a cache that the next `fleet-sync`
 rebuilds. The CLI proxy's installed code is a Git worktree of that copy of the
-source repository: after deleting it, run `devfleet cliproxy install` again
+source repository: after deleting it, run `homelab cliproxy install` again
 once `fleet-sync` has fetched it back.
 
 ## Reference
@@ -274,11 +274,11 @@ once `fleet-sync` has fetched it back.
 | Setting                                                              | Meaning                                                      |
 | -------------------------------------------------------------------- | ------------------------------------------------------------ |
 | `state` in `fleet.json`                                              | Where the bucket is                                          |
-| `DEVFLEET_BUCKET_ACCESS_KEY_ID`, `DEVFLEET_BUCKET_SECRET_ACCESS_KEY` | The bucket's credentials, for the command they are passed to |
-| `DEVFLEET_CONFIG`                                                    | A configuration file, instead of the project's `fleet.json`  |
-| `DEVFLEET_STATE`                                                     | Another state directory. Earlier files are not read for it   |
-| `DEVFLEET_BUCKET`                                                    | Another `bucket.json`                                        |
-| `DEVFLEET_MANAGER_HOLDER`                                            | How the manager lease names this machine                     |
+| `HOMELAB_BUCKET_ACCESS_KEY_ID`, `HOMELAB_BUCKET_SECRET_ACCESS_KEY` | The bucket's credentials, for the command they are passed to |
+| `HOMELAB_CONFIG`                                                    | A configuration file, instead of the project's `fleet.json`  |
+| `HOMELAB_STATE`                                                     | Another state directory. Earlier files are not read for it   |
+| `HOMELAB_BUCKET`                                                    | Another `bucket.json`                                        |
+| `HOMELAB_MANAGER_HOLDER`                                            | How the manager lease names this machine                     |
 
 How a command reaches the bucket:
 
@@ -300,13 +300,13 @@ How a command reaches the bucket:
   "bucket": "my-fleet-state",
   "endpoint": "https://ACCOUNT.r2.cloudflarestorage.com",
   "region": "auto",
-  "prefix": "dev-fleet",
+  "prefix": "homelab",
   "accessKeyId": "…",
   "secretAccessKey": "…"
 }
 ```
 
-It must be readable by you alone (`chmod 600`); devfleet refuses to use it
+It must be readable by you alone (`chmod 600`); homelab refuses to use it
 otherwise. The keys reach Litestream through its environment and are never
 written to its configuration, a report or a log. To rotate them, pass the new
 ones to `fleet-state --init`.
@@ -318,12 +318,12 @@ earlier point is possible with Litestream directly (with the bucket's keys in
 
 ```sh
 mise exec litestream -- litestream restore -no-expand-env \
-  -config ~/.local/share/dev-fleet/state/litestream.yml \
+  -config ~/.local/share/homelab/state/litestream.yml \
   -timestamp 2026-11-01T00:00:00Z -o /tmp/fleet-then.db \
-  ~/.local/share/dev-fleet/state/fleet.db
+  ~/.local/share/homelab/state/fleet.db
 ```
 
-`devfleet fleet-state --restore --timestamp 2026-11-01T00:00:00Z --yes` does
+`homelab fleet-state --restore --timestamp 2026-11-01T00:00:00Z --yes` does
 the same and then uploads that version as the bucket's current one, which
 takes the manager lease. It is the remedy for a `corrupt` replica: the bucket
 answers, but its latest version cannot be read. `--yes` consents to replacing
@@ -352,15 +352,15 @@ the other one is gone ([replacing the manager](manager-recovery.md)).
 
 A machine is named in the lease by a digest of its machine ID
 (`/etc/machine-id` on Linux, the hardware UUID on macOS), never by its host
-name, which a replacement shares. `DEVFLEET_MANAGER_HOLDER` names it instead.
+name, which a replacement shares. `HOMELAB_MANAGER_HOLDER` names it instead.
 
 ## Schema version
 
 The database records its schema version in `PRAGMA user_version`. The schema
 is a series of numbered migrations (`src/state/migrations/0001-….sql`, …),
 and a command brings an older database forward before it writes. A database a
-newer dev-fleet wrote is refused with `FLEET_STATE_NEWER_THAN_CLI`, read or
-written, and nothing in it changes: install the dev-fleet version the fleet
+newer homelab wrote is refused with `FLEET_STATE_NEWER_THAN_CLI`, read or
+written, and nothing in it changes: install the homelab version the fleet
 runs.
 
 ## Local command locking

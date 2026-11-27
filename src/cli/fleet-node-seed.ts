@@ -136,7 +136,7 @@ export async function fleetNodeSeed(
       `Wrote the ${options.autoinstall ? 'autoinstall' : 'cloud-init'} seed of ${worker.id} to ${options.output} (private; it holds a single-use auth key).`,
       `Host key: ${publicKey}`,
       `${pin.status.toUpperCase()} ${pin.id}: ${pin.summary}`,
-      'Boot a stock Ubuntu image with it; once the machine is on the tailnet, add it with fleet-node-add and run devfleet fleet-sync --node ' +
+      'Boot a stock Ubuntu image with it; once the machine is on the tailnet, add it with fleet-node-add and run homelab fleet-sync --node ' +
         worker.id +
         '.',
     ].join('\n'),

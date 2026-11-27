@@ -96,7 +96,7 @@ export function installedSelection(
   node: string | undefined,
   home: string = homedir()
 ): ToolSelection {
-  const path = join(home, '.config/dev-fleet/fleet.json');
+  const path = join(home, '.config/homelab/fleet.json');
   if (!existsSync(path)) return NO_SELECTION;
   try {
     return workerSelection(JSON.parse(readFileSync(path, 'utf8')), node);
@@ -132,7 +132,7 @@ export function workerToolset<T>(
   for (const tool of selection.tools)
     if (!Object.hasOwn(tools, tool))
       throw new Error(
-        `The worker tool "${tool}" has no pin in dev-fleet's mise.toml. Ask for it in an issue.`
+        `The worker tool "${tool}" has no pin in homelab's mise.toml. Ask for it in an issue.`
       );
   return workerTools(
     tools,

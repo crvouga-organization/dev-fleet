@@ -73,7 +73,7 @@
       "versions": "any",
       "architectures": "arm64, x86_64",
       "status": "best effort",
-      "note": "No fleet role: devfleet bootstrap installs the pinned tools (docs/machine-setup.md)."
+      "note": "No fleet role: homelab bootstrap installs the pinned tools (docs/machine-setup.md)."
     },
     {
       "role": "toolchain only",
@@ -81,7 +81,7 @@
       "versions": "any",
       "architectures": "x86_64, aarch64",
       "status": "best effort",
-      "note": "No fleet role: devfleet bootstrap installs the pinned tools (docs/machine-setup.md)."
+      "note": "No fleet role: homelab bootstrap installs the pinned tools (docs/machine-setup.md)."
     },
     {
       "role": "toolchain only",
@@ -89,7 +89,7 @@
       "versions": "any",
       "architectures": "x86_64",
       "status": "best effort",
-      "note": "Treated as Linux: devfleet bootstrap installs the pinned tools (docs/machine-setup.md)."
+      "note": "Treated as Linux: homelab bootstrap installs the pinned tools (docs/machine-setup.md)."
     },
     {
       "role": "toolchain only",

@@ -1,5 +1,5 @@
 Feature: A command is run within bounds
-  Every command dev-fleet starts has a deadline and a limit on what it may
+  Every command homelab starts has a deadline and a limit on what it may
   print, and how it ended is told apart: it exited, it does not exist, it ran
   out of time, it printed too much or it printed enough to be stopped.
 

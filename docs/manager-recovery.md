@@ -31,8 +31,8 @@ On the new machine, with Git, Node and Docker installed:
 
    ```sh
    git clone YOUR-PROJECT && cd YOUR-PROJECT && npm ci
-   export DEVFLEET_BUCKET_ACCESS_KEY_ID=… DEVFLEET_BUCKET_SECRET_ACCESS_KEY=…
-   npx devfleet fleet-restore --dry-run
+   export HOMELAB_BUCKET_ACCESS_KEY_ID=… HOMELAB_BUCKET_SECRET_ACCESS_KEY=…
+   npx homelab fleet-restore --dry-run
    ```
 
    It fails on anything missing (`restore:*` checks, each with its remedy)
@@ -41,10 +41,10 @@ On the new machine, with Git, Node and Docker installed:
 4. Restore, then converge:
 
    ```sh
-   npx devfleet fleet-restore              # the fleet state, from the bucket
-   npx devfleet fleet-sync --take-over     # the manager, then every worker
-   npx devfleet fleet-state --init         # credentials for runs the manager starts itself
-   npx devfleet cliproxy install           # the proxy, from its snapshots
+   npx homelab fleet-restore              # the fleet state, from the bucket
+   npx homelab fleet-sync --take-over     # the manager, then every worker
+   npx homelab fleet-state --init         # credentials for runs the manager starts itself
+   npx homelab cliproxy install           # the proxy, from its snapshots
    ```
 
    The proxy's own steps are in [its migration runbook](../cliproxy/docs/migration.md).
@@ -52,7 +52,7 @@ On the new machine, with Git, Node and Docker installed:
    after its last change). Use it only once the old machine is gone: an old
    manager that wakes up afterwards is refused with `FLEET_MANAGER_LEASE_HELD`.
 
-5. Adopt the T3 instances again: `npx devfleet t3-apply --import ID`.
+5. Adopt the T3 instances again: `npx homelab t3-apply --import ID`.
 
 Workers need nothing: they reach the manager by its Tailscale name, so they
 follow it once the new machine holds that name. If the Tailscale name

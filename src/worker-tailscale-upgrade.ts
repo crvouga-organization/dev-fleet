@@ -51,6 +51,6 @@ export async function upgradeTailscale(
         'Tailscale was upgraded to its pin in a detached unit; the worker answered again and was converged once more.',
     };
   return FAILED(
-    'The upgrade did not complete, or the worker did not answer within 10 minutes. Read journalctl -u devfleet-tailscale-upgrade on the worker, then rerun fleet-sync --maintenance-reboot.'
+    'The upgrade did not complete, or the worker did not answer within 10 minutes. Read journalctl -u homelab-tailscale-upgrade on the worker, then rerun fleet-sync --maintenance-reboot.'
   );
 }

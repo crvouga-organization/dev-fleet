@@ -12,10 +12,10 @@ Feature: Secrets are read by purpose
         """
         { "provider": "env" }
         """
-      And the environment variable "DEVFLEET_SECRET_PROXY_CLIENT_KEY" holds " value␊"
+      And the environment variable "HOMELAB_SECRET_PROXY_CLIENT_KEY" holds " value␊"
 
     Scenario: Each secret has an environment variable of its own
-      Then the secret "proxy-client-key" is kept in the environment variable "DEVFLEET_SECRET_PROXY_CLIENT_KEY"
+      Then the secret "proxy-client-key" is kept in the environment variable "HOMELAB_SECRET_PROXY_CLIENT_KEY"
 
     Scenario: A secret in the environment is read without the white space around it
       When the secret "proxy-client-key" is read

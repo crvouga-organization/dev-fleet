@@ -1,7 +1,7 @@
 # Beszel owner and recovery
 
 The [README](../../README.md) and the [manager guide](../../docs/ubuntu-sync.md)
-are the normal entry points: `devfleet fleet-sync`, run on the manager. This
+are the normal entry points: `homelab fleet-sync`, run on the manager. This
 directory holds the pinned Compose hub, the native agent unit and their
 playbooks. `src/monitoring/` enrolls machines and measures registration,
 connection, freshness and backups. `lock.json` pins the Beszel release, the
@@ -14,7 +14,7 @@ The fleet has exactly two roles (`fleet.json`):
 
 - **Manager** — the human's macOS machine. It runs fleet-sync locally and hosts the
   singleton hub (`src/monitoring/manager-hub.ts`, `convergeManagerHub`).
-  dev-fleet keeps it awake on AC power. Nothing is installed on it over SSH.
+  homelab keeps it awake on AC power. Nothing is installed on it over SSH.
 - **Workers** — the stateless Linux boxes. They only run the native agent
   (`agent.yml`, a hardened systemd unit) and connect to the manager's private hub
   URL. A worker refuses hub mode (`BESZEL_NOT_HUB`: the hub runs only on the
@@ -24,7 +24,7 @@ The manager is always a monitored system on its own hub. After the hub converges
 fleet-sync enrolls the manager like a worker and installs its agent locally with
 `agent-darwin.yml`: the same pinned binary (`lock.json` carries the darwin
 checksums) as a per-user launchd agent with `KeepAlive`
-(`~/Library/LaunchAgents/dev.devfleet.beszel-agent.plist`, state under
+(`~/Library/LaunchAgents/dev.homelab.beszel-agent.plist`, state under
 `~/Library/Application Support/personal-beszel-agent`). It needs no sudo, so
 fleet-sync stays unattended; it is less sandboxed than the Linux unit. It refuses
 to run beside a leftover root LaunchDaemon with the same label
@@ -131,7 +131,7 @@ to nodes or needed for enrollment. Revocation produces action-required results.
 ## Settings kept only in the hub's UI
 
 Beszel keeps network monitors, alert rules and backup settings in its own data,
-set in its UI. dev-fleet does not write them: there is no reconciler and no
+set in its UI. homelab does not write them: there is no reconciler and no
 endpoint beyond the stock API (`features/monitoring/stock-api.feature`). They
 are preserved by the hub's backups. Set them once, as the fleet account:
 
@@ -206,7 +206,7 @@ first is fenced, keeping node IDs, fingerprints, history and settings. It does
 not contact live nodes, prove Tailscale routing, verify systemd reboot, or use an
 off-host storage service. Those remain operational checks:
 
-- From a second tailnet machine, `devfleet fleet-status --workers` reports
+- From a second tailnet machine, `homelab fleet-status --workers` reports
   `beszel:registration`, `beszel:connection` and `beszel:freshness` passing for
   every worker.
 - `beszel:backup` passes on the manager once off-host storage is configured.

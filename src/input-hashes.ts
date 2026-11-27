@@ -22,7 +22,7 @@ export async function fileHash(path: string): Promise<string | null> {
   }
 }
 
-/** A repository without a packages directory (dev-fleet itself) has an
+/** A repository without a packages directory (homelab itself) has an
  * empty set of workspace manifests, which is known, not missing.
  */
 export async function manifestHash(root: string): Promise<string | null> {

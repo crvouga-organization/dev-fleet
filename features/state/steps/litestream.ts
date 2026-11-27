@@ -15,7 +15,7 @@ const { Given, Then } = state;
 Then('the pinned Litestream is installed', () => {
   expect(requirements.installed).toBe(true);
 });
-Then('DEVFLEET_TEST_S3 names an S3 service', () => {
+Then('HOMELAB_TEST_S3 names an S3 service', () => {
   expect(requirements.s3).toBeTruthy();
 });
 
@@ -42,7 +42,7 @@ Given(
 
 Given('a new bucket on the S3 service', async (world) => {
   const origin = requirements.s3;
-  if (!origin) throw new Error('DEVFLEET_TEST_S3 names no S3 service.');
+  if (!origin) throw new Error('HOMELAB_TEST_S3 names no S3 service.');
   const bucket = `fleet-state-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const made = (await fetch(`${origin}/${bucket}`, { method: 'PUT' })).ok;
   world.s3 = { origin, bucket, made };

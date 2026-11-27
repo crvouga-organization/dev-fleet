@@ -1,6 +1,6 @@
 Feature: fleet-sync never replaces a copy of the configuration that was edited by hand
   Every machine keeps a copy of the fleet configuration at
-  ~/.config/dev-fleet/fleet.json, for launchers and scheduled jobs. fleet-sync
+  ~/.config/homelab/fleet.json, for launchers and scheduled jobs. fleet-sync
   installs it on every run, so an edit made to it by hand used to be lost
   without a word. Beside the copy fleet-sync now keeps its record,
   fleet.json.sha256: what the copy was when it was last written. A copy that
@@ -44,13 +44,13 @@ Feature: fleet-sync never replaces a copy of the configuration that was edited b
 
     Background:
       Given fleet-sync installed the configuration on the manager
-      And "~/.config/dev-fleet/fleet.json" on the manager holds the example fleet with "worker-two" renamed "worker-edited"
+      And "~/.config/homelab/fleet.json" on the manager holds the example fleet with "worker-two" renamed "worker-edited"
 
     Scenario: The run is refused, the edit is kept and nothing is recorded
       When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       Then the command exits 1
       And the report contains "FLEET_CONFIGURATION_COPY_CHANGED"
-      And "~/.config/dev-fleet/fleet.json" on the manager still holds the example fleet with "worker-two" renamed "worker-edited"
+      And "~/.config/homelab/fleet.json" on the manager still holds the example fleet with "worker-two" renamed "worker-edited"
       And the manager has no enrollment
 
     Scenario: A preview is refused the same way
@@ -61,11 +61,11 @@ Feature: fleet-sync never replaces a copy of the configuration that was edited b
     Scenario: A run from a file names that file to keep the edit in, and how to discard it
       When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       Then the report tells the operator "make the same change in $EXAMPLE"
-      And the report tells the operator "rm ~/.config/dev-fleet/fleet.json"
+      And the report tells the operator "rm ~/.config/homelab/fleet.json"
       And the report does not contain "worker-edited"
 
     Scenario: Deleting the copy discards the edit
-      Given "~/.config/dev-fleet/fleet.json" on the manager was deleted
+      Given "~/.config/homelab/fleet.json" on the manager was deleted
       When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
 
@@ -80,22 +80,22 @@ Feature: fleet-sync never replaces a copy of the configuration that was edited b
   Rule: With the configuration kept in the fleet state, the refusal names the import of the copy
 
     Background:
-      Given the process is the devfleet CLI
+      Given the process is the homelab CLI
       And the fleet state holds the example fleet as its configuration
       And the process is passed no fleet.json of its own
       And fleet-sync installed the configuration on the manager
-      And "~/.config/dev-fleet/fleet.json" on the manager holds the example fleet with "worker-two" renamed "worker-edited"
+      And "~/.config/homelab/fleet.json" on the manager holds the example fleet with "worker-two" renamed "worker-edited"
 
     Scenario: The refusal gives the import command with the path of the copy
       When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       Then the command exits 1
       And the report contains "FLEET_CONFIGURATION_COPY_CHANGED"
-      And the report tells the operator "devfleet fleet-state --import ~/.config/dev-fleet/fleet.json"
-      And the report tells the operator "rm ~/.config/dev-fleet/fleet.json"
+      And the report tells the operator "homelab fleet-state --import ~/.config/homelab/fleet.json"
+      And the report tells the operator "rm ~/.config/homelab/fleet.json"
       And the report does not contain "worker-edited"
 
     Scenario: Once the copy is imported the run goes on
-      Given the operator ran "fleet-state --import ~/.config/dev-fleet/fleet.json" on the manager
+      Given the operator ran "fleet-state --import ~/.config/homelab/fleet.json" on the manager
       When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
       And the configuration in the fleet state of the manager contains "worker-edited"
@@ -103,28 +103,28 @@ Feature: fleet-sync never replaces a copy of the configuration that was edited b
   Rule: A copy from before the record existed is an edit only when nothing else holds what it says
 
     Background:
-      Given the process is the devfleet CLI
+      Given the process is the homelab CLI
       And the fleet state holds the example fleet as its configuration
 
     Scenario: A copy that says what the fleet state last applied is not an edit
       An earlier revision wrote it, without a record and in its own layout.
       The project's fleet.json has changed since, so the copy also differs
       from what this run would install.
-      Given "~/.config/dev-fleet/fleet.json" on the manager holds the example fleet
+      Given "~/.config/homelab/fleet.json" on the manager holds the example fleet
       And "~/fleet.json" on the manager holds the example fleet with "worker-two" renamed "worker-new"
       And the process runs with the fleet.json "~/fleet.json"
       When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
 
     Scenario: A copy that says something else is refused, not replaced
-      Given "~/.config/dev-fleet/fleet.json" on the manager holds the example fleet with "worker-two" renamed "worker-edited"
+      Given "~/.config/homelab/fleet.json" on the manager holds the example fleet with "worker-two" renamed "worker-edited"
       When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       Then the command exits 1
       And the report contains "FLEET_CONFIGURATION_COPY_CHANGED"
-      And "~/.config/dev-fleet/fleet.json" on the manager still holds the example fleet with "worker-two" renamed "worker-edited"
+      And "~/.config/homelab/fleet.json" on the manager still holds the example fleet with "worker-two" renamed "worker-edited"
 
     Scenario: A copy that is no fleet configuration at all is refused, not replaced
-      Given "~/.config/dev-fleet/fleet.json" on the manager holds:
+      Given "~/.config/homelab/fleet.json" on the manager holds:
         """
         { "git": {
         """

@@ -1,5 +1,5 @@
 Feature: Validating the fleet configuration
-  devfleet fleet-validate judges a fleet.json without contacting anything. A
+  homelab fleet-validate judges a fleet.json without contacting anything. A
   file that breaks a rule is answered with the first rule it breaks: a stable
   code, the JSONPath of the field, what was expected there and what was
   found. With --ansible, the pinned Ansible also reads the inventory the
@@ -11,14 +11,14 @@ Feature: Validating the fleet configuration
     And the project holds the example fleet configuration
 
   Scenario: The example validates
-    When the operator runs "devfleet fleet-validate --file $PROJECT/fleet.json --json"
+    When the operator runs "homelab fleet-validate --file $PROJECT/fleet.json --json"
     Then it exits with 0
     And in the answer, "ok" is true
     And in the answer, "checks.0.id" is "definition:schema"
 
   Scenario Outline: An invalid fleet.json is answered with where it breaks a rule
     Given in the project's fleet configuration, "<field>" is <value>
-    When the operator runs "devfleet fleet-validate --file $PROJECT/fleet.json --json"
+    When the operator runs "homelab fleet-validate --file $PROJECT/fleet.json --json"
     Then it exits with 1
     And it answers with at least:
       """
@@ -38,7 +38,7 @@ Feature: Validating the fleet configuration
 
   Scenario: A file that is not JSON is unreadable, at its root
     Given the project's fleet configuration holds "{ not json"
-    When the operator runs "devfleet fleet-validate --file $PROJECT/fleet.json --json"
+    When the operator runs "homelab fleet-validate --file $PROJECT/fleet.json --json"
     Then it exits with 1
     And in the answer, "problem.code" is "DEFINITION_UNREADABLE"
     And in the answer, "problem.path" is "$"
@@ -74,7 +74,7 @@ Feature: Validating the fleet configuration
         | BatchMode=yes                    |
         | ConnectionAttempts=3             |
         | ServerAliveInterval=15           |
-        | HostKeyAlias=devfleet-worker-two |
+        | HostKeyAlias=homelab-worker-two |
         | User=dev                         |
         | Port=22                          |
       And the inventory gives "worker-one" the SSH options:
@@ -87,14 +87,14 @@ Feature: Validating the fleet configuration
 
     Scenario: A worker with a network block needs no SSH alias
       Given "workers.1.ssh" is removed from the project's fleet configuration
-      When the operator runs "devfleet fleet-validate --file $PROJECT/fleet.json --json"
+      When the operator runs "homelab fleet-validate --file $PROJECT/fleet.json --json"
       Then it exits with 0
       And in the answer, "ok" is true
 
     Scenario: A worker with neither is answered with its missing alias
       Given "workers.1.ssh" is removed from the project's fleet configuration
       And "workers.1.network" is removed from the project's fleet configuration
-      When the operator runs "devfleet fleet-validate --file $PROJECT/fleet.json --json"
+      When the operator runs "homelab fleet-validate --file $PROJECT/fleet.json --json"
       Then it exits with 1
       And it answers with at least:
         """
@@ -106,7 +106,7 @@ Feature: Validating the fleet configuration
   Rule: Worker records an infrastructure tool writes are declared workers
     fleet.json may name a file, or a command, that returns worker records:
     the provider-neutral description of a machine in
-    schema/worker-record.schema.json. dev-fleet only reads it.
+    schema/worker-record.schema.json. homelab only reads it.
 
     Background:
       Given these worker records:

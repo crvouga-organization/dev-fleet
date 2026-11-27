@@ -95,20 +95,20 @@ Feature: Every failure code has a runbook, and the documents quote real commands
 
     Examples:
       | name                    |
-      | DEVFLEET_CONFIG         |
-      | DEVFLEET_STATE          |
+      | HOMELAB_CONFIG         |
+      | HOMELAB_STATE          |
       | MISE_GLOBAL_CONFIG_FILE |
       | ANTHROPIC_BASE_URL      |
-      | DEVFLEET_SELECTED_BY    |
+      | HOMELAB_SELECTED_BY    |
 
   Scenario: The runbooks count the codes, and the ones that need a person
     When the failure codes of the source are collected
     Then "docs/runbooks.md" states how many codes there are and how many need a person
 
-  Scenario: Every devfleet command the documents quote exists
-    When the devfleet commands quoted in the documents are read
+  Scenario: Every homelab command the documents quote exists
+    When the homelab commands quoted in the documents are read
     Then there are more than 20 of them
-    And each is a command of the devfleet CLI
+    And each is a command of the homelab CLI
 
   Scenario: The documents quote no earlier executable or package
     When the documents are searched for an earlier executable or package

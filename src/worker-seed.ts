@@ -124,7 +124,7 @@ export async function generateHostKey(
   id: string,
   run: Runner
 ): Promise<SeedInput['hostKey']> {
-  const directory = await mkdtemp(join(tmpdir(), 'devfleet-seed-'));
+  const directory = await mkdtemp(join(tmpdir(), 'homelab-seed-'));
   try {
     const path = join(directory, 'host');
     const made = await run(

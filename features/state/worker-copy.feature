@@ -51,7 +51,7 @@ Feature: A worker's edited copy of the configuration stops fleet-sync before any
       Then the report contains "Nothing was changed"
       And the report contains "on worker-two was edited there"
       And the report tells the operator "make the same change in fleet.json ($EXAMPLE)"
-      And the report contains "rm ~/.config/dev-fleet/fleet.json"
+      And the report contains "rm ~/.config/homelab/fleet.json"
       And the report does not contain "\"git\""
 
     Scenario: A preview reports it

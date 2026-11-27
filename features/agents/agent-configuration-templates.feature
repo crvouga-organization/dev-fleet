@@ -2,7 +2,7 @@
 Feature: The agents play writes each CLI's configuration from templates, byte for byte
   The configuration files of every agent CLI already exist on running
   machines, so every byte of them is an interface. The agents play
-  (ansible/agents/agents.yml) renders them from its templates, and dev-fleet
+  (ansible/agents/agents.yml) renders them from its templates, and homelab
   says beforehand what each must hold. The play records a receipt only for
   files that hold exactly that, so a template that drifted from what every
   machine has fails the apply instead of rewriting the fleet.
@@ -11,15 +11,15 @@ Feature: The agents play writes each CLI's configuration from templates, byte fo
   directory of their own and the example fleet configuration, whose proxy is
   https://cli-proxy.example.com.
 
-  Rule: Every profile is written exactly as dev-fleet specifies it
+  Rule: Every profile is written exactly as homelab specifies it
 
     Scenario Outline: The <profile> profile of <tool> is written exactly as specified
       Given the "<profile>" profile of "<tool>" for the machine "node" at the revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", in an empty agent directory
       When the profile is applied
-      Then every file of the profile holds, byte for byte, what dev-fleet specifies for it
-      And the profile holds exactly the files dev-fleet specifies, and its receipt
+      Then every file of the profile holds, byte for byte, what homelab specifies for it
+      And the profile holds exactly the files homelab specifies, and its receipt
       And its receipt records the SHA-256 digest of every file as written
-      And its receipt is, byte for byte, the one dev-fleet records for it
+      And its receipt is, byte for byte, the one homelab records for it
       And a preview reports "<file>" as "unchanged"
 
       Examples:
@@ -115,9 +115,9 @@ Feature: The agents play writes each CLI's configuration from templates, byte fo
       Then the play succeeded
       And the agent directory is still empty
 
-    Scenario: A rendered file that is not what dev-fleet specifies never replaces the one in place
+    Scenario: A rendered file that is not what homelab specifies never replaces the one in place
       A template that drifted from the specification fails the apply: the
-      play compares each rendered file with the digest dev-fleet gave it
+      play compares each rendered file with the digest homelab gave it
       before the file is moved into place. Here the digest is what differs.
       Given the "proxy" profile of "claude" for the machine "node" at the revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", in an empty agent directory
       When the agents play is told "settings.json" must have the digest "0000000000000000000000000000000000000000000000000000000000000000"

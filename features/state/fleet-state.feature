@@ -71,7 +71,7 @@ Feature: fleet-state shows the fleet state and connects it to a bucket
   Rule: --init moves what an existing manager kept in files into the state and seeds the bucket
 
     Background:
-      Given the manager kept the example fleet as its configuration in "~/.config/dev-fleet/fleet.json"
+      Given the manager kept the example fleet as its configuration in "~/.config/homelab/fleet.json"
       And the manager kept its roster in "~/.config/personal/fleet.json":
         """
         {"version":1,"nodes":[{"id":"worker-one","ssh":"worker-one","workspace":"/"}]}
@@ -126,10 +126,10 @@ Feature: fleet-state shows the fleet state and connects it to a bucket
         { "directory": "$BUCKET" }
         """
       And the operator ran "fleet-state --import ~/fleet.json" on the manager
-      And "~/.config/dev-fleet/fleet.json" on the manager holds the example fleet with "worker-two" renamed "worker-edited"
+      And "~/.config/homelab/fleet.json" on the manager holds the example fleet with "worker-two" renamed "worker-edited"
 
     Scenario: The edit is stored and the bucket stays named
-      When the operator runs "fleet-state --import ~/.config/dev-fleet/fleet.json" on the manager
+      When the operator runs "fleet-state --import ~/.config/homelab/fleet.json" on the manager
       Then the command exits 0
       And the configuration in the fleet state of the manager contains "worker-edited"
       And the configuration in the fleet state of the manager names the bucket:
@@ -231,7 +231,7 @@ Feature: fleet-state shows the fleet state and connects it to a bucket
   Rule: The command is registered, documented and read-only without a flag
 
     Scenario: Its help names every action
-      When devfleet is started with "fleet-state --help"
+      When homelab is started with "fleet-state --help"
       Then the command exits 0
       And the output contains each of:
         | --init    |
@@ -243,7 +243,7 @@ Feature: fleet-state shows the fleet state and connects it to a bucket
     Scenario: Started with no flag it reports on the state directory it was given
       The process has its own empty state directory and no bucket.
       Given the process runs on a manager with an empty fleet state
-      When devfleet is started with "fleet-state --json"
+      When homelab is started with "fleet-state --json"
       Then the report includes:
         """
         { "command": "fleet-state", "standing": "local-only" }
@@ -256,7 +256,7 @@ Feature: fleet-state shows the fleet state and connects it to a bucket
       When the operator runs "fleet-state --example" on the manager
       Then the command exits 0
       And the output is the configuration in the report
-      And the configuration in the report has "$schema" set to "./node_modules/@crvouga/dev-fleet/schema/fleet.schema.json"
+      And the configuration in the report has "$schema" set to "./node_modules/@crvouga/homelab/schema/fleet.schema.json"
       And the configuration in the report is valid and names the bucket "my-fleet-state"
       And the output does not contain "accessKey"
       And Litestream was never started

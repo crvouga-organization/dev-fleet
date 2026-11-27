@@ -85,7 +85,7 @@ const menu = part(() => new Menu());
 // ── The menu and its operator ────────────────────────────────────────────
 
 Given(
-  'the interactive menu of devfleet {string}, released at {string}, for the workspace {string} and the roster {string}',
+  'the interactive menu of homelab {string}, released at {string}, for the workspace {string} and the roster {string}',
   (world, ...[version, releasedAt, workspace, config]: string[]) => {
     Object.assign(menu(world).options, {
       version,

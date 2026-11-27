@@ -24,7 +24,7 @@ Feature: A worker's Tailscale is reported by the code its play stopped on
 
     Examples:
       | code                            | remedy                                   |
-      | TAILSCALE_UPGRADE_PENDING       | devfleet fleet-sync --maintenance-reboot |
+      | TAILSCALE_UPGRADE_PENDING       | homelab fleet-sync --maintenance-reboot |
       | TAILSCALE_SOURCE_OWNER_CONFLICT | /etc/apt/sources.list.d/tailscale.list   |
 
   Scenario Outline: A play that stopped on no code of its own, on a worker <state>, reports <code>
@@ -34,7 +34,7 @@ Feature: A worker's Tailscale is reported by the code its play stopped on
     When the Tailscale configuration of the worker is measured
     Then the check fails
     And the summary of the check is "<code>"
-    And the remedy of the check contains "devfleet fleet-sync"
+    And the remedy of the check contains "homelab fleet-sync"
 
     Examples:
       | state                 | code                               |

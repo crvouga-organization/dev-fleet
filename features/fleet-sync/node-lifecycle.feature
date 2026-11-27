@@ -131,7 +131,7 @@ Feature: A worker is replaced or retired with one command
         | worker-two | worker-two.tail0a1b2c.ts.net |
       And the manager's T3 forgot the environment "0b0c0d0e-1111-4222-8333-444455556666"
       And the roster records no T3 environment of "worker-one"
-      And the report has the check "t3:link" skipped, saying "devfleet fleet-sync --node worker-one pairs the manager with it once it runs"
+      And the report has the check "t3:link" skipped, saying "homelab fleet-sync --node worker-one pairs the manager with it once it runs"
       And the fleet state asks for a T3 pairing of "worker-one"
       And the control plane was asked to delete only the device "old-one"
       And the report has the check "tailscale:device" passed, saying "The tailnet no longer holds the device old-one"
@@ -265,7 +265,7 @@ Feature: A worker is replaced or retired with one command
       And the fleet state pins "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyForTheNewMachine" for "worker-one"
       And the fleet-owned known_hosts pins exactly:
         """
-        devfleet-worker-one ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyForTheNewMachine
+        homelab-worker-one ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyForTheNewMachine
         """
       And no personal known_hosts was changed
 

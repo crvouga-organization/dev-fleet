@@ -11,7 +11,7 @@ import { NATIVE_AGENTS } from '../agents/native-verify';
 /** super.engineering, the second supported IDE. It is a desktop app on the
  * manager only: a worker is one of its remote workspaces, reached over the
  * manager's own SSH, where the app installs and updates its helper itself.
- * dev-fleet installs nothing of it. On the manager it asks the app, through
+ * homelab installs nothing of it. On the manager it asks the app, through
  * the app's CLI, for one remote workspace per worker; of a worker it measures
  * what such a workspace needs. The app starts an agent by its plain command,
  * which on a worker is the fleet's launcher: the sign-in is the CLI proxy's.
@@ -460,7 +460,7 @@ export function superIde(inputs: SuperInputs = {}): Ide {
 
   return {
     id: 'super',
-    // The app keeps nothing on a machine that dev-fleet declares.
+    // The app keeps nothing on a machine that homelab declares.
     settings: async () => [],
     manager: async (context) => [await app(context.run)],
     async worker(node, context) {

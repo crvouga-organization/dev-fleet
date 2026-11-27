@@ -49,7 +49,7 @@ function reloginRemedy(provider: string, accounts: RosterAccount[]) {
   return login
     ? {
         action: `Sign ${provider} account ${login.index} in again. Signing in is the only manual step.`,
-        command: `devfleet fleet-accounts --relogin ${provider} ${login.index}`,
+        command: `homelab fleet-accounts --relogin ${provider} ${login.index}`,
       }
     : undefined;
 }
@@ -71,7 +71,7 @@ function providerCheck(
       status: 'warn',
       summary: `${counted}; one limit or expired login away from none.`,
       remedy: remedy ?? {
-        action: `Add a ${provider} account: devfleet fleet-accounts --add ${provider}.`,
+        action: `Add a ${provider} account: homelab fleet-accounts --add ${provider}.`,
       },
     };
   return {
@@ -89,7 +89,7 @@ function noneUsable(provider: string, accounts: RosterAccount[]): Check {
     .filter((until): until is string => until !== null)
     .sort()[0];
   const cooling = accounts.every((account) => account.state === 'cooling-down');
-  const wait = `Wait until ${clears ?? 'the provider lifts the limit'}, or add an account: devfleet fleet-accounts --add ${provider}.`;
+  const wait = `Wait until ${clears ?? 'the provider lifts the limit'}, or add an account: homelab fleet-accounts --add ${provider}.`;
   return {
     id: `proxy:account:${provider}`,
     status: 'fail',
@@ -99,7 +99,7 @@ function noneUsable(provider: string, accounts: RosterAccount[]): Check {
     remedy: reloginRemedy(provider, accounts) ?? {
       action: cooling
         ? wait
-        : `Inspect the ${provider} accounts with devfleet fleet-accounts.`,
+        : `Inspect the ${provider} accounts with homelab fleet-accounts.`,
     },
   };
 }
@@ -130,7 +130,7 @@ export function rosterCurrentCheck(proxy: string | null, node: string): Check {
         summary: `This node offers account roster version ${node}; the proxy holds ${proxy}.`,
         remedy: {
           action: 'Propagate the accounts to every node without a full sync.',
-          command: 'devfleet fleet-sync --only accounts',
+          command: 'homelab fleet-sync --only accounts',
         },
       };
 }
@@ -176,7 +176,7 @@ export function nativeLoginCheck(found: { cli: string }[]): Check {
         remedy: {
           action:
             'Provider accounts belong on the proxy. Remove these logins (opt-in), and sign the account in on the proxy if it is needed.',
-          command: 'devfleet fleet-accounts --remove-native-logins --yes',
+          command: 'homelab fleet-accounts --remove-native-logins --yes',
         },
       };
 }
@@ -208,7 +208,7 @@ export async function proxyReachableCheck(
         : {
             remedy: {
               action:
-                'Agents retry for about a minute and then report "proxy unreachable". Check the proxy on the manager: devfleet cliproxy status.',
+                'Agents retry for about a minute and then report "proxy unreachable". Check the proxy on the manager: homelab cliproxy status.',
             },
           }),
     };
@@ -219,7 +219,7 @@ export async function proxyReachableCheck(
       summary: 'PROXY_UNREACHABLE: no answer from the proxy.',
       remedy: {
         action:
-          'Agents retry for about a minute and then report "proxy unreachable". Check this node’s tailnet and the proxy on the manager: devfleet cliproxy status.',
+          'Agents retry for about a minute and then report "proxy unreachable". Check this node’s tailnet and the proxy on the manager: homelab cliproxy status.',
       },
     };
   }

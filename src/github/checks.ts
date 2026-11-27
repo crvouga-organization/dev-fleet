@@ -123,7 +123,7 @@ function principal(target: GithubNode, login: string | null): Check {
           remedy: {
             action: target.managed
               ? 'Run fleet-sync: it signs this node in with the token in the secrets provider (github-token). If the stored token belongs to another account, replace it or change worker.githubLogin.'
-              : 'Sign in on this manager as the login named in github.manager of the fleet configuration (gh auth login), or change that declaration. dev-fleet never replaces a personal login.',
+              : 'Sign in on this manager as the login named in github.manager of the fleet configuration (gh auth login), or change that declaration. homelab never replaces a personal login.',
           },
         }),
   };

@@ -22,7 +22,7 @@ Feature: A check becomes a diagnostic an operator can act on
         | retryable      | false                  |
         | actionRequired | true                   |
         | durationMs     | null                   |
-      And the remedy of the diagnostic belongs to "dev-fleet"
+      And the remedy of the diagnostic belongs to "homelab"
 
     Scenario: Stale metrics are the manager's to look at, and can be tried again
       Given the check:

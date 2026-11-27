@@ -133,7 +133,7 @@ async function directedGrant(
             '--ttl',
             '5m',
             '--label',
-            'dev-fleet mesh',
+            'homelab mesh',
           ]),
           unlink_command: command(source.node, [
             't3',

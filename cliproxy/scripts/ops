@@ -512,7 +512,7 @@ try:
                 accounts.roster(root / "state/runtime/auths"), provider, int(sys.argv[3])
             )
             if account is None:
-                sys.exit("No such account. List them with: devfleet fleet-accounts")
+                sys.exit("No such account. List them with: homelab fleet-accounts")
             replace = account["file"]
         login(provider, replace)
         prefixes = pending_prefixes()

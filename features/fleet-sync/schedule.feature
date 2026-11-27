@@ -41,11 +41,11 @@ Feature: The manager's schedule changes only when that is authorized
       And the platform installs a scheduled job it is asked to
       When the schedule action "enable" is requested with authorization
       Then the command exits with 0
-      And npm installed exactly "@crvouga/dev-fleet@1.4.0"
+      And npm installed exactly "@crvouga/homelab@1.4.0"
       And the scheduled job "personal-fleet-sync" runs, every 30 minutes:
         | /usr/bin/env                                                |
         | node                                                        |
-        | {root}/runtime/node_modules/@crvouga/dev-fleet/bin/devfleet.mjs |
+        | {root}/runtime/node_modules/@crvouga/homelab/bin/homelab.mjs |
         | fleet-sync                                                  |
         | --revision                                                  |
         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa                    |
@@ -53,7 +53,7 @@ Feature: The manager's schedule changes only when that is authorized
         | --yes                                                       |
         | --non-interactive                                           |
         | --json                                                      |
-      And the scheduled job runs with "DEVFLEET_TRIGGER" set to "schedule"
+      And the scheduled job runs with "HOMELAB_TRIGGER" set to "schedule"
       And the scheduled job's PATH names only the fleet's own tools and the system's
       And the fleet state records the schedule as on, every 30 minutes
       And the report does not mention "raw output"
@@ -162,8 +162,8 @@ Feature: The manager's schedule changes only when that is authorized
       Then it rotates exactly these logs under "/Users/dev/.local/share/personal/fleet/manager/logs", at 1024 KiB, keeping 3:
         | personal-fleet-sync.out.log      |
         | personal-fleet-sync.err.log      |
-        | dev.devfleet.fleet-watch.out.log |
-        | dev.devfleet.fleet-watch.err.log |
+        | dev.homelab.fleet-watch.out.log |
+        | dev.homelab.fleet-watch.err.log |
       And it is checked with newsyslog before it is installed
 
     Scenario: Logs under the rotation size pass
@@ -174,7 +174,7 @@ Feature: The manager's schedule changes only when that is authorized
 
     Scenario: A log past twice the rotation size warns that newsyslog does not rotate it
       Given the newsyslog drop-in for the manager's job logs is installed
-      And the job log "dev.devfleet.fleet-watch.err.log" holds 2100 KiB of lines
+      And the job log "dev.homelab.fleet-watch.err.log" holds 2100 KiB of lines
       When the manager's job logs are checked
       Then the check "manager:job-logs" warns with "MANAGER_JOB_LOG_OVERSIZED 1 logs"
 

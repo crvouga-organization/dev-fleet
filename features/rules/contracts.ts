@@ -74,10 +74,10 @@ When(
 /** An empty fleet state of this scenario's own, removed afterwards. */
 function emptyState(world: { defer(undo: () => void): void }): string {
   const state = mkdtempSync(join(tmpdir(), 'contract-state-'));
-  const before = process.env['DEVFLEET_STATE'];
-  process.env['DEVFLEET_STATE'] = state;
+  const before = process.env['HOMELAB_STATE'];
+  process.env['HOMELAB_STATE'] = state;
   world.defer(() => {
-    process.env['DEVFLEET_STATE'] = before;
+    process.env['HOMELAB_STATE'] = before;
     rmSync(state, { recursive: true, force: true });
   });
   return state;
@@ -93,7 +93,7 @@ When(
       { json: true },
       {
         run: commands.run,
-        env: { DEVFLEET_STATE: state, HOME: state },
+        env: { HOMELAB_STATE: state, HOME: state },
         home: state,
         ask: null,
       }
@@ -199,7 +199,7 @@ When('schema\\/check-ids.json is read', (world) => {
 
 Then('it is the registry the code generates', (world) => {
   const generated = renderCheckRegistry();
-  if (process.env['DEVFLEET_UPDATE_DOCS'])
+  if (process.env['HOMELAB_UPDATE_DOCS'])
     writeFileSync(resolve(root, 'schema/check-ids.json'), generated);
   else expect(output(world)).toEqual(JSON.parse(generated));
   expect(readFileSync(resolve(root, 'schema/check-ids.json'), 'utf8')).toBe(

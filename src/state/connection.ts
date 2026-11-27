@@ -12,7 +12,7 @@ import {
 } from './bucket';
 import { bucketPath } from './paths';
 
-/** How a devfleet command reaches the bucket, and where each part came from.
+/** How a homelab command reaches the bucket, and where each part came from.
  * Never a credential itself.
  */
 export interface Connection {
@@ -21,7 +21,7 @@ export interface Connection {
    * `saved`: this machine's bucket.json.
    */
   location: 'configuration' | 'saved' | null;
-  /** `environment`: the two `DEVFLEET_BUCKET_*` variables. `saved`: this
+  /** `environment`: the two `HOMELAB_BUCKET_*` variables. `saved`: this
    * machine's bucket.json. `ambient`: none given, so the standard AWS
    * environment or profile.
    */
@@ -32,8 +32,10 @@ export interface Connection {
 export function environmentCredentials(
   env: NodeJS.ProcessEnv
 ): { accessKeyId: string; secretAccessKey: string } | null {
-  const accessKeyId = env[ACCESS_KEY_ID_ENV];
-  const secretAccessKey = env[SECRET_ACCESS_KEY_ENV];
+  const accessKeyId =
+    env[ACCESS_KEY_ID_ENV] || env['DEVFLEET_BUCKET_ACCESS_KEY_ID'];
+  const secretAccessKey =
+    env[SECRET_ACCESS_KEY_ENV] || env['DEVFLEET_BUCKET_SECRET_ACCESS_KEY'];
   if (!accessKeyId && !secretAccessKey) return null;
   if (!accessKeyId || !secretAccessKey)
     throw new FleetUsageError(

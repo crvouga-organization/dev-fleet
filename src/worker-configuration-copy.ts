@@ -43,7 +43,7 @@ export function copyQuestion(script: string): string | null {
   return [
     'set -u',
     'root="$HOME/.local/share/personal/fleet"',
-    'config_dir="$HOME/.config/dev-fleet"',
+    'config_dir="$HOME/.config/homelab"',
     'sent=$1',
     `phase=${PHASE}`,
     `failure_code=${CODE}`,

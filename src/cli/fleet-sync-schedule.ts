@@ -56,7 +56,7 @@ export function release(root = PACKAGE_ROOT): Release {
     ) as { bin?: unknown };
     bin = typeof manifest.bin === 'string' ? manifest.bin : null;
     if (typeof manifest.bin === 'object' && manifest.bin !== null)
-      bin = (manifest.bin as Record<string, unknown>)['devfleet'] ?? null;
+      bin = (manifest.bin as Record<string, unknown>)['homelab'] ?? null;
   } catch {
     bin = null;
   }
@@ -112,7 +112,7 @@ export function scheduledEnvironment(home = homedir()): Record<string, string> {
       '/usr/bin',
       '/bin',
     ].join(':'),
-    DEVFLEET_TRIGGER: 'schedule',
+    HOMELAB_TRIGGER: 'schedule',
   };
 }
 

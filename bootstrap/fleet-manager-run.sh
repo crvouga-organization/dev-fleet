@@ -12,7 +12,7 @@ shift
 case "$revision" in *[!a-f0-9]*|'') exit 2;; esac
 [ "${#revision}" = 40 ] || exit 2
 say() { printf 'fleet-sync (manager): %s\n' "$1" >&2; }
-# A preview (--dry-run) changes nothing outside dev-fleet's own disposable
+# A preview (--dry-run) changes nothing outside homelab's own disposable
 # caches: it never publishes the global mise configuration, never edits shell
 # profiles and never prunes run checkouts. Only an apply does.
 preview=false
@@ -21,21 +21,21 @@ for arg in "$@"; do [ "$arg" != --dry-run ] || preview=true; done
 # revision: the toolchain bootstrap installs the mise the revision pins even
 # when the manager runs a newer one. Without it a newer mise is kept.
 downgrade=''
-[ "${DEVFLEET_MISE_DOWNGRADE_ALLOWED:-}" != "$revision" ] || downgrade=--allow-mise-downgrade
+[ "${HOMELAB_MISE_DOWNGRADE_ALLOWED:-}" != "$revision" ] || downgrade=--allow-mise-downgrade
 # mise is installed here by the toolchain step below; a login shell is not
 # required to find it.
 export PATH="$HOME/.local/bin:$PATH"
 fleet="$HOME/.local/share/personal/fleet"
-# The repository to take the revision from. Nobody keeps a clone of dev-fleet:
+# The repository to take the revision from. Nobody keeps a clone of homelab:
 # fleet-sync names the one it prepared, and a hand-off (which names none) uses
-# the manager's own copy of the source repository, or the checkout the devfleet
+# the manager's own copy of the source repository, or the checkout the homelab
 # launcher is linked into.
-repo=${DEVFLEET_REPO:-}
+repo=${HOMELAB_REPO:-${DEVFLEET_REPO:-}}
 if [ -z "$repo" ] && git -C "$fleet/manager/source" rev-parse --git-dir >/dev/null 2>&1; then
   repo="$fleet/manager/source"
 fi
 if [ -z "$repo" ]; then
-  launcher=$(command -v devfleet) || { say 'this manager has no copy of the source yet; run fleet-sync once on the manager itself, from the project that holds your fleet.json.'; exit 3; }
+  launcher=$(command -v homelab) || { say 'this manager has no copy of the source yet; run fleet-sync once on the manager itself, from the project that holds your fleet.json.'; exit 3; }
   repo=$(dirname "$(readlink -f "$launcher")")
 fi
 repo=$(git -C "$repo" rev-parse --show-toplevel) || { say 'cannot read the source repository on the manager; run fleet-sync once on the manager itself to fetch it again.'; exit 3; }
@@ -100,7 +100,7 @@ if [ "$preview" = false ]; then
   applied=$(basename "$(readlink "$(dirname "$runs")/current" 2>/dev/null || true)")
   # Older launchers can point inside a nested checkout in a previous run.
   # Keep that run until the manager playbook links the launcher to current.
-  launcher=$(readlink -f "$HOME/.local/bin/devfleet" 2>/dev/null || true)
+  launcher=$(readlink -f "$HOME/.local/bin/homelab" 2>/dev/null || true)
   runs_real=$(cd "$runs" && pwd -P)
   kept=0
   if [ -n "$applied" ] && [ "$applied" != "$revision" ] && [ -d "$runs/$applied" ]; then kept=1; fi

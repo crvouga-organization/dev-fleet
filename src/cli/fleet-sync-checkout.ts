@@ -88,7 +88,7 @@ export async function runFromCheckout(
     repository && (await trackedScript(repository, revision, RUN_SCRIPT, run));
   if (!repository || !script) return null;
   // The run script makes its checkout from this repository.
-  process.env['DEVFLEET_REPO'] = repository;
+  process.env['HOMELAB_REPO'] = repository;
   // It is given --revision, which does not say what selected the revision.
   if (source.selection)
     process.env[SELECTED_BY_ENV] = encodeSelection(revision, source.selection);

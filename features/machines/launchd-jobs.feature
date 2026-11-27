@@ -9,7 +9,7 @@ Feature: Every launchd job the manager runs is a property list launchd accepts
     Then each is valid
 
   Scenario: A scheduled job with characters XML must escape renders a valid property list
-    Given a scheduled job "dev.devfleet.fixture" that runs "/bin/echo" "a & b <c>" every 3600 seconds
+    Given a scheduled job "dev.homelab.fixture" that runs "/bin/echo" "a & b <c>" every 3600 seconds
     When its launchd job is rendered and linted by macOS
     Then each is valid
 

@@ -20,7 +20,7 @@
   vars_files:
     - policy.json
   vars:
-    renew_label: dev.devfleet.vault-renew
+    renew_label: dev.homelab.vault-renew
     renew_plist: '{{ ansible_facts.env.HOME }}/Library/LaunchAgents/{{ renew_label }}.plist'
     renew_domain: 'gui/{{ ansible_facts.user_uid }}'
   tasks:

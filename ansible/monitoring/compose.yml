@@ -8,7 +8,7 @@ services:
     # Docker restarts a hub that exits; the container watchdog on the manager
     # restarts one that stays unhealthy (container-watchdog.py).
     labels:
-      dev.devfleet.watchdog: restart
+      dev.homelab.watchdog: restart
     healthcheck:
       test: ['CMD', '/beszel', 'health', '--url', 'http://localhost:8090']
       interval: 30s

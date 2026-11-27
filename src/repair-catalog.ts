@@ -40,7 +40,7 @@ const playbook = ({
   title,
   owner: `${path} (tag ${tag})`,
   automatic: false,
-  action: `${action} Runs on the worker, in its fleet-owned checkout, with the variables fleet-sync wrote; devfleet fleet-sync --node NODE re-applies the whole policy instead.`,
+  action: `${action} Runs on the worker, in its fleet-owned checkout, with the variables fleet-sync wrote; homelab fleet-sync --node NODE re-applies the whole policy instead.`,
   commands: [['ansible-playbook', path, '--tags', tag]],
 });
 export const REPAIR_RECIPES: RepairRecipe[] = [
@@ -66,17 +66,17 @@ export const REPAIR_RECIPES: RepairRecipe[] = [
   },
   {
     id: 'workstation',
-    title: 'Install the devfleet launcher',
-    owner: 'dev-fleet',
+    title: 'Install the homelab launcher',
+    owner: 'homelab',
     automatic: true,
     action:
-      'Links ~/.local/bin/devfleet to this checkout of dev-fleet (refused for an installed package, which is not one). Nothing is copied and no configuration is changed.',
+      'Links ~/.local/bin/homelab to this checkout of homelab (refused for an installed package, which is not one). Nothing is copied and no configuration is changed.',
     commands: [['sh', 'bootstrap/install-launcher.sh']],
   },
   {
     id: 'providers',
     title: "Refresh this machine's own service credentials",
-    owner: 'dev-fleet',
+    owner: 'homelab',
     automatic: true,
     action:
       "Renews this machine's own secrets-provider session and the service logins derived from it. No credentials are copied from another computer.",
@@ -249,11 +249,11 @@ export const REPAIR_RECIPES: RepairRecipe[] = [
   {
     id: 'state',
     title: 'Take the fleet state from the bucket again',
-    owner: 'devfleet fleet-state',
+    owner: 'homelab fleet-state',
     automatic: false,
     action:
-      'On the manager: devfleet fleet-state --restore replaces the local copy with the bucket’s (add --yes to give up changes the bucket does not hold). A corrupt replica is restored from an earlier time with --timestamp; see docs/state.md.',
-    commands: [['devfleet', 'fleet-state', '--restore']],
+      'On the manager: homelab fleet-state --restore replaces the local copy with the bucket’s (add --yes to give up changes the bucket does not hold). A corrupt replica is restored from an earlier time with --timestamp; see docs/state.md.',
+    commands: [['homelab', 'fleet-state', '--restore']],
   },
   {
     id: 'operator',

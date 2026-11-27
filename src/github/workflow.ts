@@ -53,9 +53,9 @@ export async function verifyGithubWorkflow(
   const unique =
     input.unique ??
     `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  const branch = `devfleet-verify/${node}-${unique}`;
+  const branch = `homelab-verify/${node}-${unique}`;
   const directory =
-    input.directory ?? (await mkdtemp(join(tmpdir(), 'devfleet-verify-')));
+    input.directory ?? (await mkdtemp(join(tmpdir(), 'homelab-verify-')));
   const clone = join(directory, 'sandbox');
   const git = (args: string[]) =>
     run(['git', '-C', clone, ...args], { timeoutMs: STEP_TIMEOUT_MS });
@@ -98,7 +98,7 @@ export async function verifyGithubWorkflow(
             'commit',
             '--allow-empty',
             '--message',
-            `devfleet: verify the GitHub workflow from ${node}`,
+            `homelab: verify the GitHub workflow from ${node}`,
           ])
         ).ok
     );
@@ -116,9 +116,9 @@ export async function verifyGithubWorkflow(
         branch,
         '--draft',
         '--title',
-        `devfleet verify ${node}`,
+        `homelab verify ${node}`,
         '--body',
-        'Opened by devfleet fleet-github-verify; closed again by the same run.',
+        'Opened by homelab fleet-github-verify; closed again by the same run.',
       ]);
       const url = created.stdout.trim().split('\n').pop() ?? '';
       if (created.ok && /^https:\/\/\S+\/pull\/\d+$/.test(url))
@@ -151,7 +151,7 @@ export async function verifyGithubWorkflow(
             '--repo',
             sandbox,
             '--body',
-            'devfleet fleet-github-verify: comment step.',
+            'homelab fleet-github-verify: comment step.',
           ])
         ).ok
     );

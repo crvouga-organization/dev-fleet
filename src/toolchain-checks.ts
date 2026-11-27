@@ -70,7 +70,7 @@ const OWN: Record<
     pass: 'mise is the release this revision pins.',
     fail: 'mise is missing or older than the release this revision pins, so it refuses to run the pinned tools.',
     action:
-      'Run devfleet fleet-sync from the project that holds fleet.json: the toolchain bootstrap installs the pinned mise.',
+      'Run homelab fleet-sync from the project that holds fleet.json: the toolchain bootstrap installs the pinned mise.',
     warn: {
       summary:
         'TOOLCHAIN_DOWNGRADE This revision pins an older mise than the machine runs. The newer one was kept: the bootstrap never replaces mise with an older release unasked.',
@@ -82,7 +82,7 @@ const OWN: Record<
     pass: 'The global mise configuration is the one fleet-sync publishes.',
     fail: 'The global mise configuration is missing, was replaced by another project or tool, or is not the one this revision publishes.',
     action:
-      'Run devfleet fleet-sync from the project that holds fleet.json. On a fleet machine the global mise configuration belongs to dev-fleet: a project pins its own tools in a project mise.toml and never publishes a global one.',
+      'Run homelab fleet-sync from the project that holds fleet.json. On a fleet machine the global mise configuration belongs to homelab: a project pins its own tools in a project mise.toml and never publishes a global one.',
   },
 };
 

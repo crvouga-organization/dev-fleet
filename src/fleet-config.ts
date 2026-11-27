@@ -32,7 +32,7 @@ import { expandRecords } from './worker-records';
  * Launchers and scheduled jobs get no environment and read it from here.
  */
 export const installedPath = (home: string): string =>
-  join(home, '.config/dev-fleet/fleet.json');
+  join(home, '.config/homelab/fleet.json');
 
 /** Beside the installed copy: the SHA-256 of the copy as fleet-sync last
  * wrote it, so the next run can tell a copy edited by hand from one the
@@ -42,10 +42,10 @@ export const installedPath = (home: string): string =>
 const recordPath = (home: string): string => `${installedPath(home)}.sha256`;
 
 /** Where this process reads the fleet configuration from, in this order:
- * - `file`: the file `DEVFLEET_CONFIG` names. The devfleet CLI sets it to the
+ * - `file`: the file `HOMELAB_CONFIG` names. The homelab CLI sets it to the
  *   `fleet.json` of the project it is run from (src/cli/project.ts);
  * - `state`: the `definition` document in the manager's fleet state, the
- *   configuration fleet-sync last applied, which only the devfleet CLI
+ *   configuration fleet-sync last applied, which only the homelab CLI
  *   reads. `path` is its copy as a file;
  * - `installed`: the copy fleet-sync installed on this machine.
  */
@@ -60,8 +60,8 @@ export function definitionSource(
 ): DefinitionSource {
   const root = stateRoot(env, home);
   const copy = definitionPath(root);
-  const named = env['DEVFLEET_CONFIG'];
-  // A devfleet command names the state's copy for the commands it starts.
+  const named = env['HOMELAB_CONFIG'] || env['DEVFLEET_CONFIG'];
+  // A homelab command names the state's copy for the commands it starts.
   const inherited = named === copy && isOperator();
   if (named && !inherited) return { kind: 'file', path: named };
   if (stateDefinition(root) !== null) return { kind: 'state', path: copy };
@@ -85,7 +85,7 @@ export function configPath(env = process.env, home = homedir()): string {
   if (source.kind !== 'state') return source.path;
   const body = stateDefinition(stateRoot(env, home));
   if (body !== null) writePrivate(source.path, body);
-  env['DEVFLEET_CONFIG'] = source.path;
+  env['HOMELAB_CONFIG'] = source.path;
   return source.path;
 }
 
@@ -94,6 +94,13 @@ export function configPath(env = process.env, home = homedir()): string {
  * and records what it wrote. Returns whether the copy changed.
  */
 export function installConfig(home = homedir()): boolean {
+  const previous = join(home, '.config/dev-fleet/fleet.json');
+  if (!existsSync(installedPath(home)) && existsSync(previous)) {
+    mkdirSync(dirname(installedPath(home)), { recursive: true, mode: 0o700 });
+    renameSync(previous, installedPath(home));
+    const previousRecord = `${previous}.sha256`;
+    if (existsSync(previousRecord)) renameSync(previousRecord, recordPath(home));
+  }
   const body = installedDefinition(fleet);
   const changed = writePrivate(installedPath(home), body);
   writePrivate(recordPath(home), `${digest(body)}\n`);
@@ -161,12 +168,12 @@ export function editedCopyRemedy(
     source.kind === 'file' &&
     source.path !== definitionPath(stateRoot(env, home))
       ? `this run reads the configuration from ${source.path}. To keep the edit, make the same change in ${source.path}. Then, or to discard the edit, delete the copy (rm ${path}) and run fleet-sync again`
-      : `the configuration is kept in the fleet state. To keep the edit, run devfleet fleet-state --import ${path} and then fleet-sync again. To discard it, delete the copy (rm ${path}) and run fleet-sync again`;
+      : `the configuration is kept in the fleet state. To keep the edit, run homelab fleet-state --import ${path} and then fleet-sync again. To discard it, delete the copy (rm ${path}) and run fleet-sync again`;
   return `The copy of the fleet configuration on this manager (${path}) was edited since fleet-sync last wrote it, and a sync would replace it, so nothing was changed. That file is a copy fleet-sync installs for launchers and scheduled jobs; ${kept}: it installs the copy anew.`;
 }
 
 /** How a remedy names fleet.json: the file itself, for the way this process
- * found its configuration. A project's file, or the one DEVFLEET_CONFIG
+ * found its configuration. A project's file, or the one HOMELAB_CONFIG
  * names, by its path; a configuration kept in the fleet state by the commands
  * that change it; and on a machine that holds only the copy fleet-sync
  * installs, where the file is instead. Every remedy that tells the operator
@@ -184,7 +191,7 @@ export function fleetJson(env = process.env, home = homedir()): string {
 
 /** Changing a configuration that is kept in the fleet state. */
 const STATE_EDIT =
-  'devfleet fleet-state --export > fleet.json, edit that file, then devfleet fleet-state --import fleet.json';
+  'homelab fleet-state --export > fleet.json, edit that file, then homelab fleet-state --import fleet.json';
 
 function read(path: string): FleetDefinition {
   let value: unknown;
@@ -203,7 +210,7 @@ function load(): FleetDefinition {
   const path = configPath();
   if (!existsSync(path))
     throw new FleetUsageError(
-      `No fleet configuration. Run devfleet from the project that holds your fleet.json (devfleet fleet-state --example prints one to start from), or name the file with DEVFLEET_CONFIG. A manager whose bucket already holds one restores it with devfleet fleet-state --init. Looked at ${path}.`
+      `No fleet configuration. Run homelab from the project that holds your fleet.json (homelab fleet-state --example prints one to start from), or name the file with HOMELAB_CONFIG. A manager whose bucket already holds one restores it with homelab fleet-state --init. Looked at ${path}.`
     );
   return read(path);
 }

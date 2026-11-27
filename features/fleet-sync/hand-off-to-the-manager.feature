@@ -4,7 +4,7 @@ Feature: fleet-sync started on a worker is handed to the manager
   no credentials copied) and the manager's result is reported unchanged.
 
   Background:
-    Given devfleet runs from "/no-checkout" with the roster "/no-roster"
+    Given homelab runs from "/no-checkout" with the roster "/no-roster"
 
   Rule: The hand-off is one SSH command that cannot hand off again
 
@@ -39,7 +39,7 @@ Feature: fleet-sync started on a worker is handed to the manager
         echo run
         """
       When a worker prepares to hand "fleet-sync" with no revision to the manager
-      Then what the manager is asked to run names "devfleet" directly followed by "fleet-sync"
+      Then what the manager is asked to run names "homelab" directly followed by "fleet-sync"
       But what the manager is asked to run does not contain "fleet-manager-run"
 
     Scenario: The hand-off preserves the request
@@ -101,7 +101,7 @@ Feature: fleet-sync started on a worker is handed to the manager
         echo run
         """
       When a worker prepares to hand "fleet-sync --only accounts --node w1 --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
-      Then the manager is asked to run exactly "devfleet fleet-sync --node w1 --only accounts --json"
+      Then the manager is asked to run exactly "homelab fleet-sync --node w1 --only accounts --json"
       But what the manager is asked to run does not contain "fleet-revision-guard"
       And what the manager is asked to run does not contain "fleet-manager-run"
 
@@ -112,7 +112,7 @@ Feature: fleet-sync started on a worker is handed to the manager
         {"ok":true}
         """
       When fleet-sync is started with "--only accounts --json"
-      Then the manager was asked to run exactly "devfleet fleet-sync --only accounts --json"
+      Then the manager was asked to run exactly "homelab fleet-sync --only accounts --json"
       And the result is exactly exit code 0 and the report:
         """
         {"ok":true}
@@ -146,7 +146,7 @@ Feature: fleet-sync started on a worker is handed to the manager
       And what the manager is asked to run names "fleet-source-guard" directly followed by "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       And what the manager is asked to run contains:
         | remote get-url origin                    |
-        | https://github.com/crvouga/dev-fleet.git |
+        | https://github.com/crvouga/homelab.git |
 
       Examples:
         | command                            | next                 |
@@ -183,18 +183,18 @@ Feature: fleet-sync started on a worker is handed to the manager
       Given the worker "worker-one" selected the revision from "checkout"
       When a worker prepares to hand "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then what the manager is asked to run contains:
-        | DEVFLEET_SELECTED_BY                                        |
+        | HOMELAB_SELECTED_BY                                        |
         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:checkout@worker-one |
 
     Scenario: The mise guard runs after the question about the default branch and before the run script
       A revision whose bootstrap is from before the rule that keeps a newer
       mise would replace a newer one with the older one it pins: the
       manager's, which the guard compares itself, or a worker's, which it
-      asks the devfleet installed on the manager to measure.
+      asks the homelab installed on the manager to measure.
       When a worker prepares to hand "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then what the manager is asked to run contains:
         | $HOME/.local/bin/mise                    |
-        | devfleet fleet-sync --measure-mise       |
+        | homelab fleet-sync --measure-mise       |
         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
       And what the manager is asked to run names "fleet-revision-guard" before "fleet-mise-guard"
       And what the manager is asked to run names "fleet-mise-guard" before "fleet-manager-run"
@@ -209,7 +209,7 @@ Feature: fleet-sync started on a worker is handed to the manager
       When a worker prepares to hand "fleet-sync --allow-mise-downgrade --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" to the manager
       Then what the manager is asked to run does not contain "fleet-mise-guard"
       And what the manager is asked to run contains:
-        | DEVFLEET_MISE_DOWNGRADE_ALLOWED=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
+        | HOMELAB_MISE_DOWNGRADE_ALLOWED=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
         | fleet-revision-guard                                                   |
       And the manager is asked for exactly "--revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --json"
 
@@ -232,7 +232,7 @@ Feature: fleet-sync started on a worker is handed to the manager
       And the report mentions "--allow-mise-downgrade"
 
     Scenario: A mise guard that exits with 68 is reported as FLEET_MISE_UNMEASURED, and nothing ran
-      The devfleet installed on the manager could not say which mise the
+      The homelab installed on the manager could not say which mise the
       workers run: that is never a pass.
       Given the manager answers the hand-off with exit code 68 and nothing
       When "fleet-sync --json" at revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" is handed to the manager
@@ -240,10 +240,10 @@ Feature: fleet-sync started on a worker is handed to the manager
       And the report has:
         | code     | FLEET_MISE_UNMEASURED                    |
         | revision | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
-      And the report mentions "the devfleet installed on the manager could not say which mise the workers run"
+      And the report mentions "the homelab installed on the manager could not say which mise the workers run"
       And the report mentions "--allow-mise-downgrade"
 
-    Scenario: What the manager's installed devfleet refused is reported as it is
+    Scenario: What the manager's installed homelab refused is reported as it is
       The guard printed the refusal of the question and ended the hand-off:
       the report names the machines.
       Given the manager answers the hand-off with exit code 1 and:

@@ -161,7 +161,7 @@ function definitionCheck(
       status: 'warn',
       summary: `The fleet configuration is only the copy fleet-sync installed at ${source.path}; the fleet state does not hold it.`,
       remedy: {
-        action: `Store it: devfleet fleet-state --import ${source.path}.`,
+        action: `Store it: homelab fleet-state --import ${source.path}.`,
       },
     };
   return {
@@ -170,7 +170,7 @@ function definitionCheck(
     summary: 'This machine has no fleet configuration.',
     remedy: {
       action:
-        'Run devfleet from the project that holds your fleet.json; devfleet fleet-state --example prints one to start from. A bucket that already holds a configuration restores it: devfleet fleet-state --init --bucket NAME --endpoint https://HOST.',
+        'Run homelab from the project that holds your fleet.json; homelab fleet-state --example prints one to start from. A bucket that already holds a configuration restores it: homelab fleet-state --init --bucket NAME --endpoint https://HOST.',
     },
   };
 }
@@ -202,7 +202,7 @@ function documentCheck(
       summary: `${TITLE[name]} is still read from ${legacyPath(name, services.env, services.home)}, outside the fleet state.`,
       remedy: {
         action:
-          'Move it into the fleet state: devfleet fleet-state --init. The next fleet-sync does the same. The file is left in place and no longer read afterwards.',
+          'Move it into the fleet state: homelab fleet-state --init. The next fleet-sync does the same. The file is left in place and no longer read afterwards.',
       },
     };
   return {
@@ -228,7 +228,7 @@ function bucketCheck(
       status: 'warn',
       summary: 'No bucket is configured.',
       remedy: {
-        action: `Name it under "state" in ${fleetJson(services.env, services.home)} and pass its credentials in ${ACCESS_KEY_ID_ENV} and ${SECRET_ACCESS_KEY_ENV}. Without a fleet.json, connect one on this machine: devfleet fleet-state --init --bucket NAME --endpoint https://HOST (docs/state.md lists the settings).`,
+        action: `Name it under "state" in ${fleetJson(services.env, services.home)} and pass its credentials in ${ACCESS_KEY_ID_ENV} and ${SECRET_ACCESS_KEY_ENV}. Without a fleet.json, connect one on this machine: homelab fleet-state --init --bucket NAME --endpoint https://HOST (docs/state.md lists the settings).`,
       },
     };
   const named =
@@ -431,7 +431,7 @@ async function importDefinition(
     value = JSON.parse(await readFile(path, 'utf8'));
   } catch {
     throw new FleetUsageError(
-      '--import needs a readable JSON file: a fleet.json such as the one devfleet fleet-state --example prints.'
+      '--import needs a readable JSON file: a fleet.json such as the one homelab fleet-state --example prints.'
     );
   }
   parseDefinition(value);
@@ -478,7 +478,7 @@ function exportDefinition(services: FleetStateServices): CommandOutcome {
   );
   if (body === null)
     throw new FleetUsageError(
-      'The fleet state holds no fleet configuration. Store one with devfleet fleet-state --import PATH.'
+      'The fleet state holds no fleet configuration. Store one with homelab fleet-state --import PATH.'
     );
   return {
     exitCode: 0,
@@ -493,7 +493,7 @@ function exportDefinition(services: FleetStateServices): CommandOutcome {
 }
 
 /** A configuration to start a project from: the packaged example, with its
- * schema named where an installed dev-fleet keeps it.
+ * schema named where an installed homelab keeps it.
  */
 async function exampleDefinition(): Promise<CommandOutcome> {
   const example = JSON.parse(
@@ -517,7 +517,7 @@ async function restore(
   const target = context(services, options);
   if (!target.bucket)
     throw new FleetUsageError(
-      `No bucket is configured, so there is nothing to restore from. Name it under "state" in ${fleetJson(services.env, services.home)}, or run devfleet fleet-state --init --bucket NAME --endpoint https://HOST.`
+      `No bucket is configured, so there is nothing to restore from. Name it under "state" in ${fleetJson(services.env, services.home)}, or run homelab fleet-state --init --bucket NAME --endpoint https://HOST.`
     );
   if (options.timestamp !== undefined) {
     // The bucket's current version is replaced too: --yes is the consent.

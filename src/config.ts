@@ -168,7 +168,7 @@ export async function loadConfig(path: string): Promise<FleetConfig> {
     value = JSON.parse(await readFile(path, 'utf8'));
   } catch {
     throw new FleetUsageError(
-      'Cannot read fleet config. Run devfleet fleet-node-add or use --config PATH.'
+      'Cannot read fleet config. Run homelab fleet-node-add or use --config PATH.'
     );
   }
   return parseConfig(value);

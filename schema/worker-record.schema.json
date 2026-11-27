@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "dev-fleet worker records, version 1",
-  "description": "Workers as the tool that created them describes them, without naming the tool or the provider. fleet.json names a file or a command that returns this document under workerRecords; dev-fleet only reads it, never creates a machine and never calls a provider. Each record is a declared worker reached from its data: its host key is pinned as given. A record needs a tailnetName or an address. A worker whose record disappears (a file that is gone holds no record) is retired by the next fleet-sync.",
+  "title": "homelab worker records, version 1",
+  "description": "Workers as the tool that created them describes them, without naming the tool or the provider. fleet.json names a file or a command that returns this document under workerRecords; homelab only reads it, never creates a machine and never calls a provider. Each record is a declared worker reached from its data: its host key is pinned as given. A record needs a tailnetName or an address. A worker whose record disappears (a file that is gone holds no record) is retired by the next fleet-sync.",
   "type": "object",
   "additionalProperties": false,
   "required": ["version", "workers"],
@@ -45,7 +45,7 @@
           "hostKey": {
             "type": "string",
             "pattern": "^(ssh-ed25519|ecdsa-sha2-nistp256|ssh-rsa) [A-Za-z0-9+/=]{16,}$",
-            "description": "The machine's SSH host public key, \"TYPE BASE64\": generated before the machine exists (devfleet fleet-node-seed prints it) or read from the machine by the tool that created it. It is pinned, never learned on first use. Without it the key the fleet state pins is used (devfleet fleet-node-seed --apply --yes), and until there is one every session is refused."
+            "description": "The machine's SSH host public key, \"TYPE BASE64\": generated before the machine exists (homelab fleet-node-seed prints it) or read from the machine by the tool that created it. It is pinned, never learned on first use. Without it the key the fleet state pins is used (homelab fleet-node-seed --apply --yes), and until there is one every session is refused."
           },
           "t3Port": {
             "type": "integer",

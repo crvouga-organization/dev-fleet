@@ -1,4 +1,4 @@
-> This document was written for the fleet dev-fleet was extracted from. Paths and
+> This document was written for the fleet homelab was extracted from. Paths and
 > commands were updated; some statements still describe that fleet and are being
 > revised. The README is authoritative, and what a machine must offer to be a
 > worker is listed only in [worker requirements](worker-requirements.md).
@@ -40,16 +40,16 @@ receipt before then:
   (`worker:t3-recovery`, `ubuntu:boot-policy`).
 
 Reproduce the disposable runs with
-`DEVFLEET_TEST_FRESH_BOX=1 bun test features/fresh-box`; the VM procedure for
+`HOMELAB_TEST_FRESH_BOX=1 bun test features/fresh-box`; the VM procedure for
 a full systemd guest is in [`ansible/ubuntu/tests/README.md`](../ansible/ubuntu/tests/README.md).
 
 ## One command, from the manager
 
 ```sh
-devfleet fleet-sync
+homelab fleet-sync
 ```
 
-`devfleet fleet-sync` executes the manager-push implementation:
+`homelab fleet-sync` executes the manager-push implementation:
 
 ```text
 resolve enrolled fleet
@@ -68,7 +68,7 @@ is refused (macOS and Windows workers, WSL2, containers) and why.
 `--node ID` filters troubleshooting/rollout. `--all` is an explicit spelling of the
 default. Neither flag authorizes managing arbitrary Tailscale peers.
 
-Roster-level workspace convergence lives in `devfleet fleet-repair --repair workspace`, which previews until `--apply --yes`.
+Roster-level workspace convergence lives in `homelab fleet-repair --repair workspace`, which previews until `--apply --yes`.
 The new manager report is version **2**, deliberately replacing the unshipped
 local-first fleet-sync version 1 contract.
 
@@ -143,9 +143,9 @@ untracked configuration edits.
 ## Preview, approval and results
 
 ```sh
-devfleet fleet-sync --dry-run --json
-devfleet fleet-sync --revision FULL_40_CHARACTER_SHA --dry-run --json
-devfleet fleet-sync --revision FULL_40_CHARACTER_SHA --non-interactive --json
+homelab fleet-sync --dry-run --json
+homelab fleet-sync --revision FULL_40_CHARACTER_SHA --dry-run --json
+homelab fleet-sync --revision FULL_40_CHARACTER_SHA --non-interactive --json
 ```
 
 Preview can query Tailscale and establish read-only SSH sessions. It never enrolls,
@@ -158,7 +158,7 @@ trust/enrollment of new connections still asks separately.
 Select one full lowercase commit SHA. Approval is saved on the manager and
 retained throughout the run. New package versions do not silently replace saved
 approval. Promote a reviewed release with the explicit `--revision SHA` invocation.
-Use `devfleet@VERSION fleet-sync ...` for automation; unversioned npx
+Use `homelab@VERSION fleet-sync ...` for automation; unversioned npx
 is convenience, not a reproducibility guarantee. Dirty review artifacts have no
 automatically approved source SHA.
 
@@ -214,14 +214,14 @@ Credential sync is deliberately indirect: no secret is copied between machines.
 Each worker has a Vault token of its own, kept in a document of its own,
 `<mount>/<project>/workers/<id>` (fields `token` and `accessor`; `<project>`
 is the first segment of the `proxy-client-key` path). The manager issues it
-with `devfleet fleet-node-replace --id ID --apply --yes`: a periodic orphan
+with `homelab fleet-node-replace --id ID --apply --yes`: a periodic orphan
 token under the policy `fleet-worker-<id>`, which reads the fleet's shared
 document and the worker's own document and nothing else, so one worker's
 token cannot read another's (`features/fleet-sync/worker-credentials.feature`
 proves it against a Vault development server). The manager's own login needs
 to write policies, create tokens and write the mount.
 
-`devfleet fleet-sync` delivers each node's token over SSH stdin (never as an
+`homelab fleet-sync` delivers each node's token over SSH stdin (never as an
 argument) whenever that node has no working Vault session. A token still kept
 in the shared document as `FLEET_WORKER_TOKEN_<NODE>` is delivered too, with
 the warning `VAULT_WORKER_TOKEN_SHARED`: every worker can read that document,
@@ -231,7 +231,7 @@ the fleet's shared Vault user on the worker's own terminal happens only with
 `VAULT_LOGIN_REQUIRED` and its T3 proxy providers stay unavailable. A node
 Vault does not answer reports `VAULT_UNREACHABLE` instead and is given no
 token and no prompt: neither would log it in.
-`devfleet fleet-node-retire --id ID --apply --yes` revokes a worker's token by
+`homelab fleet-node-retire --id ID --apply --yes` revokes a worker's token by
 its accessor and removes its document and policy.
 
 From then on the node's `personal-worker-auth` timer renews that token and its
@@ -346,11 +346,11 @@ The manager is the only configuration coordinator. No per-node pull timer is
 installed. Manager schedule controls use the existing platform adapter:
 
 ```sh
-devfleet fleet-sync --schedule status --json
-devfleet fleet-sync --schedule enable --revision FULL_40_CHARACTER_SHA --apply --yes
-devfleet fleet-sync --schedule pause --apply --yes
-devfleet fleet-sync --schedule resume --revision FULL_40_CHARACTER_SHA --apply --yes
-devfleet fleet-sync --schedule disable --apply --yes
+homelab fleet-sync --schedule status --json
+homelab fleet-sync --schedule enable --revision FULL_40_CHARACTER_SHA --apply --yes
+homelab fleet-sync --schedule pause --apply --yes
+homelab fleet-sync --schedule resume --revision FULL_40_CHARACTER_SHA --apply --yes
+homelab fleet-sync --schedule disable --apply --yes
 ```
 
 These are manager setup/maintenance operations, not per-node commands. Enable
@@ -433,7 +433,7 @@ Antigravity credential the model prefix `<type>-<email>`
 API), so the proxy's model list names every signed-in account. Each node reads
 that list with its own proxy key and offers one provider per account, so all
 machines list the same providers. Signing an account in or out on the proxy
-(`devfleet cliproxy add-account PROVIDER`, or the dashboard) changes T3 on the
+(`homelab cliproxy add-account PROVIDER`, or the dashboard) changes T3 on the
 next `fleet-sync`; an unreachable proxy fails the check and changes nothing.
 
 A provider is pinned to its account: T3 sets `WS_AGENT_ACCOUNT` and the
@@ -467,7 +467,7 @@ Every node runs the same collector, `ansible/ubuntu/disk-gc.py`, with the
 values of `resourceSafety` in `ansible/ubuntu/policy.json`: a worker as
 `personal-fleet-disk-gc.timer` (as root, acting as the development user where
 it touches the user's files), the manager as the launchd job
-`dev.devfleet.disk-gc` that `ansible/macos/manager.yml` installs (as the user,
+`dev.homelab.disk-gc` that `ansible/macos/manager.yml` installs (as the user,
 from a copy outside every revision; macOS has no `/proc`, so `lsof` names the
 directories processes run in, and a run that cannot list them removes nothing
 a process could be using). On the manager it also trims `~/Library/Caches`,
@@ -487,7 +487,7 @@ also prunes unused images, build cache and anonymous dangling volumes. It
 trims older children of the development user's cache directories, excluding
 the fleet, mise and package stores. pnpm, npm, Bun and uv prune their own
 stores when over budget or under pressure, and `mise prune` removes tool
-versions no configuration names. It keeps two dev-fleet checkouts under
+versions no configuration names. It keeps two homelab checkouts under
 `revisions/` and `manager-runs/` (`diskGcCheckoutsKept`): the one
 `fleet/current` points at and the most recently used other, never one a
 process runs in. Entries of `~/.t3/scratch` nothing was written in for 24
@@ -545,7 +545,7 @@ configured helper without a usable credential reports
 `GIT_CREDENTIAL_UNAVAILABLE`.
 
 For a worker-initiated sync with the manager's desktop credentials, first run
-`devfleet fleet-sync --schedule enable --apply --yes` in the signed-in manager
+`homelab fleet-sync --schedule enable --apply --yes` in the signed-in manager
 session with the desired release. Confirm its scheduled run can read the fleet
 state and passes both the GitHub principal and Git credential checks. From a
 worker with verified SSH access, trigger that same manager-owned job:
@@ -557,7 +557,7 @@ ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$manager" \
 
 Here `manager` names the enrolled manager account and tailnet address.
 `kickstart` starts the job asynchronously. Check the new run's timestamp,
-revision and result with `devfleet fleet-sync --schedule status`. The schedule
+revision and result with `homelab fleet-sync --schedule status`. The schedule
 uses its installed revision and options. Keep the manager desktop signed in.
 
 ### Native Tailscale SSH

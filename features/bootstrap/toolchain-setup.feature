@@ -125,7 +125,7 @@ Feature: The shared toolchain is published as the global mise configuration
       Then it is refused with "global config"
 
     Scenario: A project's own tools are installed only from the project's lock
-      A project pins the tools dev-fleet does not ship in its own mise.toml.
+      A project pins the tools homelab does not ship in its own mise.toml.
       On a fleet machine this repository's mise.toml is the global
       configuration, published with settings that make mise refuse a
       project tool its mise.lock does not name. mise reads locked_scopes only

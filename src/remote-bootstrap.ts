@@ -32,7 +32,7 @@ export interface BootstrapPayload {
   bundle: string;
   digest: string;
   authorizeSudo?: string;
-  /** The fleet configuration every node keeps at ~/.config/dev-fleet/fleet.json. */
+  /** The fleet configuration every node keeps at ~/.config/homelab/fleet.json. */
   config?: string;
   /** `fleet-sync --restart-busy`: a worker's T3 restarts for a new release or
    * policy even while agent turns run. This is the default.

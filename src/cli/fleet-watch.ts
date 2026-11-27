@@ -165,7 +165,7 @@ async function heartbeat(
       summary: 'WATCH_HEARTBEAT_UNWRITTEN',
       remedy: {
         action:
-          'Check the bucket credentials this run was given (devfleet fleet-state shows the connection).',
+          'Check the bucket credentials this run was given (homelab fleet-state shows the connection).',
       },
     })
   );

@@ -50,7 +50,7 @@ export async function managerAccounts(workspace: string): Promise<Check[]> {
         summary: 'No revision is applied on the manager yet.',
         remedy: {
           action: 'Run a full fleet-sync first.',
-          command: 'devfleet fleet-sync',
+          command: 'homelab fleet-sync',
         },
       },
     ];

@@ -87,7 +87,7 @@ const runs = new WeakMap<OrchestrationWorld, Packages>();
 function packages(world: OrchestrationWorld): Packages {
   let found = runs.get(world);
   if (!found) {
-    const state = mkdtempSync(join(tmpdir(), 'devfleet-packages-'));
+    const state = mkdtempSync(join(tmpdir(), 'homelab-packages-'));
     world.defer(() => rmSync(state, { recursive: true, force: true }));
     for (const directory of ['bin', 'status', 'unconfigured', 'root'])
       mkdirSync(join(state, directory));

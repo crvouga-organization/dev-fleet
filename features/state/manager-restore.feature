@@ -14,7 +14,7 @@ Feature: A replacement manager is checked, then restored from the bucket
       { "directory": "$BUCKET" }
       """
     And commands on manager "b" are passed:
-      | DEVFLEET_CONFIG | ~/project/fleet.json |
+      | HOMELAB_CONFIG | ~/project/fleet.json |
     And manager "b" is a clean Mac named "manager-mac" with Git, Tailscale and Docker
 
   Scenario: The dry run passes on a clean Mac with only the documented inputs

@@ -98,7 +98,7 @@ export interface FleetSyncOptions {
   allowMiseDowngrade?: boolean;
   /** Only answer whether --revision's own bootstrap would replace a newer
    * mise on the manager or on a worker the request selects, and change
-   * nothing. The guard of a hand-off asks the manager's installed devfleet
+   * nothing. The guard of a hand-off asks the manager's installed homelab
    * this before the revision's run script starts there.
    */
   measureMise?: boolean;
@@ -203,7 +203,7 @@ export async function fleetSync(
 
 /** Runs the manager's schedule starts say so in their environment. */
 function runTrigger(env = process.env): Trigger {
-  return env['DEVFLEET_TRIGGER'] === 'schedule' ? 'schedule' : 'operator';
+  return env['HOMELAB_TRIGGER'] === 'schedule' ? 'schedule' : 'operator';
 }
 
 /** Appends the run to the history in the fleet state and uploads it. A
@@ -436,7 +436,7 @@ async function managerRevision(
   if (explicit === null)
     return actionRequired(
       'FLEET_ROLLBACK_UNAVAILABLE',
-      'Nothing was changed: the fleet state records no revision applied before the approved one. Install the dev-fleet version to go back to and run fleet-sync.'
+      'Nothing was changed: the fleet state records no revision applied before the approved one. Install the homelab version to go back to and run fleet-sync.'
     );
   const { revision, by } = await selectedRevision(
     explicit,
@@ -447,7 +447,7 @@ async function managerRevision(
   if (!isRevision(revision))
     return actionRequired(
       'FLEET_REVISION_REQUIRED',
-      'No revision to converge to. Run the published dev-fleet package (it names the commit it was built from), or select a full commit SHA with --revision.'
+      'No revision to converge to. Run the published homelab package (it names the commit it was built from), or select a full commit SHA with --revision.'
     );
   return {
     revision,
@@ -555,7 +555,7 @@ async function miseRefusal(
 
 /** `--measure-mise`: the answer to the question above and nothing else, for
  * the guard of a hand-off. That guard runs on the manager before the
- * revision's run script, in the manager's installed devfleet: the newest
+ * revision's run script, in the manager's installed homelab: the newest
  * code there is before the revision's own takes over. No revision is
  * approved, no checkout is made and no machine is changed.
  */
@@ -974,7 +974,7 @@ function interactive(options: FleetSyncOptions): boolean {
 }
 
 /** The commit an installed package was published from: the version of
- * dev-fleet you run is the revision the fleet moves to.
+ * homelab you run is the revision the fleet moves to.
  */
 function packageRevision(): string | undefined {
   return packageInfo().revision ?? undefined;

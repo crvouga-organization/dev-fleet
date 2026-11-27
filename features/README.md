@@ -1,6 +1,6 @@
 # Features
 
-What dev-fleet does is specified here, in Gherkin. A `.feature` file says what
+What homelab does is specified here, in Gherkin. A `.feature` file says what
 is true in the words of someone who runs a fleet; the step definitions beside
 it hold the mechanics. The TypeScript has no other tests; the CLI proxy's
 Python package keeps its own under `cliproxy/tests`.
@@ -8,10 +8,10 @@ Python package keeps its own under `cliproxy/tests`.
 ```sh
 bun test                                 # every feature
 bun test features/state                  # one area
-DEVFLEET_TEST_FRESH_BOX=1 bun test features/fresh-box
-DEVFLEET_TEST_AGENT_BOX=1 bun test features/monitoring
-DEVFLEET_TEST_TAILNET_BOX=1 bun test features/tailnet-box
-DEVFLEET_TEST_PROXY_BOX=1 bun test features/accounts
+HOMELAB_TEST_FRESH_BOX=1 bun test features/fresh-box
+HOMELAB_TEST_AGENT_BOX=1 bun test features/monitoring
+HOMELAB_TEST_TAILNET_BOX=1 bun test features/tailnet-box
+HOMELAB_TEST_PROXY_BOX=1 bun test features/accounts
 ```
 
 ## Layout
@@ -91,19 +91,19 @@ skipped where it cannot.
 | Tag            | Runs                                                                                     |
 | -------------- | ---------------------------------------------------------------------------------------- |
 | `@slow`        | With ten times the area's timeout                                                        |
-| `@fresh-box`   | When `DEVFLEET_TEST_FRESH_BOX` is set; needs Docker and an SSH client                    |
-| `@agent-box`   | When `DEVFLEET_TEST_AGENT_BOX` is set; needs Docker that can run systemd                 |
-| `@tailnet-box` | When `DEVFLEET_TEST_TAILNET_BOX` is set; needs Docker that can run systemd and `openssl` |
-| `@proxy-box`   | When `DEVFLEET_TEST_PROXY_BOX` is set; needs Docker with host networking (Linux)         |
+| `@fresh-box`   | When `HOMELAB_TEST_FRESH_BOX` is set; needs Docker and an SSH client                    |
+| `@agent-box`   | When `HOMELAB_TEST_AGENT_BOX` is set; needs Docker that can run systemd                 |
+| `@tailnet-box` | When `HOMELAB_TEST_TAILNET_BOX` is set; needs Docker that can run systemd and `openssl` |
+| `@proxy-box`   | When `HOMELAB_TEST_PROXY_BOX` is set; needs Docker with host networking (Linux)         |
 | `@litestream`  | Where the pinned Litestream is installed; required in CI                                 |
-| `@s3`          | Where `DEVFLEET_TEST_S3` names a throwaway S3 service                                    |
-| `@vault`       | Where `vault` is on PATH, or `DEVFLEET_TEST_VAULT=required`; a dev server                |
-| `@ansible`     | Where `uv` is on PATH, or `DEVFLEET_TEST_ANSIBLE=required`; the locked Ansible project   |
-| `@required`    | Only where `DEVFLEET_TEST_LITESTREAM=required`, to prove nothing was skipped             |
-| `@t3-desktop`  | On macOS with `DEVFLEET_TEST_MANAGER_DESKTOP` set; stages the pinned app temporarily     |
+| `@s3`          | Where `HOMELAB_TEST_S3` names a throwaway S3 service                                    |
+| `@vault`       | Where `vault` is on PATH, or `HOMELAB_TEST_VAULT=required`; a dev server                |
+| `@ansible`     | Where `uv` is on PATH, or `HOMELAB_TEST_ANSIBLE=required`; the locked Ansible project   |
+| `@required`    | Only where `HOMELAB_TEST_LITESTREAM=required`, to prove nothing was skipped             |
+| `@t3-desktop`  | On macOS with `HOMELAB_TEST_MANAGER_DESKTOP` set; stages the pinned app temporarily     |
 | `@macos`       | On macOS only; the manager job of CI runs them                                           |
 | `@posix`       | Not on Windows                                                                           |
 | `@linux`       | On Linux only                                                                            |
 | `@bash`        | Where `/bin/bash` exists                                                                 |
 | `@zsh`         | Where `/bin/zsh` exists                                                                  |
-| `@pwsh`        | Where `pwsh` is on PATH, or `DEVFLEET_TEST_PWSH=required`; the machine's own PowerShell  |
+| `@pwsh`        | Where `pwsh` is on PATH, or `HOMELAB_TEST_PWSH=required`; the machine's own PowerShell  |

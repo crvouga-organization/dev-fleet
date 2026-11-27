@@ -19,11 +19,11 @@ export async function reconcileT3(
     const plan = await planT3(paths, desired);
     if (options.planHash && options.planHash !== plan.planHash)
       throw new FleetUsageError(
-        'T3 plan is stale. Run devfleet t3-apply --dry-run again.'
+        'T3 plan is stale. Run homelab t3-apply --dry-run again.'
       );
     if (plan.changes.some((change) => change.action === 'conflict'))
       throw new FleetUsageError(
-        'T3 instance already exists without ownership. Review it and use devfleet t3-apply --import ID.'
+        'T3 instance already exists without ownership. Review it and use homelab t3-apply --import ID.'
       );
     await (options.keys ?? reconcileProviderKeys)(
       paths.settings,

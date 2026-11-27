@@ -10,7 +10,7 @@ Feature: A worker joins a real tailnet unattended, is reached only through it, a
   production tailnet control (src/tailnet-control.ts) and the machines join
   with the production Tailscale play (ansible/ubuntu/tailscale.yml). No
   account with any hosted service is used. Runs only when
-  DEVFLEET_TEST_TAILNET_BOX is set: weekly, by hand and before every release
+  HOMELAB_TEST_TAILNET_BOX is set: weekly, by hand and before every release
   (.github/workflows/tailnet.yml).
 
   Background:

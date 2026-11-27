@@ -94,5 +94,5 @@ function scope(id: string): Diagnostic['scope'] {
 }
 function owner(phase: string): string {
   if (phase === 'proxy') return 'cliproxy';
-  return 'dev-fleet';
+  return 'homelab';
 }

@@ -18,6 +18,6 @@ runFeatures({
   skip: (tags) =>
     (tags.includes('@posix') && process.platform === 'win32') ||
     (tags.includes('@t3-desktop') &&
-      !process.env['DEVFLEET_TEST_MANAGER_DESKTOP']),
+      !process.env['HOMELAB_TEST_MANAGER_DESKTOP']),
   timeoutMs: 30_000,
 });

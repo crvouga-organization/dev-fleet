@@ -56,7 +56,7 @@ async function inspect(path: string) {
       present: true,
       fields: fieldNames(value),
       ownership:
-        'native/unmanaged; dedicated dev-fleet profiles do not overwrite this file',
+        'native/unmanaged; dedicated homelab profiles do not overwrite this file',
     };
   } catch (error) {
     return {

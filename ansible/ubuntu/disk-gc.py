@@ -4,7 +4,7 @@
 Managed by personal fleet-sync: on an Ubuntu worker (tasks/resources.yml) as
 personal-fleet-disk-gc.service, started by personal-fleet-disk-gc.timer; on
 the macOS manager (ansible/macos/manager.yml) as the launchd job
-dev.devfleet.disk-gc. Both run it hourly, or every 15 minutes when fleet.json
+dev.homelab.disk-gc. Both run it hourly, or every 15 minutes when fleet.json
 says storage is disposable.
 
 What it deletes:
@@ -22,7 +22,7 @@ What it deletes:
   * the oldest files of each --cache-cap DIR=MIB cache beyond its size;
   * all but the newest N files of each --keep-newest DIR=N directory (the
     downloaded T3 packages: the current one and the previous one);
-  * all but N dev-fleet checkouts of each --keep-checkouts DIR=N directory
+  * all but N homelab checkouts of each --keep-checkouts DIR=N directory
     (fleet-owned checkouts named by their commit): the one each --current
     link points at and the most recently used others, never one a process
     runs in;
@@ -636,7 +636,7 @@ COMMIT = re.compile(r'^[0-9a-f]{40}$')
 
 
 def keep_checkouts(directory, count, protected, busy, dry_run):
-    """Keeps count fleet-owned checkouts of dev-fleet in directory.
+    """Keeps count fleet-owned checkouts of homelab in directory.
 
     Each is named by its commit. The ones a --current link points at are kept
     first, then the most recently used others; a checkout a process runs in

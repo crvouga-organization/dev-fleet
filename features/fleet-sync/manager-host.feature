@@ -76,7 +76,7 @@ Feature: The manager runs on a host behind one interface, and comes back by itse
         | host  | missing          | remedy                       |
         | macOS | autorestart      | ansible/macos/manager-privilege.yml |
         | macOS | docker-autostart | Docker Desktop does not start at login |
-        | macOS | launch-agents    | dev.devfleet.beszel-agent    |
+        | macOS | launch-agents    | dev.homelab.beszel-agent    |
         | Linux | linger           | loginctl linger is off       |
         | Linux | docker-autostart | Docker Engine does not start at boot |
 

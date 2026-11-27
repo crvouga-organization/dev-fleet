@@ -15,9 +15,9 @@
       - '-f'
       - '{{ playbook_dir }}/compose.yml'
     watchdog_policy: "{{ (lookup('ansible.builtin.file', playbook_dir ~ '/../macos/policy.json') | from_json).containerWatchdog }}"
-    watchdog_label: dev.devfleet.container-watchdog
-    watchdog_root: '{{ ansible_facts.env.HOME }}/Library/Application Support/dev-fleet/container-watchdog'
-    watchdog_state: '{{ ansible_facts.env.HOME }}/Library/Caches/dev-fleet/container-watchdog.json'
+    watchdog_label: dev.homelab.container-watchdog
+    watchdog_root: '{{ ansible_facts.env.HOME }}/Library/Application Support/homelab/container-watchdog'
+    watchdog_state: '{{ ansible_facts.env.HOME }}/Library/Caches/homelab/container-watchdog.json'
     watchdog_plist: '{{ ansible_facts.env.HOME }}/Library/LaunchAgents/{{ watchdog_label }}.plist'
     watchdog_domain: 'gui/{{ ansible_facts.user_uid }}'
     beszel_environment:

@@ -238,7 +238,7 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
       When the exposure of the worker is checked
       Then the check fails
       And the summary of the check is "WORKER_TAILNET_ONLY_RULE_MISSING tcp [::]:3389 (gnome-remote-desktop.service)"
-      And the remedy of the check contains "run devfleet fleet-sync"
+      And the remedy of the check contains "run homelab fleet-sync"
 
     Scenario: The listener fails where other listeners only warn
       Given the exposure policy is:
@@ -336,7 +336,7 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
       When the exposure of the worker is checked
       Then the check fails
       And the summary of the check is "WORKER_FIREWALL_INACTIVE"
-      And the remedy of the check contains "devfleet fleet-sync"
+      And the remedy of the check contains "homelab fleet-sync"
 
     Scenario: SSH kept open beyond the tailnet without the opt-in fails
       fleet-sync keeps the public SSH port open while it cannot prove the

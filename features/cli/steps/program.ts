@@ -20,10 +20,10 @@ import {
 
 const { Given, When, Then } = cli;
 
-// ── Where devfleet runs ──────────────────────────────────────────────────
+// ── Where homelab runs ──────────────────────────────────────────────────
 
 Given(
-  /^devfleet at version "([^"]+)"(?:, released at "([^"]+)")?(?:, with its issue tracker at "([^"]+)")?$/,
+  /^homelab at version "([^"]+)"(?:, released at "([^"]+)")?(?:, with its issue tracker at "([^"]+)")?$/,
   (world, version: string, releasedAt?: string, issues?: string) => {
     world.release = {
       version,
@@ -47,7 +47,7 @@ Given('a workspace with its dependency files and no roster', async (world) => {
 });
 
 Given(
-  'devfleet runs from {string} with the roster {string}',
+  'homelab runs from {string} with the roster {string}',
   (world, checkout: string, roster: string) => {
     world.where = { workspace: checkout, config: roster };
   }
@@ -59,7 +59,7 @@ async function text(path: string): Promise<string | null> {
   return readFile(path, 'utf8').catch(() => null);
 }
 
-/** One devfleet command line. It runs the whole program, unless the scenario
+/** One homelab command line. It runs the whole program, unless the scenario
  * described this machine's tools: then it runs against those stand-ins.
  */
 export async function run(

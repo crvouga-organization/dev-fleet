@@ -14,7 +14,7 @@ provider your `fleet.json` names, like every other secret:
 
 | Provider | Shared token                                                              | Per-node token (`"credential": "per-node"`) |
 | -------- | ------------------------------------------------------------------------- | ------------------------------------------- |
-| `env`    | `DEVFLEET_SECRET_GITHUB_TOKEN`                                            | `DEVFLEET_SECRET_GITHUB_TOKEN_<NODE>`       |
+| `env`    | `HOMELAB_SECRET_GITHUB_TOKEN`                                            | `HOMELAB_SECRET_GITHUB_TOKEN_<NODE>`       |
 | `file`   | `github-token`                                                            | `github-token-<node>`                       |
 | `sops`   | key `github-token`                                                        | key `github-token-<node>`                   |
 | `vault`  | `locations["github-token"]`, or field `GITHUB_TOKEN` beside the proxy key | the same location, field `<FIELD>_<NODE>`   |
@@ -94,7 +94,7 @@ measured; no prompt is sent.
 
 ## Verifying the whole workflow
 
-`devfleet fleet-github-verify` runs, from the machine it is started on, what an
+`homelab fleet-github-verify` runs, from the machine it is started on, what an
 agent does on the sandbox repository: clone, a uniquely named branch, an empty
 commit with the configured identity, push, a draft pull request, a read of its
 checks, a comment. It then closes the pull request and deletes the branch,

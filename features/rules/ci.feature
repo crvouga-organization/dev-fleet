@@ -8,8 +8,8 @@ Feature: Every pull request is checked the way machines run
   Scenario: The fleet state check runs on every pull request and cannot skip
     Then the "CI" workflow runs on "pull_request"
     And its "state" job has no condition
-    And its "state" job sets "DEVFLEET_TEST_LITESTREAM" to "required"
-    And its "state" job points "DEVFLEET_TEST_S3" at a local S3 service
+    And its "state" job sets "HOMELAB_TEST_LITESTREAM" to "required"
+    And its "state" job points "HOMELAB_TEST_S3" at a local S3 service
 
   Scenario Outline: The <job> check runs on every pull request
     Then the "CI" workflow runs on "pull_request"
@@ -41,37 +41,37 @@ Feature: Every pull request is checked the way machines run
       | 24.04   | arm64        | ubuntu-24.04-arm | fresh-box |
       | 24.04   | arm64        | ubuntu-24.04-arm | fleet     |
     And its "fresh-box" job runs every release the Ubuntu policy accepts
-    And its "fresh-box" job sets "DEVFLEET_TEST_FRESH_BOX_RELEASE" to "${{ matrix.release }}"
+    And its "fresh-box" job sets "HOMELAB_TEST_FRESH_BOX_RELEASE" to "${{ matrix.release }}"
 
   Scenario: Each fresh worker feature runs in a job of its own, and none is left out
     Side by side they end in the time of the longer one. A job that names a
     feature that does not exist fails instead of passing with nothing run.
     Then the "CI" workflow runs on "pull_request"
     And its "fresh-box" job runs every feature of "features/fresh-box"
-    And its "fresh-box" job sets "DEVFLEET_TEST_FRESH_BOX_FEATURE" to "${{ matrix.feature }}"
+    And its "fresh-box" job sets "HOMELAB_TEST_FRESH_BOX_FEATURE" to "${{ matrix.feature }}"
 
   Scenario: A fresh worker is bootstrapped over SSH on every pull request
     Then the "CI" workflow runs on "pull_request"
     And its "fresh-box" job has no condition
     And its "fresh-box" job runs "bun test features/fresh-box"
-    And its "fresh-box" job sets "DEVFLEET_TEST_FRESH_BOX" to "required"
+    And its "fresh-box" job sets "HOMELAB_TEST_FRESH_BOX" to "required"
 
   Scenario: The monitoring agent is applied on a systemd machine on every pull request
     Then the "CI" workflow runs on "pull_request"
     And its "agent-box" job has no condition
     And its "agent-box" job runs "bun test features/monitoring"
-    And its "agent-box" job sets "DEVFLEET_TEST_AGENT_BOX" to "required"
+    And its "agent-box" job sets "HOMELAB_TEST_AGENT_BOX" to "required"
 
   Scenario: The pinned CLI proxy is asked about an account it holds back on every pull request
     Then the "CI" workflow runs on "pull_request"
     And its "proxy-box" job has no condition
     And its "proxy-box" job runs "bun test features/accounts"
-    And its "proxy-box" job sets "DEVFLEET_TEST_PROXY_BOX" to "required"
+    And its "proxy-box" job sets "HOMELAB_TEST_PROXY_BOX" to "required"
 
   Scenario: The agents play renders every CLI's configuration on every pull request and cannot skip
     Then the "CI" workflow runs on "pull_request"
     And its "check" job has no condition
-    And its "check" job sets "DEVFLEET_TEST_ANSIBLE" to "required"
+    And its "check" job sets "HOMELAB_TEST_ANSIBLE" to "required"
 
   Scenario: Every playbook is linted in the production profile and syntax-checked
     Then the "CI" workflow runs on "pull_request"
@@ -111,7 +111,7 @@ Feature: Every pull request is checked the way machines run
     Then the "Tailnet" workflow runs on "schedule"
     And the "Tailnet" workflow runs on "workflow_dispatch"
     And its "tailnet" job runs "bun test features/tailnet-box"
-    And its "tailnet" job sets "DEVFLEET_TEST_TAILNET_BOX" to "required"
+    And its "tailnet" job sets "HOMELAB_TEST_TAILNET_BOX" to "required"
 
   Scenario: A release stamps the commit it is published from into the package
     fleet-sync run from the package converges every machine to the commit the

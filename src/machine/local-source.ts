@@ -11,7 +11,12 @@ export function sameRepository(remote: string, declared: string): boolean {
       .replace(':', '/')
       .replace(/\.git$/, '')
       .toLowerCase();
-  return name(remote) === name(declared);
+  const left = name(remote);
+  const right = name(declared);
+  // GitHub keeps the old repository name as a redirect after a rename.
+  const renamed = (value: string) =>
+    value.replace(/\/dev-fleet$/, '/homelab');
+  return left === right || renamed(left) === renamed(right);
 }
 
 /** Use committed objects, never working-tree files, for an approved local branch. */

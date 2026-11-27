@@ -1,9 +1,9 @@
 # Authentication and accounts
 
-Where each credential dev-fleet uses lives, who can read it, how it reaches
+Where each credential homelab uses lives, who can read it, how it reaches
 each node, how it rotates and what happens when it fails. The three tables
 are generated from the code; `features/rules/authentication.feature` fails
-when one is out of date (`DEVFLEET_UPDATE_DOCS=1 bun test features/rules`
+when one is out of date (`HOMELAB_UPDATE_DOCS=1 bun test features/rules`
 rewrites them).
 
 ## Where credentials live
@@ -11,7 +11,7 @@ rewrites them).
 | Credential                          | Lives in                                                                                                                       | Read by                                          |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
 | The fleet's secrets (table below)   | The provider `secrets` names in `fleet.json`                                                                                   | The node that needs it, through `src/secrets.ts` |
-| The bucket's two keys               | The environment of the `devfleet` command; `~/.config/dev-fleet/bucket.json` (0600) on the manager after `fleet-state --init`  | The manager only                                 |
+| The bucket's two keys               | The environment of the `homelab` command; `~/.config/homelab/bucket.json` (0600) on the manager after `fleet-state --init`  | The manager only                                 |
 | A node's Vault token                | That node's own Vault session (`~/.vault-token`)                                                                               | That node only; never copied                     |
 | A node's GitHub login               | `gh`'s own store on that node                                                                                                  | `gh`, and git through its credential helper      |
 | Provider accounts (Claude, Codex …) | The CLI proxy's store on the manager                                                                                           | The proxy; nodes hold only the proxy client key  |
@@ -31,7 +31,7 @@ rewrites them).
   (`git` in `fleet.json`, `ansible/github/git.yml`) on every node.
 - **The proxy client key** is read by each node from its own secrets provider
   whenever a launcher starts an agent. The node keeps the last key it read in
-  `~/.cache/dev-fleet/proxy-client-key` (0600) and uses it only while the
+  `~/.cache/homelab/proxy-client-key` (0600) and uses it only while the
   provider cannot answer, so an unreachable Vault or an expired session leaves
   that node's agents working until the Vault checks below are fixed.
 - **The monitoring hub's backup storage keys** are read on the manager by
@@ -101,18 +101,18 @@ Every failure code is in [the runbooks](runbooks.md).
 
 | Secret                         | Required                     | `env` provider variable                        | `file` provider file                                       |
 | ------------------------------ | ---------------------------- | ---------------------------------------------- | ---------------------------------------------------------- |
-| `proxy-client-key`             | yes                          | `DEVFLEET_SECRET_PROXY_CLIENT_KEY`             | `~/.config/dev-fleet/secrets/proxy-client-key`             |
-| `monitoring-account-password`  | yes                          | `DEVFLEET_SECRET_MONITORING_ACCOUNT_PASSWORD`  | `~/.config/dev-fleet/secrets/monitoring-account-password`  |
-| `monitoring-tunnel-token`      | yes                          | `DEVFLEET_SECRET_MONITORING_TUNNEL_TOKEN`      | `~/.config/dev-fleet/secrets/monitoring-tunnel-token`      |
-| `proxy-tunnel-token`           | yes                          | `DEVFLEET_SECRET_PROXY_TUNNEL_TOKEN`           | `~/.config/dev-fleet/secrets/proxy-tunnel-token`           |
-| `github-token`                 | when its feature is declared | `DEVFLEET_SECRET_GITHUB_TOKEN`                 | `~/.config/dev-fleet/secrets/github-token`                 |
-| `rdp-password`                 | when its feature is declared | `DEVFLEET_SECRET_RDP_PASSWORD`                 | `~/.config/dev-fleet/secrets/rdp-password`                 |
-| `monitoring-backup-access-key` | when its feature is declared | `DEVFLEET_SECRET_MONITORING_BACKUP_ACCESS_KEY` | `~/.config/dev-fleet/secrets/monitoring-backup-access-key` |
-| `monitoring-backup-secret-key` | when its feature is declared | `DEVFLEET_SECRET_MONITORING_BACKUP_SECRET_KEY` | `~/.config/dev-fleet/secrets/monitoring-backup-secret-key` |
-| `notify-webhook-url`           | when its feature is declared | `DEVFLEET_SECRET_NOTIFY_WEBHOOK_URL`           | `~/.config/dev-fleet/secrets/notify-webhook-url`           |
-| `notify-ntfy-url`              | when its feature is declared | `DEVFLEET_SECRET_NOTIFY_NTFY_URL`              | `~/.config/dev-fleet/secrets/notify-ntfy-url`              |
-| `tailnet-auth-key`             | when its feature is declared | `DEVFLEET_SECRET_TAILNET_AUTH_KEY`             | `~/.config/dev-fleet/secrets/tailnet-auth-key`             |
-| `tailnet-admin`                | when its feature is declared | `DEVFLEET_SECRET_TAILNET_ADMIN`                | `~/.config/dev-fleet/secrets/tailnet-admin`                |
+| `proxy-client-key`             | yes                          | `HOMELAB_SECRET_PROXY_CLIENT_KEY`             | `~/.config/homelab/secrets/proxy-client-key`             |
+| `monitoring-account-password`  | yes                          | `HOMELAB_SECRET_MONITORING_ACCOUNT_PASSWORD`  | `~/.config/homelab/secrets/monitoring-account-password`  |
+| `monitoring-tunnel-token`      | yes                          | `HOMELAB_SECRET_MONITORING_TUNNEL_TOKEN`      | `~/.config/homelab/secrets/monitoring-tunnel-token`      |
+| `proxy-tunnel-token`           | yes                          | `HOMELAB_SECRET_PROXY_TUNNEL_TOKEN`           | `~/.config/homelab/secrets/proxy-tunnel-token`           |
+| `github-token`                 | when its feature is declared | `HOMELAB_SECRET_GITHUB_TOKEN`                 | `~/.config/homelab/secrets/github-token`                 |
+| `rdp-password`                 | when its feature is declared | `HOMELAB_SECRET_RDP_PASSWORD`                 | `~/.config/homelab/secrets/rdp-password`                 |
+| `monitoring-backup-access-key` | when its feature is declared | `HOMELAB_SECRET_MONITORING_BACKUP_ACCESS_KEY` | `~/.config/homelab/secrets/monitoring-backup-access-key` |
+| `monitoring-backup-secret-key` | when its feature is declared | `HOMELAB_SECRET_MONITORING_BACKUP_SECRET_KEY` | `~/.config/homelab/secrets/monitoring-backup-secret-key` |
+| `notify-webhook-url`           | when its feature is declared | `HOMELAB_SECRET_NOTIFY_WEBHOOK_URL`           | `~/.config/homelab/secrets/notify-webhook-url`           |
+| `notify-ntfy-url`              | when its feature is declared | `HOMELAB_SECRET_NOTIFY_NTFY_URL`              | `~/.config/homelab/secrets/notify-ntfy-url`              |
+| `tailnet-auth-key`             | when its feature is declared | `HOMELAB_SECRET_TAILNET_AUTH_KEY`             | `~/.config/homelab/secrets/tailnet-auth-key`             |
+| `tailnet-admin`                | when its feature is declared | `HOMELAB_SECRET_TAILNET_ADMIN`                | `~/.config/homelab/secrets/tailnet-admin`                |
 
 <!-- end: secrets -->
 

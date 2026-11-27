@@ -22,7 +22,7 @@ export const EXIT_CODES: Record<GithubSyncResult['code'], number> = {
   GITHUB_SIGN_IN_FAILED: 14,
 };
 
-export const GITHUB_JOB = 'dev-fleet-github';
+export const GITHUB_JOB = 'homelab-github';
 
 if (import.meta.main) {
   const started = Date.now();

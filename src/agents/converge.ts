@@ -302,7 +302,7 @@ async function measure(context: Context, encoded: string): Promise<void> {
     (await readOwned(after.receiptPath)) !== encoded
   )
     throw new AgentConfigurationError(
-      'After the agents play, the profile on disk is not what dev-fleet specifies. Inspect it with agents preview before applying again.'
+      'After the agents play, the profile on disk is not what homelab specifies. Inspect it with agents preview before applying again.'
     );
 }
 

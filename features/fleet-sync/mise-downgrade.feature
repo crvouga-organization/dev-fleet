@@ -59,7 +59,7 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
       And the refusal says each of:
         | Nothing was changed                          |
         | worker-three did not say which mise it runs  |
-        | devfleet fleet-node-park                     |
+        | homelab fleet-node-park                     |
         | --node                                       |
         | --allow-mise-downgrade                       |
 
@@ -170,10 +170,10 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
     mise passes at once, as the manager's own copy of the source repository
     shows it. For any other the guard compares the manager's mise with the
     pin and exits with 67 when it would be replaced; then it asks the
-    devfleet installed on the manager, which is the code the manager runs
+    homelab installed on the manager, which is the code the manager runs
     now and not the revision's, the same question about the manager and
     every worker the request selects (fleet-sync --measure-mise). What that
-    refuses is printed and ends the hand-off. An installed devfleet that
+    refuses is printed and ends the hand-off. An installed homelab that
     cannot answer, because it is from before the question or there is none,
     is never a pass: the guard exits with 68, reported as
     FLEET_MISE_UNMEASURED.
@@ -187,7 +187,7 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
       Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "<pinned>" and whose toolchain bootstrap is from before the rule that keeps a newer mise
       And the manager has its own copy of the source repository
       And the manager runs mise "<installed>"
-      And the devfleet installed on the manager answers that no mise would be replaced
+      And the homelab installed on the manager answers that no mise would be replaced
       When the mise guard of a hand-off runs on the manager for the commit "earlier"
       Then the guard exits with <code>
 
@@ -199,33 +199,33 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
         | 2026.10.9  | 2026.10.24 | 0    |
 
     @bash
-    Scenario: A manager whose own mise is at risk is refused without asking the installed devfleet
+    Scenario: A manager whose own mise is at risk is refused without asking the installed homelab
       Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
       And the manager has its own copy of the source repository
       And the manager runs mise "2026.11.11"
-      And the devfleet installed on the manager answers that no mise would be replaced
+      And the homelab installed on the manager answers that no mise would be replaced
       When the mise guard of a hand-off runs on the manager for the commit "earlier"
       Then the guard exits with 67
-      And the devfleet installed on the manager was not asked
+      And the homelab installed on the manager was not asked
 
     @bash
-    Scenario: The installed devfleet is asked about the revision and the workers the request selects, in the form the request asked for
+    Scenario: The installed homelab is asked about the revision and the workers the request selects, in the form the request asked for
       Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
       And the manager has its own copy of the source repository
       And the manager runs mise "2026.10.24"
-      And the devfleet installed on the manager answers that no mise would be replaced
+      And the homelab installed on the manager answers that no mise would be replaced
       When the mise guard of a hand-off runs on the manager for the commit "earlier", for a request with "--node worker-one --node worker-two --json"
       Then the guard exits with 0
-      And the devfleet installed on the manager was asked "fleet-sync --measure-mise --revision <earlier> --node worker-one --node worker-two --json"
+      And the homelab installed on the manager was asked "fleet-sync --measure-mise --revision <earlier> --node worker-one --node worker-two --json"
 
     @bash
-    Scenario: A worker's newer mise ends the hand-off, with the report of the installed devfleet
+    Scenario: A worker's newer mise ends the hand-off, with the report of the installed homelab
       The manager runs the pinned mise itself, so only a measurement of the
       workers can tell.
       Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
       And the manager has its own copy of the source repository
       And the manager runs mise "2026.10.24"
-      And the devfleet installed on the manager refuses the question with:
+      And the homelab installed on the manager refuses the question with:
         """
         {"version":1,"ok":false,"code":"FLEET_MISE_DOWNGRADE","error":"it would replace the newer one on worker-one (2026.11.11)"}
         """
@@ -237,11 +237,11 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
         """
 
     @bash
-    Scenario: A worker that did not answer the installed devfleet ends the hand-off the same way
+    Scenario: A worker that did not answer the installed homelab ends the hand-off the same way
       Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
       And the manager has its own copy of the source repository
       And the manager runs mise "2026.10.24"
-      And the devfleet installed on the manager refuses the question with:
+      And the homelab installed on the manager refuses the question with:
         """
         {"version":1,"ok":false,"code":"FLEET_MISE_UNMEASURED","error":"worker-two did not say which mise it runs"}
         """
@@ -253,19 +253,19 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
         """
 
     @bash
-    Scenario: An installed devfleet from before the question is not a pass
-      It refuses the flag it does not know, as any devfleet released before
+    Scenario: An installed homelab from before the question is not a pass
+      It refuses the flag it does not know, as any homelab released before
       the question does, and says nothing about mise.
       Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
       And the manager has its own copy of the source repository
       And the manager runs mise "2026.10.24"
-      And the devfleet installed on the manager is from before the question
+      And the homelab installed on the manager is from before the question
       When the mise guard of a hand-off runs on the manager for the commit "earlier", for a request with "--json"
       Then the guard exits with 68
       And the guard prints nothing
 
     @bash
-    Scenario: A manager with no devfleet installed is not a pass
+    Scenario: A manager with no homelab installed is not a pass
       Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
       And the manager has its own copy of the source repository
       And the manager runs mise "2026.10.24"
@@ -279,10 +279,10 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
       Given a branch of the fleet's source repository holds the commit "older", whose mise.toml pins mise "2026.10.24"
       And the manager has its own copy of the source repository
       And the manager runs mise "2026.11.11"
-      And the devfleet installed on the manager is from before the question
+      And the homelab installed on the manager is from before the question
       When the mise guard of a hand-off runs on the manager for the commit "older"
       Then the guard exits with 0
-      And the devfleet installed on the manager was not asked
+      And the homelab installed on the manager was not asked
 
     @bash
     Scenario: A revision the manager's copy does not hold yet is fetched before it is judged
@@ -297,10 +297,10 @@ Feature: A revision whose own bootstrap would replace a newer mise is stopped be
       Given a branch of the fleet's source repository holds the commit "earlier", whose mise.toml pins mise "2026.10.24" and whose toolchain bootstrap is from before the rule that keeps a newer mise
       And the manager has its own copy of the source repository
       And the manager has no mise
-      And the devfleet installed on the manager answers that no mise would be replaced
+      And the homelab installed on the manager answers that no mise would be replaced
       When the mise guard of a hand-off runs on the manager for the commit "earlier"
       Then the guard exits with 0
-      And the devfleet installed on the manager was asked "fleet-sync --measure-mise --revision <earlier>"
+      And the homelab installed on the manager was asked "fleet-sync --measure-mise --revision <earlier>"
 
   Rule: --allow-mise-downgrade reaches the bootstrap of a revision that keeps a newer mise
     The run that was given the flag tells the run script in its environment,

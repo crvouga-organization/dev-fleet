@@ -75,7 +75,7 @@
     - name: Configure Docker
       ansible.builtin.import_tasks: tasks/docker.yml
       when: worker_containers_on | bool
-    - name: Remove what dev-fleet installed for containers
+    - name: Remove what homelab installed for containers
       ansible.builtin.import_tasks: tasks/containers-off.yml
       when: not worker_containers_on | bool
     - name: Install the browser for web workers

@@ -33,7 +33,7 @@ export const GLOBAL_OPTIONS = [
   {
     flag: '--workspace <path>',
     description:
-      'A dev-fleet checkout to run from instead of this package (development); does not clone or change it',
+      'A homelab checkout to run from instead of this package (development); does not clone or change it',
   },
   { flag: '--config <path>', description: 'Local, secret-free fleet roster' },
 ];
@@ -56,7 +56,7 @@ function createProgram(
   output: (text: string) => void
 ): Command {
   const program = new Command()
-    .name('devfleet')
+    .name('homelab')
     .description('Developer fleet, T3 and platform operations')
     .version(releaseLabel(release))
     .exitOverride()
@@ -77,7 +77,7 @@ function createProgram(
       'Groups: fleet-* developer computers · t3-* T3 provider instances · cliproxy the CLI proxy service.',
       'Apply on invocation (--dry-run previews): fleet-node-sync, t3-apply, t3-cleanup. fleet-sync applies on invocation too; --apply --yes is still accepted.',
       'Preview until --apply --yes: fleet-repair, fleet-node-add. --json does not make a command read-only.',
-      'Agents: devfleet commands --json. Menu: devfleet --interactive.',
+      'Agents: homelab commands --json. Menu: homelab --interactive.',
       ...(release.issues
         ? [
             `Bugs and feature requests: ${release.issues}. Report them there; never patch the installed package.`,
@@ -101,7 +101,7 @@ function catalog(options: CliOptions, release: Release): CommandOutcome {
       commands,
       globalOptions: GLOBAL_OPTIONS,
       defaultCommand: 'help',
-      schema: 'devfleet fleet-nodes --schema --json',
+      schema: 'homelab fleet-nodes --schema --json',
       agent: agentGuide(release),
     },
     text: [

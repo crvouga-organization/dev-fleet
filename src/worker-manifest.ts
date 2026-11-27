@@ -199,7 +199,7 @@ export function manifestCheck(differences: ManifestDifference[]): Check {
     summary: `WORKER_MANIFEST_DRIFT: ${differences.length} difference(s): ${shown.join('; ')}`,
     remedy: {
       action:
-        'Something was installed, removed or changed outside fleet-sync. Rebuild the worker (fleet-node-replace) or declare the change in dev-fleet.',
+        'Something was installed, removed or changed outside fleet-sync. Rebuild the worker (fleet-node-replace) or declare the change in homelab.',
     },
   };
 }

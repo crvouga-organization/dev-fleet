@@ -38,7 +38,7 @@ function unattended(world: FleetSyncWorld): Unattended {
   let found = runs.get(world);
   if (!found) {
     found = {
-      roster: join(temporary(world, 'devfleet-enroll-'), 'roster.json'),
+      roster: join(temporary(world, 'homelab-enroll-'), 'roster.json'),
     };
     runs.set(world, found);
   }

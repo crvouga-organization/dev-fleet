@@ -67,7 +67,7 @@ export function repairScript(
   }
   lines.push(
     '',
-    '# Re-run devfleet fleet-status --tailnet --json for fresh whole-tailnet coverage.'
+    '# Re-run homelab fleet-status --tailnet --json for fresh whole-tailnet coverage.'
   );
   return `${lines.join('\n')}\n`;
 }

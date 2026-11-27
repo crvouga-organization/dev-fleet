@@ -8,9 +8,9 @@ import { part, type BootstrapWorld } from './world';
 export const packageSmoke = steps<BootstrapWorld>();
 const { Given, When } = packageSmoke;
 
-/** A stand-in for the package: a devfleet that prints what the real one does. */
+/** A stand-in for the package: a homelab that prints what the real one does. */
 const release = part((world) => ({
-  source: world.directory('devfleet-release-'),
+  source: world.directory('homelab-release-'),
   version: '',
   commit: '',
   failing: '',
@@ -29,7 +29,7 @@ function write(world: BootstrapWorld): void {
   const state = release(world);
   mkdirSync(join(state.source, 'bin'), { recursive: true });
   writeFileSync(
-    join(state.source, 'bin', 'devfleet.mjs'),
+    join(state.source, 'bin', 'homelab.mjs'),
     launcher(state.failing)
       .replace('__VERSION__', state.version)
       .replace('__COMMIT__', state.commit)
@@ -57,10 +57,10 @@ Given(
     writeFileSync(
       join(state.source, 'package.json'),
       JSON.stringify({
-        name: 'devfleet-fixture',
+        name: 'homelab-fixture',
         version,
         gitHead: commit,
-        bin: { devfleet: './bin/devfleet.mjs' },
+        bin: { homelab: './bin/homelab.mjs' },
         files: ['bin'],
       })
     );
@@ -69,22 +69,22 @@ Given(
 );
 
 Given(
-  'its package.json points the devfleet command at {string}',
+  'its package.json points the homelab command at {string}',
   (world, path: string) => {
     manifest(world, (json) => {
-      json['bin'] = { devfleet: path };
+      json['bin'] = { homelab: path };
     });
   }
 );
 
-Given('its devfleet fails {string}', (world, command: string) => {
+Given('its homelab fails {string}', (world, command: string) => {
   release(world).failing = command;
   write(world);
 });
 
 async function installAndRun(world: BootstrapWorld, version?: string) {
   const state = release(world);
-  const out = world.directory('devfleet-packed-');
+  const out = world.directory('homelab-packed-');
   const packed = spawnSync(
     'npm',
     ['pack', '--silent', '--pack-destination', out],

@@ -5,10 +5,10 @@ Feature: A fresh Ubuntu machine becomes a worker over SSH
   commit, the operating system packages, the pinned toolchain and the fleet
   configuration. This runs the production bootstrap over a real SSH
   connection against a disposable machine, and only when
-  DEVFLEET_TEST_FRESH_BOX is set, because it downloads the worker toolchain.
+  HOMELAB_TEST_FRESH_BOX is set, because it downloads the worker toolchain.
 
   The machine runs the Ubuntu release under test:
-  DEVFLEET_TEST_FRESH_BOX_RELEASE, or else the newest release the Ubuntu
+  HOMELAB_TEST_FRESH_BOX_RELEASE, or else the newest release the Ubuntu
   policy accepts. CI runs these scenarios once for every accepted release,
   so each passes the same scenarios.
 
@@ -16,7 +16,7 @@ Feature: A fresh Ubuntu machine becomes a worker over SSH
     Given a fresh machine of the Ubuntu release under test, with an SSH server and an account that can use sudo
     And the manager reaches it over SSH with its own key and the machine's verified host key
 
-  Scenario: The machine starts with none of the tools dev-fleet needs
+  Scenario: The machine starts with none of the tools homelab needs
     Then the machine had none of these commands when it was created:
       | git              |
       | curl             |
@@ -35,7 +35,7 @@ Feature: A fresh Ubuntu machine becomes a worker over SSH
     And the machine holds the fleet configuration, without the bucket it names
     And the machine holds the record of that copy beside it
     And the machine runs the mise release mise.toml pins
-    And the devfleet launcher is installed on the machine
+    And the homelab launcher is installed on the machine
     And these tools run on the machine at the version mise.toml pins:
       | tool   | command          |
       | bun    | bun --version    |
@@ -79,14 +79,14 @@ Feature: A fresh Ubuntu machine becomes a worker over SSH
     And those installed tool files are unchanged
     And it took less than 120 seconds
 
-  Rule: What dev-fleet installs takes no more disk than the Ubuntu policy budgets
+  Rule: What homelab installs takes no more disk than the Ubuntu policy budgets
     The minimum worker size rests on these budgets (sizing.footprintMiB in
     ansible/ubuntu/policy.json), so they are measured on a converged machine,
     not estimated. Each measurement is printed for the worker contract.
 
     Scenario: The base tools and the fleet's checkouts fit their budgets
       Given the manager has bootstrapped the machine
-      When the disk dev-fleet uses on the machine is measured
+      When the disk homelab uses on the machine is measured
       Then the base tools and the "go" profile take at most the budget of "baseTools" plus the "go" profile
       And the fleet's checkouts take at most the budget of "checkouts"
 

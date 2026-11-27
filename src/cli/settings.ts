@@ -28,11 +28,11 @@ async function findUp(start: string, name: string): Promise<string | null> {
   }
 }
 
-/** A dev-fleet checkout, as opposed to any other project that has a mise.toml. */
+/** A homelab checkout, as opposed to any other project that has a mise.toml. */
 const CHECKOUT_MARKER = 'bootstrap/fleet-manager-run.sh';
 
 /** Where the CLI runs from. A published package is its own workspace, whatever
- * project it is run in; code run from a checkout uses the dev-fleet checkout
+ * project it is run in; code run from a checkout uses the homelab checkout
  * the command is started in (development).
  */
 async function findCheckout(start: string): Promise<string> {

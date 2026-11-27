@@ -134,7 +134,7 @@ export async function publicReachabilityCheck(
       summary: `${UNRESTRICTED} ${accepted.join(', ')} accepted a connection on the worker's public address.`,
       remedy: {
         action:
-          'Run devfleet fleet-sync, which loads the fleet firewall on the worker, then read worker:exposure for the unit that listens. When the manager shares the worker’s network, confirm from a machine outside it before changing anything.',
+          'Run homelab fleet-sync, which loads the fleet firewall on the worker, then read worker:exposure for the unit that listens. When the manager shares the worker’s network, confirm from a machine outside it before changing anything.',
       },
     };
   return {

@@ -53,7 +53,7 @@ export function blockedBySecretsLogin(
     status,
     summary: `${SECRET_READ_BLOCKED} by ${owner}`,
     remedy: {
-      action: `Not a fault of its own: it needs a secret, and ${FAULTS[fault ?? 'either'].replace('OWNER', owner)}, then run devfleet fleet-sync; nothing else about this check needs doing.`,
+      action: `Not a fault of its own: it needs a secret, and ${FAULTS[fault ?? 'either'].replace('OWNER', owner)}, then run homelab fleet-sync; nothing else about this check needs doing.`,
     },
   };
 }

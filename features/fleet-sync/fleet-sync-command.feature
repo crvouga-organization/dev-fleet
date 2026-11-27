@@ -1,4 +1,4 @@
-Feature: devfleet fleet-sync refuses before it changes anything
+Feature: homelab fleet-sync refuses before it changes anything
   A request that cannot be carried out is answered with a report and a
   nonzero exit code, without a write, an SSH connection or a login. An unsafe
   combination of options is a usage error.
@@ -8,11 +8,11 @@ Feature: devfleet fleet-sync refuses before it changes anything
     real manager over SSH.
 
     Background:
-      Given devfleet "0.1.0" runs from "/no-checkout" with the roster "/no-roster"
+      Given homelab "0.1.0" runs from "/no-checkout" with the roster "/no-roster"
       And the environment sets "PERSONAL_FLEET_NO_FORWARD" to "1"
 
     Scenario: A preview reports the manager's scope and applies nothing
-      When the operator runs "devfleet fleet-sync --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run --json"
+      When the operator runs "homelab fleet-sync --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run --json"
       Then the command exits with 1
       And the report has:
         | command         | fleet-sync                               |
@@ -21,7 +21,7 @@ Feature: devfleet fleet-sync refuses before it changes anything
       And the manager keeps reports under ".local/share/personal/fleet/manager/reports" in the temporary test home
 
     Scenario: A noninteractive sync cannot enroll or log in without confirmation
-      When the operator runs "devfleet fleet-sync --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --non-interactive --json"
+      When the operator runs "homelab fleet-sync --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --non-interactive --json"
       Then the command exits with 1
       And the report has:
         | applied   | false        |
@@ -29,7 +29,7 @@ Feature: devfleet fleet-sync refuses before it changes anything
         | execution | manager-push |
 
     Scenario Outline: Selecting workers with "<selection>" needs a roster, and tailnet discovery never stands in for one
-      When the operator runs "devfleet fleet-sync <selection> --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run --json"
+      When the operator runs "homelab fleet-sync <selection> --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run --json"
       Then the command exits with 1
 
       Examples:
@@ -38,7 +38,7 @@ Feature: devfleet fleet-sync refuses before it changes anything
         | --node unknown |
 
     Scenario: The help page names the safety flags, without a checkout
-      When the operator runs "devfleet fleet-sync --help"
+      When the operator runs "homelab fleet-sync --help"
       Then the command exits with 0
       And the command's output names each of:
         | --dry-run  |
@@ -53,7 +53,7 @@ Feature: devfleet fleet-sync refuses before it changes anything
   Rule: An approval is bound to the plan it approved
 
     Scenario: A stale approved plan fails before the source is prepared or SSH is used
-      Given devfleet "0.1.0" runs from "/no-checkout" with the roster "/no-roster"
+      Given homelab "0.1.0" runs from "/no-checkout" with the roster "/no-roster"
       And the roster file enrolls:
         | id         | ssh        | workspace |
         | worker-one | worker-one | /fixture  |
@@ -66,7 +66,7 @@ Feature: devfleet fleet-sync refuses before it changes anything
   Rule: The one public parser keeps the fleet's defaults and refuses unsafe options
 
     Background:
-      Given devfleet "test" runs from "/missing-workspace" with the roster "/missing-roster"
+      Given homelab "test" runs from "/missing-workspace" with the roster "/missing-roster"
 
     Scenario: Requiring "none" requires no capability
       When the capabilities "none" are required
@@ -74,14 +74,14 @@ Feature: devfleet fleet-sync refuses before it changes anything
 
     Scenario: By default every capability but "worker" is required
       When no capability is named
-      Then every capability dev-fleet knows is required, except "worker"
+      Then every capability homelab knows is required, except "worker"
 
-    Scenario: With no command at all, devfleet succeeds
-      When the operator runs "devfleet"
+    Scenario: With no command at all, homelab succeeds
+      When the operator runs "homelab"
       Then the command exits with 0
 
-    Scenario Outline: "devfleet <arguments>" is refused as a usage error
-      When the operator runs "devfleet <arguments> --json"
+    Scenario Outline: "homelab <arguments>" is refused as a usage error
+      When the operator runs "homelab <arguments> --json"
       Then the command exits with 2
 
       Examples:

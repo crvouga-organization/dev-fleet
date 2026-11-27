@@ -1,6 +1,6 @@
 Feature: fleet-state takes the bucket's credentials from the environment or a prompt, never from arguments
-  Credentials are passed to a command in DEVFLEET_BUCKET_ACCESS_KEY_ID and
-  DEVFLEET_BUCKET_SECRET_ACCESS_KEY, or typed at its prompt. `--init` saves
+  Credentials are passed to a command in HOMELAB_BUCKET_ACCESS_KEY_ID and
+  HOMELAB_BUCKET_SECRET_ACCESS_KEY, or typed at its prompt. `--init` saves
   them in bucket.json for the runs a manager starts by itself. No report or
   output ever repeats them.
 
@@ -23,7 +23,7 @@ Feature: fleet-state takes the bucket's credentials from the environment or a pr
           "bucket": {
             "kind": "s3",
             "bucket": "fleet-state",
-            "prefix": "dev-fleet",
+            "prefix": "homelab",
             "credentials": "bucket.json"
           }
         }
@@ -43,7 +43,7 @@ Feature: fleet-state takes the bucket's credentials from the environment or a pr
     Scenario: An access key passed without its secret is refused
       Given the operator ran "fleet-state --init --bucket fleet-state" on the manager
       And commands on the manager are passed:
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID | AKID |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID | AKID |
       When the operator runs "fleet-state --init --bucket fleet-state" on the manager
       Then it is refused with "never taken from arguments"
 
@@ -55,9 +55,9 @@ Feature: fleet-state takes the bucket's credentials from the environment or a pr
         { "bucket": "fleet-state", "endpoint": "https://s3.example.com" }
         """
       And commands on the manager are passed:
-        | DEVFLEET_CONFIG                   | ~/project/fleet.json |
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | AKIDPASSED           |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | secret/passed+key    |
+        | HOMELAB_CONFIG                   | ~/project/fleet.json |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | AKIDPASSED           |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | secret/passed+key    |
 
     Scenario: A command reaches the project's bucket with the passed keys and saves nothing
       When the operator runs "fleet-state --push" on the manager
@@ -94,9 +94,9 @@ Feature: fleet-state takes the bucket's credentials from the environment or a pr
         { "bucket": "fleet-state" }
         """
       And commands on the manager are passed:
-        | DEVFLEET_CONFIG                   | ~/project/fleet.json |
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | AKIDPASSED           |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | secret/passed+key    |
+        | HOMELAB_CONFIG                   | ~/project/fleet.json |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | AKIDPASSED           |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | secret/passed+key    |
 
     Scenario: The bucket and the keys are saved in bucket.json
       When the operator runs "fleet-state --init" on the manager
@@ -114,7 +114,7 @@ Feature: fleet-state takes the bucket's credentials from the environment or a pr
       The schedule, or a hand-off from a worker.
       Given the operator ran "fleet-state --init" on the manager
       And commands on the manager are passed:
-        | DEVFLEET_CONFIG | ~/project/fleet.json |
+        | HOMELAB_CONFIG | ~/project/fleet.json |
       When the operator runs "fleet-state" on the manager
       Then the report includes:
         """
@@ -124,7 +124,7 @@ Feature: fleet-state takes the bucket's credentials from the environment or a pr
     Scenario: Repeating --init without credentials keeps the saved ones
       Given the operator ran "fleet-state --init" on the manager
       And commands on the manager are passed:
-        | DEVFLEET_CONFIG | ~/project/fleet.json |
+        | HOMELAB_CONFIG | ~/project/fleet.json |
       And the operator ran "fleet-state" on the manager
       When the operator runs "fleet-state --init" on the manager
       Then the bucket.json of the manager includes:
@@ -135,12 +135,12 @@ Feature: fleet-state takes the bucket's credentials from the environment or a pr
     Scenario: Repeating --init with new credentials rotates them
       Given the operator ran "fleet-state --init" on the manager
       And commands on the manager are passed:
-        | DEVFLEET_CONFIG | ~/project/fleet.json |
+        | HOMELAB_CONFIG | ~/project/fleet.json |
       And the operator ran "fleet-state --init" on the manager
       And commands on the manager are passed:
-        | DEVFLEET_CONFIG                   | ~/project/fleet.json |
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | AKIDROTATED          |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | secret/rotated       |
+        | HOMELAB_CONFIG                   | ~/project/fleet.json |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | AKIDROTATED          |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | secret/rotated       |
       When the operator runs "fleet-state --init" on the manager
       Then the bucket.json of the manager includes:
         """

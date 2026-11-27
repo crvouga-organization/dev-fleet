@@ -226,7 +226,7 @@ Feature: Native agents are verified on every machine
 
     Scenario Outline: A provider update through a managed launcher directs the operator to fleet-sync
       When the managed "<tool>" launcher receives "<command>"
-      Then the launcher directs the operator to "devfleet fleet-sync"
+      Then the launcher directs the operator to "homelab fleet-sync"
 
       Examples:
         | tool     | command |

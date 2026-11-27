@@ -24,7 +24,7 @@ function issueTracker(bugs: unknown): string | null {
 
 /** What the running package says about itself. The release workflow stamps
  * the version and the commit (`gitHead`) into the package it publishes, so an
- * installed dev-fleet knows which revision every machine has to run. A
+ * installed homelab knows which revision every machine has to run. A
  * checkout carries neither: its revision is its own HEAD. The issue tracker
  * comes from the manifest too, so a fork sends its users to its own.
  */

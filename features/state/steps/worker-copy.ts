@@ -30,7 +30,7 @@ const fleetWorkers = scratch<{
 const home = (world: StateWorld, worker: string): string =>
   join(world.root, 'workers', worker);
 const copy = (world: StateWorld, worker: string): string =>
-  join(home(world, worker), '.config/dev-fleet/fleet.json');
+  join(home(world, worker), '.config/homelab/fleet.json');
 
 const answer = (ok: boolean, stdout = ''): CommandResult => ({
   ok,

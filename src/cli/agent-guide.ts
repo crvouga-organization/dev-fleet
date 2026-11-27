@@ -4,7 +4,7 @@ const SAFETY = [
   'No arguments prints help, including on a TTY. --json returns this document. The menu requires --interactive; --json and --non-interactive never prompt.',
   'Diagnostics, onboarding instructions, schema, catalogs, scripts and repair previews are read-only.',
   'fleet-sync, fleet-node-sync, t3-apply and t3-cleanup apply by invocation; --dry-run previews. t3-apply --import ID explicitly adopts ownership. --json never implies a dry run. fleet-node-add and fleet-repair require --apply --yes.',
-  'fleet-state alone is read-only; --init, --import, --push and --restore each act on invocation. Bucket credentials come from DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY or a terminal prompt, never from arguments.',
+  'fleet-state alone is read-only; --init, --import, --push and --restore each act on invocation. Bucket credentials come from HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY or a terminal prompt, never from arguments.',
   'Do not copy credentials, forward SSH agents, bypass host keys, provision infrastructure or execute unreviewed remedies.',
   'A healthy manager does not prove another machine can connect to it. Run fleet-status from each intended manager.',
   'fleet-repair executes only allowlisted owner actions, then reruns diagnostics. Native logins, host trust and resource permissions remain explicit operator steps. Pass the reviewed planHash as --plan-hash to reject a changed plan.',
@@ -13,35 +13,35 @@ const SAFETY = [
 ];
 
 const EXAMPLES = [
-  'devfleet fleet-node-sync',
-  'devfleet fleet-status',
-  'devfleet fleet-state --json',
-  'devfleet t3-status',
-  'devfleet fleet-status --local --workspace /path/to/personal --json',
-  'devfleet fleet-status --json --strict --timeout 120000',
-  'devfleet fleet-status --tailnet --json',
-  'devfleet fleet-status --workers --json',
-  'devfleet fleet-node-add --id dev-linux --ssh dev-linux --path /home/dev/workspace --require github,t3,toolchain --json',
-  'devfleet fleet-node-add --id dev-linux --ssh dev-linux --path /home/dev/workspace --apply --yes --json',
-  'devfleet fleet-status --node dev-linux --json',
-  'devfleet fleet-repair --list --json',
-  'devfleet fleet-repair --json',
-  'devfleet fleet-repair --local --repair workspace --json',
-  'devfleet fleet-repair --local --repair workspace --plan-hash <reviewed-sha256> --apply --yes --json',
+  'homelab fleet-node-sync',
+  'homelab fleet-status',
+  'homelab fleet-state --json',
+  'homelab t3-status',
+  'homelab fleet-status --local --workspace /path/to/personal --json',
+  'homelab fleet-status --json --strict --timeout 120000',
+  'homelab fleet-status --tailnet --json',
+  'homelab fleet-status --workers --json',
+  'homelab fleet-node-add --id dev-linux --ssh dev-linux --path /home/dev/workspace --require github,t3,toolchain --json',
+  'homelab fleet-node-add --id dev-linux --ssh dev-linux --path /home/dev/workspace --apply --yes --json',
+  'homelab fleet-status --node dev-linux --json',
+  'homelab fleet-repair --list --json',
+  'homelab fleet-repair --json',
+  'homelab fleet-repair --local --repair workspace --json',
+  'homelab fleet-repair --local --repair workspace --plan-hash <reviewed-sha256> --apply --yes --json',
 ];
 
 /** For an agent working in another project, which is every project that uses
- * dev-fleet: a change to dev-fleet is asked for, never made in place.
+ * homelab: a change to homelab is asked for, never made in place.
  */
 function support(release: Release) {
   return {
     issues: release.issues ?? null,
     report:
-      'A defect in dev-fleet, or something it cannot do yet, is raised as an issue in the dev-fleet repository: one issue per bug or feature request, after searching the open ones. From any other project that is the only way to change dev-fleet. Tell the operator what is blocked and link the issue.',
+      'A defect in homelab, or something it cannot do yet, is raised as an issue in the homelab repository: one issue per bug or feature request, after searching the open ones. From any other project that is the only way to change homelab. Tell the operator what is blocked and link the issue.',
     never:
-      'Do not edit the installed package, a checkout fleet-sync owns or a file dev-fleet manages on a machine: the next install or fleet-sync replaces each of them. Do not clone dev-fleet to patch it, vendor a modified copy, or hide the defect behind a workaround in the project that holds fleet.json.',
+      'Do not edit the installed package, a checkout fleet-sync owns or a file homelab manages on a machine: the next install or fleet-sync replaces each of them. Do not clone homelab to patch it, vendor a modified copy, or hide the defect behind a workaround in the project that holds fleet.json.',
     include:
-      'devfleet --version, the command and its flags, the error code or the failing check IDs from --json, what happened and what was expected.',
+      'homelab --version, the command and its flags, the error code or the failing check IDs from --json, what happened and what was expected.',
     withhold:
       'The issue tracker is public. Leave out credentials, the fleet configuration, hostnames, accounts, domains, tailnet names, paths under a home directory and raw subprocess output.',
   };
@@ -50,17 +50,17 @@ function support(release: Release) {
 export function agentGuide(release: Release) {
   return {
     version: 1,
-    name: 'dev-fleet',
+    name: 'homelab',
     release: release.version,
     releasedAt: release.releasedAt,
-    invocation: 'devfleet <command> --json --non-interactive',
-    discovery: 'devfleet commands --json',
+    invocation: 'homelab <command> --json --non-interactive',
+    discovery: 'homelab commands --json',
     setup:
-      'Setting up a fleet from a project: llms.txt and docs/consumer-setup.md in this package (node_modules/@crvouga/dev-fleet/), also at https://github.com/crvouga/dev-fleet/blob/main/docs/consumer-setup.md',
+      'Setting up a fleet from a project: llms.txt and docs/consumer-setup.md in this package (node_modules/@crvouga/homelab/), also at https://github.com/crvouga/homelab/blob/main/docs/consumer-setup.md',
     defaultCommand: 'help',
-    help: 'devfleet <command> --help',
+    help: 'homelab <command> --help',
     interactive:
-      'devfleet --interactive (explicit opt-in; TTY required, disabled in CI)',
+      'homelab --interactive (explicit opt-in; TTY required, disabled in CI)',
     groups: {
       'fleet-*':
         'Developer computers: fleet-status, fleet-discover, fleet-sync, fleet-state, fleet-report, fleet-node-sync, fleet-repair, fleet-nodes, fleet-node-add',
@@ -69,15 +69,15 @@ export function agentGuide(release: Release) {
     },
     configuration: {
       workspace:
-        'The published package itself. Run from a checkout (development): --workspace PATH, PERSONAL_WORKSPACE, then the dev-fleet checkout the command is started in',
+        'The published package itself. Run from a checkout (development): --workspace PATH, PERSONAL_WORKSPACE, then the homelab checkout the command is started in',
       roster:
         '--config PATH, PERSONAL_FLEET_CONFIG, closest ancestor .fleet.local.json, then the roster in the fleet state',
       definition:
-        'DEVFLEET_CONFIG, then the closest fleet.json in the working directory or above it (the operator’s project), then the configuration fleet-sync last applied from the fleet state (the devfleet CLI on the manager), then the copy fleet-sync installed at ~/.config/dev-fleet/fleet.json. Never edit that copy: fleet-sync replaces it, and refuses with FLEET_CONFIGURATION_COPY_CHANGED when it was edited by hand',
+        'HOMELAB_CONFIG, then the closest fleet.json in the working directory or above it (the operator’s project), then the configuration fleet-sync last applied from the fleet state (the homelab CLI on the manager), then the copy fleet-sync installed at ~/.config/homelab/fleet.json. Never edit that copy: fleet-sync replaces it, and refuses with FLEET_CONFIGURATION_COPY_CHANGED when it was edited by hand',
       state:
-        'DEVFLEET_STATE or ~/.local/share/dev-fleet/state: a local copy of the roster, the approved revision and the configuration last applied. The bucket named under "state" in the fleet configuration is the source of truth; its credentials are passed in DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY, or saved by devfleet fleet-state --init in ~/.config/dev-fleet/bucket.json for unattended runs. devfleet fleet-state --json compares the copies',
+        'HOMELAB_STATE or ~/.local/share/homelab/state: a local copy of the roster, the approved revision and the configuration last applied. The bucket named under "state" in the fleet configuration is the source of truth; its credentials are passed in HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY, or saved by homelab fleet-state --init in ~/.config/homelab/bucket.json for unattended runs. homelab fleet-state --json compares the copies',
       revision:
-        'The commit the published package names (devfleet --version). fleet-sync converges every machine to it; --revision SHA selects another',
+        'The commit the published package names (homelab --version). fleet-sync converges every machine to it; --revision SHA selects another',
     },
     output: {
       stdout:
@@ -101,14 +101,14 @@ export function agentGuide(release: Release) {
     safety: SAFETY,
     support: support(release),
     toolchain:
-      'On a fleet machine the global mise configuration belongs to dev-fleet: fleet-sync publishes it, and fleet-status fails tool:global-mise-config when anything replaced it. A project pins its own tools in a project mise.toml (mise install --locked in its checkout) and never publishes a global one.',
+      'On a fleet machine the global mise configuration belongs to homelab: fleet-sync publishes it, and fleet-status fails tool:global-mise-config when anything replaced it. A project pins its own tools in a project mise.toml (mise install --locked in its checkout) and never publishes a global one.',
     library:
-      'None. The package is the devfleet command: it declares no main or exports, and nothing under src/ is a supported import; any release may change it. Ask for a command in an issue instead.',
+      'None. The package is the homelab command: it declares no main or exports, and nothing under src/ is a supported import; any release may change it. Ask for a command in an issue instead.',
     fleetSync: {
-      command: 'devfleet fleet-sync',
-      preview: 'devfleet fleet-sync --dry-run --json',
+      command: 'homelab fleet-sync',
+      preview: 'homelab fleet-sync --dry-run --json',
       approval:
-        'Applies on invocation without a prompt; --dry-run previews and changes no machine: on the manager it only checks the release out into dev-fleet’s cache and installs the Bun it pins, never the toolchain, the global mise configuration or shell profiles',
+        'Applies on invocation without a prompt; --dry-run previews and changes no machine: on the manager it only checks the release out into homelab’s cache and installs the Bun it pins, never the toolchain, the global mise configuration or shell profiles',
       scope:
         'Whole enrolled Ubuntu fleet over verified SSH; --node filters diagnostics/rollout',
       state:
@@ -119,10 +119,10 @@ export function agentGuide(release: Release) {
         'Full Ubuntu acceptance is incomplete and fails closed; do not override it or claim deployment success.',
     },
     reconciliation: {
-      plan: 'devfleet t3-apply --dry-run --json',
-      apply: 'devfleet t3-apply --plan-hash HASH',
-      cleanup: 'devfleet t3-cleanup --dry-run',
-      import: 'devfleet t3-apply --import ID',
+      plan: 'homelab t3-apply --dry-run --json',
+      apply: 'homelab t3-apply --plan-hash HASH',
+      cleanup: 'homelab t3-cleanup --dry-run',
+      import: 'homelab t3-apply --import ID',
       ownership:
         'Only declared or explicitly imported T3 instances. Pairing, credentials, threads and unrelated settings are preserved.',
       concurrency:

@@ -34,4 +34,4 @@ jobs:
       - name: Join, refuse, match, firewall and clean up on a private tailnet
         run: bun test features/tailnet-box
         env:
-          DEVFLEET_TEST_TAILNET_BOX: required
+          HOMELAB_TEST_TAILNET_BOX: required

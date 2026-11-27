@@ -125,7 +125,7 @@ Given(
   }
 );
 
-When('the public devfleet launcher is checked', async (world) => {
+When('the public homelab launcher is checked', async (world) => {
   reported(world, [await launcherCheck(world.commands.run)]);
 });
 

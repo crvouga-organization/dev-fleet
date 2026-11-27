@@ -104,7 +104,7 @@ export class AccountsWorld extends World {
   computed = 0;
 
   temporary(): string {
-    const directory = mkdtempSync(join(tmpdir(), 'devfleet-accounts-'));
+    const directory = mkdtempSync(join(tmpdir(), 'homelab-accounts-'));
     this.defer(() => rmSync(directory, { recursive: true, force: true }));
     return directory;
   }

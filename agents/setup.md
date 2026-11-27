@@ -1,9 +1,9 @@
 # Bugs and feature requests
 
-This file ships inside the dev-fleet package. If you are an agent working in
-another project and dev-fleet is wrong or lacks something, do not edit it
-here, in a clone or on a machine. Raise an issue in the dev-fleet repository;
-`devfleet --help` prints the address and `devfleet commands --json` carries
+This file ships inside the homelab package. If you are an agent working in
+another project and homelab is wrong or lacks something, do not edit it
+here, in a clone or on a machine. Raise an issue in the homelab repository;
+`homelab --help` prints the address and `homelab commands --json` carries
 the rule under `agent.support`.
 
 # Manager-led Ubuntu fleet setup
@@ -11,7 +11,7 @@ the rule under `agent.support`.
 For the enrolled Ubuntu development fleet, run on the designated manager:
 
 ```sh
-devfleet fleet-sync
+homelab fleet-sync
 ```
 
 Read the [Fleet operator guide](../../fleet/docs/ubuntu-sync.md) for enrollment,
@@ -24,14 +24,14 @@ The legacy local commands below retain their existing behavior for compatibility
 Use **personal** for node and T3 configuration. Workstation and fleet are internal
 implementation packages; neither exports its own executable.
 
-`fleet-sync` installs the `devfleet` launcher on every machine it converges,
+`fleet-sync` installs the `homelab` launcher on every machine it converges,
 linked to the fleet-owned checkout of the applied revision. On such a machine:
 
 ```sh
-devfleet fleet-status
+homelab fleet-status
 ```
 
-`fleet-node-sync` reconciles one machine from a checkout of dev-fleet
+`fleet-node-sync` reconciles one machine from a checkout of homelab
 (`--workspace PATH` or `PERSONAL_WORKSPACE` names it). It is for development:
 run from the published package it is refused, because `fleet-sync` does the
 same from a checkout it owns.
@@ -58,22 +58,22 @@ New sessions use the updated configuration. Running sessions are not restarted.
 ## T3 plan, apply, import and cleanup
 
 ```sh
-devfleet t3-apply --dry-run --json
-devfleet t3-apply
-devfleet t3-status
-devfleet t3-cleanup --dry-run
+homelab t3-apply --dry-run --json
+homelab t3-apply
+homelab t3-status
+homelab t3-cleanup --dry-run
 ```
 
 Plans show create/update/delete/unchanged/conflict by instance ID, with no settings
-values or credentials. `devfleet t3-apply --plan-hash HASH` binds apply to the exact
+values or credentials. `homelab t3-apply --plan-hash HASH` binds apply to the exact
 settings, ownership state, desired definitions and destination reviewed in a plan.
 A stale plan fails. A second apply with identical inputs performs no settings write.
 
 A provider instance becomes managed when created by personal, or explicitly imported:
 
 ```sh
-devfleet t3-apply --import personal_grok_proxy
-devfleet t3-apply
+homelab t3-apply --import personal_grok_proxy
+homelab t3-apply
 ```
 
 Import grants ownership of the entire named provider instance. It does not change
@@ -82,7 +82,7 @@ definition, including removal of extra fields. Existing unowned instances cause 
 conflict, even when their names match. Unrelated instances and settings are preserved.
 
 Removing an instance from the desired definition removes it on the next apply.
-`devfleet t3-cleanup` removes **all owned provider instances** while retaining
+`homelab t3-cleanup` removes **all owned provider instances** while retaining
 threads, projects, pairing, native provider instances, credentials and profile files.
 It does not delete T3's data directory or secret store. Historical threads may need
 a replacement provider selected after their managed instance is removed.
@@ -133,7 +133,7 @@ The protocol a tool speaks to the proxy is its `proxy` field in
 3. The tool's direct profile, signed in natively on that machine, instead of
    the shared proxy.
 
-Each is a reviewed change to a tracked file, followed by `devfleet
+Each is a reviewed change to a tracked file, followed by `homelab
 fleet-sync`. A newer CLIProxyAPI is a reviewed change to
 `cliproxy/image.lock.json`; a sync never upgrades it to get around a failure.
 
@@ -143,16 +143,16 @@ access), not the route's.
 
 ## Other local operations
 
-All former workstation operations are available through `dev-fleet`:
+All former workstation operations are available through `homelab`:
 
 ```sh
-dev-fleet tools check --json
+homelab tools check --json
 bun src/agents/cli.ts agents verify --node NODE --tool codex --profile proxy --json
-dev-fleet opencode sync
-dev-fleet net check
+homelab opencode sync
+homelab net check
 ```
 
-`devfleet fleet-status` diagnoses the manager and registered remote nodes.
-`devfleet fleet-discover` lists visible Tailscale computers. The local SSH roster
+`homelab fleet-status` diagnoses the manager and registered remote nodes.
+`homelab fleet-discover` lists visible Tailscale computers. The local SSH roster
 still requires real aliases and checkout paths; discovery never guesses these.
 Use `personal commands --json` to discover the complete interface.

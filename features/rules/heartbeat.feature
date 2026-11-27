@@ -12,8 +12,8 @@ Feature: Something off the manager notices when the manager stops watching
       | prefix          |
       | max-age-minutes |
     And the heartbeat workflow needs the secrets:
-      | DEVFLEET_BUCKET_ACCESS_KEY_ID     |
-      | DEVFLEET_BUCKET_SECRET_ACCESS_KEY |
+      | HOMELAB_BUCKET_ACCESS_KEY_ID     |
+      | HOMELAB_BUCKET_SECRET_ACCESS_KEY |
 
   Scenario: A recent heartbeat passes and names the workers that were degraded
     Given the bucket holds a heartbeat from 10 minutes ago, with "worker-a" degraded

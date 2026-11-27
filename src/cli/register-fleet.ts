@@ -160,7 +160,7 @@ function registerRepair(registration: Registration) {
     .option('--yes', 'Confirm an explicitly requested --apply operation')
     .addHelpText(
       'after',
-      '\nExample: devfleet fleet-repair --local --repair workspace --plan-hash REVIEWED_SHA256 --apply --yes --json'
+      '\nExample: homelab fleet-repair --local --repair workspace --plan-hash REVIEWED_SHA256 --apply --yes --json'
     );
 }
 
@@ -207,7 +207,7 @@ function registerSync({ program, defaults, complete }: Registration) {
     )
     .option(
       '--revision <sha>',
-      'Converge to an exact source commit; defaults to the commit the dev-fleet package you run was published from'
+      'Converge to an exact source commit; defaults to the commit the homelab package you run was published from'
     )
     .option(
       '--rollback',
@@ -330,7 +330,7 @@ function registerState({ program, complete }: Registration) {
       'With --init: https origin of the S3 service; omit for AWS S3'
     )
     .option('--region <name>', 'With --init: bucket region, such as auto')
-    .option('--prefix <prefix>', 'With --init: key prefix; default dev-fleet')
+    .option('--prefix <prefix>', 'With --init: key prefix; default homelab')
     .option(
       '--directory <path>',
       'With --init: replicate to a directory instead of a bucket'
@@ -360,7 +360,7 @@ function registerState({ program, complete }: Registration) {
     )
     .addHelpText(
       'after',
-      '\nRead-only without a flag. The bucket is the one named under "state" in fleet.json. Every command reads its credentials from DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY; --init also asks on the terminal. They are never taken from arguments.'
+      '\nRead-only without a flag. The bucket is the one named under "state" in fleet.json. Every command reads its credentials from HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY; --init also asks on the terminal. They are never taken from arguments.'
     )
     .action(async (_options, command: Command) => {
       complete(await fleetState(command.optsWithGlobals<FleetStateOptions>()));
@@ -436,7 +436,7 @@ function registerWatch({ program, defaults, complete }: Registration) {
               ? {}
               : {
                   remedy: {
-                    action: `fleet-node-park refused ${worker.id}; run devfleet fleet-node-park --id ${worker.id} to see why.`,
+                    action: `fleet-node-park refused ${worker.id}; run homelab fleet-node-park --id ${worker.id} to see why.`,
                   },
                 }),
           });

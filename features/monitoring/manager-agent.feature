@@ -15,10 +15,10 @@ Feature: The manager runs its own agent as a launch agent of its user
   Scenario: The agent is installed by a playbook and measured with launchctl: no sudo, no secret in an argument
     Given these commands answer:
       | command                                                | answer                 |
-      | /bin/launchctl print gui/501/dev.devfleet.beszel-agent | prints state = running |
+      | /bin/launchctl print gui/501/dev.homelab.beszel-agent | prints state = running |
     When the manager "manager", whose user is 501, installs its own agent from the package at "/repo"
     Then the first command ran the playbook "agent-darwin.yml"
-    And the second command was "/bin/launchctl print gui/501/dev.devfleet.beszel-agent"
+    And the second command was "/bin/launchctl print gui/501/dev.homelab.beszel-agent"
     And no command with the word "sudo" was run
     And no command contains "fixture-token-0123456789"
     And the check is "beszel:service"
@@ -27,6 +27,6 @@ Feature: The manager runs its own agent as a launch agent of its user
   Scenario: A stopped agent fails
     Given these commands answer:
       | command                                                | answer                 |
-      | /bin/launchctl print gui/501/dev.devfleet.beszel-agent | prints state = waiting |
+      | /bin/launchctl print gui/501/dev.homelab.beszel-agent | prints state = waiting |
     When the manager "manager", whose user is 501, installs its own agent from the package at "/repo"
     Then the summary of the check is "BESZEL_SERVICE_STOPPED"

@@ -61,9 +61,9 @@ remedy() {
     DPKG_INTERRUPTED) echo 'An interrupted package installation could not be finished: dpkg --configure -a, run once and bounded, left the package database inconsistent. Read sudo dpkg --audit on the worker, repair the packages it names, then rerun fleet-sync.';;
     APT_UPDATE_FAILED|APT_INSTALL_FAILED|APT_UPDATE_TIMEOUT|APT_INSTALL_TIMEOUT) echo 'Run sudo apt-get update and install the bootstrap packages by hand to see the error, then rerun fleet-sync.';;
     SOURCE_CACHE_CHANGED|SOURCE_STATUS_FAILED|SOURCE_CHECKOUT_CONFLICT) echo 'The fleet-owned checkout of this revision holds changes fleet-sync did not make. Inspect and remove that revisions directory, then rerun fleet-sync.';;
-    FLEET_CONFIGURATION_COPY_CHANGED) echo 'The copy of the fleet configuration on this worker (~/.config/dev-fleet/fleet.json) was edited there since fleet-sync last wrote it, so it was not replaced and nothing was installed. A worker takes its configuration from the manager: make the change in the fleet.json the fleet is synced from, then delete the copy on this worker (rm ~/.config/dev-fleet/fleet.json) and rerun fleet-sync.';;
-    CONFIGURATION_INSTALL_FAILED) echo 'The fleet configuration could not be written under ~/.config/dev-fleet. Check that directory, then rerun fleet-sync.';;
-    TOOLCHAIN_*) echo 'The pinned toolchain did not converge. Rerun fleet-sync; it resumes where it stopped. If it repeats, run devfleet fleet-status --node for this worker.';;
+    FLEET_CONFIGURATION_COPY_CHANGED) echo 'The copy of the fleet configuration on this worker (~/.config/homelab/fleet.json) was edited there since fleet-sync last wrote it, so it was not replaced and nothing was installed. A worker takes its configuration from the manager: make the change in the fleet.json the fleet is synced from, then delete the copy on this worker (rm ~/.config/homelab/fleet.json) and rerun fleet-sync.';;
+    CONFIGURATION_INSTALL_FAILED) echo 'The fleet configuration could not be written under ~/.config/homelab. Check that directory, then rerun fleet-sync.';;
+    TOOLCHAIN_*) echo 'The pinned toolchain did not converge. Rerun fleet-sync; it resumes where it stopped. If it repeats, run homelab fleet-status --node for this worker.';;
     *) echo 'Inspect the remote operation lock and rerun the approved revision. No success receipt advanced.';;
   esac
 }
@@ -140,7 +140,7 @@ operation() {
 # compares modification times.
 prior=$(sed -n 's/^{.*"revision":"\([a-f0-9]\{40\}\)".*$/\1/p' "$root/remote-operation.json" 2>/dev/null | head -n 1) || prior=''
 # shellcheck disable=SC3013
-[ ! "$HOME/.config/dev-fleet/fleet.json" -nt "$root/remote-operation.json" ] || prior=''
+[ ! "$HOME/.config/homelab/fleet.json" -nt "$root/remote-operation.json" ] || prior=''
 # prior-operation: end
 operation lock
 # The fleet configuration is installed under the lock, so two overlapping
@@ -157,7 +157,13 @@ if [ "${8:-}" = client-preferences ]; then
   [ -n "$client_preferences" ] || die CONFIGURATION_INSTALL_FAILED
 fi
 if [ -n "$configuration" ]; then
-  config_dir="$HOME/.config/dev-fleet"
+  # A machine converged before the repository was renamed keeps its copy here.
+  if [ -f "$HOME/.config/dev-fleet/fleet.json" ] && [ ! -f "$HOME/.config/homelab/fleet.json" ]; then
+    mkdir -p "$HOME/.config/homelab" || die CONFIGURATION_INSTALL_FAILED
+    mv "$HOME/.config/dev-fleet/fleet.json" "$HOME/.config/homelab/fleet.json"
+    [ ! -f "$HOME/.config/dev-fleet/fleet.json.sha256" ] || mv "$HOME/.config/dev-fleet/fleet.json.sha256" "$HOME/.config/homelab/fleet.json.sha256"
+  fi
+  config_dir="$HOME/.config/homelab"
   # configuration-install: begin
   mkdir -p "$config_dir" || die CONFIGURATION_INSTALL_FAILED
   printf '%s' "$configuration" | base64 -d >"$config_dir/fleet.json.new" || die CONFIGURATION_INSTALL_FAILED
@@ -342,8 +348,8 @@ toolchain_key=$(git rev-parse HEAD:mise.toml HEAD:mise.lock HEAD:.mise HEAD:bun.
 [ -n "$toolchain_key" ] || toolchain_key=$revision
 # The tool profiles of the fleet configuration choose what is installed, so a
 # changed configuration runs the setup again.
-if [ -f "$HOME/.config/dev-fleet/fleet.json" ]; then
-  toolchain_key="$toolchain_key$(cksum <"$HOME/.config/dev-fleet/fleet.json" | cut -d' ' -f1)"
+if [ -f "$HOME/.config/homelab/fleet.json" ]; then
+  toolchain_key="$toolchain_key$(cksum <"$HOME/.config/homelab/fleet.json" | cut -d' ' -f1)"
 fi
 # A requested mise downgrade is the bootstrap's to do, so it runs.
 if [ -z "$mise_downgrade" ] && [ "$(cat "$ready_file" 2>/dev/null)" = "$toolchain_key" ] && [ -n "$(find "$ready_file" -mmin -1440 2>/dev/null)" ]; then
@@ -396,7 +402,7 @@ phase=tailnet-key
 # stdin, so it never appears in a process's arguments.
 if [ -n "$tailnet_key" ]; then
   case "$tailnet_key" in *[!A-Za-z0-9_-]*) die TAILNET_KEY_INVALID;; esac
-  printf '%s\n' "$tailnet_key" | sudo -n sh -c 'umask 077 && mkdir -p /run/devfleet && cat >/run/devfleet/tailnet-auth-key' || die TAILNET_KEY_DELIVERY_FAILED
+  printf '%s\n' "$tailnet_key" | sudo -n sh -c 'umask 077 && mkdir -p /run/homelab && cat >/run/homelab/tailnet-auth-key' || die TAILNET_KEY_DELIVERY_FAILED
 fi
 tailnet_key=''
 phase=configuration

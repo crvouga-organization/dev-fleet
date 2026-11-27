@@ -157,7 +157,7 @@ Given('the environment sets:', (world, table: DataTable) => {
 });
 
 When(
-  'devfleet is started in the project with {string}',
+  'homelab is started in the project with {string}',
   async (world, flags: string) => {
     const { values } = parseArgs({
       args: flags.split(/\s+/).map((flag) => expand(world, flag)),

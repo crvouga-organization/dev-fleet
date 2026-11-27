@@ -31,7 +31,7 @@ import {
 const { Given, Then } = cli;
 
 /** This machine's tools, and the workers it reaches, as a scenario describes
- * them. Nothing is started: every subprocess devfleet would run is answered
+ * them. Nothing is started: every subprocess homelab would run is answered
  * here and kept, so a step can say what was and was not run.
  */
 class Machine {
@@ -45,7 +45,7 @@ class Machine {
   whileRepairing: (() => Promise<void>) | undefined;
   /** Every request a worker received, decoded. */
   readonly requests: Record<string, unknown>[] = [];
-  /** The commit the package devfleet runs from names, when it runs from one,
+  /** The commit the package homelab runs from names, when it runs from one,
    * and where this manager keeps its fleet-owned checkouts.
    */
   revision: string | undefined;
@@ -67,7 +67,7 @@ async function parse(
 ): Promise<{ name: string; options: Record<string, unknown> }> {
   const parsed: { name: string; options: Record<string, unknown> }[] = [];
   const program = new Command()
-    .name('devfleet')
+    .name('homelab')
     .exitOverride()
     .configureOutput({ writeOut: () => undefined, writeErr: () => undefined });
   for (const option of GLOBAL_OPTIONS)
@@ -78,7 +78,7 @@ async function parse(
       parsed.push({ name: self.name(), options: self.optsWithGlobals() });
     });
   await program.parseAsync(args, { from: 'user' });
-  if (!parsed[0]) throw new Error(`No command in: devfleet ${args.join(' ')}`);
+  if (!parsed[0]) throw new Error(`No command in: homelab ${args.join(' ')}`);
   return parsed[0];
 }
 
@@ -223,11 +223,11 @@ Given('the probe sent to workers is {string}', (world, source: string) => {
  * history and no bun.lock.
  */
 Given(
-  'devfleet runs from a package published from the commit {string}',
+  'homelab runs from a package published from the commit {string}',
   async (world, commit: string) => {
     const described = machine(world);
     const root = await temporary(world, 'fleet-home-');
-    const installed = join(root, 'project/node_modules/@scope/dev-fleet');
+    const installed = join(root, 'project/node_modules/@scope/homelab');
     await mkdir(installed, { recursive: true });
     for (const file of ['package.json', 'mise.toml', 'mise.lock'])
       await writeFile(join(installed, file), '{}');
@@ -464,10 +464,10 @@ Then(
 Given(
   'the fleet state records a schedule turned on at {string}, every {int} minutes, that never succeeded',
   async (world, at: string, minutes: number) => {
-    const before = process.env['DEVFLEET_STATE'];
-    process.env['DEVFLEET_STATE'] = await temporary(world, 'fleet-schedule-');
+    const before = process.env['HOMELAB_STATE'];
+    process.env['HOMELAB_STATE'] = await temporary(world, 'fleet-schedule-');
     world.defer(() => {
-      process.env['DEVFLEET_STATE'] = before;
+      process.env['HOMELAB_STATE'] = before;
     });
     recordSchedule({
       enabled: true,

@@ -118,7 +118,7 @@ function rosterResult(
     ...(command === 'nodes' ? { configured } : {}),
     nodes:
       command === 'onboard'
-        ? nodes.map((node) => onboarding(node, 'devfleet'))
+        ? nodes.map((node) => onboarding(node, 'homelab'))
         : nodes,
   });
 }
@@ -248,7 +248,7 @@ function explainMissingCheckout(reports: NodeReport[], root: string): void {
     'This manager has no fleet-owned checkout of the commit this package names; it is made by fleet-sync.';
   check.remedy = {
     action:
-      'Run devfleet fleet-sync from the project that holds your fleet.json, then fleet-status again.',
+      'Run homelab fleet-sync from the project that holds your fleet.json, then fleet-status again.',
   };
 }
 
@@ -280,7 +280,7 @@ function missingRoster(): NodeReport {
           'No developer fleet roster is configured. Only this manager could be checked; fleet-wide health is unknown.',
         remedy: {
           action:
-            'Open personal --interactive and choose Register a developer computer, or run devfleet fleet-node-add --help. Then run fleet-status --json.',
+            'Open personal --interactive and choose Register a developer computer, or run homelab fleet-node-add --help. Then run fleet-status --json.',
         },
       },
     ],

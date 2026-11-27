@@ -1,4 +1,4 @@
-> This document was written for the fleet dev-fleet was extracted from. Paths and
+> This document was written for the fleet homelab was extracted from. Paths and
 > commands were updated; some statements still describe that fleet and are being
 > revised. The README is authoritative, and what a machine must offer to be a
 > worker is listed only in [worker requirements](worker-requirements.md).
@@ -16,7 +16,7 @@ your project's `fleet.json` (version 3, checked by [the schema](../schema/fleet.
 
 ## Manager
 
-- A singleton. All control happens from it, by the human: `devfleet fleet-sync`
+- A singleton. All control happens from it, by the human: `homelab fleet-sync`
   converges the manager **locally** first, then each worker over SSH.
   Started on a worker, `fleet-sync` hands the same request to the manager over
   host-key-verified SSH (no agent forwarding, no credentials copied) and prints
@@ -85,7 +85,7 @@ your project's `fleet.json` (version 3, checked by [the schema](../schema/fleet.
   records, the provider-neutral description of a machine in
   [`schema/worker-record.schema.json`](../schema/worker-record.schema.json):
   `id`, `tailnetName` or `address`, `user`, `port`, `hostKey` and optional
-  `labels` and `billing`. Their workers join the inline list; dev-fleet only
+  `labels` and `billing`. Their workers join the inline list; homelab only
   reads them and never calls a provider or creates a machine. A record that
   appears is a declared worker, enrolled by the next `fleet-sync`; one that
   disappears (a file that is gone holds none) is retired by the next
@@ -115,15 +115,15 @@ your project's `fleet.json` (version 3, checked by [the schema](../schema/fleet.
 
 ## Parked and idle workers
 
-A rented worker costs money while it runs. `devfleet fleet-node-park --id ID`
+A rented worker costs money while it runs. `homelab fleet-node-park --id ID`
 records in the fleet state that it is stopped or destroyed on purpose: from
 then on `fleet-sync` and `fleet-status` list it as parked with the time since
 (`worker:parked`, not applicable), never contact it, never make it the
 canary, and it never changes an exit code. Parking refuses while agent turns
-run on it (`WORKER_BUSY`) unless `--force`. `devfleet fleet-node-resume --id
+run on it (`WORKER_BUSY`) unless `--force`. `homelab fleet-node-resume --id
 ID` marks it active and runs `fleet-sync --node ID`, which converges and
 verifies it (`--allow-unmerged` is passed on to that sync). `parking.stop` and `parking.start` in `fleet.json` name commands
-(an infrastructure tool, never a provider dev-fleet calls) run with the worker
+(an infrastructure tool, never a provider homelab calls) run with the worker
 ID as their last argument. A parked worker found online on the tailnet is a
 warning (`worker:parked-online`); one that comes back as a new machine goes
 through `fleet-node-replace`.

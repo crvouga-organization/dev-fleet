@@ -656,10 +656,10 @@ Given(
   }
 );
 
-// ── dev-fleet's own checkouts ───────────────────────────────────────────
+// ── homelab's own checkouts ───────────────────────────────────────────
 
 Given(
-  'the directory {string} holds these dev-fleet checkouts, oldest first:',
+  'the directory {string} holds these homelab checkouts, oldest first:',
   (world, directory: string, table: DataTable) => {
     const target = join(collector(world).home, directory);
     const now = Date.now() / 1000;

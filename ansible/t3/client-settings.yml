@@ -20,7 +20,7 @@
     - name: Record a required desktop restart before changing preferences
       ansible.builtin.copy:
         dest: '{{ client_path }}.restart-pending'
-        content: "dev-fleet\n"
+        content: "homelab\n"
         mode: '0600'
       when:
         - desktop_service | bool

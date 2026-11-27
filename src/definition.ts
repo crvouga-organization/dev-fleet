@@ -96,7 +96,7 @@ export interface ParkingPolicy {
   autoPark?: boolean;
   /** Run with the worker ID as the last argument when a worker is parked
    * (stop) or resumed (start): an infrastructure tool, never a provider API
-   * dev-fleet calls itself.
+   * homelab calls itself.
    */
   stop?: string[];
   start?: string[];
@@ -126,7 +126,7 @@ export interface ManagerDefinition {
 }
 export interface FleetDefinition {
   version: 3;
-  /** The Git repository machines take dev-fleet's code from. */
+  /** The Git repository machines take homelab's code from. */
   source: { repository: string };
   /** Where this fleet keeps its secrets. */
   secrets: SecretsConfig;
@@ -1094,7 +1094,7 @@ const POLICY: Record<string, string> = {
   persistentT3: 'true',
   neverSleep: 'true',
   toolProfiles: 'a list of known tool profiles, each once',
-  tools: 'a list of tool names from dev-fleet’s mise.toml, each once',
+  tools: 'a list of tool names from homelab’s mise.toml, each once',
   exposure: EXPOSURE_EXPECTED,
   features: 'preset, containers and session',
   agentSessionLimit: SESSION_LIMIT_EXPECTED,
@@ -1178,7 +1178,7 @@ export function definitionProblem(value: unknown): DefinitionProblem | null {
 }
 
 /** The configuration as every machine keeps it at
- * ~/.config/dev-fleet/fleet.json: without the bucket. Only the devfleet CLI
+ * ~/.config/homelab/fleet.json: without the bucket. Only the homelab CLI
  * on the manager reaches the bucket, and a launcher that still runs the
  * revision from before the block existed must go on accepting the file while
  * a sync is under way.

@@ -19,7 +19,7 @@ export async function managerQuotaCoverage(
       '--ttl',
       '2m',
       '--label',
-      'dev-fleet quota check',
+      'homelab quota check',
     ]
   );
   return [quotaCoverage(managed, registry.proxy.endpoint, sources)];

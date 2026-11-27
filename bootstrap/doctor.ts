@@ -106,7 +106,7 @@ export function toolChecks(
       status: matches ? 'pass' : 'fail',
       detail: matches
         ? version
-        : `Expected ${command} ${version}; run dev-fleet tools sync and reopen the shell. Check for competing PATH entries.`,
+        : `Expected ${command} ${version}; run homelab tools sync and reopen the shell. Check for competing PATH entries.`,
     });
   }
   for (const command of ['git', 'npm']) {
@@ -222,21 +222,21 @@ export function worktreeTrustCheck(
     id: 'agent-worktree-trust',
     status: missing.length ? 'fail' : 'pass',
     detail: missing.length
-      ? `mise does not trust ${missing.join(', ')}; agent CLIs fail in new worktrees there. Run dev-fleet tools sync.`
+      ? `mise does not trust ${missing.join(', ')}; agent CLIs fail in new worktrees there. Run homelab tools sync.`
       : AGENT_WORKTREE_ROOTS.join(', '),
   };
 }
 
 const STANDING: Record<GlobalConfigStanding, string> = {
-  published: 'Published by dev-fleet from this revision.',
+  published: 'Published by homelab from this revision.',
   missing: 'There is no global mise configuration.',
   replaced:
-    'Another project or tool replaced the global mise configuration dev-fleet publishes.',
+    'Another project or tool replaced the global mise configuration homelab publishes.',
   changed:
     'The global mise configuration is not the one this revision publishes.',
 };
 
-/** On a fleet machine the global mise configuration belongs to dev-fleet.
+/** On a fleet machine the global mise configuration belongs to homelab.
  * When anything else replaced it, its pins and the trusted agent worktree
  * roots are gone until the next fleet-sync.
  */
@@ -252,7 +252,7 @@ export function globalConfigCheck(
       id: 'global-mise-config',
       status: 'fail',
       detail:
-        'MISE_GLOBAL_CONFIG_FILE moves the global mise configuration away from the one dev-fleet publishes; unset it.',
+        'MISE_GLOBAL_CONFIG_FILE moves the global mise configuration away from the one homelab publishes; unset it.',
     };
   }
   return {

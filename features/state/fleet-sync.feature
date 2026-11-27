@@ -332,7 +332,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
 
     Scenario: Asked only the question, fleet-sync gives the same refusal and records nothing
       --measure-mise is how the guard of a hand-off asks the manager's
-      installed devfleet, before the revision's own run script starts there.
+      installed homelab, before the revision's own run script starts there.
       Given revision "cccccccccccccccccccccccccccccccccccccccc" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
       When fleet-sync is asked only what revision "cccccccccccccccccccccccccccccccccccccccc" would do to mise
       Then the command exits 1

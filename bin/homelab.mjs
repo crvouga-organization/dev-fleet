@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The npm entry point: `npx @crvouga/dev-fleet <command>`. The CLI is TypeScript
+// The npm entry point: `npx @crvouga/homelab <command>`. The CLI is TypeScript
 // run by Bun, and Node refuses to run TypeScript from node_modules, so this
 // plain-JavaScript launcher hands the arguments to Bun and nothing else.
 import { spawnSync } from 'node:child_process';
@@ -69,6 +69,6 @@ for (const bun of bunCandidates()) {
   if (!child.error) process.exit(child.status ?? 1);
 }
 process.stderr.write(
-  'dev-fleet needs Bun and could not start it. Install it from https://bun.sh and retry.\n'
+  'homelab needs Bun and could not start it. Install it from https://bun.sh and retry.\n'
 );
 process.exit(127);

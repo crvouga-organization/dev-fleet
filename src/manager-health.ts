@@ -52,7 +52,7 @@ export async function managerClock(run: Runner): Promise<Check> {
       status: 'warn',
       summary: 'MANAGER_CLOCK_UNOBSERVED',
       remedy: {
-        action: `Reading whether network time is on needs the manager's grant. Give it once, as an administrator, from the dev-fleet checkout fleet-sync runs: ${GRANT}`,
+        action: `Reading whether network time is on needs the manager's grant. Give it once, as an administrator, from the homelab checkout fleet-sync runs: ${GRANT}`,
       },
     };
   if (on)
@@ -86,7 +86,7 @@ export async function managerWatch(run: Runner, uid: number): Promise<Check> {
       status: 'fail',
       summary: 'MANAGER_WATCH_NOT_LOADED',
       remedy: {
-        action: `Run devfleet fleet-sync on the manager: it installs and loads ${label} with ansible/macos/manager.yml. Until then no heartbeat reaches the bucket, and the heartbeat workflow fails.`,
+        action: `Run homelab fleet-sync on the manager: it installs and loads ${label} with ansible/macos/manager.yml. Until then no heartbeat reaches the bucket, and the heartbeat workflow fails.`,
       },
     };
   // launchd keeps how the last run ended; a job that never ran has none.
@@ -97,7 +97,7 @@ export async function managerWatch(run: Runner, uid: number): Promise<Check> {
       status: 'warn',
       summary: `MANAGER_WATCH_FAILING exit ${exit}`,
       remedy: {
-        action: `Its last run failed. Read ~/${macos.jobLogs.directory}/${label}.err.log, and run devfleet fleet-watch on the manager to see the same failure.`,
+        action: `Its last run failed. Read ~/${macos.jobLogs.directory}/${label}.err.log, and run homelab fleet-watch on the manager to see the same failure.`,
       },
     };
   return {
@@ -113,7 +113,7 @@ const DISK_GC_STALE_SECONDS = 3 * 3600;
 
 /** The manager's disk GC runs on a schedule as the launchd job manager.yml
  * installs, like a worker's timer: without it worktrees, tool installs and
- * dev-fleet checkouts grow until the disk is full. Its report says what the
+ * homelab checkouts grow until the disk is full. Its report says what the
  * last run reclaimed and what the worktrees and package stores hold.
  */
 export async function managerDiskGc(
@@ -133,7 +133,7 @@ export async function managerDiskGc(
       status: 'fail',
       summary: 'MANAGER_DISK_GC_NOT_LOADED',
       remedy: {
-        action: `Run devfleet fleet-sync on the manager: it installs and loads ${label} with ansible/macos/manager.yml. Until then nothing removes idle worktrees, unused tool versions or old dev-fleet checkouts on the manager.`,
+        action: `Run homelab fleet-sync on the manager: it installs and loads ${label} with ansible/macos/manager.yml. Until then nothing removes idle worktrees, unused tool versions or old homelab checkouts on the manager.`,
       },
     };
   const log = `~/${macos.jobLogs.directory}/${label}.err.log`;
@@ -178,7 +178,7 @@ export function jobLogs(home: string): string[] {
 }
 
 export const newsyslogDropIn = (user: string): string =>
-  `/etc/newsyslog.d/dev-fleet-${user}.conf`;
+  `/etc/newsyslog.d/homelab-${user}.conf`;
 
 /** The logs of the scheduled jobs stay under a fixed size: the newsyslog
  * drop-in that rotates them is in place, names each of them, and none has
@@ -193,7 +193,7 @@ export async function managerJobLogs(
   const dropIn = await run(['cat', newsyslogDropIn(user)]);
   const declared =
     dropIn.ok &&
-    dropIn.stdout.includes('# Managed by dev-fleet: manager job logs') &&
+    dropIn.stdout.includes('# Managed by homelab: manager job logs') &&
     logs.every((log) => dropIn.stdout.includes(`${log} `));
   if (!declared)
     return {
@@ -201,7 +201,7 @@ export async function managerJobLogs(
       status: 'warn',
       summary: 'MANAGER_JOB_LOG_ROTATION_MISSING',
       remedy: {
-        action: `newsyslog keeps the logs of the scheduled jobs under ${macos.jobLogs.maxKiB} KiB once the manager's grant installs its drop-in. Give it once, as an administrator, from the dev-fleet checkout fleet-sync runs: ${GRANT}`,
+        action: `newsyslog keeps the logs of the scheduled jobs under ${macos.jobLogs.maxKiB} KiB once the manager's grant installs its drop-in. Give it once, as an administrator, from the homelab checkout fleet-sync runs: ${GRANT}`,
       },
     };
   const limit = 2 * macos.jobLogs.maxKiB * 1024;
@@ -369,7 +369,7 @@ export async function containerWatchdog(
   const id = 'manager:container-watchdog';
   const result = await run([
     'cat',
-    join(home, 'Library/Caches/dev-fleet/container-watchdog.json'),
+    join(home, 'Library/Caches/homelab/container-watchdog.json'),
   ]);
   let memory: WatchdogMemory;
   try {
@@ -390,7 +390,7 @@ export async function containerWatchdog(
   );
   const remedy = {
     action:
-      'Read the container watchdog log (~/Library/Application Support/dev-fleet/container-watchdog/watchdog.log) and the container logs, fix the cause, then docker restart the container.',
+      'Read the container watchdog log (~/Library/Application Support/homelab/container-watchdog/watchdog.log) and the container logs, fix the cause, then docker restart the container.',
   };
   if (capped.length)
     return {

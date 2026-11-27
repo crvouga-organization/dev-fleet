@@ -84,7 +84,7 @@ async function effective(run: Runner, key: string): Promise<string> {
   return (await effectiveGitConfig(run, key))?.pop()?.trim() ?? '';
 }
 
-/** A GitHub credential helper that asks gh, by any path: the one dev-fleet
+/** A GitHub credential helper that asks gh, by any path: the one homelab
  * declares and the one `gh auth setup-git` writes are the same source. The
  * same pattern as `git_gh_helper_pattern` in `ansible/github/git.yml`.
  */
@@ -219,11 +219,11 @@ export async function gitPushAuthCheck(
  * machine.
  */
 export function signingKey(home: string = homedir()): string {
-  return resolve(home, '.ssh/dev-fleet-git-signing');
+  return resolve(home, '.ssh/homelab-git-signing');
 }
 
 /** What the signing probe signs: a fixed text, so nothing of the node's is. */
-const SIGNING_PROBE = 'dev-fleet signing probe\n';
+const SIGNING_PROBE = 'homelab signing probe\n';
 
 /** With `git.signing` declared, every commit and tag is signed with the
  * node's own key: Git is configured to, and the key really signs. Without it
@@ -267,14 +267,14 @@ export async function gitSigningCheck(
       summary: 'GIT_SIGNING_FAILED',
       remedy: {
         action:
-          "The node's signing key (~/.ssh/dev-fleet-git-signing) is missing or cannot sign without a prompt. Remove both halves of it and rerun fleet-sync, which makes a new one; then add the new public key to the GitHub account as a signing key.",
+          "The node's signing key (~/.ssh/homelab-git-signing) is missing or cannot sign without a prompt. Remove both halves of it and rerun fleet-sync, which makes a new one; then add the new public key to the GitHub account as a signing key.",
       },
     };
   return {
     id,
     status: 'pass',
     summary:
-      'Commits and tags on this node are signed with its own SSH key. GitHub shows them as verified once ~/.ssh/dev-fleet-git-signing.pub is a signing key of the account.',
+      'Commits and tags on this node are signed with its own SSH key. GitHub shows them as verified once ~/.ssh/homelab-git-signing.pub is a signing key of the account.',
   };
 }
 

@@ -31,7 +31,7 @@ export type Bucket =
     }
   | { kind: 'directory'; path: string };
 
-export const DEFAULT_PREFIX = 'dev-fleet';
+export const DEFAULT_PREFIX = 'homelab';
 
 const text = (value: unknown, pattern: RegExp): value is string =>
   typeof value === 'string' && pattern.test(value);
@@ -60,7 +60,7 @@ function prefix(value: unknown): string {
     value.includes('..') ||
     value.endsWith('/')
   )
-    invalid('prefix must be a plain key prefix such as dev-fleet.');
+    invalid('prefix must be a plain key prefix such as homelab.');
   return value;
 }
 
@@ -112,9 +112,10 @@ export function parseBucket(value: unknown): Bucket {
   return value['directory'] !== undefined ? directory(value) : s3(value);
 }
 
-/** The environment a devfleet command takes the bucket's credentials from. */
-export const ACCESS_KEY_ID_ENV = 'DEVFLEET_BUCKET_ACCESS_KEY_ID';
-export const SECRET_ACCESS_KEY_ENV = 'DEVFLEET_BUCKET_SECRET_ACCESS_KEY';
+/** The environment a homelab command takes the bucket's credentials from. */
+export const ACCESS_KEY_ID_ENV = 'HOMELAB_BUCKET_ACCESS_KEY_ID';
+export const SECRET_ACCESS_KEY_ENV = 'HOMELAB_BUCKET_SECRET_ACCESS_KEY';
+
 
 /** Where a fleet configuration says its state is kept: a bucket's location
  * without credentials, which never belong in a file kept in Git.

@@ -87,7 +87,7 @@ function runFrom(row: Record<string, string>): SyncRun {
 // ── The history in the fleet state ───────────────────────────────────────
 
 Given('a fleet state of its own, holding no history', (world) => {
-  setEnv(world, 'DEVFLEET_STATE', temporary(world, 'fleet-history-'));
+  setEnv(world, 'HOMELAB_STATE', temporary(world, 'fleet-history-'));
 });
 
 Given('fleet-sync recorded these runs:', (_world, table: DataTable) => {
@@ -303,7 +303,7 @@ Given(
   (world, text: string) => {
     const path = join(temporary(world, 'fleet-schedule-'), 'fleet.json');
     writeFileSync(path, JSON.stringify(exampleWith(JSON.parse(text))));
-    setEnv(world, 'DEVFLEET_CONFIG', path);
+    setEnv(world, 'HOMELAB_CONFIG', path);
     reloadFleet();
     world.defer(reloadFleet);
   }
@@ -340,7 +340,7 @@ Given(
   (world) => {
     const home = logState(world).logs!;
     logState(world).dropIn = [
-      '# Managed by dev-fleet: manager job logs',
+      '# Managed by homelab: manager job logs',
       ...jobLogs(home).map((log) => `${log} ${USER}:staff 600 3 1024 * NZ`),
       '',
     ].join('\n');

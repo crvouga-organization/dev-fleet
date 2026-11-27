@@ -3,12 +3,12 @@
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>dev.devfleet.cliproxy-monitor</string>
+	<string>dev.homelab.cliproxy-gc</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/sh</string>
 		<string>-c</string>
-		<string>PATH="$HOME/Library/Application Support/cliproxy-fleet/tools/bin:$PATH" exec "$HOME/Library/Application Support/cliproxy-fleet/scripts/monitor"</string>
+		<string>PATH="$HOME/Library/Application Support/cliproxy-fleet/tools/bin:$PATH" exec "$HOME/Library/Application Support/cliproxy-fleet/scripts/backup" gc</string>
 	</array>
 	<key>EnvironmentVariables</key>
 	<dict>
@@ -23,7 +23,16 @@
 	<string>Background</string>
 	<key>Nice</key>
 	<integer>10</integer>
-	<key>StartInterval</key>
-	<integer>300</integer>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Weekday</key>
+		<integer>0</integer>
+		<key>Hour</key>
+		<integer>4</integer>
+		<key>Minute</key>
+		<integer>0</integer>
+	</dict>
+	<key>LowPriorityIO</key>
+	<true/>
 </dict>
 </plist>

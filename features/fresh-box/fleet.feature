@@ -13,7 +13,7 @@ Feature: One fleet-sync over several fresh machines, and the faults it meets
   not record the revision as applied.
 
   The machines run the Ubuntu release under test, as in the single-machine
-  feature: DEVFLEET_TEST_FRESH_BOX_RELEASE, or else the newest release the
+  feature: HOMELAB_TEST_FRESH_BOX_RELEASE, or else the newest release the
   Ubuntu policy accepts.
 
   Background:
@@ -89,7 +89,7 @@ Feature: One fleet-sync over several fresh machines, and the faults it meets
     Given every machine has been bootstrapped
     And the copy of the fleet configuration on "fleet-b" was edited there
     When the manager bootstraps "fleet-b"
-    Then the bootstrap reports "FLEET_CONFIGURATION_COPY_CHANGED" with a remedy that says "rm ~/.config/dev-fleet/fleet.json"
+    Then the bootstrap reports "FLEET_CONFIGURATION_COPY_CHANGED" with a remedy that says "rm ~/.config/homelab/fleet.json"
     And the edit is still in the copy of the fleet configuration on "fleet-b"
 
   Scenario Outline: A package installation <starter> started and that was interrupted is finished on the next run

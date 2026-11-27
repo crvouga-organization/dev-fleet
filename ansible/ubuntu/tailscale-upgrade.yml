@@ -51,7 +51,7 @@
   serial: 1
   become: true
   vars:
-    upgrade_unit: devfleet-tailscale-upgrade.service
+    upgrade_unit: homelab-tailscale-upgrade.service
   tasks:
     - name: Find the approved revision's Tailscale play
       ansible.builtin.stat:
@@ -80,7 +80,7 @@
         argv:
           - systemd-run
           - '--unit={{ upgrade_unit }}'
-          - --description=dev-fleet Tailscale upgrade to its pin
+          - --description=homelab Tailscale upgrade to its pin
           - '--working-directory={{ worker_checkout }}/ansible/ubuntu'
           - '--setenv=ANSIBLE_CONFIG={{ worker_checkout }}/ansible/ansible.cfg'
           - --setenv=HOME=/root
@@ -120,4 +120,4 @@
         that:
           - upgrade_state.stdout not in ['active', 'activating', 'deactivating']
           - upgrade_result.stdout | trim == 'success'
-        fail_msg: WORKER_TAILSCALE_UPGRADE_FAILED; the upgrade did not end, or failed. Read journalctl -u devfleet-tailscale-upgrade on the worker.
+        fail_msg: WORKER_TAILSCALE_UPGRADE_FAILED; the upgrade did not end, or failed. Read journalctl -u homelab-tailscale-upgrade on the worker.

@@ -88,7 +88,7 @@ const workers = new WeakMap<OrchestrationWorld, Worker>();
 function worker(world: OrchestrationWorld): Worker {
   let found = workers.get(world);
   if (!found) {
-    const home = mkdtempSync(join(tmpdir(), 'devfleet-worker-copy-'));
+    const home = mkdtempSync(join(tmpdir(), 'homelab-worker-copy-'));
     world.defer(() => rmSync(home, { recursive: true, force: true }));
     found = { home, clock: Math.floor(Date.now() / 1000) - 86_400 };
     workers.set(world, found);
@@ -97,7 +97,7 @@ function worker(world: OrchestrationWorld): Worker {
 }
 
 const directory = (world: OrchestrationWorld): string =>
-  join(worker(world).home, '.config/dev-fleet');
+  join(worker(world).home, '.config/homelab');
 const copy = (world: OrchestrationWorld): string =>
   join(directory(world), 'fleet.json');
 const record = (world: OrchestrationWorld): string =>
@@ -136,7 +136,7 @@ function git(cwd: string, ...args: string[]): string {
 
 /** A commit that holds `text` as its bootstrap script: its name. */
 function revisionHolding(world: OrchestrationWorld, text: string): string {
-  const source = mkdtempSync(join(tmpdir(), 'devfleet-worker-revision-'));
+  const source = mkdtempSync(join(tmpdir(), 'homelab-worker-revision-'));
   world.defer(() => rmSync(source, { recursive: true, force: true }));
   mkdirSync(join(source, 'bootstrap'));
   writeFileSync(join(source, SCRIPT_PATH), text);
@@ -188,7 +188,7 @@ function operate(
       : '',
     'operation lock',
     `configuration=${Buffer.from(configuration).toString('base64')}`,
-    'config_dir="$HOME/.config/dev-fleet"',
+    'config_dir="$HOME/.config/homelab"',
     between(
       '# configuration-install: begin',
       '# configuration-install: end',

@@ -345,11 +345,11 @@ async function managerHandsDownIo(
 
 const PROTECTION_REMEDY = {
   unobserved:
-    'No process of the worker user was found listening on the T3 port, so there is no reserve to measure: T3 is stopped or restarting. Check worker:t3-recovery and worker:t3-health, then rerun devfleet fleet-status --workers.',
+    'No process of the worker user was found listening on the T3 port, so there is no reserve to measure: T3 is stopped or restarting. Check worker:t3-recovery and worker:t3-health, then rerun homelab fleet-status --workers.',
   manager:
-    'The user manager does not hand the io controller down: fleet-sync declares it for the user manager, which takes it on its next start. Reboot the worker while it runs no agent turn (devfleet fleet-sync --maintenance-reboot). Restarting T3 does not change it, and the CPU and memory reserve are already in place.',
+    'The user manager does not hand the io controller down: fleet-sync declares it for the user manager, which takes it on its next start. Reboot the worker while it runs no agent turn (homelab fleet-sync --maintenance-reboot). Restarting T3 does not change it, and the CPU and memory reserve are already in place.',
   undeclared:
-    'Run devfleet fleet-sync on this worker: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. If the check still fails, the listener runs outside the units fleet-sync declares; inspect its cgroup.',
+    'Run homelab fleet-sync on this worker: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. If the check still fails, the listener runs outside the units fleet-sync declares; inspect its cgroup.',
 };
 
 /** The cgroup of the process listening on the T3 port; undefined when none

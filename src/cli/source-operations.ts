@@ -47,7 +47,7 @@ export function ownerCheckout(
 }
 
 const CHECKOUT_REQUIRED =
-  'This command runs from the revision fleet-sync applied on this machine, and none is applied yet. Run devfleet fleet-sync first.\n';
+  'This command runs from the revision fleet-sync applied on this machine, and none is applied yet. Run homelab fleet-sync first.\n';
 
 export async function forwardSourceOperation(
   args: string[],
@@ -90,7 +90,7 @@ export function registerSourceOperations(
       .allowUnknownOption()
       .addHelpText(
         'after',
-        `\n${operation.description}\nArguments are forwarded to the owning implementation; run devfleet ${name} help for its usage.`
+        `\n${operation.description}\nArguments are forwarded to the owning implementation; run homelab ${name} help for its usage.`
       )
       .action(async (args: string[]) => {
         const exitCode = await forwardSourceOperation(

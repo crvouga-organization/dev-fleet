@@ -189,7 +189,7 @@ const cgroups = new WeakMap<CoreWorld, string>();
 
 /** A cgroup tree that holds this user's manager and nothing in it. */
 function userManager(world: CoreWorld): string {
-  const tree = mkdtempSync(join(tmpdir(), 'devfleet-cgroup-'));
+  const tree = mkdtempSync(join(tmpdir(), 'homelab-cgroup-'));
   world.defer(() => rmSync(tree, { recursive: true, force: true }));
   cgroups.set(world, tree);
   const { uid } = userInfo();
@@ -249,7 +249,7 @@ When('the capacity probe reads that worker', async (world) => {
   const probe = Bun.spawn(['sh', join(root, 'ansible/net/remote-probe.sh')], {
     env: {
       ...process.env,
-      DEVFLEET_PROBE_CGROUP: need(world, cgroups.get(world), 'a cgroup tree'),
+      HOMELAB_PROBE_CGROUP: need(world, cgroups.get(world), 'a cgroup tree'),
     },
     stdout: 'pipe',
     stderr: 'ignore',

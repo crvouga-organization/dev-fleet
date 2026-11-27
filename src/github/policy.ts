@@ -112,7 +112,7 @@ export interface GithubNode {
    * none (no worker policy).
    */
   login: string | null;
-  /** Whether dev-fleet signs this node in from the stored credential, or only
+  /** Whether homelab signs this node in from the stored credential, or only
    * checks a person's own login.
    */
   managed: boolean;

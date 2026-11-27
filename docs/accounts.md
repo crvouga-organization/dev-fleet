@@ -9,8 +9,8 @@ provider through the proxy.
 ## The roster
 
 ```sh
-npx devfleet fleet-accounts            # provider, index, label, state, cooldowns and when they clear
-npx devfleet fleet-accounts --diff     # and what this machine offers against it
+npx homelab fleet-accounts            # provider, index, label, state, cooldowns and when they clear
+npx homelab fleet-accounts --diff     # and what this machine offers against it
 ```
 
 Each account has one state, derived from its credential file and the proxy's
@@ -121,9 +121,9 @@ nothing of T3's catalogue.
 ## Adding, signing in again, removing
 
 ```sh
-npx devfleet fleet-accounts --add claude
-npx devfleet fleet-accounts --relogin codex 2
-npx devfleet fleet-accounts --remove codex 2
+npx homelab fleet-accounts --add claude
+npx homelab fleet-accounts --relogin codex 2
+npx homelab fleet-accounts --remove codex 2
 ```
 
 A sign-in writes into a staging directory beside the credentials; only a
@@ -134,7 +134,7 @@ change is then propagated to every node.
 ## Propagation without a full sync
 
 ```sh
-npx devfleet fleet-sync --only accounts
+npx homelab fleet-sync --only accounts
 ```
 
 On the manager and every worker at once, each node re-reads the proxy's
@@ -197,11 +197,11 @@ lease fences the old holder.
 
 ## Client keys
 
-`devfleet cliproxy issue-key|rotate-key|retire-key|revoke-key NODE` keep one
+`homelab cliproxy issue-key|rotate-key|retire-key|revoke-key NODE` keep one
 proxy client key per node in the manager's key ring. A rotation keeps the old
 key accepted until `retire-key`, so no running agent fails while nodes move
 over. Revoking one node's key leaves the others working.
-`devfleet cliproxy client-keys` reports each node's key by fingerprint only.
+`homelab cliproxy client-keys` reports each node's key by fingerprint only.
 
 ## Not yet done
 

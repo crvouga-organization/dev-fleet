@@ -73,7 +73,7 @@ Feature: The fleet configuration
         | the release is one the support matrix lists | ubuntu.release | "22.04"               | DEFINITION_INVALID | $.ubuntu.release |
         | a notify target is webhook or ntfy          | notify         | {"targets":["pager"]} | DEFINITION_INVALID | $.notify         |
 
-      Examples: Commits are signed only the way dev-fleet signs them
+      Examples: Commits are signed only the way homelab signs them
         | rule                        | field | value                                                                                   | code               | path          |
         | commits are signed with SSH | git   | {"name":"Example User","email":"example-user@users.noreply.github.com","signing":"gpg"} | DEFINITION_INVALID | $.git.signing |
 
@@ -111,7 +111,7 @@ Feature: The fleet configuration
       Then it is refused with "DEFINITION_DUPLICATE" at "$.workers[0].id"
 
   Rule: The JSON schema and the parser agree
-    An editor checks fleet.json with schema/fleet.schema.json and devfleet
+    An editor checks fleet.json with schema/fleet.schema.json and homelab
     reads it with its parser. Every definition in this corpus is accepted by
     both or refused by both, so the two cannot drift apart unnoticed.
 
@@ -206,4 +206,4 @@ Feature: The fleet configuration
         """
       When the fleet configuration is read
       Then the proxy is served at "https://proxy.example.org"
-      And machines take dev-fleet from "https://git.example.org/team/machines.git"
+      And machines take homelab from "https://git.example.org/team/machines.git"

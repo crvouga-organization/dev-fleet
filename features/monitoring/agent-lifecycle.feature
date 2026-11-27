@@ -3,7 +3,7 @@ Feature: The agent's playbook converges a real machine and repairs it
   The playbook that installs the monitoring agent runs, unchanged, on a
   disposable Ubuntu machine booted with systemd. The hub it is given is not
   reachable: this proves the agent's lifecycle and its isolation, not its
-  metrics. Runs only when DEVFLEET_TEST_AGENT_BOX is set, because it
+  metrics. Runs only when HOMELAB_TEST_AGENT_BOX is set, because it
   downloads the pinned agent.
 
   Background:

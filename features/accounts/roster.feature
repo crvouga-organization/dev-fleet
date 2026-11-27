@@ -32,7 +32,7 @@ Feature: One provider account roster, the same on every node
       | claude-b@example.com/claude-sonnet-5-5 |
     When this node's roster is checked
     Then the check "accounts:roster-current" fails
-    And it asks to run "devfleet fleet-sync --only accounts"
+    And it asks to run "homelab fleet-sync --only accounts"
     And no check names "example.com"
 
   Scenario: A node that offers every account of the proxy is current

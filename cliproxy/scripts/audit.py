@@ -114,7 +114,7 @@ if __name__ == "__main__":
             print("Code is not clean tracked repository source: " + ", ".join(errors))
             sys.exit(1)
         print(
-            "Runtime code is Git-tracked at crvouga/dev-fleet commit "
+            "Runtime code is Git-tracked at crvouga/homelab commit "
             + manifest["revision"]
         )
     except (OSError, ValueError, KeyError, subprocess.CalledProcessError):

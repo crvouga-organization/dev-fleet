@@ -104,7 +104,7 @@ export function installedFeatures(
   node: string | undefined,
   home: string = homedir()
 ): WorkerFeatures {
-  const path = join(home, '.config/dev-fleet/fleet.json');
+  const path = join(home, '.config/homelab/fleet.json');
   if (!existsSync(path)) return DEFAULT_FEATURES;
   try {
     return workerFeatures(JSON.parse(readFileSync(path, 'utf8')), node);

@@ -61,7 +61,7 @@ Given(
   'a worker with every package and service policy.json declares, and these tools:',
   async (world, table: DataTable) => {
     const policy = await ubuntuPolicy();
-    const directory = mkdtempSync(join(tmpdir(), 'devfleet-manifest-'));
+    const directory = mkdtempSync(join(tmpdir(), 'homelab-manifest-'));
     world.defer(() => rmSync(directory, { recursive: true, force: true }));
     measurings.set(world, {
       directory,

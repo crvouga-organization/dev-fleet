@@ -237,7 +237,7 @@ export async function fleetNodeResume(
           status: 'fail',
           summary: 'WORKER_RESUME_FAILED',
           remedy: {
-            action: `fleet-sync --node ${worker.id} did not end ready; its report (sync in this output) says why. Fix that, then run devfleet fleet-sync --node ${worker.id}. FLEET_REVISION_UNMERGED there means this command was started from a revision that is not on the default branch: run it from the installed package, or repeat it with --allow-unmerged.`,
+            action: `fleet-sync --node ${worker.id} did not end ready; its report (sync in this output) says why. Fix that, then run homelab fleet-sync --node ${worker.id}. FLEET_REVISION_UNMERGED there means this command was started from a revision that is not on the default branch: run it from the installed package, or repeat it with --allow-unmerged.`,
           },
         }
   );

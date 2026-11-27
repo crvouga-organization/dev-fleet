@@ -15,7 +15,7 @@ Feature: Where the fleet state is kept is a few validated settings
       When the settings are read
       Then the bucket is exactly:
         | kind            | s3                     |
-        | prefix          | dev-fleet              |
+        | prefix          | homelab              |
         | bucket          | fleet-state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
@@ -28,7 +28,7 @@ Feature: Where the fleet state is kept is a few validated settings
       Then the bucket is exactly:
         | kind   | s3          |
         | bucket | fleet-state |
-        | prefix | dev-fleet   |
+        | prefix | homelab   |
 
     Scenario: A directory
       Given the bucket settings are {"directory": "/Volumes/backup/fleet"}
@@ -83,7 +83,7 @@ Feature: Where the fleet state is kept is a few validated settings
       Then the bucket.json of the manager is readable by its owner only
       And the saved bucket of the manager is exactly:
         | kind            | s3                     |
-        | prefix          | dev-fleet              |
+        | prefix          | homelab              |
         | bucket          | fleet-state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
@@ -161,7 +161,7 @@ Feature: Where the fleet state is kept is a few validated settings
       Then the Litestream configuration of "/state/fleet.db" contains each of:
         | type: s3                         |
         | bucket: fleet-state              |
-        | path: dev-fleet/fleet.db         |
+        | path: homelab/fleet.db         |
         | endpoint: https://s3.example.com |
         | force-path-style: true           |
 

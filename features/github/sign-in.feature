@@ -103,7 +103,7 @@ Feature: Every node signs in to GitHub from the stored credential
 
     Scenario Outline: A sign-in job that found no token on a worker that <state> leaves "github:sync" blocked
       Given the command "vault status -address=https://vault.example.com -format=json" <status>
-      And the command "bun bootstrap/worker-github.ts --node worker-one" prints {"name":"dev-fleet-github","event":"job_finished","code":"GITHUB_TOKEN_MISSING","adopted":false}
+      And the command "bun bootstrap/worker-github.ts --node worker-one" prints {"name":"homelab-github","event":"job_finished","code":"GITHUB_TOKEN_MISSING","adopted":false}
       When the GitHub sign-in of "worker-one" is converged
       Then the check "github:sync" fails
       And the check "github:sync" says "SECRET_READ_BLOCKED by worker:vault-renewal"
@@ -134,7 +134,7 @@ Feature: Every node signs in to GitHub from the stored credential
   Rule: A sync fails when the node cannot be signed in
 
     Scenario Outline: A sign-in job that reports "<code>" leaves "github:sync" <verdict>
-      Given the command "bun bootstrap/worker-github.ts --node worker-one" prints {"name":"dev-fleet-github","event":"job_finished","code":"<code>","adopted":false}
+      Given the command "bun bootstrap/worker-github.ts --node worker-one" prints {"name":"homelab-github","event":"job_finished","code":"<code>","adopted":false}
       When the GitHub sign-in of "worker-one" is converged
       Then the check "github:sync" <verdict>
       And the check "github:sync" says "<summary>"

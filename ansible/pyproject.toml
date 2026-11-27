@@ -3,7 +3,7 @@
 # exact ansible-core package ubuntu/policy.json names instead. Change the
 # version here, then run `uv lock` in this directory.
 [project]
-name = "dev-fleet-ansible"
+name = "homelab-ansible"
 version = "0"
 requires-python = "==3.15.2"
 dependencies = ["ansible-core==2.22.0"]

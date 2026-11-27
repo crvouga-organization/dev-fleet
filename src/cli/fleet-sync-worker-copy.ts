@@ -61,7 +61,7 @@ function refusal(revision: string, edited: EditedWorkerCopy[]): ManagerReport {
     fleet,
     revision,
     'FLEET_CONFIGURATION_COPY_CHANGED',
-    `Nothing was changed: the copy of the fleet configuration (~/.config/dev-fleet/fleet.json) on ${names} was edited there since fleet-sync last wrote it, and a sync would replace it. A worker takes its configuration from the manager: to keep the edit, make the same change in ${fleetJson()}. Then, or to discard the edit, delete the copy on ${edited.length === 1 ? 'that worker' : 'each of those workers'} (rm ~/.config/dev-fleet/fleet.json) and run fleet-sync again.`
+    `Nothing was changed: the copy of the fleet configuration (~/.config/homelab/fleet.json) on ${names} was edited there since fleet-sync last wrote it, and a sync would replace it. A worker takes its configuration from the manager: to keep the edit, make the same change in ${fleetJson()}. Then, or to discard the edit, delete the copy on ${edited.length === 1 ? 'that worker' : 'each of those workers'} (rm ~/.config/homelab/fleet.json) and run fleet-sync again.`
   );
   for (const { node, check } of edited) {
     const entry = report.nodes.find((candidate) => candidate.node === node);

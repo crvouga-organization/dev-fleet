@@ -12,7 +12,7 @@ export function parkedCheck(id: string, parkedAt: string, now: Date): Check {
   return {
     id: 'worker:parked',
     status: 'not-applicable',
-    summary: `${id} is parked since ${parkedAt} (${duration(since)}): it is not contacted. devfleet fleet-node-resume --id ${id} brings it back.`,
+    summary: `${id} is parked since ${parkedAt} (${duration(since)}): it is not contacted. homelab fleet-node-resume --id ${id} brings it back.`,
   };
 }
 
@@ -63,7 +63,7 @@ export function parkedOnline(
         status: 'warn',
         summary: `${id} is parked, and online on the tailnet.`,
         remedy: {
-          action: `Stop the machine if nobody uses it (it costs money while it runs), or resume it: devfleet fleet-node-resume --id ${id}.`,
+          action: `Stop the machine if nobody uses it (it costs money while it runs), or resume it: homelab fleet-node-resume --id ${id}.`,
         },
       }
     : null;

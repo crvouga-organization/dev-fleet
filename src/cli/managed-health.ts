@@ -136,7 +136,7 @@ async function hubReachable(
   return fail(
     'beszel:hub',
     'BESZEL_HUB_UNREACHABLE',
-    `The private dashboard did not answer at ${hub}/api/health. The hub runs on the manager: keep it awake with Docker Desktop running, then run devfleet fleet-sync there.`
+    `The private dashboard did not answer at ${hub}/api/health. The hub runs on the manager: keep it awake with Docker Desktop running, then run homelab fleet-sync there.`
   );
 }
 
@@ -219,7 +219,7 @@ export function managedHealthScope(
           summary:
             'Canonical developer node lacks a verified SSH/check-out registration.',
           remedy: {
-            action: `Enroll ${node.id} with devfleet fleet-node-add, or use interactive fleet-sync enrollment.`,
+            action: `Enroll ${node.id} with homelab fleet-node-add, or use interactive fleet-sync enrollment.`,
           },
         })),
       ],

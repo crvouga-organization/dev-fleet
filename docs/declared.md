@@ -1,6 +1,6 @@
 # What is declared, and where
 
-Two machines given the same dev-fleet version and the same `fleet.json` should
+Two machines given the same homelab version and the same `fleet.json` should
 end up the same. That holds only for what is written down in a tracked file,
 pinned to an exact version or digest, applied by a tool that converges
 (Ansible or mise) and measured afterwards. This page lists what is, and what
@@ -14,7 +14,7 @@ may only shrink.
 
 | What                                                           | Declared in                                                                                                  | Pinned by                                                            | Applied by                                                                                    | Measured by                                                     |
 | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| The fleet: machines, services, accounts                        | Your `fleet.json`                                                                                            | The dev-fleet version in your `package.json`, which names one commit | `fleet-sync`                                                                                  | `fleet-status`                                                  |
+| The fleet: machines, services, accounts                        | Your `fleet.json`                                                                                            | The homelab version in your `package.json`, which names one commit | `fleet-sync`                                                                                  | `fleet-status`                                                  |
 | Tools: languages, CLIs, coding agents                          | `mise.toml`                                                                                                  | `mise.lock`: version and checksum for each platform                  | `mise install --locked`                                                                       | Tool and `agent:verification` checks                            |
 | mise itself                                                    | `min_version` and `mise_*_sha256` in `mise.toml`                                                             | The digest of its release archive, held here                         | `bootstrap/bootstrap.sh`                                                                      | `tool:mise`: the pin, or a newer one it keeps                   |
 | JavaScript dependencies                                        | `package.json`                                                                                               | `bun.lock`                                                           | `bun install --frozen-lockfile`                                                               | The install fails on a difference                               |
@@ -29,7 +29,7 @@ may only shrink.
 | The manager's power settings                                   | `pmset` in `ansible/macos/policy.json`                                                                       | The commit                                                           | `ansible/macos/manager.yml`, on every `fleet-sync`, after one grant (`manager-privilege.yml`) | `manager:power`                                                 |
 | Ansible on the manager                                         | `ansible/pyproject.toml`                                                                                     | `ansible/uv.lock`: one release, one Python, every dependency hashed  | `uv run --locked --isolated`                                                                  | A hash that differs stops the run                               |
 | Ansible on a worker                                            | `ansible-core` in `ansible/ubuntu/policy.json`                                                               | Exact version                                                        | `ansible/ubuntu/tasks/packages.yml`                                                           | `package:ansible-core`                                          |
-| The CLI proxy                                                  | `cliproxy/compose.yaml`, `image.lock.json`, `requirements.lock`, `launchd/`, `config.template.yaml`          | Image digests; hashed Python dependencies                            | `devfleet cliproxy install`, and `fleet-sync` after it                                        | The proxy's audit                                               |
+| The CLI proxy                                                  | `cliproxy/compose.yaml`, `image.lock.json`, `requirements.lock`, `launchd/`, `config.template.yaml`          | Image digests; hashed Python dependencies                            | `homelab cliproxy install`, and `fleet-sync` after it                                        | The proxy's audit                                               |
 | Agent profiles and T3 providers                                | `agents/registry.json`, `agents/t3.json`; each CLI's configuration from `ansible/agents/templates/`          | The commit                                                           | `fleet-sync` (agent profiles through `ansible/agents/agents.yml`)                             | Profile receipts; the plan after every apply; `agent:*:session` |
 | A limit on agent sessions (opt-in)                             | `agentSessionLimit` in your `fleet.json`; `resourceSafety.agentSessionLimit` in `ansible/ubuntu/policy.json` | The commit                                                           | `ansible/ubuntu/tasks/agent-session-limit.yml`                                                | `worker:agent-sessions`                                         |
 | Worker time service                                            | `ansible/ubuntu/tasks/services.yml`, offsets in `clock` in `ansible/ubuntu/policy.json`                      | The commit                                                           | `fleet-sync`                                                                                  | `worker:clock`                                                  |
@@ -66,7 +66,7 @@ stays in the playbook: the playbook is its declaration.
 - **The CLI proxy's lifecycle.** It is installed and started by its own Python
   scripts from the declarative files above, not by a playbook.
 - **Files TypeScript and shell still write.** The installed `fleet.json`, the
-  `current` and `devfleet` links, the `PATH` lines in shell profiles, the
+  `current` and `homelab` links, the `PATH` lines in shell profiles, the
   global mise configuration, the T3 server archive and T3 settings. Each is derived
   from a tracked file and rewritten on every run, but by code.
 - **Logins.** Tailscale, Vault, GitHub, each provider account and T3 pairing
@@ -94,7 +94,7 @@ batch, the riskiest way to change a fleet. Each pin is moved by a machine,
 one pull request at a time, which CI, the fresh workers and the VM test then
 judge like any change, unless it says below why a person moves it.
 
-The repository runs Renovate hourly with its tracked configuration; it opens at most two pull requests an hour. The Pins workflow owns provider CLI versions, resolves stable releases and opens one pull request per provider with platform integrity locks. A failed resolution fails Pins and is tracked in its CI failure issue. A consumer adopts the published revision by updating its dev-fleet dependency and running fleet-sync. Existing agent processes pick up a new executable on their next launch. Its dependency dashboard records pending updates. Renovate takes security advisories from the public OSV database, not from Dependabot alerts, which the workflow's token cannot read. That token may not change files under `.github/workflows` either, so updates to the actions and images there need the `PINS_TOKEN` secret (contents, issues, pull requests and workflows write); without it each Renovate run warns.
+The repository runs Renovate hourly with its tracked configuration; it opens at most two pull requests an hour. The Pins workflow owns provider CLI versions, resolves stable releases and opens one pull request per provider with platform integrity locks. A failed resolution fails Pins and is tracked in its CI failure issue. A consumer adopts the published revision by updating its homelab dependency and running fleet-sync. Existing agent processes pick up a new executable on their next launch. Its dependency dashboard records pending updates. Renovate takes security advisories from the public OSV database, not from Dependabot alerts, which the workflow's token cannot read. That token may not change files under `.github/workflows` either, so updates to the actions and images there need the `PINS_TOKEN` secret (contents, issues, pull requests and workflows write); without it each Renovate run warns.
 
 | Pin                                      | Moved by                                                                                                                              |
 | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
@@ -106,7 +106,7 @@ The repository runs Renovate hourly with its tracked configuration; it opens at 
 | The tunnel image of the monitoring hub   | Renovate, by tag and digest (a custom manager in `renovate.json`)                                                                     |
 | Tailscale on workers                     | Renovate, a release once it is 14 days old (a custom manager in `renovate.json`)                                                      |
 | Beszel (hub image and agents)            | The Pins workflow resolves the stable release and verifies the platform archives and binary digests                                   |
-| Docker Desktop on the manager            | A person, because a person installs it and dev-fleet only measures the version                                                        |
+| Docker Desktop on the manager            | A person, because a person installs it and homelab only measures the version                                                        |
 | The Ubuntu snapshot and package versions | The Pins workflow compares the supported architectures in each Ubuntu release and advances the snapshot and package versions together |
 
 Set `"softwarePolicy": "latest-supported"` in fleet.json to require fleet-wide version verification. The consumer's package revision fixes the rollout target. Pins and Renovate check upstream channels before publication. During sync, `versionParity.nodes[].pending` lists missing or mismatched checks, including workers omitted from this run. A later sync of the same revision measures them again. A newer Ubuntu security package stays installed and counts as pending until its release pin catches up.
@@ -116,7 +116,7 @@ newer Tailscale through its own updates and keeps it, and `worker:package:tailsc
 warns with `PACKAGE_NEWER_THAN_PIN` until the pin is raised. Renovate raises it
 only to a release that is 14 days old, because a worker still older than the
 pin stops with `TAILSCALE_UPGRADE_PENDING` until a person runs
-`devfleet fleet-sync --maintenance-reboot`, which upgrades it to the pin. A
+`homelab fleet-sync --maintenance-reboot`, which upgrades it to the pin. A
 person who raises the pin by hand follows the same rule: never past the
 version every enrolled worker reports (`worker:package:tailscale`) unless a
 maintenance run follows the approval.

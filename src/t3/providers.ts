@@ -28,7 +28,7 @@ export async function machineProviders(
 ): Promise<Check> {
   const remedy = {
     action:
-      'Run devfleet t3-apply --dry-run on this machine and review any conflicting instance; adopt it with t3-apply --import ID only if it should be managed.',
+      'Run homelab t3-apply --dry-run on this machine and review any conflicting instance; adopt it with t3-apply --import ID only if it should be managed.',
   };
   try {
     const target = paths(options, workspace);

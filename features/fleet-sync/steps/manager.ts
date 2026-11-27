@@ -706,7 +706,7 @@ async function holdVault(world: FleetSyncWorld, apply: boolean) {
       return succeeded();
     }
   );
-  const scratch = mkdtempSync(join(tmpdir(), 'devfleet-vault-'));
+  const scratch = mkdtempSync(join(tmpdir(), 'homelab-vault-'));
   world.defer(() => rmSync(scratch, { recursive: true, force: true }));
   world.checks = await holdManagerVault(world.commands.run, {
     apply,

@@ -1,14 +1,14 @@
 Feature: The pinned Litestream replicates the fleet state and a new manager restores it
   These scenarios run the Litestream that mise.toml pins, against a directory
   and against a throwaway S3 service: no machine and no real bucket. They are
-  skipped where the toolchain is not installed or DEVFLEET_TEST_S3 names no
-  service. Where DEVFLEET_TEST_LITESTREAM is "required" (the Fleet state job
+  skipped where the toolchain is not installed or HOMELAB_TEST_S3 names no
+  service. Where HOMELAB_TEST_LITESTREAM is "required" (the Fleet state job
   in CI) nothing is skipped: a missing piece fails.
 
   @required
   Scenario: Where these checks are required, nothing they need is missing
     Then the pinned Litestream is installed
-    And DEVFLEET_TEST_S3 names an S3 service
+    And HOMELAB_TEST_S3 names an S3 service
 
   @litestream @slow
   Rule: Litestream replicates the state database to a directory and a new manager restores it
@@ -108,7 +108,7 @@ Feature: The pinned Litestream replicates the fleet state and a new manager rest
 
   @litestream @s3 @slow
   Rule: fleet-state keeps a fleet in an S3 bucket
-    In a command, `$S3` is the origin DEVFLEET_TEST_S3 names, `$S3_BUCKET` is a
+    In a command, `$S3` is the origin HOMELAB_TEST_S3 names, `$S3_BUCKET` is a
     bucket made there for the scenario, `~` is the manager's home and
     examples/fleet.json is the tracked example.
 
@@ -116,11 +116,11 @@ Feature: The pinned Litestream replicates the fleet state and a new manager rest
       Given a new bucket on the S3 service
       And managers "a" and "b" run the pinned Litestream
       And commands on manager "a" are passed:
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
       And commands on manager "b" are passed:
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
 
     Scenario: The bucket is connected
       When the operator runs "fleet-state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "a"
@@ -147,11 +147,11 @@ Feature: The pinned Litestream replicates the fleet state and a new manager rest
       Given a new bucket on the S3 service
       And managers "a" and "b" run the pinned Litestream
       And commands on manager "a" are passed:
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
       And commands on manager "b" are passed:
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
       And the operator ran "fleet-state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "a"
       And the operator ran "fleet-state --import examples/fleet.json" on manager "a"
 
@@ -172,11 +172,11 @@ Feature: The pinned Litestream replicates the fleet state and a new manager rest
       Given a new bucket on the S3 service
       And managers "a" and "b" run the pinned Litestream
       And commands on manager "a" are passed:
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
       And commands on manager "b" are passed:
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
       And the operator ran "fleet-state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "a"
       And the operator ran "fleet-state --import examples/fleet.json" on manager "a"
       And the operator ran "fleet-state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "b"

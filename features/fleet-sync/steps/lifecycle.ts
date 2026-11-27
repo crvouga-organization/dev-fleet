@@ -80,15 +80,15 @@ const TICKET = `placeholder-ticket-${randomUUID()}`;
 function lifecycle(world: FleetSyncWorld): Lifecycle {
   let found = lifecycles.get(world);
   if (found) return found;
-  const directory = mkdtempSync(join(tmpdir(), 'devfleet-lifecycle-'));
-  const earlier = process.env['DEVFLEET_STATE'];
-  process.env['DEVFLEET_STATE'] = join(directory, 'state');
-  // As the devfleet CLI does at start: every SSH session renders the
+  const directory = mkdtempSync(join(tmpdir(), 'homelab-lifecycle-'));
+  const earlier = process.env['HOMELAB_STATE'];
+  process.env['HOMELAB_STATE'] = join(directory, 'state');
+  // As the homelab CLI does at start: every SSH session renders the
   // fleet-owned known_hosts from the keys the fleet state pins.
   readPinsWith(() => readPins());
   world.defer(() => {
     readPinsWith(null);
-    process.env['DEVFLEET_STATE'] = earlier;
+    process.env['HOMELAB_STATE'] = earlier;
     rmSync(directory, { recursive: true, force: true });
   });
   found = {
@@ -770,7 +770,7 @@ Given(
         JSON.stringify({
           id: randomUUID(),
           credential: PAIRING_CODE,
-          label: 'dev-fleet manager',
+          label: 'homelab manager',
         })
       )
     );
@@ -867,7 +867,7 @@ Then('the session issued for the link was revoked', (world) => {
       '--scope',
       'access:write',
       '--label',
-      'dev-fleet pairing',
+      'homelab pairing',
     ],
     ['t3', 'auth', 'session', 'revoke', SESSION_ID],
   ]);

@@ -2,7 +2,7 @@ Feature: The authentication document is generated where it can be
   docs/authentication.md says where every credential lives and how it reaches
   each node. Its tables of secrets, credential checks and timers are written
   from the code, so a secret, a check or a timer added without the document
-  fails here. DEVFLEET_UPDATE_DOCS=1 rewrites them.
+  fails here. HOMELAB_UPDATE_DOCS=1 rewrites them.
 
   Scenario Outline: The table of <table> is the one the code describes
     When the table "<table>" is generated from the code

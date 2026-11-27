@@ -222,7 +222,7 @@ const VAULT_UNREACHABLE = (
 ): Pick<Check, 'summary' | 'remedy'> => ({
   summary: 'VAULT_UNREACHABLE',
   remedy: {
-    action: `Vault at ${addr} does not answer this worker, or is sealed; a new token does not help, so issue none. On the worker, vault status -address=${addr} says which: no answer is the network between them (the tailnet, DNS, the address under secrets in the fleet configuration) or a Vault that is not running; "Sealed true" is a Vault to unseal. Then run devfleet fleet-sync. A session the worker held is still held if Vault returns before it lapses; no credentials are copied between machines.`,
+    action: `Vault at ${addr} does not answer this worker, or is sealed; a new token does not help, so issue none. On the worker, vault status -address=${addr} says which: no answer is the network between them (the tailnet, DNS, the address under secrets in the fleet configuration) or a Vault that is not running; "Sealed true" is a Vault to unseal. Then run homelab fleet-sync. A session the worker held is still held if Vault returns before it lapses; no credentials are copied between machines.`,
   },
 });
 

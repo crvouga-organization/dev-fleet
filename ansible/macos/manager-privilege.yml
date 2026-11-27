@@ -35,9 +35,9 @@
           - "manager_home is match('^/')"
     - name: Allow exactly the AC power settings and the network time reading
       ansible.builtin.copy:
-        dest: '/etc/sudoers.d/dev-fleet-manager-{{ user }}'
+        dest: '/etc/sudoers.d/homelab-manager-{{ user }}'
         content: |
-          # Managed by dev-fleet: manager power policy
+          # Managed by homelab: manager power policy
           {{ user }} ALL=(root) NOPASSWD: /usr/bin/pmset -c *
           {{ user }} ALL=(root) NOPASSWD: /usr/sbin/systemsetup -getusingnetworktime
         owner: root
@@ -57,9 +57,9 @@
     # opens the log again for every run of the job.
     - name: Rotate the logs of the manager's scheduled jobs
       ansible.builtin.copy:
-        dest: '/etc/newsyslog.d/dev-fleet-{{ user }}.conf'
+        dest: '/etc/newsyslog.d/homelab-{{ user }}.conf'
         content: |
-          # Managed by dev-fleet: manager job logs
+          # Managed by homelab: manager job logs
           # logfilename  [owner:group]  mode  count  size(KiB)  when  flags
           {{ job_log_directory }}/{{ fleetSync.label }}.out.log {{ user }}:{{ manager_group.stdout }} 600 {{ jobLogs.keep }} {{ jobLogs.maxKiB }} * NZ
           {{ job_log_directory }}/{{ fleetSync.label }}.err.log {{ user }}:{{ manager_group.stdout }} 600 {{ jobLogs.keep }} {{ jobLogs.maxKiB }} * NZ
@@ -75,8 +75,8 @@
         path: '{{ item }}'
         state: absent
       loop:
-        - '/etc/sudoers.d/dev-fleet-manager-{{ user }}'
-        - '/etc/newsyslog.d/dev-fleet-{{ user }}.conf'
+        - '/etc/sudoers.d/homelab-manager-{{ user }}'
+        - '/etc/newsyslog.d/homelab-{{ user }}.conf'
       when: grant == 'absent'
 
 - name: Stage the fleet's T3 policy

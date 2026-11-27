@@ -58,21 +58,21 @@ class Platform(unittest.TestCase):
 class Launchctl(unittest.TestCase):
     def test_argv_construction(self):
         agents = host.Launchd(uid=501, home="/Users/someone")
-        plist = "/Users/someone/Library/LaunchAgents/dev.devfleet.cliproxy-gc.plist"
+        plist = "/Users/someone/Library/LaunchAgents/dev.homelab.cliproxy-gc.plist"
         self.assertEqual(
-            agents.enable("dev.devfleet.cliproxy-gc"),
+            agents.enable("dev.homelab.cliproxy-gc"),
             [
-                ["launchctl", "enable", "gui/501/dev.devfleet.cliproxy-gc"],
+                ["launchctl", "enable", "gui/501/dev.homelab.cliproxy-gc"],
                 ["launchctl", "bootstrap", "gui/501", plist],
             ],
         )
         self.assertEqual(
-            agents.bootout("dev.devfleet.cliproxy-gc"),
-            ["launchctl", "bootout", "gui/501/dev.devfleet.cliproxy-gc"],
+            agents.bootout("dev.homelab.cliproxy-gc"),
+            ["launchctl", "bootout", "gui/501/dev.homelab.cliproxy-gc"],
         )
         calls = []
-        agents.loaded("dev.devfleet.cliproxy-fleet", lambda argv: calls.append(argv) or True)
-        self.assertEqual(calls, [["launchctl", "print", "gui/501/dev.devfleet.cliproxy-fleet"]])
+        agents.loaded("dev.homelab.cliproxy-fleet", lambda argv: calls.append(argv) or True)
+        self.assertEqual(calls, [["launchctl", "print", "gui/501/dev.homelab.cliproxy-fleet"]])
         install = agents.install("/usr/bin/python3", pathlib.Path("/r/scripts"), "a" * 40)
         self.assertNotIn("sudo", install)
         self.assertEqual(host.Systemd().install("python3", pathlib.Path("/r"), "a" * 40)[:2], ["sudo", "-n"])
@@ -126,18 +126,18 @@ class TrackedAgents(unittest.TestCase):
         service = agents[host.LAUNCHD_SERVICE]
         self.assertTrue(service["RunAtLoad"])
         self.assertEqual(service["KeepAlive"], {"SuccessfulExit": False})
-        self.assertEqual(agents["dev.devfleet.cliproxy-monitor"]["StartInterval"], 300)
-        self.assertEqual(agents["dev.devfleet.cliproxy-vault-renew"]["StartInterval"], 900)
+        self.assertEqual(agents["dev.homelab.cliproxy-monitor"]["StartInterval"], 300)
+        self.assertEqual(agents["dev.homelab.cliproxy-vault-renew"]["StartInterval"], 900)
         self.assertEqual(
-            [entry["Minute"] for entry in agents["dev.devfleet.cliproxy-backup"]["StartCalendarInterval"]],
+            [entry["Minute"] for entry in agents["dev.homelab.cliproxy-backup"]["StartCalendarInterval"]],
             [0, 15, 30, 45],
         )
         self.assertEqual(
-            agents["dev.devfleet.cliproxy-gc"]["StartCalendarInterval"],
+            agents["dev.homelab.cliproxy-gc"]["StartCalendarInterval"],
             {"Weekday": 0, "Hour": 4, "Minute": 0},
         )
         self.assertEqual(
-            agents["dev.devfleet.cliproxy-backup-check"]["StartCalendarInterval"],
+            agents["dev.homelab.cliproxy-backup-check"]["StartCalendarInterval"],
             {"Weekday": 0, "Hour": 5, "Minute": 0},
         )
 

@@ -1,4 +1,4 @@
-Feature: Every check and code dev-fleet names is one it produces
+Feature: Every check and code homelab names is one it produces
   A check id or result code that nothing produces makes it impossible to tell
   which states are handled. The report groups checks by id and the documents
   and features explain T3 codes: each must come from the code that measures or recovers.

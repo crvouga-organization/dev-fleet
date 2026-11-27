@@ -10,7 +10,7 @@ import { cli, outcome, type CliWorld } from './world';
 
 /** The tailnet control plane fleet-status asks for devices tagged as
  * workers, answered from memory: the HTTP layer is the stand-in, the client
- * is dev-fleet's own.
+ * is homelab's own.
  */
 const { Given, Then } = cli;
 

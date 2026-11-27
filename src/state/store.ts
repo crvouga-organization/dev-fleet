@@ -76,10 +76,10 @@ export function migrations(directory = MIGRATIONS_DIRECTORY): Migration[] {
 
 const MIGRATIONS = migrations();
 
-/** The schema version this dev-fleet writes and the newest it can read. */
+/** The schema version this homelab writes and the newest it can read. */
 export const SCHEMA_VERSION = MIGRATIONS.length;
 
-/** A fleet state written by a newer dev-fleet: this one must neither read nor
+/** A fleet state written by a newer homelab: this one must neither read nor
  * change it, or a rollback (or an old second manager) would damage it.
  */
 export class StateNewerError extends FleetUsageError {}
@@ -89,12 +89,12 @@ function schemaVersion(db: Database): number {
     .user_version;
 }
 
-/** Refuses a database a newer dev-fleet wrote; returns its version. */
+/** Refuses a database a newer homelab wrote; returns its version. */
 function supported(db: Database): number {
   const version = schemaVersion(db);
   if (version > SCHEMA_VERSION)
     throw new StateNewerError(
-      `FLEET_STATE_NEWER_THAN_CLI: the fleet state has schema version ${version}, and this dev-fleet reads version ${SCHEMA_VERSION} at most. Nothing was read or changed. Install the dev-fleet version the fleet runs (npx devfleet --version on the manager that wrote it) and run the command again.`
+      `FLEET_STATE_NEWER_THAN_CLI: the fleet state has schema version ${version}, and this homelab reads version ${SCHEMA_VERSION} at most. Nothing was read or changed. Install the homelab version the fleet runs (npx homelab --version on the manager that wrote it) and run the command again.`
     );
   return version;
 }
@@ -110,7 +110,7 @@ function migrate(db: Database): void {
 
 function unreadable(): FleetUsageError {
   return new FleetUsageError(
-    'The fleet state database cannot be read. It is a local copy: run devfleet fleet-state --restore to replace it from the bucket.'
+    'The fleet state database cannot be read. It is a local copy: run homelab fleet-state --restore to replace it from the bucket.'
   );
 }
 
@@ -135,7 +135,7 @@ function reading<T>(file: string, read: (db: Database) => T): T | null {
 }
 
 /** Litestream replicates the write-ahead log, so the database stays in WAL
- * mode; a second devfleet process waits for the first instead of failing.
+ * mode; a second homelab process waits for the first instead of failing.
  */
 function writing<T>(file: string, write: (db: Database) => T): T {
   mkdirSync(dirname(file), { recursive: true, mode: 0o700 });

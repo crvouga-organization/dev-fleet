@@ -1,5 +1,5 @@
 Feature: Adding, signing in again and removing one provider account
-  "devfleet fleet-accounts" lists the roster on the manager. "--add PROVIDER",
+  "homelab fleet-accounts" lists the roster on the manager. "--add PROVIDER",
   "--relogin PROVIDER INDEX" and "--remove PROVIDER INDEX" change one account
   on the CLI proxy, where a sign-in writes into a staging directory and only
   a complete credential is moved in (cliproxy/tests/test_accounts.py). Every

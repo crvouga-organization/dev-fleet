@@ -1,5 +1,5 @@
 /** Who repairs a check: a repair recipe (`repair`), or the reason only a
- * person can (`manual`). Every check ID dev-fleet reports matches one entry,
+ * person can (`manual`). Every check ID homelab reports matches one entry,
  * by its exact ID or by a prefix ending in `*` (`beszel:*`). The most
  * specific match wins. `login:*` is the sign-in recipe named after the rest
  * of an `auth:` check's ID.
@@ -144,7 +144,7 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'ssh:*',
     manual:
-      'SSH trust (host keys, keys in the agent, the alias) is set up by a person once per machine; dev-fleet never accepts a host key for you.',
+      'SSH trust (host keys, keys in the agent, the alias) is set up by a person once per machine; homelab never accepts a host key for you.',
   },
   { pattern: 'login:*', manual: IDENTITY },
   { pattern: 'provider:*', manual: IDENTITY },
@@ -172,7 +172,7 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'git:*',
     manual:
-      'Uncommitted or unpushed work belongs to a person; dev-fleet never resets a checkout.',
+      'Uncommitted or unpushed work belongs to a person; homelab never resets a checkout.',
   },
   {
     pattern: 'git:configuration',
@@ -198,12 +198,12 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'proxy:*',
     manual:
-      'The CLI proxy is installed with devfleet cliproxy install and its accounts are signed in by a person.',
+      'The CLI proxy is installed with homelab cliproxy install and its accounts are signed in by a person.',
   },
   {
     pattern: 'accounts:roster-current',
     manual:
-      'The roster reaches every node with devfleet fleet-sync --only accounts, run from the manager.',
+      'The roster reaches every node with homelab fleet-sync --only accounts, run from the manager.',
   },
   { pattern: 'accounts:native-login', manual: IDENTITY },
   { pattern: 'accounts:verification', manual: EVIDENCE },
@@ -216,12 +216,12 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'revision',
     manual:
-      'The checkout of that computer differs from the manager’s: reconcile its branch, or converge it with fleet-sync; dev-fleet never resets a working tree.',
+      'The checkout of that computer differs from the manager’s: reconcile its branch, or converge it with fleet-sync; homelab never resets a working tree.',
   },
   {
     pattern: 'sync:*',
     manual:
-      'The checkout of that computer differs from the manager’s: reconcile its lockfiles and pins, or converge it with fleet-sync; dev-fleet never resets a working tree.',
+      'The checkout of that computer differs from the manager’s: reconcile its lockfiles and pins, or converge it with fleet-sync; homelab never resets a working tree.',
   },
   {
     pattern: 'restore:*',

@@ -5,25 +5,25 @@ Feature: fleet-node-sync converges the machine it is run on
   Rule: The command is in the catalog and says how to preview
 
     Background:
-      Given devfleet runs from "/not-a-real-checkout" with the roster "/not-a-real-roster"
+      Given homelab runs from "/not-a-real-checkout" with the roster "/not-a-real-roster"
 
     Scenario: Its help names --dry-run
-      When the operator runs "devfleet fleet-node-sync --help"
+      When the operator runs "homelab fleet-node-sync --help"
       Then it exits with 0
       And it prints text containing "--dry-run"
 
     Scenario: The command index lists it
-      When the operator runs "devfleet commands --json"
+      When the operator runs "homelab commands --json"
       Then the answer contains "fleet-node-sync"
 
   Rule: Nothing changes in a dry run, or under a name that is not a node ID
 
     Background:
-      Given devfleet runs from "/not-a-real-checkout" with the roster "/not-a-real-roster"
+      Given homelab runs from "/not-a-real-checkout" with the roster "/not-a-real-roster"
 
     Scenario: A dry run resolves the revision and runs nothing else
       Given every command on this machine prints "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      When the operator runs "devfleet fleet-node-sync --id dev-linux --dry-run"
+      When the operator runs "homelab fleet-node-sync --id dev-linux --dry-run"
       Then it exits with 0
       And it answers with at least:
         """
@@ -39,7 +39,7 @@ Feature: fleet-node-sync converges the machine it is run on
 
     Scenario: A name that is not a node ID is refused before any tool runs
       Given no command may run on this machine
-      When the operator runs "devfleet fleet-node-sync --id ../bad"
+      When the operator runs "homelab fleet-node-sync --id ../bad"
       Then it is refused
       And no command was run
 
@@ -62,14 +62,14 @@ Feature: fleet-node-sync converges the machine it is run on
         | codex | a@example.com | codex-a@example.com | gpt-x  |
 
     Scenario: A sync gives T3 the providers of the revision and records the revision
-      When the operator runs "devfleet fleet-node-sync --id node --t3-home $T3_HOME"
+      When the operator runs "homelab fleet-node-sync --id node --t3-home $T3_HOME"
       Then it exits with 0
       And in T3's settings, "providerInstances.personal_codex_a_example_com.config.binaryPath" contains "$CHECKOUT/node_modules/.fleet-revisions/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       And the receipt of the checkout names the revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
     Scenario: A sync can be repeated
-      Given the operator has run "devfleet fleet-node-sync --id node --t3-home $T3_HOME"
-      When the operator runs "devfleet fleet-node-sync --id node --t3-home $T3_HOME"
+      Given the operator has run "homelab fleet-node-sync --id node --t3-home $T3_HOME"
+      When the operator runs "homelab fleet-node-sync --id node --t3-home $T3_HOME"
       Then it exits with 0
 
     Scenario: A T3 conflict is reported as partial progress and the revision is not recorded
@@ -77,7 +77,7 @@ Feature: fleet-node-sync converges the machine it is run on
         """
         { "providerInstances": { "personal_grok_proxy": { "driver": "grok" } } }
         """
-      When the operator runs "devfleet fleet-node-sync --id node --t3-home $T3_HOME"
+      When the operator runs "homelab fleet-node-sync --id node --t3-home $T3_HOME"
       Then it exits with 1
       And it answers with at least:
         """
@@ -87,7 +87,7 @@ Feature: fleet-node-sync converges the machine it is run on
 
     Scenario: Invalid ownership reports the reconciliation precondition without advancing the receipt
       Given the ownership record reads "credential-private-sentinel"
-      When the operator runs "devfleet fleet-node-sync --id node --t3-home $T3_HOME"
+      When the operator runs "homelab fleet-node-sync --id node --t3-home $T3_HOME"
       Then it exits with 1
       And it answers with at least:
         """

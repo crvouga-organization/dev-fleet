@@ -1,5 +1,5 @@
 Feature: A new worker joins the fleet by itself from a seed
-  devfleet fleet-node-seed writes the cloud-init user data a stock Ubuntu
+  homelab fleet-node-seed writes the cloud-init user data a stock Ubuntu
   image boots with: the worker account with the manager's key, the privilege
   rule fleet-sync expects, a host key generated for the machine and the
   pinned Tailscale, which joins with a short-lived single-use auth key. No

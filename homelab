@@ -1,0 +1,5 @@
+#!/bin/sh
+# The homelab command from this checkout, for developing homelab:
+# ./homelab <command>. A fleet is run with the published package instead
+# (README.md); on workers fleet-sync puts homelab on PATH.
+exec "$(dirname "$0")/bootstrap/homelab" "$@"

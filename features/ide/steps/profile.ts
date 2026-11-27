@@ -59,7 +59,7 @@ const apply = async (world: IdeWorld, preview = false): Promise<void> => {
   const options = {
     apply: !preview,
     pause: async () => {},
-    // T3 writing its own settings between dev-fleet's read and write.
+    // T3 writing its own settings between homelab's read and write.
     beforeWrite: async () => {
       if (profile.interruptions <= 0) return;
       profile.interruptions--;
@@ -80,7 +80,7 @@ Given('the profile has been applied', async (world) => {
 });
 
 Given(
-  'T3 rewrites its settings while dev-fleet merges, {int} time(s)',
+  'T3 rewrites its settings while homelab merges, {int} time(s)',
   (world, times: number) => {
     of(world).interruptions = times;
   }

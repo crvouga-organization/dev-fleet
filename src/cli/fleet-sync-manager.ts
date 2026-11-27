@@ -342,7 +342,7 @@ export async function managerAgentProfiles(
         status: 'fail',
         summary: 'MANAGER_AGENT_PROFILES_FAILED',
         remedy: {
-          action: `Run bun src/agents/cli.ts --yes agents apply --node ${id} --tool ${tool} --profile proxy in the dev-fleet checkout on the manager and review the result.`,
+          action: `Run bun src/agents/cli.ts --yes agents apply --node ${id} --tool ${tool} --profile proxy in the homelab checkout on the manager and review the result.`,
         },
       },
     ];

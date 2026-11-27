@@ -67,7 +67,7 @@ Given(
       '--name',
       container,
       '--label',
-      'dev.devfleet.watchdog=restart',
+      'dev.homelab.watchdog=restart',
       '--health-cmd',
       'wget -q -T 1 -O /dev/null http://127.0.0.1:8080/ || exit 1',
       '--health-interval',

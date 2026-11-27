@@ -48,10 +48,10 @@ jobs:
       # never a pinned tool. A runner without it fails instead of skipping.
       - run: mise exec python restic vault uv pnpm -- bun test
         env:
-          DEVFLEET_TEST_VAULT: required
-          DEVFLEET_TEST_PNPM: required
-          DEVFLEET_TEST_ANSIBLE: required
-          DEVFLEET_TEST_PWSH: required
+          HOMELAB_TEST_VAULT: required
+          HOMELAB_TEST_PNPM: required
+          HOMELAB_TEST_ANSIBLE: required
+          HOMELAB_TEST_PWSH: required
       - run: mise exec python restic -- bun run lint:cliproxy
       - run: mise exec python restic -- bun run test:cliproxy
   state:
@@ -84,8 +84,8 @@ jobs:
         run: bun test features/state
         env:
           # A missing Litestream or S3 service fails here instead of skipping.
-          DEVFLEET_TEST_LITESTREAM: required
-          DEVFLEET_TEST_S3: http://127.0.0.1:5000
+          HOMELAB_TEST_LITESTREAM: required
+          HOMELAB_TEST_S3: http://127.0.0.1:5000
   workflows:
     name: Workflows
     runs-on: ubuntu-latest
@@ -147,9 +147,9 @@ jobs:
       - run: bun install --frozen-lockfile
       - run: bun test
         env:
-          DEVFLEET_TEST_MANAGER_DESKTOP: required
+          HOMELAB_TEST_MANAGER_DESKTOP: required
           # The runner's PowerShell runs the Windows bootstrap here too.
-          DEVFLEET_TEST_PWSH: required
+          HOMELAB_TEST_PWSH: required
       - name: Converge the manager playbook, then prove a second run and a dry run change nothing
         run: |
           converge() {
@@ -162,10 +162,10 @@ jobs:
           mkdir -p "$HOME/.local/bin" "$fleet/manager-runs"
           git worktree add --quiet --detach "$fleet/manager-runs/$GITHUB_SHA" "$GITHUB_SHA"
           ln -s "manager-runs/$GITHUB_SHA" "$fleet/current"
-          ln -s "$fleet/manager-runs/pruned/bootstrap/devfleet" "$HOME/.local/bin/devfleet"
+          ln -s "$fleet/manager-runs/pruned/bootstrap/homelab" "$HOME/.local/bin/homelab"
           converge
-          test -x "$HOME/.local/bin/devfleet"
-          test "$(readlink "$HOME/.local/bin/devfleet")" = "$fleet/current/bootstrap/devfleet"
+          test -x "$HOME/.local/bin/homelab"
+          test "$(readlink "$HOME/.local/bin/homelab")" = "$fleet/current/bootstrap/homelab"
           converge
           [ "$(changed)" = changed=0 ] || { echo '::error::A second run changed the manager.'; exit 1; }
           converge --check --diff
@@ -256,9 +256,9 @@ jobs:
         run: bun test features/fresh-box
         env:
           # A missing Docker or SSH client fails here instead of skipping.
-          DEVFLEET_TEST_FRESH_BOX: required
-          DEVFLEET_TEST_FRESH_BOX_RELEASE: ${{ matrix.release }}
-          DEVFLEET_TEST_FRESH_BOX_FEATURE: ${{ matrix.feature }}
+          HOMELAB_TEST_FRESH_BOX: required
+          HOMELAB_TEST_FRESH_BOX_RELEASE: ${{ matrix.release }}
+          HOMELAB_TEST_FRESH_BOX_FEATURE: ${{ matrix.feature }}
   agent-box:
     name: Monitoring agent on systemd
     # The Beszel agent playbook applied for real on a disposable Ubuntu
@@ -277,7 +277,7 @@ jobs:
       - name: Apply the agent playbook on a systemd machine
         run: bun test features/monitoring
         env:
-          DEVFLEET_TEST_AGENT_BOX: required
+          HOMELAB_TEST_AGENT_BOX: required
   proxy-box:
     name: Pinned CLI proxy with a stand-in provider
     # The proxy image the fleet pins, in a container, with one account whose
@@ -294,7 +294,7 @@ jobs:
       - name: Ask the pinned proxy about an account it holds back
         run: bun test features/accounts
         env:
-          DEVFLEET_TEST_PROXY_BOX: required
+          HOMELAB_TEST_PROXY_BOX: required
   required:
     name: Required checks
     # The one check the ruleset of main requires. It passes only when every

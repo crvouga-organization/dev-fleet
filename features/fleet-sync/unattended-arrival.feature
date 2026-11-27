@@ -267,7 +267,7 @@ Feature: A new worker reaches ready in one fleet-sync, with no hands on it
       When the worker is deployed with --maintenance-reboot
       Then the worker was converged 1 time
       And the deployment reports "worker:tailscale-upgrade" as "fail", saying "WORKER_TAILSCALE_UPGRADE_FAILED"
-      And the remedy of "worker:tailscale-upgrade" names "journalctl -u devfleet-tailscale-upgrade"
+      And the remedy of "worker:tailscale-upgrade" names "journalctl -u homelab-tailscale-upgrade"
       And "PRIVATE_SENTINEL" appears nowhere in what the deployment reports
 
     Scenario: Without --maintenance-reboot, Tailscale below its pin is left alone

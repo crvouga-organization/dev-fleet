@@ -2,7 +2,7 @@ Feature: Every fleet-sync on the manager runs through the manager run script
   Whether started on the manager or handed off from a worker, fleet-sync runs
   from a clean, fleet-owned checkout of the exact revision, so the result never
   depends on the working tree it was started in. Nobody keeps a clone of
-  dev-fleet: the run script takes the revision from the repository fleet-sync
+  homelab: the run script takes the revision from the repository fleet-sync
   prepared, or from the manager's own copy of the source repository.
 
   Background:
@@ -48,7 +48,7 @@ Feature: Every fleet-sync on the manager runs through the manager run script
       When the run script is started for the revision "main" with "--json"
       Then the run script exits with 2
 
-  Rule: A preview changes nothing outside dev-fleet's own caches
+  Rule: A preview changes nothing outside homelab's own caches
 
     Scenario: A preview runs on the revision's locked Bun and never sets up the toolchain
       The toolchain setup publishes the global mise configuration and edits
@@ -101,7 +101,7 @@ Feature: Every fleet-sync on the manager runs through the manager run script
         | 1111111111111111111111111111111111111111 | 2020-01-01 |
         | 2222222222222222222222222222222222222222 | 2020-01-02 |
         | 3333333333333333333333333333333333333333 | 2020-01-03 |
-      And the public launcher points at "node_modules/.fleet-revisions/old/bootstrap/devfleet" inside the old run "1111111111111111111111111111111111111111"
+      And the public launcher points at "node_modules/.fleet-revisions/old/bootstrap/homelab" inside the old run "1111111111111111111111111111111111111111"
       When the run script is started for the commit "first" with "--json"
       Then the run script exits with 0
       And the public launcher still runs

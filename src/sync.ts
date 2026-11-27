@@ -93,7 +93,7 @@ function failed(summary: string): Check[] {
       summary,
       remedy: {
         action:
-          'Resolve locally using docs/machine-setup.md, then review and retry devfleet fleet-repair --repair workspace.',
+          'Resolve locally using docs/machine-setup.md, then review and retry homelab fleet-repair --repair workspace.',
       },
     },
   ];

@@ -840,7 +840,7 @@ const NOT_CONVERGENCE = [
   'bootstrap/pins.ts',
   'bootstrap/doctor.ts',
   'bootstrap/setup-status.ts',
-  'bootstrap/devfleet',
+  'bootstrap/homelab',
   'bootstrap/fleet-manager-run.sh',
   'bootstrap/verify-t3-archive.py',
   'bootstrap/bootstrap.ps1',
@@ -1060,9 +1060,9 @@ Then(
 );
 
 When(
-  'every tracked text file is searched for the names in DEVFLEET_FORBIDDEN',
+  'every tracked text file is searched for the names in HOMELAB_FORBIDDEN',
   async (world) => {
-    const names = (process.env['DEVFLEET_FORBIDDEN'] ?? '')
+    const names = (process.env['HOMELAB_FORBIDDEN'] ?? '')
       .split(',')
       .map((name) => name.trim().toLowerCase())
       .filter(Boolean);
@@ -1510,17 +1510,17 @@ function quoted(text: string): string[] {
 }
 
 When(
-  'the devfleet commands quoted in the documents are read',
+  'the homelab commands quoted in the documents are read',
   async (world) => {
     world.found = [];
     for (const path of await documents())
       for (const code of quoted(read(path)))
-        for (const match of code.matchAll(/\bdevfleet ([a-z][a-z0-9-]*)/g))
+        for (const match of code.matchAll(/\bhomelab ([a-z][a-z0-9-]*)/g))
           world.found.push(`${path}: ${match[1]!}`);
   }
 );
 
-Then('each is a command of the devfleet CLI', async (world) => {
+Then('each is a command of the homelab CLI', async (world) => {
   const { COMMANDS } = await import('../../src/cli/registry');
   const known = new Set(COMMANDS.map((command) => command.args[0]));
   expect(
@@ -1572,7 +1572,7 @@ const GENERATED: Record<string, () => Promise<string>> = {
       `\`${name}\``,
       required!,
       `\`${envName(name as never)}\``,
-      `\`~/.config/dev-fleet/secrets/${name}\``,
+      `\`~/.config/homelab/secrets/${name}\``,
     ]);
     return table(
       ['Secret', 'Required', '`env` provider variable', '`file` provider file'],
@@ -1642,7 +1642,7 @@ Then(
     );
     const text = read(path);
     const expected = `\n${generatedTables.get(world)!}\n\n`;
-    if (process.env['DEVFLEET_UPDATE_DOCS'])
+    if (process.env['HOMELAB_UPDATE_DOCS'])
       writeFileSync(
         resolve(root, path),
         text.replace(
@@ -1928,14 +1928,14 @@ Then(
 /** The launcher in a package of its own, whose CLI says which Bun ran it. */
 function installed(world: RulesWorld): NonNullable<RulesWorld['installed']> {
   if (world.installed) return world.installed;
-  const at = mkdtempSync(join(tmpdir(), 'devfleet-launcher-'));
+  const at = mkdtempSync(join(tmpdir(), 'homelab-launcher-'));
   world.defer(() => rmSync(at, { recursive: true, force: true }));
   for (const directory of ['bin', 'src/cli', 'node_modules/bun/bin', 'path'])
     mkdirSync(join(at, directory), { recursive: true });
-  copyFileSync(join(root, 'bin/devfleet.mjs'), join(at, 'bin/devfleet.mjs'));
+  copyFileSync(join(root, 'bin/homelab.mjs'), join(at, 'bin/homelab.mjs'));
   writeFileSync(
     join(at, 'src/cli/cli.ts'),
-    "console.log(process.env['DEVFLEET_TEST_BUN'] ?? 'the pinned Bun');\n"
+    "console.log(process.env['HOMELAB_TEST_BUN'] ?? 'the pinned Bun');\n"
   );
   writeFileSync(
     join(at, 'node_modules/bun/package.json'),
@@ -1970,7 +1970,7 @@ Given('a Bun is on PATH', (world) => {
   const shim = join(installed(world).path, 'bun');
   writeFileSync(
     shim,
-    `#!/bin/sh\nDEVFLEET_TEST_BUN='the Bun on PATH' exec '${process.execPath}' "$@"\n`
+    `#!/bin/sh\nHOMELAB_TEST_BUN='the Bun on PATH' exec '${process.execPath}' "$@"\n`
   );
   chmodSync(shim, 0o755);
 });
@@ -1986,7 +1986,7 @@ When('the installed launcher is run', (world) => {
   const env: Record<string, string> = { PATH: path };
   for (const name of ['HOME', 'TMPDIR', 'SYSTEMROOT'])
     if (process.env[name]) env[name] = process.env[name]!;
-  const child = Bun.spawnSync([node, join(at, 'bin/devfleet.mjs')], {
+  const child = Bun.spawnSync([node, join(at, 'bin/homelab.mjs')], {
     cwd: at,
     env,
   });

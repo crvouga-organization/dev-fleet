@@ -51,7 +51,7 @@ Feature: Every provider account has a state, and a provider without a usable one
       | codex    | 2     | b@example.com | needs-login |       |
     When the account checks are made
     Then the check "proxy:account:codex" warns saying "1 of 2 codex accounts usable (account 2 needs-login)"
-    And the check "proxy:account:codex" asks to run "devfleet fleet-accounts --relogin codex 2"
+    And the check "proxy:account:codex" asks to run "homelab fleet-accounts --relogin codex 2"
     And no check names "example.com"
 
   Scenario Outline: The fleet says how many usable accounts are enough

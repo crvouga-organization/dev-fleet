@@ -66,7 +66,7 @@
           - agent_fingerprint is match('^[a-f0-9]{64}$')
           - agent_profile == 'direct' or agent_proxy_endpoint is match('^https?://')
           - agent_files.keys() | sort == agent_spec.files | map(attribute='dest') | sort
-        fail_msg: AGENT_PROFILE_REQUEST_INVALID; dev-fleet passes a validated selection and the digest of every file it renders.
+        fail_msg: AGENT_PROFILE_REQUEST_INVALID; homelab passes a validated selection and the digest of every file it renders.
     - name: Create the profile directories
       ansible.builtin.file:
         path: '{{ item }}'
@@ -92,7 +92,7 @@
       loop_control:
         label: '{{ item.dest | basename }}'
     # A rendered file replaces the one in place only when it has the digest
-    # dev-fleet specified: a template that drifted never reaches a machine.
+    # homelab specified: a template that drifted never reaches a machine.
     - name: Render the configuration files
       ansible.builtin.template:
         src: '{{ item.src }}'
@@ -115,7 +115,7 @@
         label: '{{ item.dest }}'
       register: agent_written
       when: not ansible_check_mode
-    - name: Require every file to be byte for byte what dev-fleet specifies
+    - name: Require every file to be byte for byte what homelab specifies
       ansible.builtin.assert:
         that:
           - item.stat.checksum == agent_files[item.item.dest]

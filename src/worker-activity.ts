@@ -150,7 +150,7 @@ export function idleCheck(
           status: 'warn',
           summary: `${id} has run no agent turn for ${duration(seconds!)}, longer than the declared ${idleAfterHours}h.`,
           remedy: {
-            action: `Park it while nobody needs it: devfleet fleet-node-park --id ${id}. devfleet fleet-node-resume --id ${id} brings it back.`,
+            action: `Park it while nobody needs it: homelab fleet-node-park --id ${id}. homelab fleet-node-resume --id ${id} brings it back.`,
           },
         }
       : {

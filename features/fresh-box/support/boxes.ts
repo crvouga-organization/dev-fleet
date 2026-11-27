@@ -20,13 +20,13 @@ import { buildImage } from './image';
 
 export const repo = resolve(import.meta.dir, '../../..');
 
-/** The Ubuntu release the machines run: DEVFLEET_TEST_FRESH_BOX_RELEASE, or
+/** The Ubuntu release the machines run: HOMELAB_TEST_FRESH_BOX_RELEASE, or
  * the newest the Ubuntu policy accepts. CI runs the features once for every
  * accepted release; the Dockerfile pins the image of each.
  */
 export const RELEASE_UNDER_TEST =
-  process.env['DEVFLEET_TEST_FRESH_BOX_RELEASE'] || UBUNTU_RELEASES[0]!.release;
-const image = `dev-fleet-fresh-box:${RELEASE_UNDER_TEST}`;
+  process.env['HOMELAB_TEST_FRESH_BOX_RELEASE'] || UBUNTU_RELEASES[0]!.release;
+const image = `homelab-fresh-box:${RELEASE_UNDER_TEST}`;
 
 /** The commands a machine must not have before the fleet bootstraps it. */
 export const BEFOREHAND = [
@@ -244,7 +244,7 @@ export async function discardBoxes(): Promise<void> {
   for (const created of boxes.values()) {
     const machine = await created.catch(() => null);
     if (!machine) continue;
-    if (process.env['DEVFLEET_TEST_FRESH_BOX'] === 'keep')
+    if (process.env['HOMELAB_TEST_FRESH_BOX'] === 'keep')
       console.log(`Kept ${machine.container} (docker exec -it … sh).`);
     else await runCommand(['docker', 'rm', '-f', machine.container]);
   }

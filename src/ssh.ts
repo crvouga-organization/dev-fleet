@@ -87,7 +87,7 @@ const FAILURES = [
     id: 'ssh:host-key',
     summary: 'SSH host key is unknown or changed.',
     action:
-      'The worker presented a host key other than the pinned one. Verify its fingerprint out of band, then pin the new key: devfleet fleet-node-replace --id ID --host-key "TYPE BASE64" --apply --yes, or change hostKey in its worker record. A worker reached through your own SSH alias is checked against your known_hosts instead. Never disable host-key checking.',
+      'The worker presented a host key other than the pinned one. Verify its fingerprint out of band, then pin the new key: homelab fleet-node-replace --id ID --host-key "TYPE BASE64" --apply --yes, or change hostKey in its worker record. A worker reached through your own SSH alias is checked against your known_hosts instead. Never disable host-key checking.',
   },
   {
     pattern:

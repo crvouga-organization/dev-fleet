@@ -258,11 +258,11 @@ Feature: What is measured on a worker
       Then the check "worker:t3-deadline-restarts" warns
       And the summary of the check "worker:t3-deadline-restarts" mentions "could not be read"
 
-  Rule: The devfleet launcher is looked for, and nothing a command printed is reported
+  Rule: The homelab launcher is looked for, and nothing a command printed is reported
 
     Scenario: A launcher that is there passes, after one command that only reads
       Given every command prints "PRIVATE_SENTINEL"
-      When the public devfleet launcher is checked
+      When the public homelab launcher is checked
       Then the check "workstation:configuration" passes
       And exactly 1 command was run
       And only "test" commands were run
@@ -270,7 +270,7 @@ Feature: What is measured on a worker
 
     Scenario: A launcher that is missing fails
       Given every command fails, printing "PRIVATE_SENTINEL"
-      When the public devfleet launcher is checked
+      When the public homelab launcher is checked
       Then the check "workstation:configuration" fails
       And nothing reported contains "PRIVATE_SENTINEL"
 

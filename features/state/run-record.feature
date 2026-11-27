@@ -6,7 +6,7 @@ Feature: A fleet-sync run records its approval and its result in the fleet state
 
   Background:
     Given commands on the manager are passed:
-      | DEVFLEET_STATE | ~/state |
+      | HOMELAB_STATE | ~/state |
     And the manager replicates to the bucket
 
   Scenario: A run that fails leaves its approval, and the bucket still receives it

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs the pinned toolchain for the checkout this script is in. fleet-sync
 # runs it on every machine from the checkout of the revision it applies;
-# nobody clones dev-fleet to use it (see README.md).
+# nobody clones homelab to use it (see README.md).
 set -euo pipefail
 os=$(uname -s)
 case "$os" in
@@ -38,7 +38,7 @@ for tool in curl tar unzip; do
 done
 script_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 [[ -f "$script_dir/../mise.toml" ]] || {
-  echo 'Run this from a dev-fleet checkout. To use dev-fleet, run its CLI instead: fleet-sync installs the toolchain.' >&2; exit 1;
+  echo 'Run this from a homelab checkout. To use homelab, run its CLI instead: fleet-sync installs the toolchain.' >&2; exit 1;
 }
 checkout=$(cd "$script_dir/.." && pwd)
 cd "$checkout"

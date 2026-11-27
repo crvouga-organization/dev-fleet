@@ -1,4 +1,4 @@
-# dev-fleet
+# homelab
 
 Keeps a set of development machines in sync: one **manager** and many
 **workers**. One command, `fleet-sync`, brings every machine to the same
@@ -12,32 +12,32 @@ and read [what is assumed](#what-it-assumes) first.
 
 ## How you use it
 
-You do not clone this repository. dev-fleet is a command you install, and your
+You do not clone this repository. homelab is a command you install, and your
 fleet is a small project of your own:
 
 ```
 my-fleet/               your repository
   fleet.json            your machines, your services, the bucket that holds the state
-  package.json          pins the dev-fleet version every machine runs
+  package.json          pins the homelab version every machine runs
 ```
 
-You run `devfleet` from inside that project and pass it the credentials of a
+You run `homelab` from inside that project and pass it the credentials of a
 storage bucket you own. Nothing else has to be kept:
 
 | What                                                                                    | Where it lives                                                     |
 | --------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | The fleet configuration                                                                 | `fleet.json`, in your repository                                   |
-| The version of dev-fleet                                                                | The `@crvouga/dev-fleet` dependency in your `package.json`         |
+| The version of homelab                                                                | The `@crvouga/homelab` dependency in your `package.json`         |
 | The fleet state: the enrolled workers, the approved revision, the configuration applied | Your bucket (any S3-compatible service)                            |
 | Secrets                                                                                 | The provider `fleet.json` names (`vault`, `sops`, `file` or `env`) |
-| The source, checkouts, tools and reports dev-fleet puts on a machine                    | A cache: delete it and `fleet-sync` rebuilds it                    |
+| The source, checkouts, tools and reports homelab puts on a machine                    | A cache: delete it and `fleet-sync` rebuilds it                    |
 
 The CLI proxy and the monitoring hub on the manager still keep data of their
 own; [known limits](#known-limits) says what is lost with the manager.
 
 ## What it assumes
 
-dev-fleet is opinionated. These are part of it, not options:
+homelab is opinionated. These are part of it, not options:
 
 - The **manager** is a macOS machine. You run `fleet-sync` on it, and it hosts
   the shared services (the CLI proxy and the monitoring hub) in Docker Desktop.
@@ -55,7 +55,7 @@ dev-fleet is opinionated. These are part of it, not options:
 - Machine policy is **Ansible** (`ansible/`), tool versions are **mise** pins
   (`mise.toml`, `mise.lock`), monitoring is **Beszel**.
 
-What dev-fleet puts on a machine is written in tracked files and pinned to a
+What homelab puts on a machine is written in tracked files and pinned to a
 version or digest. [What is declared, and where](docs/declared.md) lists it,
 and what is not pinned yet.
 
@@ -69,7 +69,7 @@ Setting it up with a coding agent? Point it at
 [Set up a fleet from your own project](docs/consumer-setup.md): the whole
 procedure in one pass, including what the agent must ask you for and the
 first sync only you can run. Both ship in the package, under
-`node_modules/@crvouga/dev-fleet/`.
+`node_modules/@crvouga/homelab/`.
 
 On the manager you need macOS with Git, Node 22 or newer, Docker Desktop and
 Tailscale signed in. You also need an empty private bucket on any
@@ -79,15 +79,15 @@ access key that can read and write it.
 ```sh
 mkdir my-fleet && cd my-fleet && git init
 npm init -y
-npm install --save-dev --save-exact @crvouga/dev-fleet
+npm install --save-dev --save-exact @crvouga/homelab
 
-npx devfleet fleet-state --example > fleet.json
+npx homelab fleet-state --example > fleet.json
 $EDITOR fleet.json                   # your machines, and your bucket under "state"
 
-export DEVFLEET_BUCKET_ACCESS_KEY_ID=…
-export DEVFLEET_BUCKET_SECRET_ACCESS_KEY=…
-npx devfleet fleet-sync --dry-run    # preview
-npx devfleet fleet-sync              # apply
+export HOMELAB_BUCKET_ACCESS_KEY_ID=…
+export HOMELAB_BUCKET_SECRET_ACCESS_KEY=…
+npx homelab fleet-sync --dry-run    # preview
+npx homelab fleet-sync              # apply
 ```
 
 Commit `fleet.json`, `package.json` and the lockfile. Keep the two credentials
@@ -96,7 +96,7 @@ out of Git: pass them from wherever you keep secrets (a password manager's
 environment and never taken from arguments.
 
 `fleet-sync` converges the manager first, then every worker over SSH. It
-fetches the commit your dev-fleet version was published from, sends it and
+fetches the commit your homelab version was published from, sends it and
 your configuration to each machine, installs the pinned toolchain, applies the
 Ansible policy and verifies the result. It prints one table and writes a full
 JSON report. Use `--fail-on-warning` for unattended acceptance.
@@ -112,18 +112,18 @@ fleet state up to the bucket (never uploading), then prints, and adds to
 `--json` as `plan`, what a sync would change: the revision, each tool pin that
 moves, and what restarts because of it (a T3 restart ends its running agent
 turns). On the manager it checks the release out into
-dev-fleet's cache and installs the Bun that release pins beside any others, so
+homelab's cache and installs the Bun that release pins beside any others, so
 that it can run; it never installs the toolchain, publishes the global mise
 configuration, edits shell profiles or touches a worker.
 
-`devfleet` finds the closest `fleet.json` in the directory you run it from or
-above it. `DEVFLEET_CONFIG` names a file elsewhere.
+`homelab` finds the closest `fleet.json` in the directory you run it from or
+above it. `HOMELAB_CONFIG` names a file elsewhere.
 
 The CLI runs on [Bun](https://bun.sh), which the package brings as a
 dependency. If your package manager does not run dependency install scripts,
 allow Bun's or install Bun yourself; the CLI uses the one on `PATH`.
 
-For a new remote T3 turn, clients can run `devfleet fleet-status --placement --json`.
+For a new remote T3 turn, clients can run `homelab fleet-status --placement --json`.
 Pass eligible worker IDs with `--node`, including only the pinned worker when
 the caller chose an environment. The reply names a preferred environment or
 says to queue, and gives the measurements behind each decision. Concurrent
@@ -132,14 +132,14 @@ when it starts a turn and retry placement if another start took the last slot.
 
 ## The version
 
-Every release of `@crvouga/dev-fleet` is published from one commit and names
+Every release of `@crvouga/homelab` is published from one commit and names
 it. The version in your `package.json` is therefore the revision of every
 machine in the fleet:
 
 ```sh
-npx devfleet --version               # 1.4.0 (commit 3f2a…)
-npm install --save-dev --save-exact @crvouga/dev-fleet@latest
-npx devfleet fleet-sync              # the fleet moves to that release
+npx homelab --version               # 1.4.0 (commit 3f2a…)
+npm install --save-dev --save-exact @crvouga/homelab@latest
+npx homelab fleet-sync              # the fleet moves to that release
 ```
 
 One worker, the canary, proves a new revision before the others receive it:
@@ -161,7 +161,7 @@ custom keybindings with their T3 migration history and published themes with
 their background images. Removing them on the manager removes them on workers.
 The pinned T3 CLI validates the themes before the fleet saves or installs them.
 
-To go back, run `npx devfleet fleet-sync --rollback` on the manager: it
+To go back, run `npx homelab fleet-sync --rollback` on the manager: it
 converges every machine to the revision applied before the approved one, which
 the fleet state records: after an upgrade whose canary failed, that is the
 revision the fleet still runs. A rollback covers what a revision declares: the
@@ -192,31 +192,31 @@ revision that would replace a newer mise is refused with
 `--allow-mise-downgrade` asks for it. A worker that does not say which mise it
 runs is not let through unmeasured: the run is refused with
 `FLEET_MISE_UNMEASURED` until it answers, is parked or is left out with
-`--node`. Started on a worker, the same question is asked of the devfleet
+`--node`. Started on a worker, the same question is asked of the homelab
 installed on the manager (`fleet-sync --measure-mise`, which only answers)
 before the revision's own run script starts there; a manager whose installed
-devfleet is from before that question refuses such a revision rather than
+homelab is from before that question refuses such a revision rather than
 passing it.
 
 ## Your project's own tools
 
 On a fleet machine the global mise configuration (`~/.config/mise/config.toml`
-and its `mise.lock`) belongs to dev-fleet: `fleet-sync` publishes it with the
+and its `mise.lock`) belongs to homelab: `fleet-sync` publishes it with the
 fleet's pinned tools and the agent worktree roots mise must trust. A project
 pins its own tools in its own `mise.toml` and installs them with
 `mise install --locked` in its checkout. On a fleet machine mise installs a
 project's tools only from the project's `mise.lock` (run `mise lock` after
 changing a pin); a tool the lock does not name is refused. A project never
-publishes a global configuration. If anything replaces dev-fleet's, `fleet-status` fails the check
+publishes a global configuration. If anything replaces homelab's, `fleet-status` fails the check
 `tool:global-mise-config` until the next `fleet-sync`.
 
 ## Using it from code
 
-dev-fleet has no library API. The package is the `devfleet` command: it
+homelab has no library API. The package is the `homelab` command: it
 declares no `main` or `exports`, and nothing under `src/`, `bootstrap/` or
 `ansible/` is a supported import. Any release, a patch included, may change
 them, and some modules read the fleet configuration as soon as they are
-imported. If your project needs something dev-fleet does, ask for a command in
+imported. If your project needs something homelab does, ask for a command in
 an [issue](#bugs-and-feature-requests).
 
 ## State
@@ -236,7 +236,7 @@ says where the bucket is and the command is passed its credentials:
 ```
 
 ```sh
-npx devfleet fleet-state             # where the state is, and how it stands with the bucket
+npx homelab fleet-state             # where the state is, and how it stands with the bucket
 ```
 
 The copy on the manager is disposable: the roster and the approved revision
@@ -246,11 +246,11 @@ lost manager.
 
 Some runs are started by a machine rather than by you: a worker that hands
 `fleet-sync` to the manager, for example. They get no environment, so save the
-credentials on the manager once (in `~/.config/dev-fleet/bucket.json`,
+credentials on the manager once (in `~/.config/homelab/bucket.json`,
 readable by you alone):
 
 ```sh
-npx devfleet fleet-state --init
+npx homelab fleet-state --init
 ```
 
 Without a bucket everything still works from the local copy, and `fleet-sync`
@@ -260,7 +260,7 @@ project, and which state is not in the bucket yet.
 
 ## Provider accounts
 
-Provider accounts live only on the CLI proxy. `npx devfleet fleet-accounts`
+Provider accounts live only on the CLI proxy. `npx homelab fleet-accounts`
 lists them with their state; `--add`, `--relogin` and `--remove` change one
 and propagate the result to every node, and `fleet-sync --only accounts`
 propagates them without a full sync.
@@ -310,7 +310,7 @@ commands stay the pinned CLIs with whatever sign-in you gave them.
    Ubuntu machine, over SSH
    ([`fresh-box.feature`](features/fresh-box/fresh-box.feature)).
 
-A new machine can also join by itself: `npx devfleet fleet-node-seed --id ID
+A new machine can also join by itself: `npx homelab fleet-node-seed --id ID
 --output seed.yaml --apply --yes` writes cloud-init user data (or an Ubuntu
 autoinstall file with `--autoinstall`) holding the worker account with your
 manager's key, the privilege rule, a host key the manager pins at once and the
@@ -318,17 +318,17 @@ pinned Tailscale with a short-lived single-use auth key from your secrets
 provider (`tailnet-auth-key`). Boot a stock Ubuntu image with it, then add the
 worker with `fleet-node-add` and run `fleet-sync`.
 
-`npx devfleet fleet-manifest --id ID` measures what a worker is made of
+`npx homelab fleet-manifest --id ID` measures what a worker is made of
 (packages, active tools, always-on services) with a digest that is the same
 for two workers built from the same revision; its check `worker:manifest`
 names every difference from the declared pins and, with `--reference` (the
 `--json` manifest of a fresh build), from that build.
 
-Remove a machine with `npx devfleet fleet-node-retire --id ID --apply --yes`
+Remove a machine with `npx homelab fleet-node-retire --id ID --apply --yes`
 (it revokes the worker's Vault token, forgets its host key and roster entry
 and leaves a tombstone in the fleet state), then delete its entry and run
 `fleet-sync`. To put a fresh machine in place of a worker under the same id,
-run `npx devfleet fleet-node-replace --id ID --host-key "TYPE BASE64" --apply
+run `npx homelab fleet-node-replace --id ID --host-key "TYPE BASE64" --apply
 --yes` and then `fleet-sync --node ID`; the manager's T3 pairs with the new
 machine's T3 by itself, with no code to copy. A run scoped with `--node` records only the
 revision of the workers it covered; the fleet's applied revision moves with a
@@ -341,13 +341,13 @@ Your `fleet.json` is validated by
 package carries: `fleet-state --example` prints a complete example that points
 `$schema` at it, so an editor checks the file as you type.
 [`examples/fleet.json`](examples/fleet.json) is the same example.
-`devfleet fleet-validate` checks the file without contacting anything and
+`homelab fleet-validate` checks the file without contacting anything and
 names the first field that breaks a rule (`{code, path, expected, actual}`);
 `--ansible` also renders the Ansible inventory and syntax-checks every
 playbook with the pinned Ansible.
 
 Edit the `fleet.json` of your project, never the copy `fleet-sync` installs
-at `~/.config/dev-fleet/fleet.json` for launchers and scheduled jobs:
+at `~/.config/homelab/fleet.json` for launchers and scheduled jobs:
 `fleet-sync` replaces that copy, and refuses to run
 (`FLEET_CONFIGURATION_COPY_CHANGED`) rather than lose an edit made to it by
 hand, on the manager or on a worker it is about to converge, before anything
@@ -376,10 +376,10 @@ and what the manager measures of each worker. Enabling one is `ides` in
 | IDE               | `ides`  | Manager                                        | Workers                                          |
 | ----------------- | ------- | ---------------------------------------------- | ------------------------------------------------ |
 | T3 Code           | `t3`    | Pinned CLI and signed desktop, updates off     | Pinned desktop app, locked policy, pairing       |
-| super.engineering | `super` | Your own install; one SSH workspace per worker | Reached over SSH; nothing installed by dev-fleet |
+| super.engineering | `super` | Your own install; one SSH workspace per worker | Reached over SSH; nothing installed by homelab |
 
 On the macOS manager, sync stages the checksum-pinned T3 desktop under
-`~/Applications/dev-fleet/`. Its installed signature and version appear as
+`~/Applications/homelab/`. Its installed signature and version appear as
 `t3:desktop-installed`. The separate `t3:version` check measures the running
 app. When a single running T3 desktop needs replacing, sync restarts it from the verified bundle and checks the running release.
 
@@ -410,9 +410,9 @@ worker that command is the fleet's launcher (see
 [Provider accounts](#provider-accounts)). `super:ssh` warns
 (`SUPER_AGENTS_NOT_PROXIED`) about a worker where it is still the plain CLI,
 until the next `fleet-sync` of that worker. Workspaces on the manager itself
-start the manager's own CLIs, which dev-fleet leaves as they are.
+start the manager's own CLIs, which homelab leaves as they are.
 
-What it does not do yet: dev-fleet never removes a workspace, so delete a
+What it does not do yet: homelab never removes a workspace, so delete a
 retired worker's in the app. Projects are yours to add to a workspace, and the
 app installs and updates its helper on the worker itself.
 
@@ -446,24 +446,24 @@ under `source`: the commit a package names must be reachable there.
 
 ## Bugs and feature requests
 
-A defect in dev-fleet, or something it cannot do yet, is raised as an
-[issue](https://github.com/crvouga/dev-fleet/issues). From your project that
-is the only way to change dev-fleet, for you and for the coding agents working
+A defect in homelab, or something it cannot do yet, is raised as an
+[issue](https://github.com/crvouga/homelab/issues). From your project that
+is the only way to change homelab, for you and for the coding agents working
 there. Do not patch the installed package, a checkout `fleet-sync` put on a
 machine or a file it manages: the next install or `fleet-sync` replaces them.
 
-The tool says so itself: `devfleet --help` names the issue tracker, and the
-agent contract (`devfleet commands --json`, under `agent.support`) carries the
+The tool says so itself: `homelab --help` names the issue tracker, and the
+agent contract (`homelab commands --json`, under `agent.support`) carries the
 rule, what an issue should include and what it must leave out. Agents only
 read it if your project sends them there, so put this in the `AGENTS.md` of
 the project that holds your `fleet.json`:
 
 ```md
-The fleet is managed with dev-fleet (`npx devfleet`, pinned in package.json).
-Read `npx devfleet commands --json` before using it. Never edit dev-fleet
+The fleet is managed with homelab (`npx homelab`, pinned in package.json).
+Read `npx homelab commands --json` before using it. Never edit homelab
 itself: not node_modules, not a clone, not what it installs on a machine. A
-bug in dev-fleet or a feature it lacks is a GitHub issue at
-https://github.com/crvouga/dev-fleet/issues; tell me what is blocked and link
+bug in homelab or a feature it lacks is a GitHub issue at
+https://github.com/crvouga/homelab/issues; tell me what is blocked and link
 it. Issues are public: no credentials, hostnames, accounts, domains or
 fleet.json contents.
 ```
@@ -485,7 +485,7 @@ fleet.json contents.
 - The CLI proxy's installed code is a Git worktree of the manager's copy of
   the source repository (`~/.local/share/personal/fleet/manager/source`).
   `fleet-sync` fetches that copy again when it is deleted, but the proxy then
-  needs `devfleet cliproxy install` once more.
+  needs `homelab cliproxy install` once more.
 - The manager is a Mac host. There is no container image of the manager.
 - `fleet-sync --schedule enable --apply --yes` (unattended runs every 30
   minutes) is installed by that command on the manager, not yet by the
@@ -510,19 +510,19 @@ fleet.json contents.
 | `bootstrap/` | Toolchain bootstrap and the manager and worker entry scripts            |
 | `schema/`    | JSON schemas for `fleet.json`, the roster and command output; check IDs |
 | `examples/`  | A complete example configuration                                        |
-| `features/`  | What dev-fleet does, as Gherkin features: the tests                     |
+| `features/`  | What homelab does, as Gherkin features: the tests                     |
 | `bin/`       | The entry point of the published package                                |
 
 ## Develop
 
-Working on dev-fleet itself is the only reason to clone it:
+Working on homelab itself is the only reason to clone it:
 
 ```sh
-git clone https://github.com/crvouga/dev-fleet.git && cd dev-fleet
+git clone https://github.com/crvouga/homelab.git && cd homelab
 bash bootstrap/bootstrap.sh
 bun install --frozen-lockfile
 bun run check
-./devfleet fleet-status --local      # the CLI, from this checkout
+./homelab fleet-status --local      # the CLI, from this checkout
 ```
 
 Run from a checkout, `fleet-sync` converges the fleet to the checkout's `HEAD`
@@ -531,7 +531,7 @@ repository `fleet.json` names under `source`, and a `HEAD` that is not on its
 default branch needs `--allow-unmerged`. Every merge to `main` publishes a release;
 see [releasing](docs/releasing.md).
 
-What dev-fleet does is specified in Gherkin, under
+What homelab does is specified in Gherkin, under
 [`features/`](features/README.md): a `.feature` file states a rule in plain
 words and the steps beside it check it. There are no other TypeScript tests.
 `bun run check` runs formatting, typecheck, lint, every feature and the proxy
@@ -570,9 +570,9 @@ A pull request needs nobody attending
 Some scenarios need something a laptop may not have, and are skipped there:
 
 ```sh
-DEVFLEET_TEST_FRESH_BOX=1 bun test features/fresh-box     # Docker; tests the HEAD commit
+HOMELAB_TEST_FRESH_BOX=1 bun test features/fresh-box     # Docker; tests the HEAD commit
 mise install litestream
-DEVFLEET_TEST_S3=http://127.0.0.1:5000 bun test features/state
+HOMELAB_TEST_S3=http://127.0.0.1:5000 bun test features/state
 bun ansible/ubuntu/tests/run-vm.ts baseline   # Linux amd64 with KVM; the Ubuntu VM workflow
 ```
 

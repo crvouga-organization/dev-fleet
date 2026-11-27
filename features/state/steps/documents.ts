@@ -244,7 +244,7 @@ Given(
     const manager = world.manager(name);
     await mutateState(manager.context, () =>
       storeEnrollment(json(text) as Enrollment, {
-        DEVFLEET_STATE: manager.root,
+        HOMELAB_STATE: manager.root,
       })
     );
   }

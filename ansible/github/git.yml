@@ -30,7 +30,7 @@
     # with an SSH key of its own, made on the node. The private key never
     # leaves it and is never in fleet.json, a variable or argv.
     git_signs: "{{ git_signing | default('') == 'ssh' }}"
-    git_signing_key: '{{ git_home }}/.ssh/dev-fleet-git-signing'
+    git_signing_key: '{{ git_home }}/.ssh/homelab-git-signing'
   tasks:
     - name: Require a declared identity
       ansible.builtin.assert:
@@ -49,7 +49,7 @@
         path: '{{ git_config }}'
         create: true
         mode: '0600'
-        marker: '# {mark} dev-fleet: Git identity and GitHub credentials'
+        marker: '# {mark} homelab: Git identity and GitHub credentials'
         block: |
           [user]
           	name = "{{ git_name }}"
@@ -89,7 +89,7 @@
           - git_effective.results[1].stdout_lines | default([]) | last | default('') == git_email
           - git_helpers_in_effect | length > 0
           - git_helpers_in_effect | reject('match', git_gh_helper_pattern) | list | length == 0
-        fail_msg: GIT_IDENTITY_OVERRIDDEN; another Git configuration (often ~/.gitconfig) sets user.name, user.email or a GitHub credential helper other than gh auth git-credential after dev-fleet's. Remove those lines.
+        fail_msg: GIT_IDENTITY_OVERRIDDEN; another Git configuration (often ~/.gitconfig) sets user.name, user.email or a GitHub credential helper other than gh auth git-credential after homelab's. Remove those lines.
       when: not ansible_check_mode
     - name: Create the per-user SSH directory for the signing key
       ansible.builtin.file:
@@ -107,7 +107,7 @@
           - -N
           - ''
           - -C
-          - dev-fleet git signing
+          - homelab git signing
           - -f
           - '{{ git_signing_key }}'
         creates: '{{ git_signing_key }}'
@@ -133,7 +133,7 @@
         path: '{{ git_config }}'
         create: true
         mode: '0600'
-        marker: '# {mark} dev-fleet: commit signing'
+        marker: '# {mark} homelab: commit signing'
         state: "{{ 'present' if git_signs | bool else 'absent' }}"
         block: |
           [gpg]
@@ -166,5 +166,5 @@
           - git_signing_effective.results[0].stdout_lines | default([]) | last | default('') == 'ssh'
           - git_signing_effective.results[1].stdout_lines | default([]) | last | default('') == git_signing_key + '.pub'
           - git_signing_effective.results[2].stdout_lines | default([]) | last | default('') == 'true'
-        fail_msg: GIT_SIGNING_OVERRIDDEN; another Git configuration (often ~/.gitconfig) sets gpg.format, user.signingkey or commit.gpgsign after dev-fleet's. Remove those lines.
+        fail_msg: GIT_SIGNING_OVERRIDDEN; another Git configuration (often ~/.gitconfig) sets gpg.format, user.signingkey or commit.gpgsign after homelab's. Remove those lines.
       when: git_signs | bool and not ansible_check_mode

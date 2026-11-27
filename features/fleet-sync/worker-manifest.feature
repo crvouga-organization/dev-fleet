@@ -1,5 +1,5 @@
 Feature: A worker's manifest proves it can be rebuilt
-  devfleet fleet-manifest measures what a worker is made of: every installed
+  homelab fleet-manifest measures what a worker is made of: every installed
   package, the active mise tools and the state of each always-on service. Two
   workers built from the same revision have the same manifest and the same
   digest. The check worker:manifest reports every difference from the pins

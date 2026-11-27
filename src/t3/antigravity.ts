@@ -22,7 +22,7 @@ export async function refreshAntigravity(
       '--ttl',
       '2m',
       '--label',
-      'dev-fleet provider check',
+      'homelab provider check',
     ],
     {
       ...(home ? { home } : {}),

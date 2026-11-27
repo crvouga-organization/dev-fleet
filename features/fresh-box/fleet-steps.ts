@@ -454,7 +454,7 @@ Given(
   }
 );
 
-const INSTALLED_COPY = '/home/fleettest/.config/dev-fleet/fleet.json';
+const INSTALLED_COPY = '/home/fleettest/.config/homelab/fleet.json';
 /** The key a person adds by hand: the copy stays readable JSON. */
 const EDIT = 'edited-by-hand';
 
@@ -724,7 +724,7 @@ Given(
     fleet(world).before = (
       await asRoot(
         machine,
-        'stat -c %i-%Y /home/fleettest/.config/dev-fleet/fleet.json'
+        'stat -c %i-%Y /home/fleettest/.config/homelab/fleet.json'
       )
     ).stdout;
   }
@@ -739,7 +739,7 @@ Then(
   async (world, name: string) => {
     const now = await asRoot(
       named(world, name),
-      'stat -c %i-%Y /home/fleettest/.config/dev-fleet/fleet.json'
+      'stat -c %i-%Y /home/fleettest/.config/homelab/fleet.json'
     );
     expect(now.stdout).not.toBe('');
     expect(now.stdout).toBe(fleet(world).before ?? '');

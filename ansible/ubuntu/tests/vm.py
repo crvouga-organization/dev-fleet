@@ -53,8 +53,8 @@ def run(args, **kwargs):
 
 AGENTS = 'app-t3code-agents'
 THREAD = AGENTS + '-fixture'
-QUIET = 'devfleet-quiet.service'
-BUSY = 'devfleet-pressure-fixture.service'
+QUIET = 'homelab-quiet.service'
+BUSY = 'homelab-pressure-fixture.service'
 
 
 def check_slice_policy(ssh):
@@ -278,18 +278,18 @@ ssh_keys:
             # the disposable guest and are never passed through argv.
             run(ssh + ["""set -eu
 umask 077
-mkdir -p roster/v1 ~/.config/dev-fleet/secrets
-openssl rand -hex 32 > ~/.config/dev-fleet/secrets/proxy-client-key
+mkdir -p roster/v1 ~/.config/homelab/secrets
+openssl rand -hex 32 > ~/.config/homelab/secrets/proxy-client-key
 printf '{"data":[]}' > roster/v1/models
 openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj /CN=localhost -addext subjectAltName=DNS:localhost -keyout fixture.key -out fixture.crt 2>/dev/null
-sudo install -m 0644 fixture.crt /usr/local/share/ca-certificates/devfleet-fixture.crt
+sudo install -m 0644 fixture.crt /usr/local/share/ca-certificates/homelab-fixture.crt
 sudo update-ca-certificates >/dev/null
 sudo systemd-run --unit=fixture-roster --working-directory="$HOME/roster" openssl s_server -accept 127.0.0.1:443 -cert "$HOME/fixture.crt" -key "$HOME/fixture.key" -WWW -quiet"""])
             result = subprocess.run(['/verification/bootstrap', str(ROOT), '/bootstrap'], capture_output=True, text=True, timeout=5500)
             (ROOT / 'bootstrap-retry-result.json').write_text(result.stdout)
             assert result.returncode == 0, 'restoring the missing account roster did not unblock T3'
             evidence = ('set -e; sha256sum work/uncommitted /etc/ssh/ssh_host_ed25519_key.pub '
-                        '~/.ssh/dev-fleet-git-signing.pub; stat -c "%i %y" '
+                        '~/.ssh/homelab-git-signing.pub; stat -c "%i %y" '
                         '/etc/systemd/logind.conf.d/60-personal-fleet.conf /etc/ssh/sshd_config.d/60-personal-fleet.conf; '
                         'systemctl --user show t3code-headless.service -p MainPID -p ActiveEnterTimestampMonotonic; '
                         'stat -Lc "%i %z" "$(~/.local/bin/mise which bun)"')
@@ -711,8 +711,8 @@ def test_exposure(ssh):
     loaded rule holds the port, and the port is closed on the guest's network
     interface. The default policy of the table would close it there alone;
     that the rule also closes it to containers is not shown here."""
-    fixture = 'devfleet-exposure-fixture.service'
-    unsynced = 'devfleet-exposure-unsynced.service'
+    fixture = 'homelab-exposure-fixture.service'
+    unsynced = 'homelab-exposure-unsynced.service'
     held = f'tcp 0.0.0.0:{TAILNET_ONLY_PORT} ({fixture})'
     listen(ssh, fixture, [TAILNET_ONLY_PORT, PUBLIC_PORT])
     try:

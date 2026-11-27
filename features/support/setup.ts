@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path';
 
 // No test touches a real machine's fleet state or bucket: each run gets an
 // empty directory.
-const state = mkdtempSync(join(os.tmpdir(), 'devfleet-test-state-'));
+const state = mkdtempSync(join(os.tmpdir(), 'homelab-test-state-'));
 // Real-tool scenarios may consult the existing tool installations with
 // `mise which`. Capture their location before moving into the test home.
 export const miseInstalls =
@@ -31,8 +31,8 @@ mock.module('node:os', () => ({
     homedir: options?.encoding === 'buffer' ? Buffer.from(state) : state,
   }),
 }));
-process.env['DEVFLEET_STATE'] = join(state, 'state');
-process.env['DEVFLEET_BUCKET'] = join(state, 'bucket.json');
+process.env['HOMELAB_STATE'] = join(state, 'state');
+process.env['HOMELAB_BUCKET'] = join(state, 'bucket.json');
 // `bun test` does not emit 'exit'; the directory goes when the run ends.
 afterAll(() => rmSync(state, { recursive: true, force: true }));
 
@@ -42,13 +42,13 @@ afterAll(() => rmSync(state, { recursive: true, force: true }));
 const { state: _bucket, ...example } = JSON.parse(
   readFileSync(resolve(import.meta.dir, '../../examples/fleet.json'), 'utf8')
 ) as Record<string, unknown>;
-process.env['DEVFLEET_CONFIG'] = join(state, 'fleet.json');
+process.env['HOMELAB_CONFIG'] = join(state, 'fleet.json');
 writeFileSync(
-  process.env['DEVFLEET_CONFIG'],
+  process.env['HOMELAB_CONFIG'],
   JSON.stringify(example, null, 2) + '\n'
 );
 // The manager lease names this process, never the machine it runs on.
-process.env['DEVFLEET_MANAGER_HOLDER'] = 'machine-under-test';
+process.env['HOMELAB_MANAGER_HOLDER'] = 'machine-under-test';
 // Nor with a developer's own bucket credentials.
-delete process.env['DEVFLEET_BUCKET_ACCESS_KEY_ID'];
-delete process.env['DEVFLEET_BUCKET_SECRET_ACCESS_KEY'];
+delete process.env['HOMELAB_BUCKET_ACCESS_KEY_ID'];
+delete process.env['HOMELAB_BUCKET_SECRET_ACCESS_KEY'];

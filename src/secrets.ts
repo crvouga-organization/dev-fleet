@@ -13,7 +13,7 @@ export const SECRET_NAMES = [
   'proxy-tunnel-token',
 ] as const;
 /** Secrets a fleet may leave undeclared. A Vault fleet that names no location
- * for the GitHub token keeps it where dev-fleet always read it (see
+ * for the GitHub token keeps it where homelab always read it (see
  * `vaultLocation`); the others are needed only by a feature the fleet
  * declares, and are otherwise unavailable.
  */
@@ -78,12 +78,12 @@ export interface SecretsProvider {
 const present = (value: string | null | undefined): string | null =>
   value?.trim() ? value.trim() : null;
 
-/** `proxy-client-key` is read from `DEVFLEET_SECRET_PROXY_CLIENT_KEY`. */
+/** `proxy-client-key` is read from `HOMELAB_SECRET_PROXY_CLIENT_KEY`. */
 export const envName = (name: SecretName, node?: string): string =>
-  `DEVFLEET_SECRET_${secretVariant(name, node).toUpperCase().replaceAll('-', '_')}`;
+  `HOMELAB_SECRET_${secretVariant(name, node).toUpperCase().replaceAll('-', '_')}`;
 
 /** The name of a node's own copy of a secret: `github-token` of `worker-one`
- * is `github-token-worker-one` (`DEVFLEET_SECRET_GITHUB_TOKEN_WORKER_ONE`, the
+ * is `github-token-worker-one` (`HOMELAB_SECRET_GITHUB_TOKEN_WORKER_ONE`, the
  * file or sops key `github-token-worker-one`, the Vault field `FIELD_WORKER_ONE`).
  */
 export const secretVariant = (name: SecretName, node?: string): string =>
@@ -136,12 +136,16 @@ function reader(
   const env = options.env ?? process.env;
   const run = options.run;
   if (config.provider === 'env')
-    return async (name, node) => present(env[envName(name, node)]);
+    return async (name, node) =>
+      present(
+        env[envName(name, node)] ??
+          env[envName(name, node).replace('HOMELAB_', 'DEVFLEET_')]
+      );
   if (config.provider === 'file') {
     // One private file per secret, named after it.
     const directory =
       config.directory ??
-      join(options.home ?? homedir(), '.config/dev-fleet/secrets');
+      join(options.home ?? homedir(), '.config/homelab/secrets');
     return async (name, node) =>
       present(
         await readFile(

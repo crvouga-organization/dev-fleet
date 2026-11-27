@@ -1,7 +1,7 @@
 # Workers from infrastructure as code: an example, with a local virtual
 # machine (libvirt) standing in for the provider. Any tool or provider that
 # can boot a stock Ubuntu image with cloud-init user data and write a file
-# works the same way; dev-fleet never calls a provider and never creates a
+# works the same way; homelab never calls a provider and never creates a
 # machine. It reads the worker records this writes (worker-records.json, see
 # schema/worker-record.schema.json) because fleet.json names the file:
 #
@@ -13,17 +13,17 @@
 #   1. Declare the worker. With only `tailnet_name` and `user` set, this
 #      writes its record and creates nothing else:
 #        tofu -chdir=infra apply -var-file=workers.tfvars
-#   2. Seed it. dev-fleet generates its host key, pins it in the fleet state
+#   2. Seed it. homelab generates its host key, pins it in the fleet state
 #      and writes the cloud-init user data:
-#        npx devfleet fleet-node-seed --id rented-one \
+#        npx homelab fleet-node-seed --id rented-one \
 #          --output infra/seed/rented-one.yaml --apply --yes --json
 #      Put the path in `seed` (and, if you like, the printed hostKey in
 #      `host_key`, so that the record carries it too).
 #   3. Create the machine, then converge it:
 #        tofu -chdir=infra apply -var-file=workers.tfvars
-#        npx devfleet fleet-sync --non-interactive
+#        npx homelab fleet-sync --non-interactive
 #   4. Remove it: drop it from `workers` and apply, or `tofu destroy`. Its
-#      record is gone, so the next `npx devfleet fleet-sync` retires it: its
+#      record is gone, so the next `npx homelab fleet-sync` retires it: its
 #      token, pinned host key, monitoring system and T3 link are removed.
 #
 # What the machine must offer (image, architecture, size, access, network) is
@@ -35,7 +35,7 @@
 # `network_interface`). The seed goes in as the instance's user data and the
 # records come out the same way.
 #
-# This example cannot be applied in dev-fleet's CI (it needs a libvirt host
+# This example cannot be applied in homelab's CI (it needs a libvirt host
 # and a tailnet), so it is not proven there; the record format and what
 # fleet-sync does with records are (features/cli/fleet-validate.feature,
 # features/fleet-sync/node-lifecycle.feature). Pin the provider in your own
@@ -75,7 +75,7 @@ locals {
 }
 
 resource "libvirt_volume" "image" {
-  name   = "devfleet-ubuntu.qcow2"
+  name   = "homelab-ubuntu.qcow2"
   source = var.ubuntu_image
 }
 
@@ -108,7 +108,7 @@ resource "libvirt_domain" "worker" {
   }
 }
 
-# The handoff: one record per declared worker. Only what dev-fleet needs to
+# The handoff: one record per declared worker. Only what homelab needs to
 # reach the machine, and nothing that names this tool or the provider.
 resource "local_file" "worker_records" {
   filename        = "${path.module}/worker-records.json"

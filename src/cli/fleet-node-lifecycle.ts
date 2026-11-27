@@ -643,7 +643,7 @@ async function carryOut(
   steps.push({
     id: 'rollout:next',
     status: 'pass',
-    summary: `Run devfleet fleet-sync --node ${worker.id} to converge the new machine.`,
+    summary: `Run homelab fleet-sync --node ${worker.id} to converge the new machine.`,
   });
   return steps;
 }
@@ -726,7 +726,7 @@ function hostKeyFailure(): Check {
     summary: 'SSH_HOST_KEY_NOT_CHANGED',
     remedy: {
       action:
-        'The pinned Ansible could not change known_hosts on this manager. Run devfleet fleet-validate --ansible, then this command again.',
+        'The pinned Ansible could not change known_hosts on this manager. Run homelab fleet-validate --ansible, then this command again.',
     },
   };
 }

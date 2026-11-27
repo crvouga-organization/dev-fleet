@@ -171,7 +171,7 @@ export async function accountSessionChecks(
             result === 'cooling-down' ? clears : undefined
           ) + remembered(foundMinutesAgo),
         ...(action
-          ? { remedy: { action, command: 'devfleet fleet-accounts' } }
+          ? { remedy: { action, command: 'homelab fleet-accounts' } }
           : {}),
         durationMs,
         // Nothing was run: what an earlier session found is repeated.
@@ -191,7 +191,7 @@ export async function accountSessionChecks(
       summary: `AGENT_ACCOUNT_REMOVED: this node still offers a ${instance.tool} instance for an account the proxy no longer holds.`,
       remedy: {
         action: 'Propagate the accounts to every node.',
-        command: 'devfleet fleet-sync --only accounts',
+        command: 'homelab fleet-sync --only accounts',
       },
     });
   }

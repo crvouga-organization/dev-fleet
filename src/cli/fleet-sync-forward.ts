@@ -74,7 +74,7 @@ export const SOURCE_GUARD = [
  * rule that keeps a newer mise may not replace the mise of the manager, or
  * of a worker the request converges, with the older one it pins. The
  * manager's own mise is compared here; the workers are measured by the
- * manager's installed devfleet, and a hand-off it cannot answer for is
+ * manager's installed homelab, and a hand-off it cannot answer for is
  * refused.
  */
 export const MISE_GUARD = miseGuard({
@@ -179,7 +179,7 @@ function handOffFailure(
   if (exitCode === GUARD_EXIT.miseUnmeasured)
     return failed(
       'FLEET_MISE_UNMEASURED',
-      `The manager changed nothing: the revision's toolchain bootstrap is from before the rule that keeps a newer mise, so it would replace a newer one, and the devfleet installed on the manager could not say which mise the workers run (it is from before that question, or the manager has none on its PATH). Run devfleet fleet-sync on the manager itself once, with a current release, so that it can answer; or converge to a revision whose bootstrap keeps a newer mise (any release since that rule); or pass --allow-mise-downgrade to install the older mise on purpose.`,
+      `The manager changed nothing: the revision's toolchain bootstrap is from before the rule that keeps a newer mise, so it would replace a newer one, and the homelab installed on the manager could not say which mise the workers run (it is from before that question, or the manager has none on its PATH). Run homelab fleet-sync on the manager itself once, with a current release, so that it can answer; or converge to a revision whose bootstrap keeps a newer mise (any release since that rule); or pass --allow-mise-downgrade to install the older mise on purpose.`,
       { revision: revision ?? null }
     );
   if (exitCode === 255)
@@ -230,7 +230,7 @@ export function managerCommand(
           ...forwardedFlags(options, undefined),
         ]
       : [
-          'devfleet',
+          'homelab',
           'fleet-sync',
           ...forwardedFlags(options, revision),
           // With no revision to say it about, the manager is told directly.
@@ -260,7 +260,7 @@ function aboutRevision(
 ): { told: string; guard: string } {
   const guard = (script: string, name: string, more: string[] = []) =>
     `${['sh', '-c', script, name, revision, ...more].map(shellQuote).join(' ')} || exit $?; `;
-  // What the manager's installed devfleet needs to answer for the same
+  // What the manager's installed homelab needs to answer for the same
   // machines, in the form the request asked for.
   const selected = [
     ...(options.node ?? []).flatMap((node) => ['--node', node]),
@@ -331,7 +331,7 @@ export const HAND_OFF: {
     'The run on the manager may be older than the flag: it is told in the environment that mise may be downgraded for the revision.'
   ),
   measureMise: elsewhere(
-    "Refused on a worker: the hand-off asks the manager's installed devfleet that question by itself, before the revision's run script."
+    "Refused on a worker: the hand-off asks the manager's installed homelab that question by itself, before the revision's run script."
   ),
   rolledOut: INTERNAL,
   interactiveAuthorization: INTERNAL,

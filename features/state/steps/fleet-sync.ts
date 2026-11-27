@@ -168,7 +168,7 @@ Given(
 Given(
   phrase('the process runs with the fleet\\.json "([^"]+)"'),
   (world, path: string) => {
-    world.setEnv('DEVFLEET_CONFIG', world.expand(path, world.manager()));
+    world.setEnv('HOMELAB_CONFIG', world.expand(path, world.manager()));
     reloadFleet();
   }
 );

@@ -32,19 +32,19 @@ export const RESTORES = [
   },
   {
     what: 'Machine policy, toolchain and checkouts',
-    how: 'Rebuilt from Git by devfleet fleet-sync.',
+    how: 'Rebuilt from Git by homelab fleet-sync.',
   },
   {
     what: 'CLI proxy state (provider logins, keys, Tailscale identity)',
-    how: 'Restored from its encrypted snapshots by devfleet cliproxy install (vault secrets provider only).',
+    how: 'Restored from its encrypted snapshots by homelab cliproxy install (vault secrets provider only).',
   },
   {
     what: 'Monitoring hub',
-    how: 'Recreated by devfleet fleet-sync with its accounts and systems; metric history is lost.',
+    how: 'Recreated by homelab fleet-sync with its accounts and systems; metric history is lost.',
   },
   {
     what: 'T3 ownership record',
-    how: 'Adopted again with devfleet t3-apply --import ID.',
+    how: 'Adopted again with homelab t3-apply --import ID.',
   },
 ];
 
@@ -88,7 +88,7 @@ async function prerequisites(
     check('restore:bucket', reached.bucket !== null, [
       'The bucket is named, with credentials for it.',
       'No bucket is configured.',
-      `Name it under "state" in ${fleetJson(services.env, services.home)} and pass DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY.`,
+      `Name it under "state" in ${fleetJson(services.env, services.home)} and pass HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY.`,
     ]),
   ];
   if (reached.bucket) {
@@ -100,7 +100,7 @@ async function prerequisites(
         [
           'The bucket answers and holds the fleet state.',
           `The fleet state cannot be restored from the bucket: it stands "${stands}".`,
-          'See the state:replica remedy of devfleet fleet-state; a corrupt replica is restored with --restore --timestamp.',
+          'See the state:replica remedy of homelab fleet-state; a corrupt replica is restored with --restore --timestamp.',
         ]
       )
     );
@@ -177,9 +177,9 @@ export async function fleetRestore(
     const after = await pull(context);
     checks.push(
       check('restore:applied', after === 'in-sync', [
-        'This machine holds the fleet state from the bucket. Next: devfleet fleet-sync (it may need --take-over while the old manager’s lease runs), then devfleet cliproxy install.',
+        'This machine holds the fleet state from the bucket. Next: homelab fleet-sync (it may need --take-over while the old manager’s lease runs), then homelab cliproxy install.',
         `The fleet state was not restored: it stands "${after}".`,
-        'Run devfleet fleet-state for the remedy.',
+        'Run homelab fleet-state for the remedy.',
       ])
     );
     done.push('Restored the fleet state from the bucket.');

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "fleet-sync-schedule.schema.json",
   "title": "The fleet-sync --schedule report, version 2",
-  "description": "What devfleet fleet-sync --schedule ACTION prints with --json. status names whether the schedule is installed, its interval, its last three runs and the manager:schedule check; enable, pause, resume and disable say whether the change was made.",
+  "description": "What homelab fleet-sync --schedule ACTION prints with --json. status names whether the schedule is installed, its interval, its last three runs and the manager:schedule check; enable, pause, resume and disable say whether the change was made.",
   "type": "object",
   "required": ["version", "command", "scheduling"],
   "properties": {

@@ -190,7 +190,7 @@ const check = async (world: IdeWorld, apply: boolean): Promise<void> => {
       required: state.required,
       apply,
       pause: async () => {},
-      // T3 writing its own settings between dev-fleet's read and write.
+      // T3 writing its own settings between homelab's read and write.
       beforeWrite: async () => {
         if (state.interruptions <= 0) return;
         state.interruptions--;

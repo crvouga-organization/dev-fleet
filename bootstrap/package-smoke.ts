@@ -1,6 +1,6 @@
 /**
  * Installs a packed release the way a fleet project does and runs it, before
- * the Release workflow publishes that same tarball. A package whose `devfleet`
+ * the Release workflow publishes that same tarball. A package whose `homelab`
  * cannot start (a broken bin path, a file left out of `files`, a launcher that
  * fails on this Node) fails here, never on npm.
  *
@@ -33,7 +33,7 @@ function run(command: string[], cwd: string): Ran {
   const result = spawnSync(command[0]!, command.slice(1), {
     cwd,
     encoding: 'utf8',
-    env: { ...process.env, DEVFLEET_CONFIG: '' },
+    env: { ...process.env, HOMELAB_CONFIG: '' },
   });
   return {
     status: result.error ? null : result.status,
@@ -51,19 +51,19 @@ function must(ran: Ran, what: string): string {
 }
 
 /** Install the tarball in a new directory, with these npm flags, and run its
- * `devfleet`.
+ * `homelab`.
  */
 function installAndRun(
   tarball: string,
   expected: Expected,
   flags: string[]
 ): void {
-  const directory = mkdtempSync(join(tmpdir(), 'devfleet-smoke-'));
+  const directory = mkdtempSync(join(tmpdir(), 'homelab-smoke-'));
   const how = flags.length ? ` (installed with ${flags.join(' ')})` : '';
   try {
     writeFileSync(
       join(directory, 'package.json'),
-      JSON.stringify({ name: 'devfleet-smoke', private: true })
+      JSON.stringify({ name: 'homelab-smoke', private: true })
     );
     must(
       run(
@@ -83,22 +83,22 @@ function installAndRun(
       ),
       `npm install${how}`
     );
-    const devfleet = join(directory, 'node_modules', '.bin', 'devfleet');
+    const homelab = join(directory, 'node_modules', '.bin', 'homelab');
     const version = must(
-      run([devfleet, '--version'], directory),
-      `devfleet --version${how}`
+      run([homelab, '--version'], directory),
+      `homelab --version${how}`
     );
     if (!version.includes(expected.version))
       throw new Error(
-        `devfleet --version printed "${version.trim()}", not ${expected.version}${how}.`
+        `homelab --version printed "${version.trim()}", not ${expected.version}${how}.`
       );
     if (!version.includes(expected.commit.slice(0, 7)))
       throw new Error(
-        `devfleet --version names no commit ${expected.commit.slice(0, 7)}${how}.`
+        `homelab --version names no commit ${expected.commit.slice(0, 7)}${how}.`
       );
     const example = must(
-      run([devfleet, 'fleet-state', '--example'], directory),
-      `devfleet fleet-state --example${how}`
+      run([homelab, 'fleet-state', '--example'], directory),
+      `homelab fleet-state --example${how}`
     );
     const parsed = JSON.parse(example) as { $schema?: unknown };
     if (typeof parsed.$schema !== 'string')
@@ -123,5 +123,5 @@ if (import.meta.main) {
     process.exit(2);
   }
   smoke(tarball, { version, commit });
-  console.log(`${tarball} installs and runs: devfleet ${version}`);
+  console.log(`${tarball} installs and runs: homelab ${version}`);
 }

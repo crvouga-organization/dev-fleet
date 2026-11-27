@@ -2,7 +2,7 @@
 
 Exactly one proxy instance runs, on the **manager** (`manager.id` in `fleet.json`). Workers are clients and never host it. Never activate duplicated OAuth or Tailscale identities concurrently. Source code comes from this package at a reviewed Git revision; secrets and state come from Vault and encrypted R2 snapshots.
 
-`INSTALL_ROOT` below is `~/Library/Application Support/cliproxy-fleet` on the manager and `/opt/cliproxy-fleet` on the legacy Linux host. Run every `devfleet cliproxy …` command from a repository checkout on the host named in the step.
+`INSTALL_ROOT` below is `~/Library/Application Support/cliproxy-fleet` on the manager and `/opt/cliproxy-fleet` on the legacy Linux host. Run every `homelab cliproxy …` command from a repository checkout on the host named in the step.
 
 ## Move the proxy from a Linux worker to the manager
 
@@ -14,10 +14,10 @@ On the manager, logged in, on AC power, with Docker Desktop running (enable **St
 
 ```bash
 cliproxy/scripts/install-dependencies
-devfleet cliproxy install --prepare-only --revision HEAD
-devfleet cliproxy vault-login
-devfleet cliproxy recover
-devfleet cliproxy snapshots
+homelab cliproxy install --prepare-only --revision HEAD
+homelab cliproxy vault-login
+homelab cliproxy recover
+homelab cliproxy snapshots
 ```
 
 `install-dependencies` builds the pinned tools directory (mise Python + hash-locked PyYAML, mise `restic`) that the LaunchAgents run with; it never uses sudo or Homebrew. `--prepare-only` creates the worktree and private directories without starting anything. `recover` reads the existing Restic password from Vault and confirms it; it never generates or writes cloud secrets. Do not run `initialize` before recovery.
@@ -28,11 +28,11 @@ On `worker-one`, stop scheduling, drain the dedicated Tailscale Service advertis
 
 ```bash
 sudo systemctl disable --now cliproxy-backup.timer cliproxy-backup-check.timer cliproxy-gc.timer
-devfleet cliproxy drain
-devfleet cliproxy stop
+homelab cliproxy drain
+homelab cliproxy stop
 sudo systemctl disable cliproxy-fleet.service
-devfleet cliproxy backup
-devfleet cliproxy snapshots
+homelab cliproxy backup
+homelab cliproxy snapshots
 sudo systemctl disable --now cliproxy-monitor.timer cliproxy-vault-renew.timer
 ```
 
@@ -52,17 +52,17 @@ Keep the source powered off or fenced until the move is verified or rolled back.
 On the manager:
 
 ```bash
-devfleet cliproxy restore-cache --previous-node-stopped
-devfleet cliproxy install --revision HEAD
-devfleet cliproxy audit
-devfleet cliproxy health
-devfleet cliproxy activate
-devfleet cliproxy public-endpoint verify
+homelab cliproxy restore-cache --previous-node-stopped
+homelab cliproxy install --revision HEAD
+homelab cliproxy audit
+homelab cliproxy health
+homelab cliproxy activate
+homelab cliproxy public-endpoint verify
 python3 -B cliproxy/tests/live.py --endpoint https://cli-proxy.example.com --codex
-devfleet cliproxy backup
+homelab cliproxy backup
 ```
 
-`restore-cache` downloads the latest modern checkpoint, validates it and populates the empty cache without starting services. `install` (never sudo on macOS) regenerates secret caches from Vault, records the user's UID/GID for Compose, links and loads the `dev.devfleet.cliproxy-*` LaunchAgents in `gui/$UID`, and starts the recovered stack; it refuses missing runtime config and stops with `DOCKER_DESKTOP_NOT_RUNNING` if Docker Desktop is down. `audit` must show clean provenance and loaded agents. `activate` resumes the existing `svc:ai-proxy` advertisement from the restored dedicated identity. A restored `state/public-endpoint-enabled` marker starts the public connector automatically; otherwise run `devfleet cliproxy public-endpoint enable` first.
+`restore-cache` downloads the latest modern checkpoint, validates it and populates the empty cache without starting services. `install` (never sudo on macOS) regenerates secret caches from Vault, records the user's UID/GID for Compose, links and loads the `dev.homelab.cliproxy-*` LaunchAgents in `gui/$UID`, and starts the recovered stack; it refuses missing runtime config and stops with `DOCKER_DESKTOP_NOT_RUNNING` if Docker Desktop is down. `audit` must show clean provenance and loaded agents. `activate` resumes the existing `svc:ai-proxy` advertisement from the restored dedicated identity. A restored `state/public-endpoint-enabled` marker starts the public connector automatically; otherwise run `homelab cliproxy public-endpoint enable` first.
 
 Then confirm the fleet view and clients:
 
@@ -93,26 +93,26 @@ git worktree prune
 1. On the manager, stop and unload it, keeping any newer state:
 
    ```bash
-   devfleet cliproxy drain
-   devfleet cliproxy stop
-   devfleet cliproxy backup   # only if the manager refreshed credentials or changed config
+   homelab cliproxy drain
+   homelab cliproxy stop
+   homelab cliproxy backup   # only if the manager refreshed credentials or changed config
    for label in fleet monitor vault-renew backup backup-check gc; do
-     launchctl bootout "gui/$(id -u)/dev.devfleet.cliproxy-$label"
-     launchctl disable "gui/$(id -u)/dev.devfleet.cliproxy-$label"
+     launchctl bootout "gui/$(id -u)/dev.homelab.cliproxy-$label"
+     launchctl disable "gui/$(id -u)/dev.homelab.cliproxy-$label"
    done
    ```
 
    Move `INSTALL_ROOT/state/runtime`, `state/tailscale` and `state/endpoint.json` into a private directory under `INSTALL_ROOT/recovery/`. With the runtime cache gone, `fleet-sync` reports `PROXY_RECOVERY_REQUIRED` and can never restart the manager copy.
 
-2. On the source, if the manager took a newer backup, move the source's `state/runtime`, `state/tailscale` and `state/endpoint.json` aside the same way and run `devfleet cliproxy restore-cache --previous-node-stopped`; otherwise keep the original source state (old OAuth refresh tokens may be invalid after the manager refreshed them).
-3. Restart the source with `sudo systemctl enable cliproxy-fleet.service`, `devfleet cliproxy install --revision REV` (the revision it ran before), `devfleet cliproxy activate`, then re-enable its timers with `sudo systemctl enable --now cliproxy-monitor.timer cliproxy-vault-renew.timer cliproxy-backup.timer cliproxy-backup-check.timer cliproxy-gc.timer`.
+2. On the source, if the manager took a newer backup, move the source's `state/runtime`, `state/tailscale` and `state/endpoint.json` aside the same way and run `homelab cliproxy restore-cache --previous-node-stopped`; otherwise keep the original source state (old OAuth refresh tokens may be invalid after the manager refreshed them).
+3. Restart the source with `sudo systemctl enable cliproxy-fleet.service`, `homelab cliproxy install --revision REV` (the revision it ran before), `homelab cliproxy activate`, then re-enable its timers with `sudo systemctl enable --now cliproxy-monitor.timer cliproxy-vault-renew.timer cliproxy-backup.timer cliproxy-backup-check.timer cliproxy-gc.timer`.
 4. Verify the stable endpoints from fleet clients. Until the move is retried, fleet-sync reports `PROXY_DUPLICATE_OWNER` on the source; that is expected and is never auto-remediated.
 
 ## One-command offline recovery
 
-On a host with the tracked package installed and a valid private Vault token, `devfleet cliproxy recover-node NEW_DIRECTORY` builds a complete new cache using fresh Vault secrets and a verified R2 checkpoint. Supply `--vault-token-file FILE` to use an explicit existing login. It refuses existing destinations and never changes or stops the running stack. This is also a safe recovery rehearsal while the manager remains online: the new identity files are never activated. Remove rehearsal caches after inspection, since they contain private credentials.
+On a host with the tracked package installed and a valid private Vault token, `homelab cliproxy recover-node NEW_DIRECTORY` builds a complete new cache using fresh Vault secrets and a verified R2 checkpoint. Supply `--vault-token-file FILE` to use an explicit existing login. It refuses existing destinations and never changes or stops the running stack. This is also a safe recovery rehearsal while the manager remains online: the new identity files are never activated. Remove rehearsal caches after inspection, since they contain private credentials.
 
-On a replacement manager without installed tooling, invoke `python3 -B cliproxy/scripts/recover_node.py "$HOME/Library/Application Support/cliproxy-fleet" --vault-token-file FILE` from a full Git clone after `install-dependencies` passes. The destination must not yet exist. After explicitly fencing the old host, `devfleet cliproxy install --revision REV` installs tracked code and activates the recovered cache. This route replaces the separate prepare/login/password/restore steps above when an existing Vault token is already available. It does not obtain a new machine identity or bypass old-node fencing.
+On a replacement manager without installed tooling, invoke `python3 -B cliproxy/scripts/recover_node.py "$HOME/Library/Application Support/cliproxy-fleet" --vault-token-file FILE` from a full Git clone after `install-dependencies` passes. The destination must not yet exist. After explicitly fencing the old host, `homelab cliproxy install --revision REV` installs tracked code and activates the recovered cache. This route replaces the separate prepare/login/password/restore steps above when an existing Vault token is already available. It does not obtain a new machine identity or bypass old-node fencing.
 
 ## Recovery details
 
@@ -120,12 +120,12 @@ Recovery uses the current trusted Git checkout, validates decrypted data, and pr
 
 `restore-cache` intentionally refuses an existing `runtime`, `tailscale` or endpoint cache. An existing repository pin must match the restored destination. For recovery on the same host, stop the service/agents and move these cache entries to a private rollback directory first. Never move `state/status/operation.lock` while an operation is active. An interrupted recovery leaves `state/recovery-incomplete`; inspect/remove the partial cache before retrying. Keep `state/secrets` (new Vault login/password) and the lock directory intact.
 
-For offline inspection or historical recovery, use `devfleet cliproxy restore SNAPSHOT_ID EMPTY_DIRECTORY`, then `python3 -B INSTALL_ROOT/scripts/restore-verify EMPTY_DIRECTORY`. Modern checkpoints are located automatically despite different source paths. Old snapshots without `CHECKPOINT.json` require the original explicit restored deployment path and manual state recovery. No automatic fallback to an older snapshot occurs when validation fails.
+For offline inspection or historical recovery, use `homelab cliproxy restore SNAPSHOT_ID EMPTY_DIRECTORY`, then `python3 -B INSTALL_ROOT/scripts/restore-verify EMPTY_DIRECTORY`. Modern checkpoints are located automatically despite different source paths. Old snapshots without `CHECKPOINT.json` require the original explicit restored deployment path and manual state recovery. No automatic fallback to an older snapshot occurs when validation fails.
 
 The existing Tailscale Service remains in the cloud. Reuse the restored dedicated identity only while the original is stopped. If a drained identity requires re-advertising, use the pinned Tailscale CLI's `serve advertise` command for `svc:ai-proxy`, then inspect `serve status`. Do not change the manager's ordinary Tailscale identity or assume hostnames transfer. A new tagged identity/service definition requires the platform's OpenTofu-managed enrollment/approval workflow; no cloud provisioning helper exists in this package.
 
-A normal code/image rollback uses `devfleet cliproxy install --rollback`. That restores a recorded Git revision, not application data. For incompatible state migrations, restore a matching pre-upgrade snapshot while stopped.
+A normal code/image rollback uses `homelab cliproxy install --rollback`. That restores a recorded Git revision, not application data. For incompatible state migrations, restore a matching pre-upgrade snapshot while stopped.
 
 ## Public hostname cutover
 
-The public DNS/tunnel resources remain owned by OpenTofu. A restored `state/public-endpoint-enabled` marker makes service startup fetch the current isolated tunnel credential from Vault and start the connector automatically. The tunnel token itself is excluded from snapshots. If the marker is absent, run `devfleet cliproxy public-endpoint enable` after restoring and stopping the old host. Verify with `devfleet cliproxy public-endpoint verify` and `tests/live.py --endpoint https://cli-proxy.example.com --codex`. Client API and management keys do not change; keep the old host stopped during recovery.
+The public DNS/tunnel resources remain owned by OpenTofu. A restored `state/public-endpoint-enabled` marker makes service startup fetch the current isolated tunnel credential from Vault and start the connector automatically. The tunnel token itself is excluded from snapshots. If the marker is absent, run `homelab cliproxy public-endpoint enable` after restoring and stopping the old host. Verify with `homelab cliproxy public-endpoint verify` and `tests/live.py --endpoint https://cli-proxy.example.com --codex`. Client API and management keys do not change; keep the old host stopped during recovery.

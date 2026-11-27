@@ -10,7 +10,7 @@ import { monitoring, type MonitoringWorld } from './world';
 const { Given, When, Then } = monitoring;
 
 const root = resolve(import.meta.dir, '../../..');
-const image = 'dev-fleet-agent-box';
+const image = 'homelab-agent-box';
 const AGENT = `/usr/local/lib/personal-beszel/${lock.version}/beszel-agent`;
 const UNIT = '/etc/systemd/system/beszel-agent.service';
 

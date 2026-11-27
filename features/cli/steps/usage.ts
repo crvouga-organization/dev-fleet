@@ -17,11 +17,11 @@ const { Given, Then } = cli;
 
 async function ownState(world: CliWorld): Promise<void> {
   if (world.names['STATE']) return;
-  const before = process.env['DEVFLEET_STATE'];
+  const before = process.env['HOMELAB_STATE'];
   world.names['STATE'] = await temporary(world, 'fleet-usage-');
-  process.env['DEVFLEET_STATE'] = world.names['STATE'];
+  process.env['HOMELAB_STATE'] = world.names['STATE'];
   world.defer(() => {
-    process.env['DEVFLEET_STATE'] = before;
+    process.env['HOMELAB_STATE'] = before;
   });
 }
 

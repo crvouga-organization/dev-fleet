@@ -85,5 +85,5 @@
     - name: Reboot, and wait for the worker to answer again
       become: true
       ansible.builtin.reboot:
-        msg: dev-fleet {{ reboot_reason }} reboot
+        msg: homelab {{ reboot_reason }} reboot
         reboot_timeout: 900

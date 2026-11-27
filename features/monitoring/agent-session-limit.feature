@@ -9,7 +9,7 @@ Feature: A declared limit on agent sessions refuses the next session of a runnin
   wait: this proves what is started and what is refused, not a conversation.
 
   It lives beside the monitoring agent because the disposable systemd machine
-  does. Runs only when DEVFLEET_TEST_AGENT_BOX is set, because it downloads
+  does. Runs only when HOMELAB_TEST_AGENT_BOX is set, because it downloads
   the pinned T3 server.
 
   Background:
