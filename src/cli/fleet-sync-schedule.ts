@@ -136,7 +136,7 @@ function statusReport(platform: Platform, now = new Date()): CommandOutcome {
     exitCode: 0,
     data: {
       version: 2,
-      command: 'fleet-sync',
+      command: 'converge',
       execution: 'manager-push',
       scheduling: scheduleStatus(platform),
       intervalSeconds:
@@ -176,7 +176,7 @@ function removeSchedule(
     exitCode: result.ok ? 0 : 1,
     data: {
       version: 2,
-      command: 'fleet-sync',
+      command: 'converge',
       ok: result.ok,
       scheduling: input.action,
       summary: result.ok
@@ -228,7 +228,7 @@ async function enableSchedule(
     exitCode: result.ok ? 0 : 1,
     data: {
       version: 2,
-      command: 'fleet-sync',
+      command: 'converge',
       ok: result.ok,
       scheduling: result.ok ? 'enabled' : 'action-required',
       revision: input.revision,
@@ -242,7 +242,7 @@ function required(summary: string): CommandOutcome {
     exitCode: 1,
     data: {
       version: 2,
-      command: 'fleet-sync',
+      command: 'converge',
       ok: false,
       scheduling: 'action-required',
       summary,

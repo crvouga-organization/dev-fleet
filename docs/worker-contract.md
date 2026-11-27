@@ -8,8 +8,8 @@
 The public `homelab` CLI owns two primary operations:
 
 ```sh
-homelab fleet-sync
-homelab fleet-status --workers
+homelab converge
+homelab check --workers
 ```
 
 The manager needs Node/npm, Git, SSH, Tailscale, and its own authorized T3 link.
@@ -19,7 +19,7 @@ already commonly have noninteractive sudo; otherwise establish the repository's
 `authorize-sudo.sh` policy once during administrator enrollment. An image that
 lets only root in (many rented servers) needs no hands either: when the
 account `workers[].network.user` names cannot log in yet, or the SSH alias
-logs in as root, `fleet-sync` creates that account once over the root login
+logs in as root, `sync` creates that account once over the root login
 (`ansible/ubuntu/worker-account.yml`: the key root was reached with and the
 fleet's sudo rule) and continues as it. The developer toolchain never runs as
 root, and the SSH policy turns root login off afterwards. Routine commands
@@ -210,7 +210,7 @@ says when a worker is at its limit, and fails with
 Ending a session admits the next one. To lift the limit at once on a worker,
 stop the unit (`systemctl --user stop personal-fleet-agent-session-limit.service`):
 it puts the kernel's limit back to `max` as it ends. To remove it, delete
-`agentSessionLimit` and run `fleet-sync`.
+`agentSessionLimit` and run `sync`.
 `features/monitoring/agent-session-limit.feature` proves each of these
 against the pinned T3 server on a disposable machine.
 
@@ -252,14 +252,14 @@ only a database still inconsistent stops it with `DPKG_INTERRUPTED`.
 Health does not mutate configuration, renew tokens, log in, install software, or
 make billable inference requests. It audits the immutable desired worker deployment,
 not an unrelated developer branch. Every declared worker must be enrolled and
-reachable, unless it is parked (`homelab fleet-node-park`): a parked worker
+reachable, unless it is parked (`homelab park`): a parked worker
 is listed as parked and never contacted. Extra service hosts are listed as outside scope. Required failures,
 warnings and unverified checks prevent a ready result; explicitly non-required
 checks remain visible without inventing a pass.
 
 The desired fleet contract is stronger than today's live acceptance. A real
 power-loss test cannot be proved by the firmware reporting the setting:
-`fleet-sync` sets a recognized restore-after-AC-loss setting when the
+`sync` sets a recognized restore-after-AC-loss setting when the
 firmware exposes one, and `worker:power-loss-recovery` reads it back.
 Firmware that exposes no such setting stays unverified. A virtual machine's
 provider restarts it. A

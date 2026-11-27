@@ -128,7 +128,7 @@ export function fleetReport(
   const summary = reliability(runs, now);
   const data = {
     version: 1,
-    command: 'fleet-report',
+    command: 'history',
     ok: true,
     since,
     ...summary,

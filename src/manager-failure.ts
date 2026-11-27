@@ -20,7 +20,7 @@ export function managerFailure(
   };
   return {
     version: 3,
-    command: 'fleet-sync',
+    command: 'converge',
     execution: 'manager-push',
     ok: false,
     applied: false,

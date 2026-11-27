@@ -5,7 +5,7 @@ the code that opens it, at the start of a refusal, in a bootstrap phase, in
 what a script on a machine says, in an Ansible message or in the error of a
 workflow a fleet's repository calls. A few are warnings or notes rather than
 failures; their entries say so. Each family says what its codes
-mean, how to confirm one, the fix (a command or a `fleet-sync` that applies
+mean, how to confirm one, the fix (a command or a `sync` that applies
 the playbook that owns it) and when to escalate. A code whose fix needs a
 person (a login, an approval, a choice) is marked **needs a person**.
 `features/rules/runbooks.feature` fails when a code in the source has no
@@ -19,8 +19,8 @@ There are 485 codes; 100 need a person.
 ## Bootstrap of a new or returning worker
 
 - **Meaning:** The remote bootstrap (`bootstrap/fleet-remote-bootstrap.sh`) stopped before node convergence. It reports the phase and the code, never its output.
-- **Confirm:** Run `homelab fleet-sync --dry-run` and read the `bootstrap:*` check of the worker; `ssh WORKER` and look under `~/.local/share/personal/fleet`.
-- **Fix:** Follow the remedy the check prints, then run `homelab fleet-sync`. The bootstrap resumes where it stopped.
+- **Confirm:** Run `homelab converge --dry-run` and read the `bootstrap:*` check of the worker; `ssh WORKER` and look under `~/.local/share/personal/fleet`.
+- **Fix:** Follow the remedy the check prints, then run `homelab converge`. The bootstrap resumes where it stopped.
 - **Escalate:** A platform or architecture code means the machine must be reinstalled with a release [the support matrix](support-matrix.md) lists, on a machine of its own.
 
 - `BOOTSTRAP_CAPACITY_UNVERIFIED`: bootstrap capacity unverified.
@@ -34,15 +34,15 @@ There are 485 codes; 100 need a person.
 - `ROOT_DEVELOPMENT_USER_REJECTED`: root development user rejected.
 - `UBUNTU_ARCHITECTURE_UNSUPPORTED`: ubuntu architecture unsupported. **Needs a person.**
 - `WORKER_ENVIRONMENT_UNSUPPORTED`: worker environment unsupported: a container or WSL2. **Needs a person.**
-- `POWER_LOSS_RECOVERY_UNSET`: the firmware exposes a recognized restore-after-AC-loss setting and it is not set to power on. `homelab fleet-sync` sets it; the firmware applies it at the next boot, which `worker:reboot` reports. A virtual machine is restarted by its provider and the check does not apply.
-- `REMOTE_BOOTSTRAP_INCOMPLETE`: the remote bootstrap ended in the phase the check names without a failure of its own: a command of that phase failed, or the run was cut off. No success receipt advanced. Check that no other operation still holds the worker (`FLEET_REMOTE_LOCKED`), then run `homelab fleet-sync`.
+- `POWER_LOSS_RECOVERY_UNSET`: the firmware exposes a recognized restore-after-AC-loss setting and it is not set to power on. `homelab converge` sets it; the firmware applies it at the next boot, which `worker:reboot` reports. A virtual machine is restarted by its provider and the check does not apply.
+- `REMOTE_BOOTSTRAP_INCOMPLETE`: the remote bootstrap ended in the phase the check names without a failure of its own: a command of that phase failed, or the run was cut off. No success receipt advanced. Check that no other operation still holds the worker (`FLEET_REMOTE_LOCKED`), then run `homelab converge`.
 
 ## Ubuntu packages
 
 - **Meaning:** A package transaction could not run or the package database is inconsistent.
 - **Confirm:** `ssh WORKER sudo dpkg --audit` and `sudo apt-get -o Debug::NoLocking=1 check`.
-- **Fix:** Let any running package process finish (it is never killed), free disk under `/var`, then run `homelab fleet-sync`.
-- **Escalate:** An interrupted package run is finished by the next `homelab fleet-sync`: the bootstrap and the baseline each run `dpkg --configure -a` once, bounded. APT_STATE_BROKEN and DPKG_INTERRUPTED mean that repair did not clear `dpkg --audit`: a person repairs the packages it names.
+- **Fix:** Let any running package process finish (it is never killed), free disk under `/var`, then run `homelab converge`.
+- **Escalate:** An interrupted package run is finished by the next `homelab converge`: the bootstrap and the baseline each run `dpkg --configure -a` once, bounded. APT_STATE_BROKEN and DPKG_INTERRUPTED mean that repair did not clear `dpkg --audit`: a person repairs the packages it names.
 
 - `APT_DISK_FULL`: apt disk full.
 - `APT_DNS_UNAVAILABLE`: apt dns unavailable.
@@ -53,14 +53,14 @@ There are 485 codes; 100 need a person.
 - `DISK_TARGET_UNMET`: the collector finished above its disk-use target. Inspect protected data and available capacity.
 - `APT_UPDATE_TIMEOUT`: the worker reached the update deadline while refreshing package indexes. Check archive connectivity and contention before retrying.
 - `APT_INSTALL_TIMEOUT`: the worker reached the install deadline while fetching or configuring bootstrap packages. Inspect dpkg and retry fleet-sync.
-- `APT_UPDATE_FAILED`: `apt-get update` for the bootstrap packages failed, and not for a reason that has a code of its own (a held lock, a full disk, DNS, the archive, an interrupted dpkg). On the worker run `sudo apt-get update` to see the error, correct it, then run `homelab fleet-sync`. **Needs a person.**
-- `APT_INSTALL_FAILED`: the same for installing the bootstrap packages: install them by hand on the worker to see the error, then run `homelab fleet-sync`. **Needs a person.**
+- `APT_UPDATE_FAILED`: `apt-get update` for the bootstrap packages failed, and not for a reason that has a code of its own (a held lock, a full disk, DNS, the archive, an interrupted dpkg). On the worker run `sudo apt-get update` to see the error, correct it, then run `homelab converge`. **Needs a person.**
+- `APT_INSTALL_FAILED`: the same for installing the bootstrap packages: install them by hand on the worker to see the error, then run `homelab converge`. **Needs a person.**
 
 ## The fleet-owned checkout
 
 - **Meaning:** The checkout of the revision on the machine holds changes fleet-sync did not make, or its bundle changed in transit.
 - **Confirm:** `ssh WORKER git -C ~/.local/share/personal/fleet/revisions/REVISION status`.
-- **Fix:** Remove that revisions directory and run `homelab fleet-sync`; it is a cache.
+- **Fix:** Remove that revisions directory and run `homelab converge`; it is a cache.
 - **Escalate:** A digest mismatch that repeats points at the SSH route.
 
 - `SOURCE_CACHE_CHANGED`: source cache changed.
@@ -71,8 +71,8 @@ There are 485 codes; 100 need a person.
 ## The pinned toolchain
 
 - **Meaning:** mise, the pinned tools, the global mise configuration or the frozen dependencies did not converge.
-- **Confirm:** Run `bun bootstrap/doctor.ts --json --worker` in the checkout on the machine, or read the `tool:*` checks of `homelab fleet-status`.
-- **Fix:** Run `homelab fleet-sync`; it resumes. TOOLCHAIN_CONFIG_CONFLICT means another tool owns `~/.config/mise/config.toml`: move it away. TOOLCHAIN_DOWNGRADE (a warning of `tool:mise`) means the machine runs a newer mise than the revision pins: the bootstrap kept it, because `min_version` is a minimum and a checkout with a newer pin needs it. Nothing is to do after a rollback or beside such a checkout; to install the older pinned mise on purpose, run `homelab fleet-sync --allow-mise-downgrade`, which asks the bootstrap of every machine it converges for that (for a revision from before the flag reached the bootstrap, run `bash bootstrap/bootstrap.sh --allow-mise-downgrade` in the revision's checkout on that machine, with `--tools-only` on the manager, `--worker --node ID` on a worker).
+- **Confirm:** Run `bun bootstrap/doctor.ts --json --worker` in the checkout on the machine, or read the `tool:*` checks of `homelab check`.
+- **Fix:** Run `homelab converge`; it resumes. TOOLCHAIN_CONFIG_CONFLICT means another tool owns `~/.config/mise/config.toml`: move it away. TOOLCHAIN_DOWNGRADE (a warning of `tool:mise`) means the machine runs a newer mise than the revision pins: the bootstrap kept it, because `min_version` is a minimum and a checkout with a newer pin needs it. Nothing is to do after a rollback or beside such a checkout; to install the older pinned mise on purpose, run `homelab converge --allow-mise-downgrade`, which asks the bootstrap of every machine it converges for that (for a revision from before the flag reached the bootstrap, run `bash bootstrap/bootstrap.sh --allow-mise-downgrade` in the revision's checkout on that machine, with `--tools-only` on the manager, `--worker --node ID` on a worker).
 - **Escalate:** A tool that fails to download from its pinned artifact needs a new pin in `mise.toml` and `mise.lock` (an issue).
 
 - `LAUNCHER_INSTALLATION_FAILED`: launcher installation failed.
@@ -88,8 +88,8 @@ There are 485 codes; 100 need a person.
 ## The Ubuntu baseline and its services
 
 - **Meaning:** The Ansible baseline (`ansible/ubuntu/baseline.yml`) did not apply, or what it declares is not what the machine runs.
-- **Confirm:** Read the `worker:*` and `ubuntu:*` checks of `homelab fleet-status --workers`; on the worker, `systemctl status SERVICE`.
-- **Fix:** Run `homelab fleet-sync`, which applies the baseline in full when its effect no longer verifies.
+- **Confirm:** Read the `worker:*` and `ubuntu:*` checks of `homelab check --workers`; on the worker, `systemctl status SERVICE`.
+- **Fix:** Run `homelab converge`, which applies the baseline in full when its effect no longer verifies.
 - **Escalate:** Ownership conflicts (sudoers, SSH, Docker from another distribution) need a person to migrate the other owner first.
 
 - `DISK_FREE_BELOW_FLOOR`: disk free below floor.
@@ -127,16 +127,16 @@ There are 485 codes; 100 need a person.
 - `WORKER_NOT_CONVERGED`: the last recorded worker apply failed or its receipt differs from the approved revision. Follow the reported check and rerun the worker sync.
 - `WORKER_RECOVERY_TIMER_INACTIVE`: worker recovery timer inactive.
 - `CLOCK_DRIFTING`: the clock is further from the manager's than the warning offset of `clock` in `ansible/ubuntu/policy.json`. The check names the offset. Enable the time service as the remedy says before it becomes CLOCK_SKEWED.
-- `CLOCK_NOT_SYNCHRONISED`: the machine is not synchronised to a time source; it fails when no time service is enabled at all. Run `homelab fleet-sync`, which enables the time service the baseline declares.
-- `CLOCK_SKEWED`: the clock is further from the manager's than the failing offset. TLS, token validation, apt signatures and Vault logins fail with errors that never mention time. Enable the time service as the remedy says, then run `homelab fleet-sync`.
+- `CLOCK_NOT_SYNCHRONISED`: the machine is not synchronised to a time source; it fails when no time service is enabled at all. Run `homelab converge`, which enables the time service the baseline declares.
+- `CLOCK_SKEWED`: the clock is further from the manager's than the failing offset. TLS, token validation, apt signatures and Vault logins fail with errors that never mention time. Enable the time service as the remedy says, then run `homelab converge`.
 - `CLOCK_UNOBSERVED`: the clock synchronisation could not be read, so the check is skipped. Nothing is known to be wrong.
 - `INODES_EXHAUSTED`: the worker's file system has almost no free inodes: every new file fails although bytes are free. The hourly disk collector removes idle dependency trees and worktrees under pressure; delete them by hand when it has not.
-- `PACKAGE_BELOW_PIN`: a package is missing or older than the version `ansible/ubuntu/policy.json` pins. Run `homelab fleet-sync`, which installs the pinned version.
+- `PACKAGE_BELOW_PIN`: a package is missing or older than the version `ansible/ubuntu/policy.json` pins. Run `homelab converge`, which installs the pinned version.
 - `PACKAGE_NEWER_THAN_PIN`: an unattended security update moved a package past its pin. It is kept: a warning, never undone. The pin is raised in homelab when the snapshot moves.
-- `REBOOT_PENDING`: installed updates apply only after a reboot; it fails once the reboot has waited longer than `rebootPendingFailDays`. Reboot the worker when no agent turn is running, then confirm it with `homelab fleet-status --workers`.
-- `WORKER_MANIFEST_DRIFT`: something was installed, removed or changed on the worker outside fleet-sync; the check lists the differences. Rebuild the worker with `homelab fleet-node-replace`, or ask for the change to be declared in homelab. **Needs a person.**
-- `WORKER_RECOVERY_LAST_RUN_FAILED`: the last run of `personal-worker-recovery.service` did not succeed; the check names its result. On the worker, `systemctl --user status personal-worker-recovery.service` and `journalctl --user -u personal-worker-recovery.service`, then run `homelab fleet-sync`.
-- `SSH_CONFIG_REJECTED`: `sshd -t` refused the complete SSH configuration with the fragments fleet-sync wrote. The previous fragments were restored and sshd was not reloaded, so the worker serves SSH as before. On the worker `sudo sshd -t` names the line; it is usually another fragment under `/etc/ssh/sshd_config.d` that a person corrects before `homelab fleet-sync` is run again. **Needs a person.**
+- `REBOOT_PENDING`: installed updates apply only after a reboot; it fails once the reboot has waited longer than `rebootPendingFailDays`. Reboot the worker when no agent turn is running, then confirm it with `homelab check --workers`.
+- `WORKER_MANIFEST_DRIFT`: something was installed, removed or changed on the worker outside fleet-sync; the check lists the differences. Rebuild the worker with `homelab replace`, or ask for the change to be declared in homelab. **Needs a person.**
+- `WORKER_RECOVERY_LAST_RUN_FAILED`: the last run of `personal-worker-recovery.service` did not succeed; the check names its result. On the worker, `systemctl --user status personal-worker-recovery.service` and `journalctl --user -u personal-worker-recovery.service`, then run `homelab converge`.
+- `SSH_CONFIG_REJECTED`: `sshd -t` refused the complete SSH configuration with the fragments fleet-sync wrote. The previous fragments were restored and sshd was not reloaded, so the worker serves SSH as before. On the worker `sudo sshd -t` names the line; it is usually another fragment under `/etc/ssh/sshd_config.d` that a person corrects before `homelab converge` is run again. **Needs a person.**
 
 On workers, automatically named `systemd-run --user` services and scopes
 share the T3 agents' memory budget. Under sustained I/O or memory pressure
@@ -151,15 +151,15 @@ write `1` to that agent scope’s `cgroup.kill`.
 ## Worker size and features
 
 - **Meaning:** The machine is smaller than the minimum worker (`sizing.minimumWorker` in `ansible/ubuntu/policy.json`), more agent sessions run than its memory policy supports, its declared `features` in `fleet.json` are not ones homelab knows, or something homelab installed for a feature that is now off is still there.
-- **Confirm:** `homelab fleet-sync --dry-run` shows the `platform:worker-size` check of each worker and, under the plan, what turning a feature off removes; `homelab fleet-status --workers` shows `worker:features` and `worker:agent-sessions`.
-- **Fix:** Resize a machine below the minimum, then run `homelab fleet-sync`; nothing was installed on it. For a feature removal, run `homelab fleet-sync` again. For too many sessions, finish some or move work to a larger worker; to have the worker refuse sessions above a number you choose, declare `agentSessionLimit` in `fleet.json`.
+- **Confirm:** `homelab converge --dry-run` shows the `platform:worker-size` check of each worker and, under the plan, what turning a feature off removes; `homelab check --workers` shows `worker:features` and `worker:agent-sessions`.
+- **Fix:** Resize a machine below the minimum, then run `homelab converge`; nothing was installed on it. For a feature removal, run `homelab converge` again. For too many sessions, finish some or move work to a larger worker; to have the worker refuse sessions above a number you choose, declare `agentSessionLimit` in `fleet.json`.
 - **Escalate:** A package another package depends on stays installed until a person removes that one.
 
 - `AGENTS_OVER_CAPACITY`: the kernel measured a simultaneous agent-slice peak above the worker’s memory budget, or an older probe supplied only a session count above its estimated capacity. Inspect current memory pressure before moving sessions.
 - `AGENT_PEAK_PROJECTION`: individual peaks would exceed the budget if repeated together. The probe has no simultaneous measurement. Inspect the enclosing slice’s memory peak before changing capacity.
 - `AGENT_SESSION_LIMIT_EXCEEDED`: the number of scopes exceeds the declared session limit. Inspect the counted scopes and finish excess sessions.
-- `AGENT_SESSION_LIMIT_INACTIVE`: agent session limit inactive: `fleet.json` declares `agentSessionLimit` for the worker and the worker does not hold it, so it refuses no session. The summary says which: the user unit `personal-fleet-agent-session-limit.service` is not running, runs with another number, or the kernel holds another limit (`cgroup.max.descendants`) on the slice T3 starts agents in. Run `homelab fleet-sync`; on the worker, `systemctl --user status personal-fleet-agent-session-limit.service` shows why the unit stopped.
-- `AGENT_SESSION_REFUSED`: agent session refused: a fleet launcher was started above the worker's `agentSessionLimit` and ended with code 75 without starting its agent. T3 shows the thread as failed with "exited with code 75 before it started"; the line is in T3's server log (`journalctl --user -u t3code-desktop.service`, or `t3code-headless.service`). End a session that is no longer needed and send the message again, or raise `agentSessionLimit` and run `homelab fleet-sync`. An agent T3 starts with no fleet launcher is refused by the kernel two scopes higher, with no message: T3 shows "exited with code 1 before it started" and the user journal says `Failed to create cgroup … Resource temporarily unavailable`. To lift the limit at once on the worker: `systemctl --user stop personal-fleet-agent-session-limit.service`; to remove it, delete `agentSessionLimit` and sync.
+- `AGENT_SESSION_LIMIT_INACTIVE`: agent session limit inactive: `fleet.json` declares `agentSessionLimit` for the worker and the worker does not hold it, so it refuses no session. The summary says which: the user unit `personal-fleet-agent-session-limit.service` is not running, runs with another number, or the kernel holds another limit (`cgroup.max.descendants`) on the slice T3 starts agents in. Run `homelab converge`; on the worker, `systemctl --user status personal-fleet-agent-session-limit.service` shows why the unit stopped.
+- `AGENT_SESSION_REFUSED`: agent session refused: a fleet launcher was started above the worker's `agentSessionLimit` and ended with code 75 without starting its agent. T3 shows the thread as failed with "exited with code 75 before it started"; the line is in T3's server log (`journalctl --user -u t3code-desktop.service`, or `t3code-headless.service`). End a session that is no longer needed and send the message again, or raise `agentSessionLimit` and run `homelab converge`. An agent T3 starts with no fleet launcher is refused by the kernel two scopes higher, with no message: T3 shows "exited with code 1 before it started" and the user journal says `Failed to create cgroup … Resource temporarily unavailable`. To lift the limit at once on the worker: `systemctl --user stop personal-fleet-agent-session-limit.service`; to remove it, delete `agentSessionLimit` and sync.
 - `WORKER_FEATURES_INVALID`: worker features invalid: the session is neither desktop nor headless.
 - `WORKER_FEATURE_REMOVAL_INCOMPLETE`: worker feature removal incomplete: a Docker package or the docker group membership is still there with containers off.
 - `WORKER_SIZE_BELOW_MINIMUM`: worker size below minimum: less memory, disk or CPUs than the minimum worker. **Needs a person.**
@@ -168,7 +168,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 
 - **Meaning:** `worker:docker-run` could not start the pinned container or build a one-line image as the worker user.
 - **Confirm:** On the worker, as that user: `docker run --rm --network none --pull never IMAGE true`, with IMAGE from `dockerSmokeTest` in `ansible/ubuntu/policy.json`.
-- **Fix:** Run `homelab fleet-sync`: it starts the engine, adds the user to the docker group and caches the image. A session started earlier keeps its old groups: restart it.
+- **Fix:** Run `homelab converge`: it starts the engine, adds the user to the docker group and caches the image. A session started earlier keeps its old groups: restart it.
 - **Escalate:** A cgroup or runtime failure that survives a reboot is an issue.
 
 - `DOCKER_BUILD_FAILED`: docker build failed.
@@ -182,8 +182,8 @@ write `1` to that agent scope’s `cgroup.kill`.
 ## Exposure of a worker
 
 - **Meaning:** Something on the worker is reachable from outside the tailnet, or could be: the fleet firewall (`ansible/ubuntu/tasks/firewall.yml`) is not loaded or kept SSH open, a service listens beyond loopback and the tailnet (`worker:exposure`), or the manager reached a fleet port on the worker's public address (`worker:public-reachability`). The exposure policy is `exposure` in `fleet.json` (fleet-wide under `worker`, per worker beside `network`).
-- **Confirm:** On the worker: `sudo nft list table inet personal_fleet`, `sudo ss -H -l -n -t -u -p` and `sudo sshd -T | grep -E 'passwordauthentication|permitrootlogin'`. From the manager: `homelab fleet-status --workers`.
-- **Fix:** Run `homelab fleet-sync`. It closes SSH beyond the tailnet only when the manager's session arrives over the tailnet: point the worker's SSH alias at its tailnet name first. Bind a service to `127.0.0.1` or the tailnet address, or declare its port in `publicPorts`. A service that cannot bind one address, such as a remote desktop, is declared in `tailnetOnlyPorts` instead: that opens nothing, and the next `homelab fleet-sync` loads the rule that holds the port to loopback and the tailnet.
+- **Confirm:** On the worker: `sudo nft list table inet personal_fleet`, `sudo ss -H -l -n -t -u -p` and `sudo sshd -T | grep -E 'passwordauthentication|permitrootlogin'`. From the manager: `homelab check --workers`.
+- **Fix:** Run `homelab converge`. It closes SSH beyond the tailnet only when the manager's session arrives over the tailnet: point the worker's SSH alias at its tailnet name first. Bind a service to `127.0.0.1` or the tailnet address, or declare its port in `publicPorts`. A service that cannot bind one address, such as a remote desktop, is declared in `tailnetOnlyPorts` instead: that opens nothing, and the next `homelab converge` loads the rule that holds the port to loopback and the tailnet.
 - **Escalate:** A firewall the tailnet path could not verify (the previous rules are back) needs `tailscale status` on the worker; a public SSH port is opened on purpose only with `publicSsh`, by a person.
 
 - `FIREWALL_RULES_REJECTED`: firewall rules rejected by `nft --check`; the previous rules stay loaded.
@@ -196,13 +196,13 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `WORKER_LISTENER_UNRESTRICTED`: a socket listens beyond loopback and the tailnet outside the allow-list; the summary names the port and the owning unit. A fleet service fails; another warns or fails by `otherListeners`. What an agent started is reported as `WORKER_AGENT_LISTENER_UNRESTRICTED` instead.
 - `WORKER_PUBLIC_PORT_UNRESTRICTED`: the manager connected to SSH, T3 or the monitoring port on the worker's public address.
 - `WORKER_PUBLIC_SSH_UNDECLARED`: SSH is still open beyond the tailnet without `publicSsh`, because no session over the tailnet proved the manager's path. **Needs a person.**
-- `WORKER_TAILNET_ONLY_RULE_MISSING`: a service listens on a port of `tailnetOnlyPorts`, but the loaded table has no `tailnet-only` rule that drops that port; the summary names the port and the owning unit. Run `homelab fleet-sync`.
+- `WORKER_TAILNET_ONLY_RULE_MISSING`: a service listens on a port of `tailnetOnlyPorts`, but the loaded table has no `tailnet-only` rule that drops that port; the summary names the port and the owning unit. Run `homelab converge`.
 
 ## Headless browser on a worker
 
 - **Meaning:** `worker:browser` could not launch the pinned headless Chromium of the web tool profile.
 - **Confirm:** On the worker run the headless shell under `/opt/personal-fleet/browser/` with `--headless --no-sandbox --dump-dom about:blank`.
-- **Fix:** Run `homelab fleet-sync`, which installs the pinned libraries and build (`ansible/ubuntu/tasks/browser.yml`).
+- **Fix:** Run `homelab converge`, which installs the pinned libraries and build (`ansible/ubuntu/tasks/browser.yml`).
 - **Escalate:** A missing library the policy does not list is an issue: the list needs it.
 
 - `BROWSER_LAUNCH_FAILED`: browser launch failed.
@@ -214,7 +214,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 
 - **Meaning:** Commits on the node would carry the wrong author, would not be signed although `git.signing` is declared, or git cannot authenticate to GitHub on its own.
 - **Confirm:** On the node, from `/`: `git config --show-origin --get-all user.name` (both per-user files, `~/.gitconfig` winning), and `printf "protocol=https\nhost=github.com\n\n" | GIT_TERMINAL_PROMPT=0 git credential fill >/dev/null`.
-- **Fix:** Declare the `git` block in `fleet.json` and run `homelab fleet-sync` (`ansible/github/git.yml`). Remove lines in `~/.gitconfig` that override it: `user.name`, `user.email`, or a GitHub credential helper other than `gh auth git-credential` (the one `gh auth setup-git` writes may stay). Do this before declaring the block: an override fails `git:configuration`, which stops the rollout at the canary.
+- **Fix:** Declare the `git` block in `fleet.json` and run `homelab converge` (`ansible/github/git.yml`). Remove lines in `~/.gitconfig` that override it: `user.name`, `user.email`, or a GitHub credential helper other than `gh auth git-credential` (the one `gh auth setup-git` writes may stay). Do this before declaring the block: an override fails `git:configuration`, which stops the rollout at the canary.
 - **Escalate:** GIT_REMOTE_REFUSED means the fleet account lost access to the declared repository: a person grants it. GitHub shows signed commits as verified only once a person adds each node's `~/.ssh/homelab-git-signing.pub` to the account as a signing key.
 
 - `GIT_CONFIGURATION_INCOMPLETE`: git configuration incomplete.
@@ -228,13 +228,13 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `GIT_SIGNING_FAILED`: git signing failed: the node's own key is missing or cannot sign without a prompt.
 - `GIT_SIGNING_MISSING`: git signing missing.
 - `GIT_SIGNING_OVERRIDDEN`: git signing overridden.
-- `GITHUB_GIT_CREDENTIAL_MISSING`: git does not take its GitHub credential from `gh`, so a push asks for a password or fails. Declare the `git` block and run `homelab fleet-sync`; on a manager with a personal login, `gh auth setup-git`.
+- `GITHUB_GIT_CREDENTIAL_MISSING`: git does not take its GitHub credential from `gh`, so a push asks for a password or fails. Declare the `git` block and run `homelab converge`; on a manager with a personal login, `gh auth setup-git`.
 
 ## GitHub sign-in
 
 - **Meaning:** A node is not signed in to GitHub from the stored `github-token`, or the token belongs to another login. See [GitHub on every node](github.md).
-- **Confirm:** The `worker:github-sync` and `github:*` checks of `homelab fleet-status --workers`; on the node, `gh auth status`.
-- **Fix:** Put a valid token for `worker.githubLogin` in the store as `github-token`, then run `homelab fleet-sync` (a worker also retries every ten minutes).
+- **Confirm:** The `worker:github-sync` and `github:*` checks of `homelab check --workers`; on the node, `gh auth status`.
+- **Fix:** Put a valid token for `worker.githubLogin` in the store as `github-token`, then run `homelab converge` (a worker also retries every ten minutes).
 - **Escalate:** A missing login or a token issued for another account needs a person to declare the login or issue a new token.
 
 - `GITHUB_LOGIN_MISMATCH`: github login mismatch. **Needs a person.**
@@ -243,25 +243,25 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `GITHUB_TOKEN_MISSING`: github token missing.
 - `GITHUB_TOKEN_REJECTED`: github token rejected.
 - `GITHUB_UNREACHABLE`: github unreachable.
-- `COPILOT_TOKEN_UNSUPPORTED`: the node's GitHub token is of a kind Copilot CLI refuses (a classic personal access token). Store a fine-grained token with the Copilot Requests permission as `github-token` and run `homelab fleet-sync`. **Needs a person.**
+- `COPILOT_TOKEN_UNSUPPORTED`: the node's GitHub token is of a kind Copilot CLI refuses (a classic personal access token). Store a fine-grained token with the Copilot Requests permission as `github-token` and run `homelab converge`. **Needs a person.**
 - `GITHUB_ORG_MEMBERSHIP_MISSING`: the fleet login is not an active member of an organisation the fleet declares; the check names it. Someone who administers the organisation adds the login. **Needs a person.**
-- `GITHUB_PERMISSION_MISSING`: the token lacks a declared scope or cannot push to a declared repository; the check names each. Issue a token with them, store it as `github-token` and run `homelab fleet-sync`. **Needs a person.**
+- `GITHUB_PERMISSION_MISSING`: the token lacks a declared scope or cannot push to a declared repository; the check names each. Issue a token with them, store it as `github-token` and run `homelab converge`. **Needs a person.**
 - `GITHUB_RATE_LIMIT_LOW`: little of the login's hourly request limit is left; the check names what remains and when it resets. Wait for the reset, or give every node its own credential (`github.credential` set to `per-node`).
 - `GITHUB_SCOPES_NOT_OBSERVABLE`: the token reports no scopes (a fine-grained token), so the declared scopes cannot be compared; the declared repositories were checked instead. A warning with nothing to fix.
 - `GITHUB_SSO_AUTHORIZATION_REQUIRED`: an organisation requires single sign-on and the token is not authorised for it; the check names the organisation. Authorise the token in the GitHub settings (Configure SSO). **Needs a person.**
-- `GITHUB_TOKEN_EXPIRING`: the stored token expires within days; the check names the instant. Issue a new token, store it as `github-token` and run `homelab fleet-sync` before then: every node adopts it while the old one still works. **Needs a person.**
+- `GITHUB_TOKEN_EXPIRING`: the stored token expires within days; the check names the instant. Issue a new token, store it as `github-token` and run `homelab converge` before then: every node adopts it while the old one still works. **Needs a person.**
 - `GITHUB_TOKEN_EXPIRING_SOON`: the same, earlier: a warning that leaves time to issue the next token. **Needs a person.**
-- `GITHUB_TOKEN_STALE`: the node still signs requests with a token the store no longer holds. Run `homelab fleet-sync`; a worker also adopts the stored token within ten minutes.
+- `GITHUB_TOKEN_STALE`: the node still signs requests with a token the store no longer holds. Run `homelab converge`; a worker also adopts the stored token within ten minutes.
 - `GITHUB_WORKFLOW_CLEANUP_FAILED`: the workflow probe passed but left a branch or pull request on the sandbox repository; the check names them. Close the pull request and delete the branch.
 - `GITHUB_WORKFLOW_FAILED`: the workflow probe (clone the sandbox, push a branch, open a draft pull request, read its checks, comment) stopped at the step the check names. Follow the remedy of that step.
-- `GITHUB_NOT_SIGNED_IN`: `gh` on the node is signed in to no account (`github:principal`). A worker is signed in by `homelab fleet-sync` with the stored `github-token`. A manager with a personal login (`github.manager`) is signed in by a person with `gh auth login`: homelab never replaces a personal login.
-- `GITHUB_SYNC_UNREPORTED`: the sign-in job of the node (`bootstrap/worker-github.ts`) ended without a result `github:sync` can read. Run `homelab fleet-sync` again; when it repeats, run the job on the node as the remedy says to see its result line.
+- `GITHUB_NOT_SIGNED_IN`: `gh` on the node is signed in to no account (`github:principal`). A worker is signed in by `homelab converge` with the stored `github-token`. A manager with a personal login (`github.manager`) is signed in by a person with `gh auth login`: homelab never replaces a personal login.
+- `GITHUB_SYNC_UNREPORTED`: the sign-in job of the node (`bootstrap/worker-github.ts`) ended without a result `github:sync` can read. Run `homelab converge` again; when it repeats, run the job on the node as the remedy says to see its result line.
 
 ## Tailscale
 
 - **Meaning:** A machine is not on the tailnet as the fleet declares it.
-- **Confirm:** `tailscale status` on the machine and `homelab fleet-discover`.
-- **Fix:** Sign the machine in (`sudo tailscale up` on a worker, the app on the manager), then run `homelab fleet-sync`.
+- **Confirm:** `tailscale status` on the machine and `homelab tailnet`.
+- **Fix:** Sign the machine in (`sudo tailscale up` on a worker, the app on the manager), then run `homelab converge`.
 - **Escalate:** Logins and device approvals need a person.
 
 - `TAILSCALE_DEVICE_REPLACED`: tailscale device replaced. **Needs a person.**
@@ -272,18 +272,18 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `TAILSCALE_LOGIN_REQUIRED`: tailscale login required. **Needs a person.**
 - `TAILSCALE_NODE_MISSING`: tailscale node missing.
 - `TAILSCALE_NODE_OFFLINE`: tailscale node offline.
-- `TAILSCALE_SETUP_OR_LOGIN_REQUIRED`: the Tailscale play stopped on no code of its own and the worker is not logged in to the tailnet. Declare `tailnet` in `fleet.json` so `homelab fleet-sync` enrols it with a single-use key, or sign it in (`sudo tailscale up`). **Needs a person.**
-- `TAILSCALE_CONFIGURATION_INCOMPLETE`: the Tailscale play stopped on no code of its own while the worker is logged in and running: a package source or the daemon failed. Run `homelab fleet-sync` again; when it repeats, apply `ansible/ubuntu/tailscale.yml` of the approved revision on the worker to see the task that stops.
+- `TAILSCALE_SETUP_OR_LOGIN_REQUIRED`: the Tailscale play stopped on no code of its own and the worker is not logged in to the tailnet. Declare `tailnet` in `fleet.json` so `homelab converge` enrols it with a single-use key, or sign it in (`sudo tailscale up`). **Needs a person.**
+- `TAILSCALE_CONFIGURATION_INCOMPLETE`: the Tailscale play stopped on no code of its own while the worker is logged in and running: a package source or the daemon failed. Run `homelab converge` again; when it repeats, apply `ansible/ubuntu/tailscale.yml` of the approved revision on the worker to see the task that stops.
 - `TAILSCALE_SOURCE_OWNER_CONFLICT`: tailscale source owner conflict. **Needs a person.**
-- `TAILSCALE_UPGRADE_PENDING`: Tailscale on the worker is older than its pin, and a converge never upgrades an active VPN because a restart of tailscaled can drop the SSH session. Run `homelab fleet-sync --maintenance-reboot`: it upgrades Tailscale to the pin in a detached unit on the worker (`ansible/ubuntu/tailscale-upgrade.yml`), waits for the worker to answer again and converges it once more. **Needs a person.**
+- `TAILSCALE_UPGRADE_PENDING`: Tailscale on the worker is older than its pin, and a converge never upgrades an active VPN because a restart of tailscaled can drop the SSH session. Run `homelab converge --maintenance-reboot`: it upgrades Tailscale to the pin in a detached unit on the worker (`ansible/ubuntu/tailscale-upgrade.yml`), waits for the worker to answer again and converges it once more. **Needs a person.**
 - `TAILSCALE_KEY_EXPIRES_SOON`: the node key of the machine expires in the days the check names, and the machine leaves the tailnet when it does. Disable key expiry for a worker in the Tailscale admin console or tag it; renew the manager's with `tailscale up --force-reauth`. **Needs a person.**
 - `TAILSCALE_KEY_EXPIRED`: the node key of the machine has expired and the machine has left the tailnet. Renew the manager's with `tailscale up --force-reauth`; re-join a worker as [Tailscale key expiry](operations.md#tailscale-key-expiry) describes, then disable key expiry for it or tag it. **Needs a person.**
 
 ## A new worker with no hands on it
 
 - **Meaning:** A machine created without a person (from a pipeline or infrastructure-as-code) could not be enrolled, joined to the tailnet, given its account or brought to ready in one run: its first boot is still running or failed, the tailnet control plane refused a key, the image lets only root in and the account could not be created, or its first-converge or maintenance reboot did not happen.
-- **Confirm:** The `bootstrap:first-boot`, `tailscale:enrolment-key`, `worker:account` and `worker:reboot` checks of the report `homelab fleet-sync --json` prints, or the `tailscale:device` check of `fleet-node-replace` and `fleet-node-retire` and the `tailscale:leftover` check of `homelab fleet-status`, which ask the same control plane; on the worker, `cloud-init status --long`.
-- **Fix:** FIRST_BOOT_PENDING and WORKER_REBOOT_BUSY clear on their own: run `homelab fleet-sync` again later. A TAILNET code names what to fix in `tailnet` of `fleet.json` or in the secret `tailnet-admin`; then run `homelab fleet-sync`.
+- **Confirm:** The `bootstrap:first-boot`, `tailscale:enrolment-key`, `worker:account` and `worker:reboot` checks of the report `homelab converge --json` prints, or the `tailscale:device` check of `fleet-node-replace` and `fleet-node-retire` and the `tailscale:leftover` check of `homelab check`, which ask the same control plane; on the worker, `cloud-init status --long`.
+- **Fix:** FIRST_BOOT_PENDING and WORKER_REBOOT_BUSY clear on their own: run `homelab converge` again later. A TAILNET code names what to fix in `tailnet` of `fleet.json` or in the secret `tailnet-admin`; then run `homelab converge`.
 - **Escalate:** A first boot that failed means the image or its user data is wrong: recreate the machine. A root login that cannot create the declared account needs a person on the machine (`useradd --create-home --shell /bin/bash --groups sudo USER`).
 
 - `FIRST_BOOT_FAILED`: first boot failed: cloud-init ended in an error. **Needs a person.**
@@ -300,14 +300,14 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `WORKER_ACCOUNT_UNDECLARED`: worker account undeclared in workers[].network.user. **Needs a person.**
 - `WORKER_REBOOT_BUSY`: worker reboot busy: an agent turn runs.
 - `WORKER_REBOOT_FAILED`: worker reboot failed.
-- `WORKER_TAILSCALE_UPGRADE_FAILED`: the Tailscale upgrade of a maintenance run did not complete, or the worker did not answer again within 10 minutes; the workers after it wait. Read `journalctl -u homelab-tailscale-upgrade` on the worker, then run `homelab fleet-sync --maintenance-reboot` again.
+- `WORKER_TAILSCALE_UPGRADE_FAILED`: the Tailscale upgrade of a maintenance run did not complete, or the worker did not answer again within 10 minutes; the workers after it wait. Read `journalctl -u homelab-tailscale-upgrade` on the worker, then run `homelab converge --maintenance-reboot` again.
 
 ## T3 Code
 
 - **Meaning:** The native T3 server or desktop app, its policy, its private route or its providers did not converge or verify.
-- **Confirm:** `homelab t3-status` and the `t3:*` checks of `homelab fleet-status`.
-- **Fix:** Run `homelab fleet-sync`, then `homelab t3-apply` for providers. A MIGRATION or MAINTENANCE code names a one-time step in its remedy.
-- **Escalate:** Set `t3.pairOnEnrollment` to true in fleet.json to authorize first pairing during sync for enrolled workers. When omitted, interactive sync asks once for the worker and carries out the approved pairing. False keeps first pairing in T3 Settings (Connections). Relinking a previously recorded peer still requires an explicit replacement or manual pairing. A replaced worker is paired by `homelab fleet-node-replace` or the next `homelab fleet-sync` (`t3:link`).
+- **Confirm:** `homelab t3` and the `t3:*` checks of `homelab check`.
+- **Fix:** Run `homelab converge`, then `homelab t3-reconcile` for providers. A MIGRATION or MAINTENANCE code names a one-time step in its remedy.
+- **Escalate:** Set `t3.pairOnEnrollment` to true in fleet.json to authorize first pairing during sync for enrolled workers. When omitted, interactive sync asks once for the worker and carries out the approved pairing. False keeps first pairing in T3 Settings (Connections). Relinking a previously recorded peer still requires an explicit replacement or manual pairing. A replaced worker is paired by `homelab replace` or the next `homelab converge` (`t3:link`).
 
 - `MANAGER_T3_LINK_UNVERIFIED`: manager t3 link unverified.
 - `T3_BASELINE_PREREQUISITES_REQUIRED`: t3 baseline prerequisites required.
@@ -352,8 +352,8 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_PROFILE_RECORD_INVALID`: t3 profile record invalid.
 - `T3_PROFILE_UNVERIFIED`: t3 profile unverified.
 - `T3_PROVIDERS_PENDING`: t3 providers pending.
-- `T3_RECONCILIATION_UNAVAILABLE`: a local reconciliation precondition failed. Follow the stage-specific remedy to inspect the receipt, installed definition or T3 settings and ownership record locally. Restore a valid backup or correct permissions, then retry `homelab t3-apply --dry-run`. Never share raw file contents.
-- `T3_ACCOUNT_ROSTER_UNAVAILABLE`: the proxy account roster could not be read. Run `homelab fleet-accounts` on the affected machine to verify proxy access and the proxy-client-key secret, then retry `homelab t3-apply --dry-run`. Existing providers are preserved. If access still fails, report this code without credentials.
+- `T3_RECONCILIATION_UNAVAILABLE`: a local reconciliation precondition failed. Follow the stage-specific remedy to inspect the receipt, installed definition or T3 settings and ownership record locally. Restore a valid backup or correct permissions, then retry `homelab t3-reconcile --dry-run`. Never share raw file contents.
+- `T3_ACCOUNT_ROSTER_UNAVAILABLE`: the proxy account roster could not be read. Run `homelab accounts` on the affected machine to verify proxy access and the proxy-client-key secret, then retry `homelab t3-reconcile --dry-run`. Existing providers are preserved. If access still fails, report this code without credentials.
 - `T3_QUOTA_COVERAGE_MISSING`: the manager could not match a hub quota reading to each declared Antigravity account. Check its T3 usage-limit source and the account on the proxy.
 - `T3_CLI_MISSING`: the provider check could not start the T3 CLI from PATH or its user installation. Restore the executable and rerun fleet-sync to verify the account sessions.
 - `T3_ANTIGRAVITY_SESSION_UNVERIFIED`: T3 could not open an authenticated ACP session for the reported account positions. Check that T3 is running on this machine, refresh those instances in Settings > Providers, and compare their proxy account session checks before rerunning fleet-sync.
@@ -363,17 +363,17 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_PROVIDER_NAMES_UNVERIFIED`: t3 provider names unverified.
 - `T3_RENDERER_LIMIT_UNVERIFIED`: check the delegated renderer cgroup after an idle desktop restart and recovery timer tick.
 - `T3_RENDERERS_HIGH`: the desktop renderers exceed their memory budget. Reload the app when idle.
-- `T3_PROTECTION_ESCAPED`: the T3 listener lacks its CPU, I/O or memory reserve; the summary names which (`cpu`, `io`, `memory`). Run fleet-sync: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. `io` alone, while the user manager does not hand the io controller down (measured in its `cgroup.subtree_control`; its `cgroup.controllers` lists io as soon as the declaration is loaded), is not T3 leaving its unit and only warns: fleet-sync declares the controller, and the user manager takes it on its next start, so reboot the worker while it runs no agent turn (`homelab fleet-sync --maintenance-reboot`, which reboots for it as for pending updates); restarting T3 does not change it.
+- `T3_PROTECTION_ESCAPED`: the T3 listener lacks its CPU, I/O or memory reserve; the summary names which (`cpu`, `io`, `memory`). Run fleet-sync: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. `io` alone, while the user manager does not hand the io controller down (measured in its `cgroup.subtree_control`; its `cgroup.controllers` lists io as soon as the declaration is loaded), is not T3 leaving its unit and only warns: fleet-sync declares the controller, and the user manager takes it on its next start, so reboot the worker while it runs no agent turn (`homelab converge --maintenance-reboot`, which reboots for it as for pending updates); restarting T3 does not change it.
 - `T3_PROTECTION_UNOBSERVED`: no process of the worker user listens on the T3 port, so there is no reserve to measure: T3 is stopped or restarting. See `worker:t3-recovery` and `worker:t3-health`.
-- `T3_RESTART_PENDING`: a restart of the worker's T3 (a new release, a staged policy, a return to loopback) waits for its agent turns to end. The remedy says how long it has waited and when its deadline falls: `personal-worker-recovery` applies it at the first check with no turn running, and `t3RestartMaxDeferralHours` after it was first deferred although turns run, which ends them. A failure means the deadline passed and the timer did not apply it: check `worker:service-recovery` and run `homelab fleet-sync`. To restart at once, run `homelab fleet-sync --restart-busy`.
+- `T3_RESTART_PENDING`: a restart of the worker's T3 (a new release, a staged policy, a return to loopback) waits for its agent turns to end. The remedy says how long it has waited and when its deadline falls: `personal-worker-recovery` applies it at the first check with no turn running, and `t3RestartMaxDeferralHours` after it was first deferred although turns run, which ends them. A failure means the deadline passed and the timer did not apply it: check `worker:service-recovery` and run `homelab converge`. To restart at once, run `homelab converge --restart-busy`.
 - `T3_SERVER_INSTALL_FAILED`: t3 server install failed: the pinned server of a headless worker is missing from the toolchain, or `t3-headless.yml` did not apply.
 - `T3_SERVER_STOPPED`: t3 server stopped: the lingering `t3code-headless.service` of a headless worker is not running.
 - `T3_SETTINGS_BUSY`: t3 settings busy.
-- `T3_VERSION_UNKNOWN`: a warning of `t3:version`: T3 on the machine the check names has not recorded the version it runs, so it cannot be compared with the pin. Start T3 there once, then run `homelab fleet-sync`.
-- `T3_VERSION_SKEW`: a warning of `t3:version`: T3 on the machine the check names runs another release than the fleet pins; the remedy names both. `homelab fleet-sync` installs the pinned release on a worker and restarts T3. On the manager, fleet-sync switches a running desktop to the verified bundle.
+- `T3_VERSION_UNKNOWN`: a warning of `t3:version`: T3 on the machine the check names has not recorded the version it runs, so it cannot be compared with the pin. Start T3 there once, then run `homelab converge`.
+- `T3_VERSION_SKEW`: a warning of `t3:version`: T3 on the machine the check names runs another release than the fleet pins; the remedy names both. `homelab converge` installs the pinned release on a worker and restarts T3. On the manager, fleet-sync switches a running desktop to the verified bundle.
 - `T3_UPDATES_UNMANAGED`: a warning of `t3:updates`: the administrator policy of T3 on the manager does not turn its own updater off, so T3 may update itself away from the pinned release. Stage the fleet's policy once, as an administrator, with the command the remedy prints. **Needs a person.**
-- `T3_RUNNING_VERSION_UNKNOWN`: `t3:running-version` could not read the version of the running server from its local API, or the release installed on the worker. Read `worker:t3-health`, then run `homelab fleet-sync`, which reinstalls the pinned T3.
-- `T3_RUNNING_VERSION_MISMATCH`: logged by `personal-worker-recovery` on the worker: T3 was restarted once for the installed release and still reports another version. It is not restarted again for that release and the run fails (`WORKER_RECOVERY_LAST_RUN_FAILED`). Run `homelab fleet-sync`, which reinstalls the pinned T3.
+- `T3_RUNNING_VERSION_UNKNOWN`: `t3:running-version` could not read the version of the running server from its local API, or the release installed on the worker. Read `worker:t3-health`, then run `homelab converge`, which reinstalls the pinned T3.
+- `T3_RUNNING_VERSION_MISMATCH`: logged by `personal-worker-recovery` on the worker: T3 was restarted once for the installed release and still reports another version. It is not restarted again for that release and the run fails (`WORKER_RECOVERY_LAST_RUN_FAILED`). Run `homelab converge`, which reinstalls the pinned T3.
 - `T3_LEGACY_SERVER_RUNNING`: logged by `personal-worker-recovery`: the former server unit `t3code.service` is active or enabled and could not be stopped and disabled, so the run fails before it looks at T3. On the worker read `systemctl --user status t3code.service` and disable the unit by hand: one T3 runs per worker. **Needs a person.**
 - `T3_NO_GRAPHICAL_SESSION`: logged by `personal-worker-recovery` on a desktop worker with a count: no graphical session is running, so the desktop app cannot run and the run fails. After three checks in a row the display manager is restarted so that auto-login starts a session, three times at most; after that the log says a person must log in at the worker.
 - `T3_RESTART_DEADLINE`: not a failure. `personal-worker-recovery` logs it when a restart of T3 has waited `t3RestartMaxDeferralHours` (`ansible/ubuntu/policy.json`) and is applied although agent turns run: they end. `worker:t3-deadline-restarts` counts these of the last 24 hours as a warning. Nothing is left to repair: send the threads whose turn ended their next message.
@@ -382,24 +382,24 @@ write `1` to that agent scope’s `cgroup.kill`.
 ## super.engineering
 
 - **Meaning:** A fleet that lists `super` under `ides` runs super.engineering on the manager with every worker as one of its remote SSH workspaces. The app did not answer, or a worker is not ready to be one of its workspaces. These are warnings: they never fail a sync.
-- **Confirm:** The `super:*` checks of `homelab fleet-sync`. On the manager, `~/.super.engineering/bin/se status --json` and `~/.super.engineering/bin/se workspace list --json`; for a worker, `ssh -o BatchMode=yes ALIAS 'command -v git flock claude'` with the alias `fleet.json` names.
-- **Fix:** Follow the remedy of the check, then run `homelab fleet-sync`: it creates the workspace of every worker that has none.
+- **Confirm:** The `super:*` checks of `homelab converge`. On the manager, `~/.super.engineering/bin/se status --json` and `~/.super.engineering/bin/se workspace list --json`; for a worker, `ssh -o BatchMode=yes ALIAS 'command -v git flock claude'` with the alias `fleet.json` names.
+- **Fix:** Follow the remedy of the check, then run `homelab converge`: it creates the workspace of every worker that has none.
 - **Escalate:** When the app runs, remote workspaces are on, the worker answers that SSH command and the workspace is still not created.
 
-- `SUPER_NOT_INSTALLED`: a warning of `super:app` or `super:workspace`: the app's CLI (`~/.super.engineering/bin/se`) is not on the manager. homelab does not install the app: install it from <https://super.engineering/download>, start it once, then run `homelab fleet-sync`. **Needs a person.**
-- `SUPER_NOT_RUNNING`: a warning of `super:app` or `super:workspace`: the CLI is there and no running app answers it, as during a scheduled sync on a manager nobody is logged in to. Start super.engineering on the manager; the next `homelab fleet-sync` creates the workspaces that are missing.
-- `SUPER_REMOTE_WORKSPACES_OFF`: a warning of `super:workspace`: the app refused to create a remote workspace because the feature is off. In the app open Settings → Experimental and enable Remote workspaces, then run `homelab fleet-sync`. **Needs a person.**
-- `SUPER_REFUSED`: a warning of `super:app` or `super:workspace`: the app answered with an error homelab does not know, or with something that is not its JSON; the remedy names the app's error code and nothing else of what it said. Update the app and start it again, then run `homelab fleet-sync`; when it repeats, raise an issue with that code.
-- `SUPER_SSH_UNREACHABLE`: a warning of `super:ssh`: the app connects with the manager's own SSH configuration, never with the options `fleet-sync` uses, and that plain `ssh` does not reach the worker without a prompt. A worker `fleet.json` declares without an `ssh` alias is the usual cause: its host key is pinned in the fleet state, which the operator's SSH does not read. Add an alias to `~/.ssh/config` on the manager, accept the host key once, name the alias as the worker's `ssh`, then run `homelab fleet-sync`. No workspace is created until then. **Needs a person.**
-- `SUPER_HOST_INCOMPLETE`: a warning of `super:ssh`: an SSH session without a terminal finds no `git` or no `flock` on the worker; the remedy names which. The app's helper cannot be installed without them. Run `homelab fleet-sync --node ID`: the baseline installs both.
-- `SUPER_AGENTS_NOT_FOUND`: a warning of `super:ssh`: an SSH session without a terminal finds none of the fleet's coding agents on the worker's `PATH`, so the app can start no agent there. Run `homelab fleet-sync --node ID`, which installs the pinned agents and puts their shims on that session's `PATH`; confirm with the SSH command above.
-- `SUPER_AGENTS_NOT_PROXIED`: a warning of `super:ssh`: on the worker an SSH session without a terminal starts the agents the remedy names as the plain pinned CLI, with a sign-in of its own or none, and not as the fleet's launcher through the CLI proxy. The worker has not been converged since its agent commands became launchers, or its shell profile no longer puts `~/.local/share/personal/fleet/agent-commands` first. Run `homelab fleet-sync --node ID`; confirm with `ssh ALIAS 'command -v claude'`, which names that directory.
+- `SUPER_NOT_INSTALLED`: a warning of `super:app` or `super:workspace`: the app's CLI (`~/.super.engineering/bin/se`) is not on the manager. homelab does not install the app: install it from <https://super.engineering/download>, start it once, then run `homelab converge`. **Needs a person.**
+- `SUPER_NOT_RUNNING`: a warning of `super:app` or `super:workspace`: the CLI is there and no running app answers it, as during a scheduled sync on a manager nobody is logged in to. Start super.engineering on the manager; the next `homelab converge` creates the workspaces that are missing.
+- `SUPER_REMOTE_WORKSPACES_OFF`: a warning of `super:workspace`: the app refused to create a remote workspace because the feature is off. In the app open Settings → Experimental and enable Remote workspaces, then run `homelab converge`. **Needs a person.**
+- `SUPER_REFUSED`: a warning of `super:app` or `super:workspace`: the app answered with an error homelab does not know, or with something that is not its JSON; the remedy names the app's error code and nothing else of what it said. Update the app and start it again, then run `homelab converge`; when it repeats, raise an issue with that code.
+- `SUPER_SSH_UNREACHABLE`: a warning of `super:ssh`: the app connects with the manager's own SSH configuration, never with the options `sync` uses, and that plain `ssh` does not reach the worker without a prompt. A worker `fleet.json` declares without an `ssh` alias is the usual cause: its host key is pinned in the fleet state, which the operator's SSH does not read. Add an alias to `~/.ssh/config` on the manager, accept the host key once, name the alias as the worker's `ssh`, then run `homelab converge`. No workspace is created until then. **Needs a person.**
+- `SUPER_HOST_INCOMPLETE`: a warning of `super:ssh`: an SSH session without a terminal finds no `git` or no `flock` on the worker; the remedy names which. The app's helper cannot be installed without them. Run `homelab converge --node ID`: the baseline installs both.
+- `SUPER_AGENTS_NOT_FOUND`: a warning of `super:ssh`: an SSH session without a terminal finds none of the fleet's coding agents on the worker's `PATH`, so the app can start no agent there. Run `homelab converge --node ID`, which installs the pinned agents and puts their shims on that session's `PATH`; confirm with the SSH command above.
+- `SUPER_AGENTS_NOT_PROXIED`: a warning of `super:ssh`: on the worker an SSH session without a terminal starts the agents the remedy names as the plain pinned CLI, with a sign-in of its own or none, and not as the fleet's launcher through the CLI proxy. The worker has not been converged since its agent commands became launchers, or its shell profile no longer puts `~/.local/share/personal/fleet/agent-commands` first. Run `homelab converge --node ID`; confirm with `ssh ALIAS 'command -v claude'`, which names that directory.
 
 ## Monitoring (Beszel)
 
 - **Meaning:** The hub on the manager, an agent on a machine, an enrollment or the hub backups do not match what the fleet declares.
-- **Confirm:** The `beszel:*` checks of `homelab fleet-status --workers`; on the manager `docker compose ls` and the hub at `/_/`.
-- **Fix:** Run `homelab fleet-sync`, which converges the hub, its accounts, its backups and every agent. Hub data is never deleted.
+- **Confirm:** The `beszel:*` checks of `homelab check --workers`; on the manager `docker compose ls` and the hub at `/_/`.
+- **Fix:** Run `homelab converge`, which converges the hub, its accounts, its backups and every agent. Hub data is never deleted.
 - **Escalate:** BESZEL_HUB_UPGRADE_PENDING needs a verified backup and a planned upgrade by a person.
 
 - `BESZEL_ACCOUNT_INVALID`: beszel account invalid.
@@ -459,24 +459,24 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `BESZEL_VIEWER_ROLE`: beszel viewer role.
 - `BESZEL_VIEWER_UNPROVISIONED`: beszel viewer unprovisioned.
 - `BESZEL_VIEWER_UNVERIFIED`: beszel viewer unverified.
-- `BESZEL_DUPLICATE_NODE`: the hub holds more than one system with the worker's name, so registration fails and enrollment and `homelab fleet-node-replace` refuse to pick one. Delete the extra systems in the dashboard and keep the one that has the worker's history, then run the command again. **Needs a person.**
-- `BESZEL_DUPLICATE_FINGERPRINT`: the hub holds more than one fingerprint record for the worker's system, and enrollment refuses to pick one. Remove the extra record in the hub at `/_/`, then run `homelab fleet-sync`. **Needs a person.**
-- `BESZEL_HUB_UNAVAILABLE_TO_AGENT`: a warning read from the agent's own log: the private route answered the agent with 502, 503 or 504, so the hub behind it did not. Keep the manager awake with Docker Desktop running and run `homelab fleet-sync` there; the agent reconnects by itself.
-- `BESZEL_VERSION_OR_KEY`: enrollment asked the hub for its version and key, and the hub reports another version than `ansible/monitoring/lock.json` pins or no ed25519 key. Run `homelab fleet-sync` on the manager, which converges the hub to the pinned release, before enrolling a worker.
-- `BESZEL_PRIVATE_URL`: the address homelab was given for the hub is not its private one: https, a name of the tailnet, port 8443 and nothing after it. No request was sent. Run `homelab fleet-sync` on the manager so the private route is declared; when it repeats, it is an issue.
-- `BESZEL_NODE_ID`: the hub was to be asked about a name that is not a machine id (a lowercase letter, then lowercase letters, digits and hyphens). No request was sent. Correct the id in `fleet.json` (`homelab fleet-validate` names it).
+- `BESZEL_DUPLICATE_NODE`: the hub holds more than one system with the worker's name, so registration fails and enrollment and `homelab replace` refuse to pick one. Delete the extra systems in the dashboard and keep the one that has the worker's history, then run the command again. **Needs a person.**
+- `BESZEL_DUPLICATE_FINGERPRINT`: the hub holds more than one fingerprint record for the worker's system, and enrollment refuses to pick one. Remove the extra record in the hub at `/_/`, then run `homelab converge`. **Needs a person.**
+- `BESZEL_HUB_UNAVAILABLE_TO_AGENT`: a warning read from the agent's own log: the private route answered the agent with 502, 503 or 504, so the hub behind it did not. Keep the manager awake with Docker Desktop running and run `homelab converge` there; the agent reconnects by itself.
+- `BESZEL_VERSION_OR_KEY`: enrollment asked the hub for its version and key, and the hub reports another version than `ansible/monitoring/lock.json` pins or no ed25519 key. Run `homelab converge` on the manager, which converges the hub to the pinned release, before enrolling a worker.
+- `BESZEL_PRIVATE_URL`: the address homelab was given for the hub is not its private one: https, a name of the tailnet, port 8443 and nothing after it. No request was sent. Run `homelab converge` on the manager so the private route is declared; when it repeats, it is an issue.
+- `BESZEL_NODE_ID`: the hub was to be asked about a name that is not a machine id (a lowercase letter, then lowercase letters, digits and hyphens). No request was sent. Correct the id in `fleet.json` (`homelab check-config` names it).
 - `BESZEL_API_PATH`: homelab refused to send the hub a request outside its API. No request was sent and nothing on a machine fixes it: report it as an issue.
-- `BESZEL_REVISION`: an agent was to be installed on a worker from something that is not a full commit of homelab. Nothing was installed. Run `homelab fleet-sync`, which selects the revision itself; when it repeats, it is an issue.
+- `BESZEL_REVISION`: an agent was to be installed on a worker from something that is not a full commit of homelab. Nothing was installed. Run `homelab converge`, which selects the revision itself; when it repeats, it is an issue.
 
 ## Coding agents and providers
 
 - **Meaning:** An agent CLI, its profile or a provider behind the CLI proxy did not answer as expected.
-- **Confirm:** The `agent:*` and `provider:*` checks of `homelab fleet-status`, and `homelab cliproxy` on the manager.
-- **Fix:** Run `homelab fleet-sync`; a rate limit or upstream outage clears on its own.
+- **Confirm:** The `agent:*` and `provider:*` checks of `homelab check`, and `homelab proxy` on the manager.
+- **Fix:** Run `homelab converge`; a rate limit or upstream outage clears on its own.
 - **Escalate:** PROVIDER_AUTH_REJECTED needs a person to sign the account in again on the proxy. AGENT_PROFILE_RENDER_MISMATCH is a defect of the release (a template of `ansible/agents/agents.yml` no longer renders what `src/agents/render.ts` specifies): report it to homelab. No receipt vouches for what that play wrote, so later applies refuse the file until a person reviews it.
 
-- `AGENT_COMMANDS_CONFLICT`: `agent:commands` on a worker: `~/.local/share/personal/fleet/agent-commands` exists and is not the link `fleet-sync` makes to the applied revision's launchers, so it was left untouched and the worker's `claude`, `codex` and the others are not the fleet's launchers. On the worker look at what is there, move it away, then run `homelab fleet-sync --node ID`. **Needs a person.**
-- `AGENT_COMMANDS_NOT_LINKED`: `agent:commands` on a worker: the play that makes that link (`ansible/agents/commands.yml`) failed, or the link is not there after it ran; its output is not reported. Run `homelab fleet-sync --node ID` again; when it repeats, raise an issue.
+- `AGENT_COMMANDS_CONFLICT`: `agent:commands` on a worker: `~/.local/share/personal/fleet/agent-commands` exists and is not the link `sync` makes to the applied revision's launchers, so it was left untouched and the worker's `claude`, `codex` and the others are not the fleet's launchers. On the worker look at what is there, move it away, then run `homelab converge --node ID`. **Needs a person.**
+- `AGENT_COMMANDS_NOT_LINKED`: `agent:commands` on a worker: the play that makes that link (`ansible/agents/commands.yml`) failed, or the link is not there after it ran; its output is not reported. Run `homelab converge --node ID` again; when it repeats, raise an issue.
 - `AGENT_COMMANDS_REQUEST_INVALID`: the same play refused its variables: homelab passes the link beside the applied revision and its fixed target, so this is a defect of the release. Raise an issue.
 - `AGENT_SLICE_MISSING`: the user manager cannot load the T3 agent slice. Check the T3 release and run fleet-sync.
 - `AGENT_LIMIT_OVERRIDDEN`: a higher-priority setting overrides an agent slice limit. Run fleet-sync and inspect the effective properties.
@@ -516,46 +516,46 @@ write `1` to that agent scope’s `cgroup.kill`.
 ## Provider accounts
 
 - **Meaning:** A change to a provider account on the CLI proxy (sign-in, removal, cooldown) did not complete, a node does not reach the proxy, or the session a node runs through one account's instance (`agent:<tool>:account-<n>:session`) did not answer. A session check names the tool and the account's index, never the account, and never repeats what a provider answered.
-- **Confirm:** `homelab fleet-accounts` lists every account by its index with its state, the models the proxy holds back and until when; `homelab fleet-accounts --diff` compares this machine. The session checks are in `homelab fleet-status`.
-- **Fix:** Retry the change with `homelab fleet-accounts`; see [Provider accounts](accounts.md). A cooldown clears on its own.
-- **Escalate:** Signing an account in again needs a person, and so does a verification its provider asks for. A session that keeps failing or hanging on an account `homelab fleet-accounts` calls usable is an issue.
+- **Confirm:** `homelab accounts` lists every account by its index with its state, the models the proxy holds back and until when; `homelab accounts --diff` compares this machine. The session checks are in `homelab check`.
+- **Fix:** Retry the change with `homelab accounts`; see [Provider accounts](accounts.md). A cooldown clears on its own.
+- **Escalate:** Signing an account in again needs a person, and so does a verification its provider asks for. A session that keeps failing or hanging on an account `homelab accounts` calls usable is an issue.
 
 - `ACCOUNT_CHANGE_FAILED`: account change failed.
-- `AGENT_ACCOUNT_AUTH_REJECTED`: the session of one account was refused its credentials. `homelab fleet-accounts` says whether the account needs a login; one that does is signed in again with `--relogin`, as [Provider accounts](accounts.md) describes. **Needs a person.**
-- `AGENT_ACCOUNT_COOLING_DOWN`: a warning, never a failure. The provider limited the account, or the proxy holds its model back. The summary names when the cooldown clears when the proxy said so; `homelab fleet-accounts` lists each model held back and `until`. It clears on its own and is checked again on the next status. Nothing to fix; add an account if every one of a provider cools down often.
-- `AGENT_ACCOUNT_REMOVED`: the node still offers an instance for an account the proxy no longer holds. Run `homelab fleet-sync --only accounts`, which propagates the roster to every node.
-- `AGENT_ACCOUNT_SESSION_FAILED`: the session of one account did not answer, and nothing it printed named a limit, a verification or a refusal. Read the account's state with `homelab fleet-accounts` and the `provider:*` checks of `homelab fleet-status`; report it when the account is usable and the session still fails.
-- `AGENT_ACCOUNT_SESSION_TIMED_OUT`: the session never ended, and the proxy named no cooldown and no refusal for the account. Not a sign-in failure: signing in again does not help. Read which models the proxy holds back with `homelab fleet-accounts`, then run `homelab fleet-status` again; report a session that keeps hanging.
-- `AGENT_ACCOUNT_VERIFICATION_REQUIRED`: the provider wants the account verified before it serves requests. Sign in to the provider as that account (find it by its index in `homelab fleet-accounts`) and complete the verification it asks for. Signing in again on the proxy does not replace it. **Needs a person.**
-- `PROXY_UNREACHABLE`: the node got no answer from the CLI proxy, or the route answered and the proxy did not. Agents retry for about a minute and then report it. Check the node's tailnet, and the proxy on the manager with `homelab cliproxy status`.
+- `AGENT_ACCOUNT_AUTH_REJECTED`: the session of one account was refused its credentials. `homelab accounts` says whether the account needs a login; one that does is signed in again with `--relogin`, as [Provider accounts](accounts.md) describes. **Needs a person.**
+- `AGENT_ACCOUNT_COOLING_DOWN`: a warning, never a failure. The provider limited the account, or the proxy holds its model back. The summary names when the cooldown clears when the proxy said so; `homelab accounts` lists each model held back and `until`. It clears on its own and is checked again on the next status. Nothing to fix; add an account if every one of a provider cools down often.
+- `AGENT_ACCOUNT_REMOVED`: the node still offers an instance for an account the proxy no longer holds. Run `homelab converge --only accounts`, which propagates the roster to every node.
+- `AGENT_ACCOUNT_SESSION_FAILED`: the session of one account did not answer, and nothing it printed named a limit, a verification or a refusal. Read the account's state with `homelab accounts` and the `provider:*` checks of `homelab check`; report it when the account is usable and the session still fails.
+- `AGENT_ACCOUNT_SESSION_TIMED_OUT`: the session never ended, and the proxy named no cooldown and no refusal for the account. Not a sign-in failure: signing in again does not help. Read which models the proxy holds back with `homelab accounts`, then run `homelab check` again; report a session that keeps hanging.
+- `AGENT_ACCOUNT_VERIFICATION_REQUIRED`: the provider wants the account verified before it serves requests. Sign in to the provider as that account (find it by its index in `homelab accounts`) and complete the verification it asks for. Signing in again on the proxy does not replace it. **Needs a person.**
+- `PROXY_UNREACHABLE`: the node got no answer from the CLI proxy, or the route answered and the proxy did not. Agents retry for about a minute and then report it. Check the node's tailnet, and the proxy on the manager with `homelab proxy status`.
 
 ## Vault and credentials
 
 - **Meaning:** A machine cannot read the secrets it needs with its own Vault session, or soon will not.
 - **Confirm:** `vault token lookup` on the machine and the `worker:vault-renewal` or `manager:vault-renewal` check. In the lookup, `renewable`, `ttl`, `period`, `explicit_max_ttl` and `creation_time` say how long the login can last; on the manager `launchctl print gui/$(id -u)/dev.homelab.vault-renew` shows the `last exit code` of the renewal job.
-- **Fix:** Log the machine in once (`homelab fleet-sync` asks on the manager); renewal is automatic afterwards, up to the maximum lifetime of the token. A Vault that does not answer a machine (`VAULT_UNREACHABLE`) is not repaired by a login or by a new worker token: restore the way to it, or unseal it.
+- **Fix:** Log the machine in once (`homelab converge` asks on the manager); renewal is automatic afterwards, up to the maximum lifetime of the token. A Vault that does not answer a machine (`VAULT_UNREACHABLE`) is not repaired by a login or by a new worker token: restore the way to it, or unseal it.
 - **Escalate:** A refused policy needs the Vault administrator. So does a login that ends too often: its maximum lifetime is set where the token is issued (the auth method, or the user or role in it).
 
-- `SECRET_READ_BLOCKED`: secret read blocked: the check needed a secret its machine could not read, because the machine is not logged in to Vault or Vault does not answer it. It is not a fault of that check: fix the check its summary names, then run `homelab fleet-sync`. On the manager that is `manager:vault-renewal`, which says `VAULT_LOGIN_REQUIRED` or `VAULT_UNREACHABLE`; on a worker it is `worker:vault-renewal`, which says `UNATTENDED_VAULT_IDENTITY_REQUIRED` or `VAULT_UNREACHABLE`. Every check that needs a secret answers this way: on the manager the hub's account, tunnel, viewer and backups, a notification target, the tailnet control plane's credential, the GitHub token and the proxy client key; on a worker the GitHub token (`worker:github-sync`, `github:sync`, `github:token-current`) and the proxy client key (`worker:proxy-authentication`, `provider:*:authentication`). **Needs a person.**
-- `UNATTENDED_VAULT_IDENTITY_REQUIRED`: unattended vault identity required: Vault answers the worker, and the worker holds no session, or one that is not a renewable periodic token with enough lifetime left for the renewal timer. `homelab fleet-sync` delivers the worker's issued token; `homelab fleet-node-replace --id ID --apply --yes` issues a new one. A Vault that does not answer the worker is `VAULT_UNREACHABLE` instead.
+- `SECRET_READ_BLOCKED`: secret read blocked: the check needed a secret its machine could not read, because the machine is not logged in to Vault or Vault does not answer it. It is not a fault of that check: fix the check its summary names, then run `homelab converge`. On the manager that is `manager:vault-renewal`, which says `VAULT_LOGIN_REQUIRED` or `VAULT_UNREACHABLE`; on a worker it is `worker:vault-renewal`, which says `UNATTENDED_VAULT_IDENTITY_REQUIRED` or `VAULT_UNREACHABLE`. Every check that needs a secret answers this way: on the manager the hub's account, tunnel, viewer and backups, a notification target, the tailnet control plane's credential, the GitHub token and the proxy client key; on a worker the GitHub token (`worker:github-sync`, `github:sync`, `github:token-current`) and the proxy client key (`worker:proxy-authentication`, `provider:*:authentication`). **Needs a person.**
+- `UNATTENDED_VAULT_IDENTITY_REQUIRED`: unattended vault identity required: Vault answers the worker, and the worker holds no session, or one that is not a renewable periodic token with enough lifetime left for the renewal timer. `homelab converge` delivers the worker's issued token; `homelab replace --id ID --apply --yes` issues a new one. A Vault that does not answer the worker is `VAULT_UNREACHABLE` instead.
 - `VAULT_LOGIN_EXPIRY_PENDING`: vault login expiry pending: the manager's login ends within a day and renewal cannot extend it, because Vault renews a token only up to its maximum lifetime or the token is not renewable. Log the manager in again before then; see [Authentication](authentication.md#rotation-and-failure). **Needs a person.**
 - `VAULT_LOGIN_REQUIRED`: vault login required. **Needs a person.**
 - `VAULT_POLICY_PERMISSION_REQUIRED`: vault policy permission required. **Needs a person.**
 - `VAULT_RENEWAL_FAILING`: vault renewal failing: the last run of the renewal job failed (a worker's `personal-worker-auth.service`, the manager's `dev.homelab.vault-renew`), and the login lapses unless a renewal succeeds.
-- `VAULT_RENEWAL_MISSING`: vault renewal missing: the manager's renewal job is not loaded. Run `homelab fleet-sync` on the manager.
+- `VAULT_RENEWAL_MISSING`: vault renewal missing: the manager's renewal job is not loaded. Run `homelab converge` on the manager.
 - `VAULT_RENEWAL_NOT_MANAGER`: vault renewal not manager.
 - `VAULT_UNREACHABLE`: vault unreachable: the Vault session of the manager, or of a worker (`worker:vault-renewal` there, `auth:vault` in the sync that would have delivered its token), does not answer and neither does Vault's own status, which needs no login. Logging in again does not help, and neither does a new token for a worker: none is delivered. `vault status -address=ADDRESS` on that machine says which it is: no answer is the network between them (the tailnet, DNS, the address under `secrets` in the fleet configuration) or a Vault that is not running; `Sealed true` is a Vault to unseal. A login that was held is still held if Vault returns before it lapses. **Needs a person.**
 - `VAULT_WORKER_POLICY_FAILED`: vault worker policy failed.
 - `VAULT_WORKER_TOKEN_NOT_ISSUED`: Vault did not create the worker's own token (`auth:worker-token`), or its answer held none. Log the manager in to Vault with a token that may write policies, issue tokens and write the fleet mount, then run the command again. **Needs a person.**
 - `VAULT_WORKER_TOKEN_NOT_STORED`: the worker's token was issued and could not be written to the worker's own document. The same login is missing: log the manager in with a token that may write the fleet mount, then run the command again, which issues and stores a new one. **Needs a person.**
 - `VAULT_WORKER_TOKEN_NOT_REVOKED`: a retirement or replacement could not revoke the worker's token: the accessor kept beside it is not one, or Vault refused the revocation. The token still works. Log the manager in with a token that may revoke it, then run the command again. **Needs a person.**
-- `VAULT_WORKER_TOKEN_SHARED`: a warning of `auth:vault-isolation`: the worker's token was read from the fleet's shared document, which every worker can read. `homelab fleet-node-replace` issues it one of its own (the remedy prints the command and where it is kept); then remove the worker's field from the shared document. **Needs a person.**
+- `VAULT_WORKER_TOKEN_SHARED`: a warning of `auth:vault-isolation`: the worker's token was read from the fleet's shared document, which every worker can read. `homelab replace` issues it one of its own (the remedy prints the command and where it is kept); then remove the worker's field from the shared document. **Needs a person.**
 
 ## The fleet definition and a worker's lifecycle
 
 - **Meaning:** `fleet.json` breaks a rule of the fleet definition, the pinned Ansible rejects the inventory it describes, or a seed, replacement or retirement could not change the host keys the manager trusts.
-- **Confirm:** `homelab fleet-validate` names the field that breaks a rule as `{code, path, expected, actual}`; `homelab fleet-validate --ansible` also renders the inventory and syntax-checks every playbook.
-- **Fix:** Correct the field the check names in `fleet.json`, then run the command again. For SSH_HOST_KEY_NOT_CHANGED run `homelab fleet-validate --ansible`, then repeat `homelab fleet-node-seed`, `homelab fleet-node-replace` or `homelab fleet-node-retire`.
+- **Confirm:** `homelab check-config` names the field that breaks a rule as `{code, path, expected, actual}`; `homelab check-config --ansible` also renders the inventory and syntax-checks every playbook.
+- **Fix:** Correct the field the check names in `fleet.json`, then run the command again. For SSH_HOST_KEY_NOT_CHANGED run `homelab check-config --ansible`, then repeat `homelab provision`, `homelab replace` or `homelab retire`.
 - **Escalate:** An inventory the pinned Ansible rejects for a valid definition is an issue.
 
 - `DEFINITION_INVALID`: definition invalid.
@@ -563,15 +563,15 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `DEFINITION_MISSING`: definition missing.
 - `DEFINITION_UNREADABLE`: definition unreadable.
 - `SSH_HOST_KEY_NOT_CHANGED`: ssh host key not changed.
-- `DEFINITION_PLAYBOOK_SYNTAX`: the pinned Ansible cannot parse a playbook the installed homelab package carries; `homelab fleet-validate --ansible` names it. Nothing in `fleet.json` fixes it: report it as an issue.
+- `DEFINITION_PLAYBOOK_SYNTAX`: the pinned Ansible cannot parse a playbook the installed homelab package carries; `homelab check-config --ansible` names it. Nothing in `fleet.json` fixes it: report it as an issue.
 - `DEFINITION_UNKNOWN`: `fleet.json`, or a worker record `workerRecords` returns, has a field the definition does not have; the check names it and the fields allowed there. Remove or rename it.
 - `DEFINITION_DUPLICATE`: two machines of `fleet.json`, or two worker records, have the same id; the check names the second. Give every machine an id no other has.
 
 ## Parked, idle, replaced and retired workers
 
 - **Meaning:** a worker could not be parked or resumed (agent turns under way, a declared `parking.stop` or `parking.start` command failed, the sync after a resume did not end ready), a worker whose record disappeared could not be retired, or the manager's T3 link to a replaced or retired worker could not be removed, or the manager's T3 could not pair with a replaced worker's new environment.
-- **Confirm:** `homelab fleet-status --workers` lists each worker as active or parked, with its uptime, agent turns and last agent activity; the report of `homelab fleet-node-park`, `homelab fleet-node-resume` or `homelab fleet-sync` names the step that failed.
-- **Fix:** For WORKER_BUSY wait for the turns to end, or repeat `homelab fleet-node-park` with `--force`. For a failed hook, run the command `fleet.json` names under `parking` by hand with the worker ID, then repeat. For WORKER_RESUME_FAILED follow the sync report and run `homelab fleet-sync --node ID`. For T3_LINK_UNLINK_FAILED remove the link in the manager's T3 (Settings, Connections). For T3_LINK_PAIRING_FAILED follow the remedy, which names why the link was refused (Linked environments off in the T3 policy, the manager's T3 not running, a worker T3 that did not mint a code), then run `homelab fleet-sync --node ID`: it pairs a replaced worker until it is paired.
+- **Confirm:** `homelab check --workers` lists each worker as active or parked, with its uptime, agent turns and last agent activity; the report of `homelab park`, `homelab resume` or `homelab converge` names the step that failed.
+- **Fix:** For WORKER_BUSY wait for the turns to end, or repeat `homelab park` with `--force`. For a failed hook, run the command `fleet.json` names under `parking` by hand with the worker ID, then repeat. For WORKER_RESUME_FAILED follow the sync report and run `homelab converge --node ID`. For T3_LINK_UNLINK_FAILED remove the link in the manager's T3 (Settings, Connections). For T3_LINK_PAIRING_FAILED follow the remedy, which names why the link was refused (Linked environments off in the T3 policy, the manager's T3 not running, a worker T3 that did not mint a code), then run `homelab converge --node ID`: it pairs a replaced worker until it is paired.
 - **Escalate:** A record retirement that keeps failing at the same step: follow that step's own runbook.
 
 - `T3_LINK_PAIRING_FAILED`: t3 link pairing failed: the manager's T3 could not pair with a replaced worker's new T3 environment. The pairing code never appears in a report.
@@ -587,9 +587,9 @@ write `1` to that agent scope’s `cgroup.kill`.
 ## Fleet operations and the fleet state
 
 - **Meaning:** fleet-sync could not plan, lock, reach a machine, promote a revision or keep the fleet state.
-- **Confirm:** `homelab fleet-state` for the state, `homelab fleet-status` for machines, and the report `homelab fleet-sync` writes.
-- **Fix:** Follow the remedy; most clear by running `homelab fleet-sync` again once the holder of a lock finishes.
-- **Escalate:** FLEET_STATE_DIVERGED needs a person to choose which copy of the state to keep (docs/state.md). FLEET_CONFIGURATION_COPY_CHANGED needs a person to keep the edit (in `fleet.json`, or with the import the remedy prints) or to delete the copy. FLEET_REVISION_UNMERGED means the revision is not on the default branch of the source repository, so nothing was changed: merge it, or pass `--allow-unmerged` to converge the fleet to it on purpose. FLEET_REVISION_UNVERIFIED means the manager's own copy of the source repository could not be fetched to answer that: restore its network and Git access. FLEET_SOURCE_MISMATCH means that copy is a clone of another repository (one made before the fleet's source moved), which can never hold the revision, and the repository `source.repository` names could not be cloned to replace it: restore the manager's network and Git access to it, check the URL, and run `homelab fleet-sync` again; the copy is replaced by itself. Do not pass `--allow-unmerged` for it: the revision may well be merged. FLEET_MISE_DOWNGRADE means the revision's own toolchain bootstrap is from before the rule that keeps a newer mise, and would replace the mise of the machines the remedy names with the older one the revision pins; nothing was changed. Every checkout on those machines whose `mise.toml` asks for a newer mise would stop working, so converge to a later revision instead, or pass `--allow-mise-downgrade` to `homelab fleet-sync` to install the older one on purpose. The flag skips the refusal for any revision, but it reaches the bootstrap only of a revision that reads it: one from before the rule installs the older mise by itself, and one released after the rule and before the flag reached the bootstrap keeps the newer mise whatever it is told, so there the older mise is installed by hand, with `bash bootstrap/bootstrap.sh --allow-mise-downgrade` in the revision's checkout on each machine (`--tools-only` on the manager, `--worker --node ID` on a worker). FLEET_MISE_UNMEASURED means the same kind of revision was refused because a machine's mise could not be measured, and nothing was changed. When the remedy names workers, they did not answer over SSH: bring them back and run it again, park them (`homelab fleet-node-park --id ID`), or name the others with `--node`. When it names the homelab installed on the manager, the run was started on a worker and the manager's installed homelab is from before `fleet-sync --measure-mise` (or the manager has none on its PATH): run `homelab fleet-sync` on the manager itself once with a current release. `--allow-mise-downgrade` goes on without the measurement.
+- **Confirm:** `homelab state` for the state, `homelab check` for machines, and the report `homelab converge` writes.
+- **Fix:** Follow the remedy; most clear by running `homelab converge` again once the holder of a lock finishes.
+- **Escalate:** FLEET_STATE_DIVERGED needs a person to choose which copy of the state to keep (docs/state.md). FLEET_CONFIGURATION_COPY_CHANGED needs a person to keep the edit (in `fleet.json`, or with the import the remedy prints) or to delete the copy. FLEET_REVISION_UNMERGED means the revision is not on the default branch of the source repository, so nothing was changed: merge it, or pass `--allow-unmerged` to converge the fleet to it on purpose. FLEET_REVISION_UNVERIFIED means the manager's own copy of the source repository could not be fetched to answer that: restore its network and Git access. FLEET_SOURCE_MISMATCH means that copy is a clone of another repository (one made before the fleet's source moved), which can never hold the revision, and the repository `source.repository` names could not be cloned to replace it: restore the manager's network and Git access to it, check the URL, and run `homelab converge` again; the copy is replaced by itself. Do not pass `--allow-unmerged` for it: the revision may well be merged. FLEET_MISE_DOWNGRADE means the revision's own toolchain bootstrap is from before the rule that keeps a newer mise, and would replace the mise of the machines the remedy names with the older one the revision pins; nothing was changed. Every checkout on those machines whose `mise.toml` asks for a newer mise would stop working, so converge to a later revision instead, or pass `--allow-mise-downgrade` to `homelab converge` to install the older one on purpose. The flag skips the refusal for any revision, but it reaches the bootstrap only of a revision that reads it: one from before the rule installs the older mise by itself, and one released after the rule and before the flag reached the bootstrap keeps the newer mise whatever it is told, so there the older mise is installed by hand, with `bash bootstrap/bootstrap.sh --allow-mise-downgrade` in the revision's checkout on each machine (`--tools-only` on the manager, `--worker --node ID` on a worker). FLEET_MISE_UNMEASURED means the same kind of revision was refused because a machine's mise could not be measured, and nothing was changed. When the remedy names workers, they did not answer over SSH: bring them back and run it again, park them (`homelab park --id ID`), or name the others with `--node`. When it names the homelab installed on the manager, the run was started on a worker and the manager's installed homelab is from before `fleet-sync --measure-mise` (or the manager has none on its PATH): run `homelab converge` on the manager itself once with a current release. `--allow-mise-downgrade` goes on without the measurement.
 
 - `ANSIBLE_VARIABLE_LIMIT`: ansible variable limit.
 - `CONTAINER_WATCHDOG_UNOBSERVED`: container watchdog unobserved.
@@ -631,16 +631,16 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `MANAGER_DISK_FULL`: the manager's data volume has less free space than `disk.failFreeMiB` of the macOS policy. Free space: `docker system prune` removes unused images and build cache.
 - `MANAGER_DISK_LOW`: the same below `disk.warnFreeMiB`: a warning.
 - `MANAGER_DOCKER_DISK_LARGE`: Docker Desktop holds more than `disk.dockerWarnGiB` on the manager: a warning. `docker system prune` removes unused images and build cache.
-- `MANAGER_POWER_POLICY_DRIFT`: a power setting of the manager is not what the policy declares; the check names it. Give the manager its grant once, as an administrator, with the command the remedy prints; every `homelab fleet-sync` then applies the policy. **Needs a person.**
-- `MANAGER_RELEASE_UNSUPPORTED`: the manager runs an older macOS than the policy requires. Update it in System Settings, then run `homelab fleet-sync`. **Needs a person.**
+- `MANAGER_POWER_POLICY_DRIFT`: a power setting of the manager is not what the policy declares; the check names it. Give the manager its grant once, as an administrator, with the command the remedy prints; every `homelab converge` then applies the policy. **Needs a person.**
+- `MANAGER_RELEASE_UNSUPPORTED`: the manager runs an older macOS than the policy requires. Update it in System Settings, then run `homelab converge`. **Needs a person.**
 - `MANAGER_RESTART_PENDING`: a macOS update of the manager waits for a restart: a warning. Install it at a time no worker depends on the manager. **Needs a person.**
 - `MANAGER_UPDATES_PENDING`: macOS updates are pending on the manager: a warning. Install them at a time no worker depends on the manager. **Needs a person.**
 
 ## The manager's own policy and scheduled jobs
 
 - **Meaning:** `ansible/macos/manager.yml` did not pass its check-mode run or its apply, or something it declares (network time, the fleet-watch job, the rotation of the scheduled jobs' logs) is not in place.
-- **Confirm:** The `manager:playbook`, `manager:clock`, `manager:watch` and `manager:job-logs` checks of `homelab fleet-sync --dry-run`; on the manager, the check-mode run the remedy quotes.
-- **Fix:** Run `homelab fleet-sync`, which applies the playbook in check mode first, then for real. What needs root (power settings, reading network time, newsyslog) comes from the one grant: `ansible-playbook -e user=$(id -un) -K ansible/macos/manager-privilege.yml`, run again after an upgrade that changed it.
+- **Confirm:** The `manager:playbook`, `manager:clock`, `manager:watch` and `manager:job-logs` checks of `homelab converge --dry-run`; on the manager, the check-mode run the remedy quotes.
+- **Fix:** Run `homelab converge`, which applies the playbook in check mode first, then for real. What needs root (power settings, reading network time, newsyslog) comes from the one grant: `ansible-playbook -e user=$(id -un) -K ansible/macos/manager-privilege.yml`, run again after an upgrade that changed it.
 - **Escalate:** The grant needs an administrator's password, once.
 
 - `MANAGER_CLOCK_UNOBSERVED`: manager clock unobserved: the grant that lets fleet-sync read network time is missing. **Needs a person.**
@@ -649,54 +649,54 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `MANAGER_PLAYBOOK_FAILED`: manager playbook failed.
 - `MANAGER_WATCH_INTERVAL_INVALID`: manager watch interval invalid: `manager.schedule.watchMinutes` is outside 5 to 1440.
 - `MANAGER_JOB_LOG_OVERSIZED`: logs of the scheduled jobs grew past twice the size newsyslog rotates them at, so it is not rotating them. Check that it runs with the command the remedy prints and read `/var/log/system.log` for its errors.
-- `MANAGER_WATCH_FAILING`: the last run of the fleet-watch job failed; the check names its exit code. Read the job's error log the remedy names and run `homelab fleet-watch` on the manager to see the same failure.
+- `MANAGER_WATCH_FAILING`: the last run of the fleet-watch job failed; the check names its exit code. Read the job's error log the remedy names and run `homelab notify` on the manager to see the same failure.
 - `MANAGER_CLOCK_NOT_SYNCHRONISED`: network time is off on the manager, and every worker's clock is measured against it. `manager:clock` fails and `ansible/macos/manager.yml` asserts the same. Turn on Set time and date automatically in System Settings > General > Date & Time. **Needs a person.**
-- `MANAGER_WATCH_NOT_LOADED`: the launchd job that runs fleet-watch on a schedule is not loaded, so no heartbeat reaches the bucket and no notification is sent. Run `homelab fleet-sync` on the manager, which installs and loads it.
-- `MANAGER_DISK_GC_NOT_LOADED`: the launchd job that runs the manager's disk GC (`dev.homelab.disk-gc`) is not loaded, so nothing removes idle worktrees, unused tool versions or old homelab checkouts on the manager. Run `homelab fleet-sync` on the manager, which installs and loads it with `ansible/macos/manager.yml`.
+- `MANAGER_WATCH_NOT_LOADED`: the launchd job that runs fleet-watch on a schedule is not loaded, so no heartbeat reaches the bucket and no notification is sent. Run `homelab converge` on the manager, which installs and loads it.
+- `MANAGER_DISK_GC_NOT_LOADED`: the launchd job that runs the manager's disk GC (`dev.homelab.disk-gc`) is not loaded, so nothing removes idle worktrees, unused tool versions or old homelab checkouts on the manager. Run `homelab converge` on the manager, which installs and loads it with `ansible/macos/manager.yml`.
 - `MANAGER_DISK_GC_FAILING`: the last run of the manager's disk GC failed; the check names its exit code. Read `~/.local/share/personal/fleet/manager/logs/dev.homelab.disk-gc.err.log`, and start it by hand with `launchctl kickstart gui/$(id -u)/dev.homelab.disk-gc` to see the same failure.
 - `MANAGER_DISK_GC_STALE`: the manager's disk GC is loaded but its last report (`~/Library/Caches/homelab/disk-gc.json`) is more than three hours old: launchd does not start it while the manager sleeps, or a run hangs. Read its error log and `manager:power`.
 
 ## Notifications (fleet-watch)
 
 - **Meaning:** fleet-watch could not reach a notification target `notify` in `fleet.json` names, or its address is not stored as a secret.
-- **Confirm:** Run `homelab fleet-watch --test` and read the `notify:*` checks.
-- **Fix:** Store the target's address as the secret the remedy names, or fix the endpoint, then run `homelab fleet-watch --test` again.
+- **Confirm:** Run `homelab notify --test` and read the `notify:*` checks.
+- **Fix:** Store the target's address as the secret the remedy names, or fix the endpoint, then run `homelab notify --test` again.
 - **Escalate:** A target that keeps refusing needs whoever runs that endpoint.
 
 - `NOTIFY_DELIVERY_FAILED`: notify delivery failed.
 - `NOTIFY_TARGET_UNAVAILABLE`: notify target unavailable.
-- `NOTIFY_NOT_CONFIGURED`: `fleet.json` has no `notify` block, so fleet-watch notifies nobody: a warning of a scheduled run, a failure of `homelab fleet-watch --test`. Add the block with its targets and store each target's address as its secret (`notify-webhook-url`, `notify-ntfy-url`). **Needs a person.**
+- `NOTIFY_NOT_CONFIGURED`: `fleet.json` has no `notify` block, so fleet-watch notifies nobody: a warning of a scheduled run, a failure of `homelab notify --test`. Add the block with its targets and store each target's address as its secret (`notify-webhook-url`, `notify-ntfy-url`). **Needs a person.**
 - `WATCH_HEARTBEAT_NO_BUCKET`: a warning of `watch:heartbeat`: `fleet.json` names no bucket under `state`, so the heartbeat and what the watcher remembers are not kept, and the heartbeat workflow has nothing to read. Name the bucket. **Needs a person.**
-- `WATCH_HEARTBEAT_UNWRITTEN`: the heartbeat could not be written to the bucket. Check the bucket credentials the run was given; `homelab fleet-state` shows the connection.
+- `WATCH_HEARTBEAT_UNWRITTEN`: the heartbeat could not be written to the bucket. Check the bucket credentials the run was given; `homelab state` shows the connection.
 
 ## The CLI proxy in a fleet-sync
 
 - **Meaning:** fleet-sync asks the CLI proxy to reconcile itself on every machine (`cliproxy/scripts/fleet_sync.py`) and reports each phase of the answer as a `proxy:*` check whose summary is the code of the phase. The proxy runs on the manager only; a worker is its client. A `PROXY_UNIT_` code followed by the name of a unit is one of the proxy's scheduled jobs that is stopped or disabled: fleet-sync loads it.
-- **Confirm:** The `proxy:*` checks of `homelab fleet-sync --dry-run`; on the manager, `homelab cliproxy`.
-- **Fix:** Run `homelab fleet-sync` on the manager: it installs a pending revision, loads stopped units, enables the connector and applies the declared settings. What it never does by itself is in the entries below and in [the proxy's README](../cliproxy/README.md).
+- **Confirm:** The `proxy:*` checks of `homelab converge --dry-run`; on the manager, `homelab proxy`.
+- **Fix:** Run `homelab converge` on the manager: it installs a pending revision, loads stopped units, enables the connector and applies the declared settings. What it never does by itself is in the entries below and in [the proxy's README](../cliproxy/README.md).
 - **Escalate:** Moving the proxy, recovering its state and removing an installation from a worker are steps a person takes, as [the migration document](../cliproxy/docs/migration.md) describes.
 
 - `PROXY_CLIENT_ROLE`: not a failure. The machine is a worker and hosts no proxy: the proxy runs on the manager.
-- `PROXY_ENDPOINT_AUTH`: the phase that checks the proxy's endpoint with the client credential, once every other phase is unchanged. It passes when the endpoint answered; when it fails, the endpoint or its authentication is unavailable. Run `homelab fleet-sync` again, then read `homelab cliproxy` on the manager. Provider inference is checked separately (`provider:*`).
+- `PROXY_ENDPOINT_AUTH`: the phase that checks the proxy's endpoint with the client credential, once every other phase is unchanged. It passes when the endpoint answered; when it fails, the endpoint or its authentication is unavailable. Run `homelab converge` again, then read `homelab proxy` on the manager. Provider inference is checked separately (`provider:*`).
 - `PROXY_DUPLICATE_OWNER`: a proxy unit is active or enabled on a worker. It is reported and never stopped by fleet-sync. Fence and decommission it as the migration document describes. **Needs a person.**
 - `PROXY_DECOMMISSION_PENDING`: a stopped proxy installation, with its private state, remains on a worker. Once the proxy on the manager is verified, remove it as the migration document describes. **Needs a person.**
-- `PROXY_PLATFORM_MISMATCH`: the machine declared as the manager does not host the proxy with launchd on macOS. Run `homelab fleet-sync` for the manager on the manager. **Needs a person.**
+- `PROXY_PLATFORM_MISMATCH`: the machine declared as the manager does not host the proxy with launchd on macOS. Run `homelab converge` for the manager on the manager. **Needs a person.**
 - `PROXY_IDENTITY_MISMATCH`: the machine is not the declared manager (its local host name is not `manager.id`). Changing the manager is a reviewed move with the previous one fenced. **Needs a person.**
 - `PROXY_RECOVERY_REQUIRED`: the manager holds no runtime state of the proxy. Recover it from the encrypted backup after fencing the previous owner, as the migration document describes; never initialise a second provider identity. **Needs a person.**
 - `PROXY_SOURCE_DRIFT`: the installation or its units differ from what was installed: a file is missing or was changed. Read the proxy's audit on the manager, keep the runtime state and reinstall a reviewed revision. **Needs a person.**
 - `PROXY_UPDATE_PENDING`: installing the revision fleet-sync runs failed, and the proxy still runs the earlier one; its runtime state is kept. Run the proxy's installer on the manager as the remedy says to see why.
-- `PROXY_ENDPOINT_DISABLED`: the proxy's public connector is not enabled. `homelab fleet-sync` on the manager enables it with the credential it already has.
-- `PROXY_CONFIG_PENDING`: the live proxy lacks settings the fleet declares (model aliases, a model prefix for each signed-in account) and applying them failed. The previous configuration is kept beside the live one. Run `homelab fleet-sync` again; when it repeats, apply the declared settings on the manager as the remedy says to see why.
+- `PROXY_ENDPOINT_DISABLED`: the proxy's public connector is not enabled. `homelab converge` on the manager enables it with the credential it already has.
+- `PROXY_CONFIG_PENDING`: the live proxy lacks settings the fleet declares (model aliases, a model prefix for each signed-in account) and applying them failed. The previous configuration is kept beside the live one. Run `homelab converge` again; when it repeats, apply the declared settings on the manager as the remedy says to see why.
 
 ## Workflows a fleet's repository calls
 
 - **Meaning:** A reusable workflow of homelab (`fleet-heartbeat.yml`, `cliproxy-health.yml`), called from the repository that holds `fleet.json`, failed with the code its error starts with. See [Operations](operations.md).
-- **Confirm:** Read the annotations of the failed run on GitHub; on the manager, `homelab fleet-watch` and the `manager:watch` check of `homelab fleet-sync --dry-run`.
+- **Confirm:** Read the annotations of the failed run on GitHub; on the manager, `homelab notify` and the `manager:watch` check of `homelab converge --dry-run`.
 - **Fix:** A heartbeat code is fixed on the manager; a CLI proxy health code is fixed in the calling workflow or the repository it runs in.
 - **Escalate:** A manager that is off or asleep needs a person at it.
 
-- `FLEET_HEARTBEAT_MISSING`: the workflow could not download the heartbeat: the bucket holds none under the prefix, or the inputs or the key the workflow was given do not reach the bucket. Run `homelab fleet-watch` on the manager, and compare the workflow's `bucket`, `endpoint` and `prefix` with `state` in `fleet.json`.
-- `FLEET_HEARTBEAT_UNREADABLE`: what the bucket holds is not a heartbeat fleet-watch wrote. Run `homelab fleet-watch` on the manager, which writes a new one.
+- `FLEET_HEARTBEAT_MISSING`: the workflow could not download the heartbeat: the bucket holds none under the prefix, or the inputs or the key the workflow was given do not reach the bucket. Run `homelab notify` on the manager, and compare the workflow's `bucket`, `endpoint` and `prefix` with `state` in `fleet.json`.
+- `FLEET_HEARTBEAT_UNREADABLE`: what the bucket holds is not a heartbeat fleet-watch wrote. Run `homelab notify` on the manager, which writes a new one.
 - `FLEET_HEARTBEAT_STALE`: the manager last watched the fleet longer ago than `max-age-minutes`: it is off, asleep, offline or no longer watching. Wake it and read `manager:watch` (`MANAGER_WATCH_NOT_LOADED`, `MANAGER_WATCH_FAILING`).
 - `CLIPROXY_HEALTH_PROFILE_UNKNOWN`: the `profile` the caller passed is not liveness, readiness, light, nightly or manual. Correct the calling workflow. **Needs a person.**
 - `CLIPROXY_HEALTH_CONFIG_MISSING`: the repository does not hold the fleet configuration at the path the `config` input names. Correct the input or commit the file. **Needs a person.**
@@ -708,7 +708,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 
 ## Desktop sharing and unattended access
 
-Read the worker checks in `homelab fleet-status --workers --json`. Compare the
+Read the worker checks in `homelab check --workers --json`. Compare the
 service, session, credential and endpoint findings before starting a client.
 See the GNOME desktop sharing and manager keychain procedures in
 [Ubuntu sync](ubuntu-sync.md).
@@ -732,4 +732,4 @@ See the GNOME desktop sharing and manager keychain procedures in
 
 ### Directed T3 grants
 
-To authorize every enrolled environment's agents to work with full access on every other enrolled environment, set `t3.meshAccess` to `"full-access"` in fleet.json. Preview with `homelab fleet-sync --dry-run`. Each `t3:mesh-link` names the source, destination and measured grant. An unreachable environment or changed identity is reported by `t3:mesh-member`. Restore its T3 service and enrolled tailnet connection, then run fleet-sync. Sync adopts healthy grants in place and replaces incorrect grants or grants expiring within seven days. Scheduled sync retries outstanding pairs. Use `homelab fleet-status` to measure the links from their sources.
+To authorize every enrolled environment's agents to work with full access on every other enrolled environment, set `t3.meshAccess` to `"full-access"` in fleet.json. Preview with `homelab converge --dry-run`. Each `t3:mesh-link` names the source, destination and measured grant. An unreachable environment or changed identity is reported by `t3:mesh-member`. Restore its T3 service and enrolled tailnet connection, then run fleet-sync. Sync adopts healthy grants in place and replaces incorrect grants or grants expiring within seven days. Scheduled sync retries outstanding pairs. Use `homelab check` to measure the links from their sources.

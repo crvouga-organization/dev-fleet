@@ -7,7 +7,7 @@ repository to run a fleet.
 
 ```sh
 npm install --save-dev --save-exact @crvouga/homelab
-npx homelab fleet-sync
+npx @crvouga/homelab converge
 ```
 
 The package ships the TypeScript sources, the Ansible policy, the bootstrap
@@ -16,11 +16,11 @@ will not run TypeScript from `node_modules`, so the `homelab` entry is a small
 JavaScript launcher (`bin/homelab.mjs`) that runs the CLI on the Bun this
 release pins (a dependency of the package), falling back to a Bun on `PATH`.
 
-Machines do not run the package. `fleet-sync` rebuilds every machine from one
+Machines do not run the package. `sync` rebuilds every machine from one
 git commit of this repository, and the package says which: the Release
 workflow writes the commit it publishes from into the package's `package.json`
 as `gitHead` ([`src/package-info.ts`](../src/package-info.ts) reads it). Run
-from the package, `fleet-sync` fetches that commit from the repository
+from the package, `sync` fetches that commit from the repository
 `fleet.json` names under `source` into a cache the manager owns, and converges
 the manager and every worker from checkouts of it. So a version of the package
 is a revision of the fleet, and the commit a release names must stay reachable
@@ -58,7 +58,7 @@ Nothing is published until the release has been tried. The workflow packs
 the package once, then, for that commit and that tarball:
 
 - installs the tarball in an empty directory, the way a fleet project does,
-  and runs `homelab --version` and `homelab fleet-state --example` on Node
+  and runs `homelab --version` and `homelab state --example` on Node
   22 and 24 ([`bootstrap/package-smoke.ts`](../bootstrap/package-smoke.ts)):
   a broken bin path or a file missing from `files` fails here;
 - runs the [Ubuntu VM test](../.github/workflows/vm.yml) (a real Ubuntu

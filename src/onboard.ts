@@ -26,9 +26,9 @@ export function onboarding(node: FleetNode, launcher = 'homelab'): object {
       'remote.SSH.showLoginTerminal': true,
     },
     workspaceCommand: `cd -- ${shellQuote(node.workspace)}`,
-    verifyCommand: `${launcher} fleet-status --node ${node.id} --json`,
+    verifyCommand: `${launcher} check --node ${node.id} --json`,
     sync: {
-      command: `${launcher} fleet-repair --node ${node.id} --repair workspace`,
+      command: `${launcher} repair --node ${node.id} --repair workspace`,
       steps: syncPlan(false),
     },
   };

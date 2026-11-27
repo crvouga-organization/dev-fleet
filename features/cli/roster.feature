@@ -64,7 +64,7 @@ Feature: The roster of workers
       When the operator runs "homelab fleet-nodes --onboard --node first --json"
       Then it answers with at least:
         """
-        { "nodes": [{ "verifyCommand": "homelab fleet-status --node first --json" }] }
+        { "nodes": [{ "verifyCommand": "homelab check --node first --json" }] }
         """
 
   Rule: The roster is never half-written

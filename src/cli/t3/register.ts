@@ -1,6 +1,7 @@
 import type { Command } from 'commander';
 import type { CommandOutcome } from '../contracts';
 import { resolveSettings, type Settings } from '../settings';
+import { commandNames } from '../names';
 import { t3Command } from './command';
 import type { T3Options } from '../../t3/desired';
 
@@ -22,9 +23,10 @@ export function registerT3(
   complete: (outcome: CommandOutcome) => void
 ): void {
   for (const [name, description] of T3_COMMANDS) {
-    const command = program
-      .command(name)
-      .description(description)
+    const published = commandNames(name);
+    const command = program.command(published.name).description(description);
+    if (published.aliases[0]) command.alias(published.aliases[0]);
+    command
       .option('--id <name>', 'Node ID; defaults to hostname')
       .option(
         '--t3-home <path>',

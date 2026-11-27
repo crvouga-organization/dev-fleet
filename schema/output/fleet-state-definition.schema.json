@@ -7,7 +7,7 @@
   "required": ["version", "command", "ok", "definition"],
   "properties": {
     "version": { "const": 1 },
-    "command": { "const": "fleet-state" },
+    "command": { "const": "state" },
     "ok": { "const": true },
     "definition": { "type": "object" }
   }

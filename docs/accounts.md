@@ -9,8 +9,8 @@ provider through the proxy.
 ## The roster
 
 ```sh
-npx homelab fleet-accounts            # provider, index, label, state, cooldowns and when they clear
-npx homelab fleet-accounts --diff     # and what this machine offers against it
+npx @crvouga/homelab accounts            # provider, index, label, state, cooldowns and when they clear
+npx @crvouga/homelab accounts --diff     # and what this machine offers against it
 ```
 
 Each account has one state, derived from its credential file and the proxy's
@@ -109,7 +109,7 @@ preferred defaults, in order (`proxy.accounts` in `agents/registry.json`): an
 account's launcher and its T3 instance start on the first one the account
 serves. In T3, an account's instance hides the models of T3's catalogue that
 its account does not serve (`providerModelPreferences` in T3's settings), so
-it shows only what works; `fleet-sync` writes that, and shows a model again
+it shows only what works; `sync` writes that, and shows a model again
 when the account serves it. T3 opens an instance on its own catalogue's
 default when the account serves it, and on the first preferred default
 otherwise.
@@ -121,9 +121,9 @@ nothing of T3's catalogue.
 ## Adding, signing in again, removing
 
 ```sh
-npx homelab fleet-accounts --add claude
-npx homelab fleet-accounts --relogin codex 2
-npx homelab fleet-accounts --remove codex 2
+npx @crvouga/homelab accounts --add claude
+npx @crvouga/homelab accounts --relogin codex 2
+npx @crvouga/homelab accounts --remove codex 2
 ```
 
 A sign-in writes into a staging directory beside the credentials; only a
@@ -134,7 +134,7 @@ change is then propagated to every node.
 ## Propagation without a full sync
 
 ```sh
-npx homelab fleet-sync --only accounts
+npx @crvouga/homelab converge --only accounts
 ```
 
 On the manager and every worker at once, each node re-reads the proxy's
@@ -197,11 +197,11 @@ lease fences the old holder.
 
 ## Client keys
 
-`homelab cliproxy issue-key|rotate-key|retire-key|revoke-key NODE` keep one
+`homelab proxy issue-key|rotate-key|retire-key|revoke-key NODE` keep one
 proxy client key per node in the manager's key ring. A rotation keeps the old
 key accepted until `retire-key`, so no running agent fails while nodes move
 over. Revoking one node's key leaves the others working.
-`homelab cliproxy client-keys` reports each node's key by fingerprint only.
+`homelab proxy client-keys` reports each node's key by fingerprint only.
 
 ## Not yet done
 

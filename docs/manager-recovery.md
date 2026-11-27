@@ -23,7 +23,7 @@ these exist elsewhere:
 On the new machine, with Git, Node and Docker installed:
 
 1. Give it the manager's local host name: `manager.id` in `fleet.json`
-   (`sudo scutil --set LocalHostName ID` on macOS). `fleet-sync` refuses to
+   (`sudo scutil --set LocalHostName ID` on macOS). `sync` refuses to
    run on any other machine.
 2. Sign in to Tailscale and approve the device. Sign in to Docker Desktop if
    your plan needs it.
@@ -32,7 +32,7 @@ On the new machine, with Git, Node and Docker installed:
    ```sh
    git clone YOUR-PROJECT && cd YOUR-PROJECT && npm ci
    export HOMELAB_BUCKET_ACCESS_KEY_ID=… HOMELAB_BUCKET_SECRET_ACCESS_KEY=…
-   npx homelab fleet-restore --dry-run
+   npx @crvouga/homelab recover --dry-run
    ```
 
    It fails on anything missing (`restore:*` checks, each with its remedy)
@@ -41,10 +41,10 @@ On the new machine, with Git, Node and Docker installed:
 4. Restore, then converge:
 
    ```sh
-   npx homelab fleet-restore              # the fleet state, from the bucket
-   npx homelab fleet-sync --take-over     # the manager, then every worker
-   npx homelab fleet-state --init         # credentials for runs the manager starts itself
-   npx homelab cliproxy install           # the proxy, from its snapshots
+   npx @crvouga/homelab recover              # the fleet state, from the bucket
+   npx @crvouga/homelab converge --take-over     # the manager, then every worker
+   npx @crvouga/homelab state --init         # credentials for runs the manager starts itself
+   npx homelab proxy install           # the proxy, from its snapshots
    ```
 
    The proxy's own steps are in [its migration runbook](../cliproxy/docs/migration.md).
@@ -52,12 +52,12 @@ On the new machine, with Git, Node and Docker installed:
    after its last change). Use it only once the old machine is gone: an old
    manager that wakes up afterwards is refused with `FLEET_MANAGER_LEASE_HELD`.
 
-5. Adopt the T3 instances again: `npx homelab t3-apply --import ID`.
+5. Adopt the T3 instances again: `npx homelab t3-reconcile --import ID`.
 
 Workers need nothing: they reach the manager by its Tailscale name, so they
 follow it once the new machine holds that name. If the Tailscale name
 changed, change `manager.network.tailscaleName` in `fleet.json` and run
-`fleet-sync`, which re-points every worker.
+`sync`, which re-points every worker.
 
 ## What is lost
 
@@ -68,11 +68,11 @@ was only on the old manager.
 ## Coming back by itself
 
 A manager restarts after a power cut only when it is set up to
-(`manager:boot-recovery` in `fleet-status`): `autorestart` and Docker Desktop
+(`manager:boot-recovery` in `status`): `autorestart` and Docker Desktop
 at login are applied by `ansible/macos/manager.yml`. The per-user services
 need a user session. **With FileVault on, a Mac waits at the login window
 after every restart until a person signs in**, so nothing comes back
 unattended. That is the trade-off: FileVault protects the proxy's logins and
 the bucket credentials on a stolen Mac; automatic login without FileVault
-lets the fleet recover from a power cut alone. `fleet-status` reports
+lets the fleet recover from a power cut alone. `status` reports
 FileVault as a warning with that consequence; the choice is yours.

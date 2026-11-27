@@ -185,7 +185,7 @@ export async function fleetRestore(
     done.push('Restored the fleet state from the bucket.');
   }
   const data = {
-    ...makeReport('fleet-restore', [{ node: 'manager', checks }]),
+    ...makeReport('recover', [{ node: 'manager', checks }]),
     dryRun: options.dryRun === true,
     restores: RESTORES,
   };

@@ -23,7 +23,7 @@ What is proven, and where:
 
 A container has no systemd, so the fresh-box runs prove bootstrap,
 interruption and fault handling, not a booted desktop session. What only a
-live fleet can show is checked by `fleet-sync` itself on every run and stays a
+live fleet can show is checked by `sync` itself on every run and stays a
 failed or skipped required check until it is true; nothing advances a success
 receipt before then:
 
@@ -46,10 +46,10 @@ a full systemd guest is in [`ansible/ubuntu/tests/README.md`](../ansible/ubuntu/
 ## One command, from the manager
 
 ```sh
-homelab fleet-sync
+homelab converge
 ```
 
-`homelab fleet-sync` executes the manager-push implementation:
+`homelab converge` executes the manager-push implementation:
 
 ```text
 resolve enrolled fleet
@@ -68,7 +68,7 @@ is refused (macOS and Windows workers, WSL2, containers) and why.
 `--node ID` filters troubleshooting/rollout. `--all` is an explicit spelling of the
 default. Neither flag authorizes managing arbitrary Tailscale peers.
 
-Roster-level workspace convergence lives in `homelab fleet-repair --repair workspace`, which previews until `--apply --yes`.
+Roster-level workspace convergence lives in `homelab repair --repair workspace`, which previews until `--apply --yes`.
 The new manager report is version **2**, deliberately replacing the unshipped
 local-first fleet-sync version 1 contract.
 
@@ -143,15 +143,15 @@ untracked configuration edits.
 ## Preview, approval and results
 
 ```sh
-homelab fleet-sync --dry-run --json
-homelab fleet-sync --revision FULL_40_CHARACTER_SHA --dry-run --json
-homelab fleet-sync --revision FULL_40_CHARACTER_SHA --non-interactive --json
+homelab converge --dry-run --json
+homelab converge --revision FULL_40_CHARACTER_SHA --dry-run --json
+homelab converge --revision FULL_40_CHARACTER_SHA --non-interactive --json
 ```
 
 Preview can query Tailscale and establish read-only SSH sessions. It never enrolls,
 authenticates to a provider, installs, creates pairing material, schedules work or
 writes configuration. JSON/noninteractive modes never prompt or open a browser.
-`fleet-sync` applies on invocation with no confirmation prompt; use `--dry-run`
+`sync` applies on invocation with no confirmation prompt; use `--dry-run`
 to preview. `--apply --yes` is still accepted for existing scripts. Initial
 trust/enrollment of new connections still asks separately.
 
@@ -187,7 +187,7 @@ verification and the CLIProxy singleton.
 | Never sleep                 | systemd sleep targets masked; logind lid/idle policy; GNOME power plugin set to `nothing`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | never sleeps on AC power (`pmset -c sleep 0`, `macos/manager.yml`, verified as `manager:power`); battery sleep is left to the human                                                                                                                                                                                                                                                                       |
 | No automatic logout or lock | GNOME `lock-enabled false`, `idle-delay 0`; designated-user lingering                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | not managed (the human uses it)                                                                                                                                                                                                                                                                                                                                                                           |
 | Always-on services          | drop-ins `Restart=always`, `StartLimitIntervalSec=0` for ssh, tailscaled, docker, beszel-agent                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | singleton services under launchd and Docker Desktop (see the last row)                                                                                                                                                                                                                                                                                                                                    |
-| T3 health and connection    | `fleet-sync` and `fleet-status --workers` require `worker:t3-health` (local API answers), `t3:manager-endpoint` (manager HTTPS over Tailscale) and `t3:paired-access` (manager T3 link reachable)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | the human's T3 desktop holds the links to every worker (`t3:paired-access`)                                                                                                                                                                                                                                                                                                                               |
+| T3 health and connection    | `sync` and `status --workers` require `worker:t3-health` (local API answers), `t3:manager-endpoint` (manager HTTPS over Tailscale) and `t3:paired-access` (manager T3 link reachable)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | the human's T3 desktop holds the links to every worker (`t3:paired-access`)                                                                                                                                                                                                                                                                                                                               |
 | Memory safety               | `systemd-oomd` (swap 90%, pressure 60%); `user.slice` `MemoryMax=90%`; T3 reserves memory and CPU/I/O weight in its service and the desktop application scope that hosts the listener; each `t3code-*.scope` agent `MemoryMax=30%`, `OOMPolicy=continue`, `IOAccounting=yes` (the pressure guard reads its `io.stat`); zram at priority 100 (25% of memory up to 8 GiB), with disk swap retained for overflow; the agent pressure guard sheds one agent on sustained memory or I/O pressure                                                                                                                                                                                                                                                                                                                                                                                                          | not managed                                                                                                                                                                                                                                                                                                                                                                                               |
 | Disk safety                 | `personal-fleet-disk-guard` kills only the top user-cgroup writer below 3 GiB free, never deletes files; hourly (every 15 minutes with `storage.disposable`) `personal-fleet-disk-gc.timer` deletes git-ignored build output (`node_modules`, `.cache`, `dist`, ...) in checkouts idle 7d (12h under 15 GiB free) with no process inside, plus unused Docker images and build cache, never source, worktrees or volumes; journal 1G; `/tmp` 25% of RAM, aged 2d hourly, a measured write probe (`TMP_QUOTA_EXHAUSTED`), and T3 agents use disk-backed `/var/tmp` (`TMPDIR`, aged 14d); Docker log rotation                                                                                                                                                                                                                                                                                           | not managed                                                                                                                                                                                                                                                                                                                                                                                               |
 | Tailscale                   | pinned APT package, `tailscaled` enabled, native login required                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | Tailscale app, human login                                                                                                                                                                                                                                                                                                                                                                                |
@@ -195,7 +195,7 @@ verification and the CLIProxy singleton.
 | Credential renewal          | user timer `personal-worker-auth` renews the node's own Vault token every 10min; `personal-worker-github` signs it in to GitHub from the stored token ([GitHub](github.md))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | the human's own Vault and GitHub sessions                                                                                                                                                                                                                                                                                                                                                                 |
 | Noninteractive sudo         | validated `/etc/sudoers.d/personal-fleet-USER`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | only `pmset -c`, granted once by `manager-privilege.yml` (`-K`)                                                                                                                                                                                                                                                                                                                                           |
 | T3 worker app               | pinned desktop `.deb` is the only T3 process (UI plus embedded server) on a desktop worker, and the pinned server as the lingering user unit `t3code-headless.service` on a headless one (`features.session`; no session is waited for); GDM auto-login, user unit `t3code-desktop.service` bound to the graphical session with `Restart=always`; `personal-worker-recovery` runs a copy of `t3-health.sh` installed in `/usr/local/lib/personal-fleet` every minute: it stops and disables a still-running headless `t3code.service`, reports `T3_NO_GRAPHICAL_SESSION` and restarts the display manager (three times at most) when there is no session, starts a stopped app after `reset-failed`, restarts one whose local API missed three checks, and restarts one on another release than the installed one or with a deferred policy restart once it runs no agent turn; administrator policy | not a worker                                                                                                                                                                                                                                                                                                                                                                                              |
-| T3 providers                | the same managed instances (`fleet/agents/t3.json`) through locked T3 administrator policy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | reconciled into the human's T3 settings by `fleet-sync` (`t3:providers`) with the ownership-safe `t3-apply` engine, so every T3 offers the identical set; unrelated and unmanaged instances are preserved. `fleet-sync` also applies the same proxy agent profiles (`configuration:apply`) and verifies the shared Vault gateway credential end to end with `provider:*:inference`, exactly as on workers |
+| T3 providers                | the same managed instances (`fleet/agents/t3.json`) through locked T3 administrator policy                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | reconciled into the human's T3 settings by `sync` (`t3:providers`) with the ownership-safe `t3-apply` engine, so every T3 offers the identical set; unrelated and unmanaged instances are preserved. `sync` also applies the same proxy agent profiles (`configuration:apply`) and verifies the shared Vault gateway credential end to end with `provider:*:inference`, exactly as on workers |
 | Singleton services          | never; clients of the manager's services only                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | every singleton runs here: CLI proxy (`cliproxy`), Beszel hub (`workstation/monitoring`)                                                                                                                                                                                                                                                                                                                  |
 
 Under sustained host memory pressure the guard selects the leaf agent scope
@@ -214,14 +214,14 @@ Credential sync is deliberately indirect: no secret is copied between machines.
 Each worker has a Vault token of its own, kept in a document of its own,
 `<mount>/<project>/workers/<id>` (fields `token` and `accessor`; `<project>`
 is the first segment of the `proxy-client-key` path). The manager issues it
-with `homelab fleet-node-replace --id ID --apply --yes`: a periodic orphan
+with `homelab replace --id ID --apply --yes`: a periodic orphan
 token under the policy `fleet-worker-<id>`, which reads the fleet's shared
 document and the worker's own document and nothing else, so one worker's
 token cannot read another's (`features/fleet-sync/worker-credentials.feature`
 proves it against a Vault development server). The manager's own login needs
 to write policies, create tokens and write the mount.
 
-`homelab fleet-sync` delivers each node's token over SSH stdin (never as an
+`homelab converge` delivers each node's token over SSH stdin (never as an
 argument) whenever that node has no working Vault session. A token still kept
 in the shared document as `FLEET_WORKER_TOKEN_<NODE>` is delivered too, with
 the warning `VAULT_WORKER_TOKEN_SHARED`: every worker can read that document,
@@ -231,13 +231,13 @@ the fleet's shared Vault user on the worker's own terminal happens only with
 `VAULT_LOGIN_REQUIRED` and its T3 proxy providers stay unavailable. A node
 Vault does not answer reports `VAULT_UNREACHABLE` instead and is given no
 token and no prompt: neither would log it in.
-`homelab fleet-node-retire --id ID --apply --yes` revokes a worker's token by
+`homelab retire --id ID --apply --yes` revokes a worker's token by
 its accessor and removes its document and policy.
 
 From then on the node's `personal-worker-auth` timer renews that token and its
 `personal-worker-github` timer keeps its GitHub sign-in current
 ([GitHub](github.md)). It renders no provider configuration: agent profiles
-are applied by `fleet-sync`. See [Authentication and accounts](authentication.md).
+are applied by `sync`. See [Authentication and accounts](authentication.md).
 
 ## Ubuntu and remote-work safety
 
@@ -335,7 +335,7 @@ policy can lock, and the running app rewrites its settings, so the unit sets
 both to local-only before every start (`ansible/ubuntu/t3-local-only.py`).
 fleet-sync restarts an app that still listens beyond loopback once it runs
 no agent turn, like a release update.
-`worker:public-reachability` (from the manager, in `fleet-status --workers`)
+`worker:public-reachability` (from the manager, in `status --workers`)
 tries the SSH, T3 and monitoring ports on the public address Tailscale knows
 for the worker; it never blocks readiness, because the manager may share the
 worker's network. Both are not applicable without an address outside the
@@ -346,11 +346,11 @@ The manager is the only configuration coordinator. No per-node pull timer is
 installed. Manager schedule controls use the existing platform adapter:
 
 ```sh
-homelab fleet-sync --schedule status --json
-homelab fleet-sync --schedule enable --revision FULL_40_CHARACTER_SHA --apply --yes
-homelab fleet-sync --schedule pause --apply --yes
-homelab fleet-sync --schedule resume --revision FULL_40_CHARACTER_SHA --apply --yes
-homelab fleet-sync --schedule disable --apply --yes
+homelab converge --schedule status --json
+homelab converge --schedule enable --revision FULL_40_CHARACTER_SHA --apply --yes
+homelab converge --schedule pause --apply --yes
+homelab converge --schedule resume --revision FULL_40_CHARACTER_SHA --apply --yes
+homelab converge --schedule disable --apply --yes
 ```
 
 These are manager setup/maintenance operations, not per-node commands. Enable
@@ -433,8 +433,8 @@ Antigravity credential the model prefix `<type>-<email>`
 API), so the proxy's model list names every signed-in account. Each node reads
 that list with its own proxy key and offers one provider per account, so all
 machines list the same providers. Signing an account in or out on the proxy
-(`homelab cliproxy add-account PROVIDER`, or the dashboard) changes T3 on the
-next `fleet-sync`; an unreachable proxy fails the check and changes nothing.
+(`homelab proxy add-account PROVIDER`, or the dashboard) changes T3 on the
+next `sync`; an unreachable proxy fails the check and changes nothing.
 
 A provider is pinned to its account: T3 sets `WS_AGENT_ACCOUNT` and the
 launcher routes every request to `<type>-<email>/<model>`. Claude and Codex
@@ -545,7 +545,7 @@ configured helper without a usable credential reports
 `GIT_CREDENTIAL_UNAVAILABLE`.
 
 For a worker-initiated sync with the manager's desktop credentials, first run
-`homelab fleet-sync --schedule enable --apply --yes` in the signed-in manager
+`homelab converge --schedule enable --apply --yes` in the signed-in manager
 session with the desired release. Confirm its scheduled run can read the fleet
 state and passes both the GitHub principal and Git credential checks. From a
 worker with verified SSH access, trigger that same manager-owned job:
@@ -557,7 +557,7 @@ ssh -o BatchMode=yes -o StrictHostKeyChecking=yes "$manager" \
 
 Here `manager` names the enrolled manager account and tailnet address.
 `kickstart` starts the job asynchronously. Check the new run's timestamp,
-revision and result with `homelab fleet-sync --schedule status`. The schedule
+revision and result with `homelab converge --schedule status`. The schedule
 uses its installed revision and options. Keep the manager desktop signed in.
 
 ### Native Tailscale SSH

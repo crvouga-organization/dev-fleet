@@ -14,7 +14,7 @@ Feature: fleet-node-sync converges the machine it is run on
 
     Scenario: The command index lists it
       When the operator runs "homelab commands --json"
-      Then the answer contains "fleet-node-sync"
+      Then the answer contains "converge-local"
 
   Rule: Nothing changes in a dry run, or under a name that is not a node ID
 

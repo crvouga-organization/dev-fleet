@@ -45,7 +45,7 @@ export async function syncNode(
       exitCode: 0,
       data: {
         version: 1,
-        command: 'fleet-node-sync',
+        command: 'converge-local',
         ok: true,
         applied: false,
         ...request,
@@ -61,7 +61,7 @@ export async function syncNode(
   if (checks.some((check) => check.status !== 'pass'))
     return {
       exitCode: 1,
-      data: { version: 1, command: 'fleet-node-sync', ok: false, checks },
+      data: { version: 1, command: 'converge-local', ok: false, checks },
     };
   return finishSync(options, settings, { request, checks }, run);
 }
@@ -104,7 +104,7 @@ async function finishSync(
     exitCode: 0,
     data: {
       version: 1,
-      command: 'fleet-node-sync',
+      command: 'converge-local',
       ok: true,
       applied: true,
       ...request,

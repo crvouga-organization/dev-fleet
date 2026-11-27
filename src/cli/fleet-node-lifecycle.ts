@@ -232,7 +232,7 @@ export async function retireWorker(
   const owned = readWorkerStates().workers[worker.id]?.superWorkspaceId;
   if (!apply)
     return outcome(
-      'fleet-node-retire',
+      'retire',
       worker.id,
       [
         ...planRetirement(worker, entry, host, services.vault()),
@@ -270,7 +270,7 @@ export async function retireWorker(
   // Nothing of the worker stays in the fleet state but its tombstone.
   await changeWorkers(services.state(), () => ({ [worker.id]: null }));
   checks.push(await tombstone(worker.id, services));
-  return outcome('fleet-node-retire', worker.id, checks, true);
+  return outcome('retire', worker.id, checks, true);
 }
 
 function planRetirement(
@@ -477,7 +477,7 @@ export async function fleetNodeReplace(
   const entry = await replaceable(worker, options, services);
   const device = await newDevice(worker, services.run);
   if ('check' in device)
-    return outcome('fleet-node-replace', worker.id, [device.check], false);
+    return outcome('replace', worker.id, [device.check], false);
   const replaced = entry.tailscaleId !== device.computer.id;
   const plan: Replacement = {
     worker,
@@ -502,13 +502,13 @@ export async function fleetNodeReplace(
   };
   if (preview(options))
     return outcome(
-      'fleet-node-replace',
+      'replace',
       worker.id,
       [identity, ...planReplacement(plan)],
       false
     );
   return outcome(
-    'fleet-node-replace',
+    'replace',
     worker.id,
     [identity, ...(await carryOut(plan, services))],
     true

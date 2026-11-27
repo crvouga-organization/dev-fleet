@@ -280,7 +280,7 @@ function report(
     ),
   ];
   const data = {
-    ...makeReport('fleet-state', [{ node: 'state', checks }]),
+    ...makeReport('state', [{ node: 'state', checks }]),
     root: stateRoot(services.env, services.home),
     bucket: describeConnection(reached),
     standing: input.standing,
@@ -484,7 +484,7 @@ function exportDefinition(services: FleetStateServices): CommandOutcome {
     exitCode: 0,
     data: {
       version: 1,
-      command: 'fleet-state',
+      command: 'state',
       ok: true,
       definition: JSON.parse(body) as unknown,
     },
@@ -505,7 +505,7 @@ async function exampleDefinition(): Promise<CommandOutcome> {
   };
   return {
     exitCode: 0,
-    data: { version: 1, command: 'fleet-state', ok: true, definition },
+    data: { version: 1, command: 'state', ok: true, definition },
     text: JSON.stringify(definition, null, 2),
   };
 }

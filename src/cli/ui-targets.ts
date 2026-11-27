@@ -47,7 +47,7 @@ export async function chooseTargets(
 async function availableNodes(session: Session): Promise<Choice[]> {
   const outcome = await execute(
     session,
-    ['fleet-nodes'],
+    ['workers'],
     'Reading local roster (no SSH)'
   );
   if (!successful(outcome)) {

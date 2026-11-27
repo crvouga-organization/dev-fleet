@@ -124,7 +124,7 @@ export async function fleetNodeSeed(
     exitCode: pin.status === 'fail' ? 1 : 0,
     data: {
       version: 1,
-      command: 'fleet-node-seed',
+      command: 'provision',
       ok: pin.status !== 'fail',
       worker: worker.id,
       output: options.output,

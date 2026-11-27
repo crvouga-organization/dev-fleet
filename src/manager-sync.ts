@@ -41,7 +41,7 @@ export interface ManagerNode extends NodeReport {
 }
 export interface ManagerReport {
   version: 3;
-  command: 'fleet-sync';
+  command: 'converge';
   execution: 'manager-push';
   ok: boolean;
   applied: boolean;
@@ -172,7 +172,7 @@ export async function synchronizeManager(
   const matches = await matchComputers(input.nodes, tailnet.computers, run);
   const report: ManagerReport = {
     version: 3,
-    command: 'fleet-sync',
+    command: 'converge',
     execution: 'manager-push',
     ok: false,
     applied: false,

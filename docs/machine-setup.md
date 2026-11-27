@@ -14,7 +14,7 @@ install the toolchain.
 
 ### New machine
 
-A manager or a worker is set up by `fleet-sync`, run from the published
+A manager or a worker is set up by `sync`, run from the published
 package ([README](../README.md#quickstart)): it checks out the revision on the
 machine and runs `bootstrap/bootstrap.sh` from that checkout. Nothing is
 downloaded and run by hand.
@@ -187,7 +187,7 @@ railway login
 
 Only sign into providers the task actually needs. On fleet machines the Git
 identity and the GitHub credential helper come from the `git` block of
-`fleet.json`: `fleet-sync` writes them in `~/.config/git/config` and checks
+`fleet.json`: `sync` writes them in `~/.config/git/config` and checks
 them as `worker:git-identity` and `worker:git-push-auth`. The helper
 `gh auth setup-git` writes in `~/.gitconfig` may stay; a `user.name`,
 `user.email` or other GitHub helper there wins over the block and fails
@@ -205,10 +205,10 @@ Optional existing workstation/agent settings:
 
 ```sh
 sh bootstrap/install-launcher.sh
-homelab fleet-status --local
+homelab check --local
 # Only for tasks needing the workspace's managed secrets:
 vault login --method=userpass username=example-user
-homelab fleet-sync
+homelab converge
 ```
 
 The machine bootstrap installs tools/dependencies only. `personal:install` additionally
@@ -295,17 +295,17 @@ mise install --locked bun
 mise exec --locked bun -- bun bootstrap/setup.ts
 ```
 
-On fleet machines `homelab fleet-sync` refreshes the toolchain, the global
+On fleet machines `homelab converge` refreshes the toolchain, the global
 configuration and frozen dependencies; `mise exec --locked bun -- bun
 bootstrap/setup.ts --tools-only` reapplies tool pins and the global
 configuration without touching project dependencies, and `bun
 bootstrap/doctor.ts --json` verifies them. Sync is explicit; Git commits do not silently update other machines.
 
 For multiple development computers, use [the fleet package](operations.md):
-`homelab fleet-node-add` registers an existing SSH alias in a local roster,
-`homelab fleet-nodes --onboard` generates per-node connection/auth/editor steps,
-and `homelab fleet-status --json` diagnoses SSH, authentication, T3 Connect
-settings/API and checkout/lockfile drift. `homelab fleet-repair --repair workspace`
+`homelab enroll` registers an existing SSH alias in a local roster,
+`homelab workers --onboard` generates per-node connection/auth/editor steps,
+and `homelab check --json` diagnoses SSH, authentication, T3 Connect
+settings/API and checkout/lockfile drift. `homelab repair --repair workspace`
 previews convergence through this same setup script; applying requires
 `--apply --yes`. No credentials are copied or cloud resources provisioned;
 VS Code/T3 end-to-end tests remain explicit operator steps.
@@ -315,9 +315,9 @@ tool discovery through its actual SSH alias (not just an interactive terminal):
 
 ```sh
 ssh YOUR_ALIAS 'command -v mise; command -v bun; command -v node; command -v npm'
-homelab fleet-status --json
-homelab fleet-repair --repair workspace
-homelab fleet-repair --repair workspace --apply --yes
+homelab check --json
+homelab repair --repair workspace
+homelab repair --repair workspace --apply --yes
 ```
 
 Review the sync plan before applying. SSH must already work and nodes must be in
@@ -402,7 +402,7 @@ was. A headless worker installs none of the desktop-only packages
 as not applicable. The server prints a one-time pairing token to its own
 journal at start, as `t3 serve` does anywhere; homelab never reads it.
 Pairing is done from the manager: by a person the first time, and by
-`fleet-node-replace` or the next `fleet-sync` for a machine that replaces a
+`fleet-node-replace` or the next `sync` for a machine that replaces a
 worker.
 
 The disposable Ubuntu VM test (`ansible/ubuntu/tests/vm.py`) converges each
@@ -410,7 +410,7 @@ session type, reboots with nobody logged in and kills the T3 process to
 prove the recovery timer brings it back.
 
 Normal Ubuntu fleet setup is controller-led:
-`homelab fleet-sync`. See the
+`homelab converge`. See the
 [Fleet runbook](ubuntu-sync.md). A controller without
 Node/npm must first run this tracked bootstrap (or install the documented Node
 prerequisite); `npx` cannot execute before Node/npm exist. Reachable remote targets
@@ -427,11 +427,11 @@ Project scripts use `bash bootstrap/project-action.sh ACTION` from the checkout.
 Actions are named exactly like the `personal` command they run, so a T3 script
 label reads the same as the CLI: `warm`, `portfolio`, `workstation-sync`,
 `workstation-update`, `workstation-net-fix`, `workstation-net-check`,
-`workstation-net-fix-check`, `fleet-sync`, `fleet-status`, `fleet-repair`, `infra-cliproxy`. Label
+`workstation-net-fix-check`, `sync`, `status`, `fleet-repair`, `infra-cliproxy`. Label
 each T3 script `Domain: Command words` (`Fleet: Sync`, `Fleet: Status`,
-`Workstation: Net check`, `Infra: Cliproxy model health` running `infra-cliproxy model-health`; `infra-cliproxy model-suite --target mock` is the offline, credential-free suite). `fleet-sync` selects the current checkout HEAD as its
+`Workstation: Net check`, `Infra: Cliproxy model health` running `infra-cliproxy model-health`; `infra-cliproxy model-suite --target mock` is the offline, credential-free suite). `sync` selects the current checkout HEAD as its
 exact revision and retains its approval flow; extra arguments such as `--dry-run`
-are forwarded. `fleet-status` runs `homelab fleet-status --workers`, the
+are forwarded. `status` runs `homelab check --workers`, the
 canonical worker audit that reports excluded service hosts. Repair previews without applying. Each invocation runs the shared bootstrap first, reusing installed
 locked tools and converging dependencies for the current branch. `warm` performs
 only that setup. No global `ws` or `personal` launcher is required. Setup may

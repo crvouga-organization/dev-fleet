@@ -47,7 +47,7 @@ All of it is optional:
 
 ## How a node is signed in
 
-`bootstrap/worker-github.ts` runs at every `fleet-sync` and, on a worker, every
+`bootstrap/worker-github.ts` runs at every `sync` and, on a worker, every
 ten minutes from the user timer `personal-worker-github`. It is apart from the
 Vault renewal (`personal-worker-auth`): one failing never stops or hides the
 other. It signs gh in with the stored token when the node is not signed in, or
@@ -57,13 +57,13 @@ declared login. git asks gh for the token at every use
 `ansible/github/git.yml` with the identity of the `git` block on every node),
 so a replaced token reaches git with no change and no second copy on disk.
 
-A `fleet-sync` fails with `github:sync` when the node cannot be signed in.
+A `sync` fails with `github:sync` when the node cannot be signed in.
 
 ## Rotating the token
 
 1. Issue a new token for the fleet login and put it in the store as
    `github-token`.
-2. Run `fleet-sync` (the canary worker first, as always), or wait up to ten
+2. Run `sync` (the canary worker first, as always), or wait up to ten
    minutes for every node's timer. Each node adopts the new token while the old
    one still works.
 3. When `github:token-current` passes on every node, revoke the old token.
@@ -94,7 +94,7 @@ measured; no prompt is sent.
 
 ## Verifying the whole workflow
 
-`homelab fleet-github-verify` runs, from the machine it is started on, what an
+`homelab check-github` runs, from the machine it is started on, what an
 agent does on the sandbox repository: clone, a uniquely named branch, an empty
 commit with the configured identity, push, a draft pull request, a read of its
 checks, a comment. It then closes the pull request and deletes the branch,
@@ -105,6 +105,6 @@ whatever failed, and reports anything it could not remove.
 - Short-lived GitHub App installation tokens minted by the manager.
 - A container registry, package registry and tool installer adapter: today
   only git takes its credential from gh.
-- A launchd timer for the manager: it is signed in at every `fleet-sync`.
+- A launchd timer for the manager: it is signed in at every `sync`.
 - `fleet-github-verify` runs on the machine it is started on; `--node` and a
   scheduled run are not there yet.

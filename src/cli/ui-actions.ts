@@ -19,14 +19,14 @@ export async function runCommand(
 }
 
 function isRepair(args: string[]): boolean {
-  return args[0] === 'fleet-repair' && !args.includes('--list');
+  return args[0] === 'repair' && !args.includes('--list');
 }
 
 /** Palette entries with flags are fixed scopes; bare roster commands ask for targets. */
 function targetAction(args: string[]): string | undefined {
   if (isRepair(args)) return 'repair';
-  if (args[0] === 'fleet-status' && args.length === 1) return 'doctor';
-  if (args[0] === 'fleet-nodes' && args.includes('--onboard')) return 'onboard';
+  if (args[0] === 'check' && args.length === 1) return 'doctor';
+  if (args[0] === 'workers' && args.includes('--onboard')) return 'onboard';
   return undefined;
 }
 
@@ -105,9 +105,9 @@ export async function confirmMutation(
 ): Promise<boolean> {
   const action = args[0];
   const warning =
-    action === 'fleet-repair'
+    action === 'repair'
       ? 'Repair runs the eligible owner actions in the displayed plan, including trusted setup/install scripts. Workstation actions may read this machine’s Vault session and write managed 0600 provider configuration. No login session is transferred between computers. Failures can leave partial changes; fresh diagnostics follow.'
-      : action === 'fleet-node-add'
+      : action === 'enroll'
         ? 'This writes the local roster only. No cloud resources, SSH configuration, credentials or host keys are changed.'
         : 'This command applies changes on invocation as documented in its --help. Failure can leave partial changes; inspect before retrying. No credentials are copied between computers.';
   session.display.panel(

@@ -51,7 +51,7 @@ export async function propagateAccounts(
     exitCode: ok ? 0 : 1,
     data: {
       version: 1,
-      command: 'fleet-sync',
+      command: 'converge',
       only: 'accounts',
       ok,
       revision: input.revision,

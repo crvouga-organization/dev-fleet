@@ -48,7 +48,9 @@ Then('every command is named like one of:', (world, table: DataTable): void => {
     table
       .list()
       .some((name) =>
-        name.endsWith('*') ? id.startsWith(name.slice(0, -1)) : id === name
+        name.endsWith('*')
+          ? id.startsWith(name.slice(0, -1))
+          : id.split(' ')[0] === name
       );
   expect(catalog(world).found.every((entry) => named(entry.id))).toBe(true);
 });

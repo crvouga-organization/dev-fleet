@@ -142,7 +142,7 @@ export async function fleetValidate(
   const ok = checks.every((check) => check.status !== 'fail');
   return {
     exitCode: ok ? 0 : 1,
-    data: { version: 1, command: 'fleet-validate', ok, path, checks },
+    data: { version: 1, command: 'check-config', ok, path, checks },
     text: checks
       .map(
         (check) => `${check.status.toUpperCase()} ${check.id}: ${check.summary}`
@@ -178,7 +178,7 @@ async function readJson(path: string): Promise<unknown> {
 function invalid(path: string, problem: DefinitionProblem): CommandOutcome {
   const data = {
     version: 1,
-    command: 'fleet-validate',
+    command: 'check-config',
     ok: false,
     path,
     problem,

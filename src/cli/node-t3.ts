@@ -16,7 +16,7 @@ export async function syncT3(
       exitCode: 1,
       data: {
         version: 1,
-        command: 'fleet-node-sync',
+        command: 'converge-local',
         ok: false,
         applied: true,
         stage: 't3',

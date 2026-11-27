@@ -3,7 +3,7 @@ import type { Release } from './program';
 const SAFETY = [
   'No arguments prints help, including on a TTY. --json returns this document. The menu requires --interactive; --json and --non-interactive never prompt.',
   'Diagnostics, onboarding instructions, schema, catalogs, scripts and repair previews are read-only.',
-  'fleet-sync, fleet-node-sync, t3-apply and t3-cleanup apply by invocation; --dry-run previews. t3-apply --import ID explicitly adopts ownership. --json never implies a dry run. fleet-node-add and fleet-repair require --apply --yes.',
+  'converge, converge-local, t3-reconcile and t3-remove apply by invocation; --dry-run previews. t3-reconcile --import ID explicitly adopts ownership. --json never implies a dry run. enroll and repair require --apply --yes.',
   'fleet-state alone is read-only; --init, --import, --push and --restore each act on invocation. Bucket credentials come from HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY or a terminal prompt, never from arguments.',
   'Do not copy credentials, forward SSH agents, bypass host keys, provision infrastructure or execute unreviewed remedies.',
   'A healthy manager does not prove another machine can connect to it. Run fleet-status from each intended manager.',
@@ -16,7 +16,7 @@ const EXAMPLES = [
   'homelab fleet-node-sync',
   'homelab fleet-status',
   'homelab fleet-state --json',
-  'homelab t3-status',
+  'homelab t3',
   'homelab fleet-status --local --workspace /path/to/personal --json',
   'homelab fleet-status --json --strict --timeout 120000',
   'homelab fleet-status --tailnet --json',
@@ -64,7 +64,7 @@ export function agentGuide(release: Release) {
     groups: {
       'fleet-*':
         'Developer computers: fleet-status, fleet-discover, fleet-sync, fleet-state, fleet-report, fleet-node-sync, fleet-repair, fleet-nodes, fleet-node-add',
-      't3-*': 'Declared T3 provider instances: t3-status, t3-apply, t3-cleanup',
+      t3: 'Declared T3 provider instances: t3, t3-reconcile, t3-remove',
       cliproxy: 'The CLI proxy service on the manager; arguments are forwarded',
     },
     configuration: {
@@ -91,22 +91,22 @@ export function agentGuide(release: Release) {
       errors:
         'schema/output/error.schema.json: {version:1,ok:false,code,error}; raw subprocess output and exception details are withheld',
       reports:
-        'These outputs have a JSON schema in this package; parse by it and by its version. Diagnostic reports of fleet-status, fleet-state and fleet-repair (whose report names its command repair): schema/output/report.schema.json, version 1. fleet-sync: schema/output/fleet-sync.schema.json, version 3 (a --dry-run adds plan). fleet-sync --schedule: schema/output/fleet-sync-schedule.schema.json, version 2. fleet-state --example and --export: schema/output/fleet-state-definition.schema.json, version 1. fleet-report: schema/output/fleet-report.schema.json, version 1. Any other --json document carries its version, and command and ok where it reports an outcome, but has no published schema yet.',
+        'These outputs have a JSON schema in this package; parse by it and by its version. Diagnostic reports of check, state and repair (whose report names its command repair): schema/output/report.schema.json, version 1. converge: schema/output/fleet-sync.schema.json, version 3 (a --dry-run adds plan). converge --schedule: schema/output/fleet-sync-schedule.schema.json, version 2. state --example and --export: schema/output/fleet-state-definition.schema.json, version 1. history: schema/output/fleet-report.schema.json, version 1. Any other --json document carries its version, and command and ok where it reports an outcome, but has no published schema yet.',
       checks:
-        'schema/check-ids.json (schema/check-ids.schema.json), generated from the code, lists every check ID: meaning, what a passing check means; severity, required (a failure blocks readiness unless the run marks the check out of scope) or advisory (a warning or not required, never blocking); repair, {recipe} the fleet-repair recipe that repairs it or {manual} why only a person can. A * stands for a name taken at run time (a node, a tool, an account). Each failing check also carries its own remedy.',
+        'schema/check-ids.json (schema/check-ids.schema.json), generated from the code, lists every check ID: meaning, what a passing check means; severity, required (a failure blocks readiness unless the run marks the check out of scope) or advisory (a warning or not required, never blocking); repair, {recipe} the repair recipe that repairs it or {manual} why only a person can. A * stands for a name taken at run time (a node, a tool, an account). Each failing check also carries its own remedy.',
       statuses: ['pass', 'warn', 'fail', 'skip', 'not-applicable'],
       coverage:
-        'Default fleet-status tests the manager and all configured nodes. --local tests only this manager; --tailnet and --workers cover Tailscale computers. A missing roster fails explicitly. T3/VS Code end-to-end checks remain manual.',
+        'Default check tests the manager and all configured workers. --local tests only this manager; --tailnet and --workers cover Tailscale computers. A missing roster fails explicitly. T3/VS Code end-to-end checks remain manual.',
     },
     safety: SAFETY,
     support: support(release),
     toolchain:
-      'On a fleet machine the global mise configuration belongs to homelab: fleet-sync publishes it, and fleet-status fails tool:global-mise-config when anything replaced it. A project pins its own tools in a project mise.toml (mise install --locked in its checkout) and never publishes a global one.',
+      'On a fleet machine the global mise configuration belongs to homelab: converge publishes it, and check fails tool:global-mise-config when anything replaced it. A project pins its own tools in a project mise.toml (mise install --locked in its checkout) and never publishes a global one.',
     library:
       'None. The package is the homelab command: it declares no main or exports, and nothing under src/ is a supported import; any release may change it. Ask for a command in an issue instead.',
     fleetSync: {
-      command: 'homelab fleet-sync',
-      preview: 'homelab fleet-sync --dry-run --json',
+      command: 'homelab converge',
+      preview: 'homelab converge --dry-run --json',
       approval:
         'Applies on invocation without a prompt; --dry-run previews and changes no machine: on the manager it only checks the release out into homelab’s cache and installs the Bun it pins, never the toolchain, the global mise configuration or shell profiles',
       scope:
@@ -119,10 +119,10 @@ export function agentGuide(release: Release) {
         'Full Ubuntu acceptance is incomplete and fails closed; do not override it or claim deployment success.',
     },
     reconciliation: {
-      plan: 'homelab t3-apply --dry-run --json',
-      apply: 'homelab t3-apply --plan-hash HASH',
-      cleanup: 'homelab t3-cleanup --dry-run',
-      import: 'homelab t3-apply --import ID',
+      plan: 'homelab t3-reconcile --dry-run --json',
+      apply: 'homelab t3-reconcile --plan-hash HASH',
+      cleanup: 'homelab t3-remove --dry-run',
+      import: 'homelab t3-reconcile --import ID',
       ownership:
         'Only declared or explicitly imported T3 instances. Pairing, credentials, threads and unrelated settings are preserved.',
       concurrency:

@@ -1,20 +1,20 @@
 # homelab
 
-> homelab keeps a set of development machines in sync: one macOS **manager** and any number of Ubuntu (26.04 or 24.04) **workers** reached over SSH and Tailscale. It is used as the npm package `@crvouga/homelab` (CLI `homelab`) from a project of your own that holds `fleet.json` and pins the package version; one command, `homelab fleet-sync`, converges every machine to the commit that version was published from. The fleet state lives in an S3-compatible bucket you own.
+> homelab keeps a set of development machines in sync: one macOS **manager** and any number of Ubuntu (26.04 or 24.04) **workers** reached over SSH and Tailscale. It is used as the npm package `@crvouga/homelab` (CLI `homelab`) from a project of your own that holds `fleet.json` and pins the package version; one command, `homelab converge`, converges every machine to the commit that version was published from. The fleet state lives in an S3-compatible bucket you own.
 
 Rules for an agent working in a project that uses homelab:
 
 - Never clone, vendor or patch homelab, and never edit what it installs on a machine. A defect or missing feature is a public issue at https://github.com/crvouga/homelab/issues (no credentials, hostnames, accounts, domains or `fleet.json` contents).
 - Never put a secret in an argument, `fleet.json`, a commit or a log. Bucket credentials come from `HOMELAB_BUCKET_ACCESS_KEY_ID` and `HOMELAB_BUCKET_SECRET_ACCESS_KEY`; other secrets from the provider `fleet.json` names (`vault`, `sops`, `file` or `env`).
 - `npx homelab commands --json` prints the machine-readable contract: commands, exit codes, safety rules, how to report a bug. Read it first; pass `--json --non-interactive` to every diagnostic.
-- `--dry-run`, `fleet-status` and `fleet-state` (without flags) are read-only. `fleet-sync` changes every machine, and its first run must be done by a human at a terminal (host enrollment, sudo, Vault).
+- `--dry-run`, `status` and `state` (without flags) are read-only. `sync` changes every machine, and its first run must be done by a human at a terminal (host enrollment, sudo, Vault).
 - The installed package carries these documents under `node_modules/@crvouga/homelab/`.
 
 ## Set up a fleet
 
 - [Set up a fleet from your own project](https://github.com/crvouga/homelab/blob/main/docs/consumer-setup.md): the one-pass procedure for an agent: prerequisites and how to verify them, what to ask the human, every `fleet.json` field, secrets, bucket credentials, the first sync, verification and failure codes
 - [README](https://github.com/crvouga/homelab/blob/main/README.md): what homelab assumes, quickstart, versions, adding a machine, known limits
-- [Example fleet.json](https://github.com/crvouga/homelab/blob/main/examples/fleet.json): a complete configuration with placeholders (`npx homelab fleet-state --example` prints it)
+- [Example fleet.json](https://github.com/crvouga/homelab/blob/main/examples/fleet.json): a complete configuration with placeholders (`npx @crvouga/homelab state --example` prints it)
 - [fleet.json schema](https://github.com/crvouga/homelab/blob/main/schema/fleet.schema.json): JSON Schema for the fleet configuration
 - [Check-ID registry](https://github.com/crvouga/homelab/blob/main/schema/check-ids.json): every check ID a report can carry, with what it means, whether it can block readiness (severity) and what repairs it (a fleet-repair recipe, or why only a person can); generated from the code
 

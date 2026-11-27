@@ -1,7 +1,7 @@
 # homelab
 
 Keeps a set of development machines in sync: one **manager** and many
-**workers**. One command, `fleet-sync`, brings every machine to the same
+**workers**. One command, `sync`, brings every machine to the same
 pinned tools, the same coding agents signed in through one proxy, the same
 uptime policy and the same monitoring. Adding or removing a machine is one
 entry in `fleet.json`.
@@ -30,7 +30,7 @@ storage bucket you own. Nothing else has to be kept:
 | The version of homelab                                                                | The `@crvouga/homelab` dependency in your `package.json`         |
 | The fleet state: the enrolled workers, the approved revision, the configuration applied | Your bucket (any S3-compatible service)                            |
 | Secrets                                                                                 | The provider `fleet.json` names (`vault`, `sops`, `file` or `env`) |
-| The source, checkouts, tools and reports homelab puts on a machine                    | A cache: delete it and `fleet-sync` rebuilds it                    |
+| The source, checkouts, tools and reports homelab puts on a machine                    | A cache: delete it and `sync` rebuilds it                    |
 
 The CLI proxy and the monitoring hub on the manager still keep data of their
 own; [known limits](#known-limits) says what is lost with the manager.
@@ -39,7 +39,7 @@ own; [known limits](#known-limits) says what is lost with the manager.
 
 homelab is opinionated. These are part of it, not options:
 
-- The **manager** is a macOS machine. You run `fleet-sync` on it, and it hosts
+- The **manager** is a macOS machine. You run `sync` on it, and it hosts
   the shared services (the CLI proxy and the monitoring hub) in Docker Desktop.
 - **Workers** are Ubuntu 26.04 or 24.04 machines reached over SSH. They are stateless:
   everything on them is rebuilt from Git and your secrets.
@@ -81,13 +81,13 @@ mkdir my-fleet && cd my-fleet && git init
 npm init -y
 npm install --save-dev --save-exact @crvouga/homelab
 
-npx homelab fleet-state --example > fleet.json
+npx @crvouga/homelab state --example > fleet.json
 $EDITOR fleet.json                   # your machines, and your bucket under "state"
 
 export HOMELAB_BUCKET_ACCESS_KEY_ID=…
 export HOMELAB_BUCKET_SECRET_ACCESS_KEY=…
-npx homelab fleet-sync --dry-run    # preview
-npx homelab fleet-sync              # apply
+npx @crvouga/homelab converge --dry-run    # preview
+npx @crvouga/homelab converge              # apply
 ```
 
 Commit `fleet.json`, `package.json` and the lockfile. Keep the two credentials
@@ -95,7 +95,7 @@ out of Git: pass them from wherever you keep secrets (a password manager's
 `run` command, a git-ignored `.env`, your shell). They are read from the
 environment and never taken from arguments.
 
-`fleet-sync` converges the manager first, then every worker over SSH. It
+`sync` converges the manager first, then every worker over SSH. It
 fetches the commit your `homelab` version was published from, sends it and
 your configuration to each machine, installs the pinned toolchain, applies the
 Ansible policy and verifies the result. It prints one table and writes a full
@@ -123,7 +123,7 @@ The CLI runs on [Bun](https://bun.sh), which the package brings as a
 dependency. If your package manager does not run dependency install scripts,
 allow Bun's or install Bun yourself; the CLI uses the one on `PATH`.
 
-For a new remote T3 turn, clients can run `homelab fleet-status --placement --json`.
+For a new remote T3 turn, clients can run `homelab check --placement --json`.
 Pass eligible worker IDs with `--node`, including only the pinned worker when
 the caller chose an environment. The reply names a preferred environment or
 says to queue, and gives the measurements behind each decision. Concurrent
@@ -139,7 +139,7 @@ machine in the fleet:
 ```sh
 npx homelab --version               # 1.4.0 (commit 3f2a…)
 npm install --save-dev --save-exact @crvouga/homelab@latest
-npx homelab fleet-sync              # the fleet moves to that release
+npx @crvouga/homelab converge              # the fleet moves to that release
 ```
 
 One worker, the canary, proves a new revision before the others receive it:
@@ -161,30 +161,30 @@ custom keybindings with their T3 migration history and published themes with
 their background images. Removing them on the manager removes them on workers.
 The pinned T3 CLI validates the themes before the fleet saves or installs them.
 
-To go back, run `npx homelab fleet-sync --rollback` on the manager: it
+To go back, run `npx @crvouga/homelab converge --rollback` on the manager: it
 converges every machine to the revision applied before the approved one, which
 the fleet state records: after an upgrade whose canary failed, that is the
 revision the fleet still runs. A rollback covers what a revision declares: the
 checkout, the pinned tools and T3 Code. System packages roll forward only
 (apt never downgrades them), so a release that moved one keeps it. Installing
-an older version and running `fleet-sync` does the same for any earlier
+an older version and running `sync` does the same for any earlier
 release.
 
 The fleet moves only to a revision on the default branch of the source
-repository, which every release is. `fleet-sync` asks the manager's own copy
+repository, which every release is. `sync` asks the manager's own copy
 of that repository, whatever selected the revision (the package, `--revision`,
 `--rollback`, the schedule, a checkout, a hand-off from a worker), and refuses
 any other with `FLEET_REVISION_UNMERGED` before anything changes.
 `--allow-unmerged` converges to such a revision on purpose. The report, the
-fleet state and `fleet-watch` say what selected the approved revision.
+fleet state and `watch` say what selected the approved revision.
 
 mise's own pin (`min_version`) is a minimum. A machine that runs a newer mise
 than a revision pins keeps it, after a rollback too: replacing it would break
-every checkout on the machine whose pin is newer. `fleet-status` reports that
+every checkout on the machine whose pin is newer. `status` reports that
 as the warning `TOOLCHAIN_DOWNGRADE` of `tool:mise`, and
 `fleet-sync --allow-mise-downgrade` installs the older one on purpose, on
 every machine it converges. Each revision runs its own bootstrap, and one from
-before this rule installs exactly the mise it pins. So `fleet-sync` reads the
+before this rule installs exactly the mise it pins. So `sync` reads the
 pin from the revision's own files and measures the mise of the manager and of
 each worker it is about to converge before that bootstrap runs anywhere: a
 revision that would replace a newer mise is refused with
@@ -201,14 +201,14 @@ passing it.
 ## Your project's own tools
 
 On a fleet machine the global mise configuration (`~/.config/mise/config.toml`
-and its `mise.lock`) belongs to homelab: `fleet-sync` publishes it with the
+and its `mise.lock`) belongs to homelab: `sync` publishes it with the
 fleet's pinned tools and the agent worktree roots mise must trust. A project
 pins its own tools in its own `mise.toml` and installs them with
 `mise install --locked` in its checkout. On a fleet machine mise installs a
 project's tools only from the project's `mise.lock` (run `mise lock` after
 changing a pin); a tool the lock does not name is refused. A project never
-publishes a global configuration. If anything replaces homelab's, `fleet-status` fails the check
-`tool:global-mise-config` until the next `fleet-sync`.
+publishes a global configuration. If anything replaces homelab's, `status` fails the check
+`tool:global-mise-config` until the next `sync`.
 
 ## Using it from code
 
@@ -223,7 +223,7 @@ an [issue](#bugs-and-feature-requests).
 
 Your bucket is the source of truth for everything Git does not hold: the
 roster of enrolled workers, the approved revision, and the configuration
-`fleet-sync` last applied. It is one SQLite database that
+`sync` last applied. It is one SQLite database that
 [Litestream](https://litestream.io) replicates to the bucket. `fleet.json`
 says where the bucket is and the command is passed its credentials:
 
@@ -236,7 +236,7 @@ says where the bucket is and the command is passed its credentials:
 ```
 
 ```sh
-npx homelab fleet-state             # where the state is, and how it stands with the bucket
+npx @crvouga/homelab state             # where the state is, and how it stands with the bucket
 ```
 
 The copy on the manager is disposable: the roster and the approved revision
@@ -245,22 +245,22 @@ come back from the bucket, and the machine is rebuilt from Git.
 lost manager.
 
 Some runs are started by a machine rather than by you: a worker that hands
-`fleet-sync` to the manager, for example. They get no environment, so save the
+`sync` to the manager, for example. They get no environment, so save the
 credentials on the manager once (in `~/.config/homelab/bucket.json`,
 readable by you alone):
 
 ```sh
-npx homelab fleet-state --init
+npx @crvouga/homelab state --init
 ```
 
-Without a bucket everything still works from the local copy, and `fleet-sync`
+Without a bucket everything still works from the local copy, and `sync`
 warns that the manager holds the only one. [docs/state.md](docs/state.md)
 explains how replication stays correct, how to move an existing fleet to a
 project, and which state is not in the bucket yet.
 
 ## Provider accounts
 
-Provider accounts live only on the CLI proxy. `npx homelab fleet-accounts`
+Provider accounts live only on the CLI proxy. `npx @crvouga/homelab accounts`
 lists them with their state; `--add`, `--relogin` and `--remove` change one
 and propagate the result to every node, and `fleet-sync --only accounts`
 propagates them without a full sync.
@@ -305,34 +305,34 @@ commands stay the pinned CLIs with whatever sign-in you gave them.
    refuse agent sessions above that number; without it nothing is refused
    ([a limit on agent sessions](docs/worker-contract.md#a-limit-on-agent-sessions)).
 
-3. Run `fleet-sync`. A machine that has only an SSH server and an account
+3. Run `sync`. A machine that has only an SSH server and an account
    with sudo is enough: every pull request proves that against a bare
    Ubuntu machine, over SSH
    ([`fresh-box.feature`](features/fresh-box/fresh-box.feature)).
 
-A new machine can also join by itself: `npx homelab fleet-node-seed --id ID
+A new machine can also join by itself: `npx @crvouga/homelab provision --id ID
 --output seed.yaml --apply --yes` writes cloud-init user data (or an Ubuntu
 autoinstall file with `--autoinstall`) holding the worker account with your
 manager's key, the privilege rule, a host key the manager pins at once and the
 pinned Tailscale with a short-lived single-use auth key from your secrets
 provider (`tailnet-auth-key`). Boot a stock Ubuntu image with it, then add the
-worker with `fleet-node-add` and run `fleet-sync`.
+worker with `fleet-node-add` and run `sync`.
 
-`npx homelab fleet-manifest --id ID` measures what a worker is made of
+`npx @crvouga/homelab measure --id ID` measures what a worker is made of
 (packages, active tools, always-on services) with a digest that is the same
 for two workers built from the same revision; its check `worker:manifest`
 names every difference from the declared pins and, with `--reference` (the
 `--json` manifest of a fresh build), from that build.
 
-Remove a machine with `npx homelab fleet-node-retire --id ID --apply --yes`
+Remove a machine with `npx @crvouga/homelab retire --id ID --apply --yes`
 (it revokes the worker's Vault token, forgets its host key and roster entry
 and leaves a tombstone in the fleet state), then delete its entry and run
-`fleet-sync`. To put a fresh machine in place of a worker under the same id,
-run `npx homelab fleet-node-replace --id ID --host-key "TYPE BASE64" --apply
+`sync`. To put a fresh machine in place of a worker under the same id,
+run `npx @crvouga/homelab replace --id ID --host-key "TYPE BASE64" --apply
 --yes` and then `fleet-sync --node ID`; the manager's T3 pairs with the new
 machine's T3 by itself, with no code to copy. A run scoped with `--node` records only the
 revision of the workers it covered; the fleet's applied revision moves with a
-full `fleet-sync`.
+full `sync`.
 
 ## Configuration
 
@@ -341,14 +341,14 @@ Your `fleet.json` is validated by
 package carries: `fleet-state --example` prints a complete example that points
 `$schema` at it, so an editor checks the file as you type.
 [`examples/fleet.json`](examples/fleet.json) is the same example.
-`homelab fleet-validate` checks the file without contacting anything and
+`homelab check-config` checks the file without contacting anything and
 names the first field that breaks a rule (`{code, path, expected, actual}`);
 `--ansible` also renders the Ansible inventory and syntax-checks every
 playbook with the pinned Ansible.
 
-Edit the `fleet.json` of your project, never the copy `fleet-sync` installs
+Edit the `fleet.json` of your project, never the copy `sync` installs
 at `~/.config/homelab/fleet.json` for launchers and scheduled jobs:
-`fleet-sync` replaces that copy, and refuses to run
+`sync` replaces that copy, and refuses to run
 (`FLEET_CONFIGURATION_COPY_CHANGED`) rather than lose an edit made to it by
 hand, on the manager or on a worker it is about to converge, before anything
 is changed. [docs/state.md](docs/state.md#day-to-day) says how to keep or discard
@@ -389,7 +389,7 @@ machine through a
 [remote SSH workspace](https://super.engineering/docs/remote-workspaces/):
 the checkout, Git, terminals and coding agents stay on the worker. You install
 and start the app on the manager and enable Remote workspaces under Settings →
-Experimental; it updates itself. Every `fleet-sync` then asks the app, through
+Experimental; it updates itself. Every `sync` then asks the app, through
 its own CLI, for a remote workspace for each worker that has none, named after
 the worker and pointed at the SSH alias `fleet.json` gives it, and measures
 that the manager's own SSH finds Git, `flock` and the fleet's coding agents
@@ -409,7 +409,7 @@ sign-in on the worker: the app starts an agent by its plain command, and on a
 worker that command is the fleet's launcher (see
 [Provider accounts](#provider-accounts)). `super:ssh` warns
 (`SUPER_AGENTS_NOT_PROXIED`) about a worker where it is still the plain CLI,
-until the next `fleet-sync` of that worker. Workspaces on the manager itself
+until the next `sync` of that worker. Workspaces on the manager itself
 start the manager's own CLIs, which homelab leaves as they are.
 
 What it does not do yet: homelab never removes a workspace, so delete a
@@ -418,12 +418,12 @@ app installs and updates its helper on the worker itself.
 
 Under `t3.profile`, `fleet.json` names top-level T3 settings every machine
 holds the same, such as tool servers. A setting not named there stays the
-machine's own, and one edited on a machine since `fleet-sync` last wrote it
+machine's own, and one edited on a machine since `sync` last wrote it
 is reported as `T3_PROFILE_CONFLICT` by the check `t3:profile`, never
 overwritten.
 
 Accounts of one tool are not entitled to the same models. On each per-account
-instance `fleet-sync` hides the models of T3's catalogue that its account does
+instance `sync` hides the models of T3's catalogue that its account does
 not serve and lists the preferred default it serves first, so the instance
 shows, and opens on, a model that works. Which catalogue models are hidden
 there is the fleet's: one hidden by hand is shown again while its account
@@ -437,7 +437,7 @@ Secrets are asked for by purpose (`proxy-client-key`,
 `monitoring-account-password`, `monitoring-tunnel-token`,
 `proxy-tunnel-token`); see [`src/secrets.ts`](src/secrets.ts).
 
-`fleet-sync` records the configuration it applies in the fleet state, so a
+`sync` records the configuration it applies in the fleet state, so a
 run started outside your project uses the one last applied.
 `fleet-state --export` prints it.
 
@@ -449,8 +449,8 @@ under `source`: the commit a package names must be reachable there.
 A defect in homelab, or something it cannot do yet, is raised as an
 [issue](https://github.com/crvouga/homelab/issues). From your project that
 is the only way to change homelab, for you and for the coding agents working
-there. Do not patch the installed package, a checkout `fleet-sync` put on a
-machine or a file it manages: the next install or `fleet-sync` replaces them.
+there. Do not patch the installed package, a checkout `sync` put on a
+machine or a file it manages: the next install or `sync` replaces them.
 
 The tool says so itself: `homelab --help` names the issue tracker, and the
 agent contract (`homelab commands --json`, under `agent.support`) carries the
@@ -476,7 +476,7 @@ fleet.json contents.
   are not available yet.
 - The bucket holds the fleet's own state. The CLI proxy keeps its separate
   encrypted backup (`vault` only), and the monitoring hub's database is not
-  replicated: `fleet-sync` recreates its accounts and systems, but metric
+  replicated: `sync` recreates its accounts and systems, but metric
   history is lost with the manager. See
   [what is not in the bucket yet](docs/state.md#what-is-not-in-the-bucket-yet).
 - Caches and units on machines still use the historical `personal` prefix
@@ -484,13 +484,13 @@ fleet.json contents.
   works, and renaming it needs a migration.
 - The CLI proxy's installed code is a Git worktree of the manager's copy of
   the source repository (`~/.local/share/personal/fleet/manager/source`).
-  `fleet-sync` fetches that copy again when it is deleted, but the proxy then
-  needs `homelab cliproxy install` once more.
+  `sync` fetches that copy again when it is deleted, but the proxy then
+  needs `homelab proxy install` once more.
 - The manager is a Mac host. There is no container image of the manager.
 - `fleet-sync --schedule enable --apply --yes` (unattended runs every 30
   minutes) is installed by that command on the manager, not yet by the
   manager's playbook, and its interval is not yet part of `fleet.json`.
-  `fleet-sync --schedule status` lists its last runs, and `fleet-status` fails
+  `fleet-sync --schedule status` lists its last runs, and `status` fails
   `manager:schedule` when it has not converged the fleet for two intervals.
 - Not everything on a machine is pinned. [What is declared, and
   where](docs/declared.md) lists what is and what is not: most of a worker's
@@ -522,10 +522,10 @@ git clone https://github.com/crvouga/homelab.git && cd homelab
 bash bootstrap/bootstrap.sh
 bun install --frozen-lockfile
 bun run check
-./homelab fleet-status --local      # the CLI, from this checkout
+./homelab check --local      # the CLI, from this checkout
 ```
 
-Run from a checkout, `fleet-sync` converges the fleet to the checkout's `HEAD`
+Run from a checkout, `sync` converges the fleet to the checkout's `HEAD`
 commit (never to uncommitted files). The checkout's `origin` must be the
 repository `fleet.json` names under `source`, and a `HEAD` that is not on its
 default branch needs `--allow-unmerged`. Every merge to `main` publishes a release;

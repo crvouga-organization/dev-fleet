@@ -197,7 +197,7 @@ function outcome(
     exitCode: ok ? 0 : 1,
     data: {
       version: 1,
-      command: 'fleet-watch',
+      command: 'notify',
       ok,
       ...(revision ? { revision } : {}),
       notifications,

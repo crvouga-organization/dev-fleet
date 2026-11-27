@@ -74,9 +74,9 @@ function createProgram(
     [
       '',
       `Release: ${releaseLabel(release)}`,
-      'Groups: fleet-* developer computers · t3-* T3 provider instances · cliproxy the CLI proxy service.',
-      'Apply on invocation (--dry-run previews): fleet-node-sync, t3-apply, t3-cleanup. fleet-sync applies on invocation too; --apply --yes is still accepted.',
-      'Preview until --apply --yes: fleet-repair, fleet-node-add. --json does not make a command read-only.',
+      'Groups: converge, check, state and the other machine commands · t3 T3 provider instances · proxy the CLI proxy service.',
+      'Apply on invocation (--dry-run previews): converge-local, t3-reconcile, t3-remove. converge applies on invocation too; --apply --yes is still accepted.',
+      'Preview until --apply --yes: repair, enroll. --json does not make a command read-only.',
       'Agents: homelab commands --json. Menu: homelab --interactive.',
       ...(release.issues
         ? [
@@ -101,7 +101,7 @@ function catalog(options: CliOptions, release: Release): CommandOutcome {
       commands,
       globalOptions: GLOBAL_OPTIONS,
       defaultCommand: 'help',
-      schema: 'homelab fleet-nodes --schema --json',
+      schema: 'homelab workers --schema --json',
       agent: agentGuide(release),
     },
     text: [

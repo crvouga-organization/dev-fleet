@@ -17,12 +17,12 @@ Feature: The command catalog
       Examples:
         | command                              |
         | homelab commands --json             |
-        | homelab fleet-nodes --schema --json |
-        | homelab fleet-repair --list --json  |
+        | homelab workers --schema --json |
+        | homelab repair --list --json  |
         | homelab --help                      |
         | homelab help                        |
-        | homelab help t3-apply               |
-        | homelab fleet-node-add --help       |
+        | homelab help t3-reconcile           |
+        | homelab enroll --help       |
 
     Scenario: Every command in the catalog has help that reads nothing and changes nothing
       When the operator asks every command in the catalog for "--help"
@@ -38,37 +38,58 @@ Feature: The command catalog
     Scenario: Only these commands change something
       When the command catalog is read
       Then the commands that change something are, in order:
-        | fleet-watch           |
-        | fleet-sync            |
-        | fleet-state --init    |
-        | fleet-state --push    |
-        | fleet-state --restore |
-        | fleet-restore         |
-        | fleet-node-sync       |
-        | fleet-repair          |
-        | fleet-node-add        |
-        | fleet-accounts --add  |
-        | fleet-github-verify   |
-        | fleet-node-replace    |
-        | fleet-node-seed       |
-        | fleet-node-park       |
-        | fleet-node-resume     |
-        | fleet-node-retire     |
-        | t3-apply              |
-        | t3-cleanup            |
-        | cliproxy              |
+        | notify          |
+        | converge        |
+        | state --init    |
+        | state --push    |
+        | state --restore |
+        | recover         |
+        | converge-local  |
+        | repair          |
+        | enroll          |
+        | accounts --add  |
+        | check-github    |
+        | replace         |
+        | provision       |
+        | park            |
+        | resume          |
+        | retire          |
+        | t3-reconcile    |
+        | t3-remove       |
+        | proxy           |
 
-    Scenario: Every command is a fleet-, t3- or cliproxy command, or the catalog itself
+    Scenario: Every command is a machine command, a T3 command, the proxy, or the catalog
       When the command catalog is read
       Then every command is named like one of:
-        | fleet-*  |
-        | t3-*     |
-        | cliproxy |
-        | commands |
+        | check          |
+        | notify         |
+        | tailnet        |
+        | converge       |
+        | converge-local |
+        | state          |
+        | history        |
+        | recover        |
+        | check-config   |
+        | measure        |
+        | workers        |
+        | enroll         |
+        | repair         |
+        | accounts       |
+        | check-github   |
+        | replace        |
+        | provision      |
+        | park           |
+        | resume         |
+        | retire         |
+        | t3             |
+        | t3-reconcile   |
+        | t3-remove      |
+        | proxy          |
+        | commands       |
 
     Scenario: A misspelt search still finds the command
       When the command catalog is searched for "docter"
-      Then it finds the command "fleet-status"
+      Then it finds the command "check"
 
     Scenario: A search within a group stays in that group
       When the command catalog is searched for "ssh" in the group "Reference"
@@ -100,7 +121,7 @@ Feature: The command catalog
         | homelab fleet-status --timeout not-a-number             |
         | homelab fleet-repair --list --local                     |
         | homelab fleet-nodes --onboard --schema                  |
-        | homelab t3-apply --import do-not-echo --dry-run         |
+        | homelab t3-reconcile --import do-not-echo --dry-run         |
 
   Rule: Run with no command, homelab shows its help; asked for JSON, the command index
 
@@ -139,9 +160,9 @@ Feature: The command catalog
       And in the answer, "agent.support.issues" is null
       And the index says what each of these commands does when run without a flag:
         | command      | default   |
-        | t3-apply     | apply     |
-        | fleet-repair | preview   |
-        | fleet-status | read-only |
+        | t3-reconcile | apply     |
+        | repair       | preview   |
+        | check        | read-only |
       And the help of every command in the index ends with "--help"
       And no roster is written
 

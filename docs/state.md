@@ -7,9 +7,9 @@ cannot rebuild from Git is the **fleet state**:
 | Document     | What it is                                                                                                                                                                    |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `roster`     | The enrolled connection to each worker (SSH alias, Tailscale device)                                                                                                          |
-| `enrollment` | The revision `fleet-sync` approved, what selected it and when, and the one it last applied                                                                                    |
-| `definition` | The fleet configuration `fleet-sync` last applied: your `fleet.json`                                                                                                          |
-| `history`    | The last 90 days of `fleet-sync` runs (at most 500), each with what selected its revision, and the schedule                                                                   |
+| `enrollment` | The revision `sync` approved, what selected it and when, and the one it last applied                                                                                    |
+| `definition` | The fleet configuration `sync` last applied: your `fleet.json`                                                                                                          |
+| `history`    | The last 90 days of `sync` runs (at most 500), each with what selected its revision, and the schedule                                                                   |
 | `workers`    | Per worker: its pinned SSH host key, whether it is parked and since when, whether it came from a worker record, and whether the manager is to pair its T3 after a replacement |
 
 The `enrollment` says what selected the approved revision, under
@@ -19,10 +19,10 @@ handed the run to the manager; `allowUnmerged` says the run was given
 `--allow-unmerged`; `at` is when the revision became the approved one. A run
 that approves the same revision again leaves the record as it is. It holds
 those words only: never an account, a host name or a command line. The
-`fleet-sync` report (`selectedBy`, `replacedRevision`), each run of the
-history and `fleet-watch` (`revision`) repeat it.
+`sync` report (`selectedBy`, `replacedRevision`), each run of the
+history and `watch` (`revision`) repeat it.
 
-`homelab fleet-watch` also keeps `watch.json` in the bucket, beside the
+`homelab notify` also keeps `watch.json` in the bucket, beside the
 database: the health of each worker when it last looked, the approved
 revision it saw (`revision`) and when that was (the manager's heartbeat). Losing it costs at most one repeated notification.
 
@@ -68,25 +68,25 @@ Every homelab command reads the credentials from its environment:
 ```sh
 export HOMELAB_BUCKET_ACCESS_KEY_ID=…
 export HOMELAB_BUCKET_SECRET_ACCESS_KEY=…
-npx homelab fleet-sync
+npx @crvouga/homelab converge
 ```
 
 Set both or neither. With neither, and nothing saved on the machine, the
 standard AWS environment or profile is used. Credentials are never taken from
 arguments and never written to a report or a log.
 
-**A new fleet.** Nothing more: the first `fleet-sync` seeds the bucket.
+**A new fleet.** Nothing more: the first `sync` seeds the bucket.
 
 **A replacement manager.** The bucket already holds the fleet, so its state is
 downloaded before anything is changed. Follow
 [replacing the manager](manager-recovery.md).
 
-**Runs the manager starts by itself.** A worker that hands `fleet-sync` to the
+**Runs the manager starts by itself.** A worker that hands `sync` to the
 manager starts a command there that gets no environment and no project. Save
 the credentials on the manager once:
 
 ```sh
-npx homelab fleet-state --init
+npx @crvouga/homelab state --init
 ```
 
 It takes the bucket from `fleet.json` and the credentials from the environment,
@@ -104,26 +104,26 @@ the manager:
 ```sh
 mkdir my-fleet && cd my-fleet && git init && npm init -y
 npm install --save-dev --save-exact @crvouga/homelab
-npx homelab fleet-state --export > fleet.json
+npx @crvouga/homelab state --export > fleet.json
 ```
 
 Add the `state` block to `fleet.json` with the same bucket, endpoint, region
 and prefix as `~/.config/homelab/bucket.json`, then run
-`npx homelab fleet-sync`. The credentials already saved for that bucket keep
+`npx @crvouga/homelab converge`. The credentials already saved for that bucket keep
 working.
 
 The clone of homelab the fleet used to run from is then no longer read by
-`fleet-sync`, with one exception: the CLI proxy's installed code is a Git
+`sync`, with one exception: the CLI proxy's installed code is a Git
 worktree of the repository it was installed from. Install the proxy again
-from the project (`npx homelab cliproxy install`, which takes the revision
-`fleet-sync` applied from the manager's own copy of the source) before you
+from the project (`npx homelab proxy install`, which takes the revision
+`sync` applied from the manager's own copy of the source) before you
 delete the clone.
 
 Without a `fleet.json`, `fleet-state --init --bucket NAME --endpoint https://HOST`
 still connects a bucket and restores the configuration stored in it.
 
 On a manager older than the fleet state itself, `--init` (or the first
-`fleet-sync`) also moves the configuration, the roster and the approved
+`sync`) also moves the configuration, the roster and the approved
 revision from the files that held them into the state. Those files are left in
 place and no longer read.
 
@@ -134,31 +134,31 @@ way, needs no credentials and is the quickest way to try this out.
 ## Day to day
 
 ```sh
-homelab fleet-state            # read-only: where the state is, and how it stands with the bucket
-homelab fleet-state --example  # print a fleet.json to start a project from
-homelab fleet-report --since 30d  # read-only: how reliably fleet-sync ran, from the history
-homelab fleet-state --export   # print the configuration fleet-sync last applied
-homelab fleet-state --push     # upload changes made while the bucket was unreachable
-homelab fleet-state --restore  # replace the local copy with the bucket's
+homelab state            # read-only: where the state is, and how it stands with the bucket
+homelab state --example  # print a fleet.json to start a project from
+homelab history --since 30d  # read-only: how reliably fleet-sync ran, from the history
+homelab state --export   # print the configuration fleet-sync last applied
+homelab state --push     # upload changes made while the bucket was unreachable
+homelab state --restore  # replace the local copy with the bucket's
 ```
 
 To change the fleet, for example to add a worker, edit `fleet.json`, commit
-and run `homelab fleet-sync` from the project. `fleet-sync` validates the
+and run `homelab converge` from the project. `sync` validates the
 file, installs it on every machine and records it in the state.
 
 Which configuration a command uses, in this order:
 
 1. The file `HOMELAB_CONFIG` names.
 2. The closest `fleet.json` in the working directory or above it.
-3. The configuration `fleet-sync` last applied, from the fleet state (the
+3. The configuration `sync` last applied, from the fleet state (the
    homelab CLI on the manager).
-4. The copy `fleet-sync` installed at `~/.config/homelab/fleet.json`
+4. The copy `sync` installed at `~/.config/homelab/fleet.json`
    (launchers and scheduled jobs on every machine read only this one).
 
 `fleet-state --import PATH` stores a configuration in the state without
-running `fleet-sync`.
+running `sync`.
 
-**The installed copy is not the configuration.** `fleet-sync` writes
+**The installed copy is not the configuration.** `sync` writes
 `~/.config/homelab/fleet.json` on every machine on every run, and beside it
 `fleet.json.sha256`, the record of what it wrote. A copy that no longer
 matches its record was edited by hand, and replacing it would lose the edit,
@@ -168,10 +168,10 @@ changed, with or without a person at the terminal, and names the way forward:
 - From a project, or with `HOMELAB_CONFIG`: make the change in that
   `fleet.json` (the refusal names it by path).
 - With the configuration kept in the fleet state, import the copy:
-  `homelab fleet-state --import ~/.config/homelab/fleet.json`.
+  `homelab state --import ~/.config/homelab/fleet.json`.
   The copy never holds the `state` block, so importing that file keeps the
   bucket the stored configuration names.
-- To discard the edit, delete the copy; the next `fleet-sync` installs it
+- To discard the edit, delete the copy; the next `sync` installs it
   again.
 
 An edit that says what the run would install anyway, or what the fleet state
@@ -218,20 +218,20 @@ same three steps:
 3. **Upload**, then download again. The change counts only once a restore from
    the bucket returns it.
 
-`fleet-sync` does step 1 before it reads the configuration and step 3 after
+`sync` does step 1 before it reads the configuration and step 3 after
 it records what it applied. Its report carries the result as the
 `state:replica` check.
 
-`fleet-state` reports one of these:
+`state` reports one of these:
 
 | Standing       | Meaning                                                | What happens                                               |
 | -------------- | ------------------------------------------------------ | ---------------------------------------------------------- |
 | `in-sync`      | The bucket and this machine hold the same version      | Nothing to do                                              |
-| `local-only`   | No bucket is configured                                | A warning on every `fleet-sync`; name one in `fleet.json`  |
-| `empty`        | Neither side holds any state                           | The first `fleet-sync` records it                          |
+| `local-only`   | No bucket is configured                                | A warning on every `sync`; name one in `fleet.json`  |
+| `empty`        | Neither side holds any state                           | The first `sync` records it                          |
 | `unpublished`  | The bucket holds nothing yet                           | The next change, or `--push`, seeds it                     |
 | `local-ahead`  | This machine has changes the bucket has not received   | The next change, or `--push`, uploads them                 |
-| `bucket-ahead` | Another manager changed the bucket; this copy is stale | The next change or `fleet-sync` takes the bucket's version |
+| `bucket-ahead` | Another manager changed the bucket; this copy is stale | The next change or `sync` takes the bucket's version |
 | `unreachable`  | The bucket did not answer, or did not take an upload   | Changes still apply locally and are uploaded later         |
 | `corrupt`      | The bucket answered with a version that cannot be read | Changes apply locally; `--restore --timestamp` repairs it  |
 | `diverged`     | Both sides changed                                     | Refused. `--restore --yes` takes the bucket's version      |
@@ -241,19 +241,19 @@ another one changed the fleet is brought up to date before it can change
 anything, and if it also changed something itself it stops and says so. The
 bucket wins: export what you still need, then `--restore --yes`.
 
-An unreachable bucket does not block `fleet-sync`. The fleet converges, the
+An unreachable bucket does not block `sync`. The fleet converges, the
 report warns, and the next command uploads what is pending.
 
 ## What is not in the bucket yet
 
-The fleet state covers what `fleet-sync` itself needs. The manager also holds
+The fleet state covers what `sync` itself needs. The manager also holds
 state that is replicated differently or not at all:
 
 | State                                                | Where                                                    | If the manager is lost                                                                                 |
 | ---------------------------------------------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Secrets                                              | Your `secrets` provider (`vault`, `sops`, `file`, `env`) | Unaffected for `vault`; `file` and `env` secrets must be supplied again                                |
 | CLI proxy: provider logins, keys, Tailscale identity | `~/Library/Application Support/cliproxy-fleet/state`     | Restored from its own encrypted restic snapshots ([cliproxy](../cliproxy/README.md)); needs `vault`    |
-| Monitoring hub (Beszel) database                     | `~/Library/Application Support/personal-beszel`          | `fleet-sync` recreates accounts and systems; metric history, alerts and settings made by hand are lost |
+| Monitoring hub (Beszel) database                     | `~/Library/Application Support/personal-beszel`          | `sync` recreates accounts and systems; metric history, alerts and settings made by hand are lost |
 | T3 ownership record                                  | `~/.t3/userdata/personal-managed.json`                   | `t3-apply --import ID` adopts instances again                                                          |
 
 The manager reaches a worker that has no SSH alias against
@@ -264,10 +264,10 @@ command writes it again; nothing is ever learned into it.
 
 Everything else under `~/.local/share/personal/fleet` and
 `~/.local/state/personal/fleet` (the copy of the source repository, run
-checkouts, reports, receipts, logs) is a cache that the next `fleet-sync`
+checkouts, reports, receipts, logs) is a cache that the next `sync`
 rebuilds. The CLI proxy's installed code is a Git worktree of that copy of the
-source repository: after deleting it, run `homelab cliproxy install` again
-once `fleet-sync` has fetched it back.
+source repository: after deleting it, run `homelab proxy install` again
+once `sync` has fetched it back.
 
 ## Reference
 
@@ -323,7 +323,7 @@ mise exec litestream -- litestream restore -no-expand-env \
   ~/.local/share/homelab/state/fleet.db
 ```
 
-`homelab fleet-state --restore --timestamp 2026-11-01T00:00:00Z --yes` does
+`homelab state --restore --timestamp 2026-11-01T00:00:00Z --yes` does
 the same and then uploads that version as the bucket's current one, which
 takes the manager lease. It is the remedy for a `corrupt` replica: the bucket
 answers, but its latest version cannot be read. `--yes` consents to replacing
@@ -346,7 +346,7 @@ writes anything and stops with `FLEET_MANAGER_LEASE_HELD`. `fleet-state
 --init` still restores the state on such a machine; it only writes nothing.
 
 The lease runs for seven days after the last change. After that, any machine
-may take it. Before that, `--take-over` (on `fleet-sync`, `fleet-state --init`,
+may take it. Before that, `--take-over` (on `sync`, `fleet-state --init`,
 `fleet-state --import` or `fleet-state --restore --timestamp`) makes this machine the manager; use it only once
 the other one is gone ([replacing the manager](manager-recovery.md)).
 

@@ -18,7 +18,7 @@
   ],
   "properties": {
     "version": { "const": 1 },
-    "command": { "const": "fleet-report" },
+    "command": { "const": "history" },
     "ok": { "type": "boolean" },
     "since": { "type": "string" },
     "runs": { "type": "integer" },

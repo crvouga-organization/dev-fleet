@@ -23,7 +23,7 @@ Feature: Validating the fleet configuration
     And it answers with at least:
       """
       {
-        "command": "fleet-validate",
+        "command": "check-config",
         "ok": false,
         "problem": { "code": "<code>", "path": "<path>", "expected": "<expected>", "actual": "<actual>" }
       }

@@ -15,7 +15,7 @@ Feature: homelab fleet-sync refuses before it changes anything
       When the operator runs "homelab fleet-sync --revision aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --dry-run --json"
       Then the command exits with 1
       And the report has:
-        | command         | fleet-sync                               |
+        | command         | converge                                 |
         | applied         | false                                    |
         | desiredRevision | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa |
       And the manager keeps reports under ".local/share/personal/fleet/manager/reports" in the temporary test home

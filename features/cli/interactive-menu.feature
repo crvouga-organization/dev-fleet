@@ -36,7 +36,7 @@ Feature: The interactive menu
 
     Scenario: Typing narrows the palette to what matches
       When the palette is searched for "nodes"
-      Then it offers the command "fleet-nodes"
+      Then it offers the command "workers"
 
   Rule: The menu runs the same commands an agent would, and changes nothing without a yes
 
@@ -49,15 +49,15 @@ Feature: The interactive menu
         """
 
     Scenario: A command for this manager only does not ask which workers
-      Given the operator opens "fleet-status --local" from the palette, then exits
+      Given the operator opens "check --local" from the palette, then exits
       When the menu runs
       Then the menu runs exactly these commands:
-        | fleet-status --local |
+        | check --local |
       And the operator is never asked "Choose target scope"
       And the screen shows "--json"
 
     Scenario: Registering a worker writes nothing when the operator declines
-      Given the operator opens "fleet-node-add" from the palette, then exits
+      Given the operator opens "enroll" from the palette, then exits
       And the operator types, in turn:
         | dev-one             |
         | dev-one             |
@@ -69,7 +69,7 @@ Feature: The interactive menu
       And the screen shows "no roster was written"
 
     Scenario: Registering a worker, once confirmed, runs the command an agent would
-      Given the operator opens "fleet-node-add" from the palette, then exits
+      Given the operator opens "enroll" from the palette, then exits
       And the operator types, in turn:
         | dev-one             |
         | dev-one             |
@@ -78,7 +78,7 @@ Feature: The interactive menu
       And the operator confirms when asked
       When the menu runs
       Then the menu runs exactly these commands:
-        | fleet-node-add --id dev-one --ssh dev-one --path /home/dev/workspace --runtime /usr/bin/node --require github,t3 --apply --yes |
+        | enroll --id dev-one --ssh dev-one --path /home/dev/workspace --runtime /usr/bin/node --require github,t3 --apply --yes |
 
     Scenario: Approving a repair applies the plan that was reviewed
       Given every command the menu runs answers this, as applied only when run with "--apply":
@@ -92,7 +92,7 @@ Feature: The interactive menu
           "steps": []
         }
         """
-      And the operator opens "fleet-repair" from the palette, then exits
+      And the operator opens "repair" from the palette, then exits
       And the operator picks from each list, in turn:
         | local |
         | apply |
@@ -100,8 +100,8 @@ Feature: The interactive menu
       And the operator confirms when asked
       When the menu runs
       Then the menu runs exactly these commands:
-        | fleet-repair --local                                                                                            |
-        | fleet-repair --local --plan-hash bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb --apply --yes |
+        | repair --local                                                                                            |
+        | repair --local --plan-hash bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb --apply --yes |
       And the screen shows "Vault"
 
     Scenario: Cancelling leaves the menu without showing what was thrown

@@ -1,5 +1,6 @@
 import { SOURCE_OPERATIONS } from './source-operations';
 import type { CommandSpec } from './contracts';
+import { publicCommand } from './names';
 import { searchCommands } from './search';
 
 type Entry = [
@@ -11,19 +12,28 @@ type Entry = [
 ];
 
 function group(name: string, entries: Entry[]): CommandSpec[] {
-  return entries.map(([id, title, description, keywords, mutation]) => ({
-    id,
-    title,
-    description,
-    group: name,
-    keywords,
-    args: id.split(' '),
-    examples: [`homelab ${id} --json`],
-    mutation: mutation === true,
-  }));
+  return entries.map(([id, title, description, keywords, mutation]) => {
+    const args = id
+      .split(' ')
+      .map((word, index) => (index === 0 ? publicCommand(word) : word));
+    const publicId = args.join(' ');
+    return {
+      id: publicId,
+      title,
+      description,
+      group: name,
+      keywords,
+      args,
+      examples: [`homelab ${publicId} --json`],
+      mutation: mutation === true,
+    };
+  });
 }
 
-/** One flat, prefixed command surface shared by help, the palette and agents. */
+/** One flat command surface shared by help, the palette and agents.
+ * Entries below still use the historical `fleet-*` ids; `publicCommand`
+ * publishes them as `sync`, `status`, and the rest.
+ */
 export const COMMANDS: CommandSpec[] = [
   ...group('Fleet', [
     [
@@ -194,7 +204,7 @@ export const COMMANDS: CommandSpec[] = [
       true,
     ],
     [
-      'fleet-node-replace',
+      'replace',
       'Replace a worker with a fresh machine',
       'Preview, or with --apply --yes carry out, putting a fresh machine in place of a declared worker under the same id: verify the new device on the tailnet, pin its host key (--host-key), bind the roster entry to it and issue it a Vault token of its own, revoking the old one. Then fleet-sync --node ID converges it. Running it again changes nothing.',
       ['replace', 'rebuild', 'reinstall', 'host key', 'token', 'device'],
@@ -208,21 +218,21 @@ export const COMMANDS: CommandSpec[] = [
       true,
     ],
     [
-      'fleet-node-park',
+      'park',
       'Park a worker that is off on purpose',
       'Record in the fleet state that a declared worker is stopped or destroyed on purpose (a rented machine nobody uses): fleet-sync and fleet-status list it as parked with the time since, never contact it or make it the canary, and it does not change the exit code. Refuses while agent turns run on it, unless --force. Runs the stop command fleet.json declares under parking.stop with the worker ID. --dry-run previews.',
       ['park', 'stop', 'pause', 'idle', 'cost', 'rented', 'shutdown'],
       true,
     ],
     [
-      'fleet-node-resume',
+      'resume',
       'Resume a parked worker',
       'Run the start command fleet.json declares under parking.start with the worker ID, mark the worker active in the fleet state, then run fleet-sync --node ID, which converges and verifies it. The exit code is the sync’s. --dry-run previews.',
       ['resume', 'start', 'unpark', 'wake', 'rented'],
       true,
     ],
     [
-      'fleet-node-retire',
+      'retire',
       'Retire a worker',
       'Preview, or with --apply --yes carry out, taking a worker out of the fleet: revoke its Vault token, forget its pinned host key, remove its roster entry and record a tombstone in the fleet state. Then remove it from fleet.json.',
       ['retire', 'remove', 'decommission', 'revoke', 'delete'],

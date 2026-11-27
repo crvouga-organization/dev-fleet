@@ -171,23 +171,23 @@ Feature: T3 provider instances are reconciled, never taken over
         """
 
     Scenario: t3-apply --dry-run plans
-      When the operator runs "homelab t3-apply --dry-run --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
+      When the operator runs "homelab t3-reconcile --dry-run --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
       Then it exits with 0
 
     Scenario: t3-apply applies after a dry run
-      Given the operator has run "homelab t3-apply --dry-run --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
-      When the operator runs "homelab t3-apply --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
+      Given the operator has run "homelab t3-reconcile --dry-run --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
+      When the operator runs "homelab t3-reconcile --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
       Then it exits with 0
 
     Scenario: t3-status finds no drift after an apply
-      Given the operator has run "homelab t3-apply --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
-      When the operator runs "homelab t3-status --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
+      Given the operator has run "homelab t3-reconcile --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
+      When the operator runs "homelab t3 --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
       Then it exits with 0
 
     Scenario: t3-cleanup removes what an apply owns
-      Given the operator has run "homelab t3-apply --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
-      And the operator has run "homelab t3-status --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
-      When the operator runs "homelab t3-cleanup --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
+      Given the operator has run "homelab t3-reconcile --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
+      And the operator has run "homelab t3 --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
+      When the operator runs "homelab t3-remove --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
       Then it exits with 0
 
     Scenario Outline: An invalid ownership record gives a safe diagnostic

@@ -75,7 +75,7 @@ export async function fleetManifest(
       exitCode: 1,
       data: {
         version: 1,
-        command: 'fleet-manifest',
+        command: 'measure',
         ok: false,
         node: node.id,
         checks: [measured.check],
@@ -92,7 +92,7 @@ export async function fleetManifest(
     exitCode: check.status === 'fail' ? 1 : 0,
     data: {
       version: 1,
-      command: 'fleet-manifest',
+      command: 'measure',
       ok: check.status !== 'fail',
       node: node.id,
       digest,

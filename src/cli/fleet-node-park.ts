@@ -147,7 +147,7 @@ export async function fleetNodePark(
   const worker = declared(definition, options.id);
   const parkedAt = readWorkerStates().workers[worker.id]?.parkedAt;
   if (parkedAt)
-    return outcome('fleet-node-park', worker.id, [
+    return outcome('park', worker.id, [
       {
         id: 'worker:parked',
         status: 'pass',
@@ -156,10 +156,10 @@ export async function fleetNodePark(
     ]);
   if (!options.force) {
     const refused = await busy(worker, services);
-    if (refused) return outcome('fleet-node-park', worker.id, [refused]);
+    if (refused) return outcome('park', worker.id, [refused]);
   }
   if (options.dryRun)
-    return outcome('fleet-node-park', worker.id, [
+    return outcome('park', worker.id, [
       {
         id: 'worker:parked',
         status: 'skip',
@@ -167,13 +167,12 @@ export async function fleetNodePark(
       },
     ]);
   const stopped = await hook(worker, 'stop', definition, services.run);
-  if (stopped?.status === 'fail')
-    return outcome('fleet-node-park', worker.id, [stopped]);
+  if (stopped?.status === 'fail') return outcome('park', worker.id, [stopped]);
   const at = services.now().toISOString();
   await changeWorkers(services.state(), (current) => ({
     [worker.id]: { ...current[worker.id], parkedAt: at },
   }));
-  return outcome('fleet-node-park', worker.id, [
+  return outcome('park', worker.id, [
     ...(stopped ? [stopped] : []),
     {
       id: 'worker:parked',
@@ -195,7 +194,7 @@ export async function fleetNodeResume(
   const worker = declared(definition, options.id);
   const parkedAt = readWorkerStates().workers[worker.id]?.parkedAt;
   if (options.dryRun)
-    return outcome('fleet-node-resume', worker.id, [
+    return outcome('resume', worker.id, [
       {
         id: 'worker:parked',
         status: 'skip',
@@ -208,7 +207,7 @@ export async function fleetNodeResume(
   if (parkedAt) {
     const started = await hook(worker, 'start', definition, services.run);
     if (started?.status === 'fail')
-      return outcome('fleet-node-resume', worker.id, [started]);
+      return outcome('resume', worker.id, [started]);
     if (started) checks.push(started);
     await changeWorkers(services.state(), (current) => {
       const { parkedAt: _parked, ...rest } = current[worker.id] ?? {};
@@ -241,7 +240,7 @@ export async function fleetNodeResume(
           },
         }
   );
-  return outcome('fleet-node-resume', worker.id, checks, {
+  return outcome('resume', worker.id, checks, {
     sync: synced.data,
   });
 }

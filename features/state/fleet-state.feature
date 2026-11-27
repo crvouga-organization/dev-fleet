@@ -20,7 +20,7 @@ Feature: fleet-state shows the fleet state and connects it to a bucket
     And the report includes:
       """
       {
-        "command": "fleet-state",
+        "command": "state",
         "standing": "local-only",
         "bucket": { "configured": false }
       }
@@ -246,7 +246,7 @@ Feature: fleet-state shows the fleet state and connects it to a bucket
       When homelab is started with "fleet-state --json"
       Then the report includes:
         """
-        { "command": "fleet-state", "standing": "local-only" }
+        { "command": "state", "standing": "local-only" }
         """
       And the report names the state directory of the manager as its root
 

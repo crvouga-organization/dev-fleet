@@ -26,7 +26,7 @@ version in `package.json` is the commit every machine runs.
 
 | Concept     | Meaning                                                                                                        |
 | ----------- | -------------------------------------------------------------------------------------------------------------- |
-| manager     | The one macOS machine you run `homelab fleet-sync` on. Hosts the CLI proxy and the monitoring hub.            |
+| manager     | The one macOS machine you run `homelab converge` on. Hosts the CLI proxy and the monitoring hub.            |
 | worker      | An Ubuntu 26.04 or 24.04 machine the manager converges over SSH. Stateless: rebuilt from Git and your secrets. |
 | fleet state | One SQLite database (roster, approved revision, configuration last applied) replicated to your bucket.         |
 | bucket      | Any S3-compatible bucket you own, or a directory. The source of truth for the fleet state.                     |
@@ -35,7 +35,7 @@ version in `package.json` is the commit every machine runs.
 ## Rules for agents
 
 - **Do not clone, vendor or patch homelab.** Not `node_modules`, not a
-  checkout `fleet-sync` puts on a machine, not a file it manages there. The
+  checkout `sync` puts on a machine, not a file it manages there. The
   next install or sync replaces them. A bug or a missing feature is an issue
   at <https://github.com/crvouga/homelab/issues>; tell the human what is
   blocked and link it. Issues are public: no credentials, hostnames,
@@ -45,9 +45,9 @@ version in `package.json` is the commit every machine runs.
   secret from the provider named under `secrets`.
 - **Do not bypass SSH host keys, forward SSH agents or copy login caches**
   between machines. Host trust, sudo and sign-ins are the human's steps.
-- **Previews are safe; applies are not.** `--dry-run`, `fleet-status`,
-  `fleet-state` (without flags) and `commands --json` change nothing.
-  `fleet-sync` without `--dry-run` changes every machine.
+- **Previews are safe; applies are not.** `--dry-run`, `status`,
+  `state` (without flags) and `commands --json` change nothing.
+  `sync` without `--dry-run` changes every machine.
 - **Use the command, never the code.** homelab has no library API: do not
   import anything from `node_modules/@crvouga/homelab/`. The project's own
   tools go in the project's `mise.toml`; the global mise configuration on a
@@ -91,8 +91,8 @@ A worker is reached in one of two ways, always with `BatchMode=yes` and
   the host key against a known_hosts file of its own, rendered from the key
   the fleet state pins. The human's `~/.ssh/config` and `~/.ssh/known_hosts`
   are neither needed nor changed. The key is pinned without trusting a first
-  connection: `npx homelab fleet-node-seed --id ID --output PATH --apply
---yes` generates it for a new machine, `npx homelab fleet-node-replace
+  connection: `npx @crvouga/homelab provision --id ID --output PATH --apply
+--yes` generates it for a new machine, `npx @crvouga/homelab replace
 --id ID --host-key "TYPE BASE64" --apply --yes` pins one the human verified
   out of band, and a worker record (below) may carry it as `hostKey`.
 - **Through the human's own alias.** `ssh` names a Host alias in the
@@ -152,7 +152,7 @@ Start from the example the installed package prints, which points `$schema`
 at the schema shipped in the package, so editors validate the file:
 
 ```sh
-npx homelab fleet-state --example > fleet.json
+npx @crvouga/homelab state --example > fleet.json
 ```
 
 Then replace every placeholder. Each field, from
@@ -193,7 +193,7 @@ Then replace every placeholder. Each field, from
 Use the same values in every place they repeat. Validate before going on:
 
 ```sh
-npx homelab fleet-state --json        # exits 2 with code "invalid_usage" when fleet.json is invalid
+npx @crvouga/homelab state --json        # exits 2 with code "invalid_usage" when fleet.json is invalid
 ```
 
 The `state:definition` check names the file it read. A `fleet.json` without a
@@ -236,11 +236,11 @@ command, `vault kv get` into the environment, or a git-ignored `.env` loaded
 with `set -a; . ./.env; set +a`. With neither variable set, the standard AWS
 environment or profile is used. A `"directory"` state needs none.
 
-Runs the manager starts by itself (a worker handing `fleet-sync` to the
+Runs the manager starts by itself (a worker handing `sync` to the
 manager) get no environment, so save the credentials on the manager once:
 
 ```sh
-npx homelab fleet-state --init        # takes the bucket from fleet.json, asks on the terminal if the variables are unset
+npx @crvouga/homelab state --init        # takes the bucket from fleet.json, asks on the terminal if the variables are unset
 ```
 
 ## 4. Tell future agents how to use it
@@ -262,8 +262,8 @@ Optionally add scripts, so nobody types the package name:
 ```json
 "scripts": {
   "fleet": "homelab",
-  "fleet:sync": "homelab fleet-sync",
-  "fleet:status": "homelab fleet-status --workers"
+  "fleet:sync": "homelab converge",
+  "fleet:status": "homelab check --workers"
 }
 ```
 
@@ -276,11 +276,11 @@ Run on the manager, from the project, with the bucket credentials in the
 environment:
 
 ```sh
-npx homelab fleet-state --json
-npx homelab fleet-sync --dry-run --json
+npx @crvouga/homelab state --json
+npx @crvouga/homelab converge --dry-run --json
 ```
 
-`fleet-state` reports the `state:bucket` and `state:replica` checks. On a new
+`state` reports the `state:bucket` and `state:replica` checks. On a new
 fleet the bucket is empty, which is a warning, not a failure: the first sync
 seeds it.
 
@@ -291,7 +291,7 @@ identity has been enrolled yet. Anything else is a problem to fix first (see
 
 ## 6. The first sync is the human's
 
-The first `fleet-sync` must run in a terminal the human is at. It:
+The first `sync` must run in a terminal the human is at. It:
 
 - enrolls each declared worker it reaches over host-key-verified SSH, binding
   it to its tailnet device;
@@ -304,7 +304,7 @@ An agent cannot answer those prompts, and `--json`, `--non-interactive` or a
 `CI` variable turn them off. **Ask** the human to run:
 
 ```sh
-npx homelab fleet-sync
+npx @crvouga/homelab converge
 ```
 
 A worker that needs none of those prompts is enrolled without the human: a
@@ -313,7 +313,7 @@ pinned host key matched, `sudo -n` works on it, and exactly one tailnet device
 matches it (or none, when `fleet.json` declares `tailnet` and its secret
 `tailnet-admin`, so the run joins it with a single-use key). The report lists
 what it enrolled (`enrolled` in the JSON). A machine made with
-`homelab fleet-node-seed` meets all of these.
+`homelab provision` meets all of these.
 
 It converges the manager first, and inspects every worker meanwhile, which
 only reads them. Then the canary worker takes the revision, then the rest, all
@@ -333,16 +333,16 @@ measured on its own (a provider request, an agent session). `reused` says
 that nothing was run for it: `verify-cache` for a remembered pass, `receipt`
 for a playbook skipped because nothing changed. A machine that took a minute
 or more gets a `slowest` line under the table with its three slowest steps.
-`homelab fleet-report` says "Slower:" when the last run took at least twice
+`homelab history` says "Slower:" when the last run took at least twice
 the median of the runs before it. A worker reports its steps when it is done,
 not while it runs.
 
 Then the human signs in, once, to what only they can sign in to:
 
 ```sh
-npx homelab cliproxy install           # the CLI proxy on the manager, if the sync reported it missing
-npx homelab cliproxy add-account claude
-npx homelab cliproxy add-account codex
+npx homelab proxy install           # the CLI proxy on the manager, if the sync reported it missing
+npx homelab proxy add-account claude
+npx homelab proxy add-account codex
 ```
 
 and pairs the T3 desktop app on the manager with each worker as its check
@@ -353,10 +353,10 @@ remedy says (`t3:paired-access`).
 These are read-only and safe for an agent to run at any time:
 
 ```sh
-npx homelab fleet-status --workers --json    # every worker against the declared policy
-npx homelab fleet-status --json              # the manager and every enrolled worker
-npx homelab fleet-state --json               # the bucket holds what this machine has
-npx homelab fleet-sync --dry-run --json      # what the next sync would do
+npx @crvouga/homelab check --workers --json    # every worker against the declared policy
+npx @crvouga/homelab check --json              # the manager and every enrolled worker
+npx @crvouga/homelab state --json               # the bucket holds what this machine has
+npx @crvouga/homelab converge --dry-run --json      # what the next sync would do
 ```
 
 Exit code `0` is success, `1` a failed check, `2` invalid usage or
@@ -366,7 +366,7 @@ acts (a sign-in, a pairing, a maintenance reboot); they say so in
 `remedy.action` and do not stop other workers from converging.
 
 Later syncs need no prompt and may be run by an agent when the human asks:
-`npx homelab fleet-sync --json`.
+`npx @crvouga/homelab converge --json`.
 
 ## When something fails
 
@@ -374,7 +374,7 @@ Read `summary` and `remedy.action` of the failing check. The common ones:
 
 | Code or check                             | Meaning and remedy                                                                                                             |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `FLEET_MANAGER_ENROLLMENT_REQUIRED`       | No worker is enrolled yet. The human runs the first `fleet-sync` in a terminal.                                                |
+| `FLEET_MANAGER_ENROLLMENT_REQUIRED`       | No worker is enrolled yet. The human runs the first `sync` in a terminal.                                                |
 | `FLEET_NOT_MANAGER`                       | You are not on the machine `manager` names. Run there, or from a worker that can SSH to it.                                    |
 | `FLEET_REVISION_REQUIRED`                 | No revision to converge to. Run the installed package (`npx homelab`), not a copy of its source.                              |
 | `FLEET_REVISION_UNMERGED`                 | The revision is not on the default branch of the source repository. Nothing changed; a release always is.                      |
@@ -414,11 +414,11 @@ and codes; leave out everything private.
 
 - **Add a worker.** Set up its SSH alias and host key and join it to the
   tailnet (step 1), add it under `workers`, commit, then the human runs
-  `npx homelab fleet-sync` once in a terminal to enroll it.
-- **Remove a worker.** Delete its entry, commit, run `npx homelab fleet-sync`.
+  `npx @crvouga/homelab converge` once in a terminal to enroll it.
+- **Remove a worker.** Delete its entry, commit, run `npx @crvouga/homelab converge`.
 - **Upgrade the fleet.** `npm install --save-dev --save-exact @crvouga/homelab@latest`,
-  commit, `npx homelab fleet-sync`. The canary proves the new revision first.
-  `npx homelab fleet-sync --rollback` goes back to the revision applied
+  commit, `npx @crvouga/homelab converge`. The canary proves the new revision first.
+  `npx @crvouga/homelab converge --rollback` goes back to the revision applied
   before (the revision, tools and T3; system packages roll forward only, as
   the [README](../README.md#the-version) says).
 - **Replace the manager.** Follow
@@ -438,9 +438,9 @@ clone. To move such a project to the package:
    names it).
 3. Replace every call of the wrapper with `npx homelab …`, then delete the
    wrapper script and `fleet.revision`.
-4. Run `npx homelab fleet-sync --dry-run --json`, then `npx homelab fleet-sync`.
+4. Run `npx @crvouga/homelab converge --dry-run --json`, then `npx @crvouga/homelab converge`.
 5. The CLI proxy on the manager may still run from the old clone: run
-   `npx homelab cliproxy install` once before deleting that clone
+   `npx homelab proxy install` once before deleting that clone
    ([state](state.md) explains why).
 
 ## Further reading

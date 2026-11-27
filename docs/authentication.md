@@ -19,14 +19,14 @@ rewrites them).
 
 ## How they reach each node
 
-- **Vault.** A person logs each machine in once (`fleet-sync` asks on the
+- **Vault.** A person logs each machine in once (`sync` asks on the
   manager and passes the password to the worker over SSH on standard input).
   From then on the worker's `personal-worker-auth` timer renews its own token
   (`bootstrap/worker-auth.ts`). Nothing renders provider configuration from
-  Vault on a worker: agent profiles come from `fleet-sync`.
+  Vault on a worker: agent profiles come from `sync`.
 - **GitHub.** The same job restores the declared account (`worker.githubLogin`)
   with the GitHub service token it reads from its own Vault session
-  (`bootstrap/worker-github.ts`, on standard input, never argv). `fleet-sync`
+  (`bootstrap/worker-github.ts`, on standard input, never argv). `sync`
   makes `gh` git's credential helper and writes the declared identity
   (`git` in `fleet.json`, `ansible/github/git.yml`) on every node.
 - **The proxy client key** is read by each node from its own secrets provider
@@ -35,7 +35,7 @@ rewrites them).
   provider cannot answer, so an unreachable Vault or an expired session leaves
   that node's agents working until the Vault checks below are fixed.
 - **The monitoring hub's backup storage keys** are read on the manager by
-  `fleet-sync` and handed to the hub's playbook in a private variables file.
+  `sync` and handed to the hub's playbook in a private variables file.
 
 ## Rotation and failure
 

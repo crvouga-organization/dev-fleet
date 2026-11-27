@@ -87,7 +87,7 @@ async function report(
     exitCode: ok ? 0 : 1,
     data: {
       version: 1,
-      command: 'fleet-accounts',
+      command: 'accounts',
       ok,
       ...listing(roster),
       checks,
@@ -141,7 +141,7 @@ function failedChange(): CommandOutcome {
     exitCode: 1,
     data: {
       version: 1,
-      command: 'fleet-accounts',
+      command: 'accounts',
       ok: false,
       error: 'ACCOUNT_CHANGE_FAILED',
       summary:
@@ -230,7 +230,7 @@ async function removeNativeLogins(
       exitCode: found.length ? 1 : 0,
       data: {
         version: 1,
-        command: 'fleet-accounts',
+        command: 'accounts',
         ok: found.length === 0,
         applied: false,
         checks: [nativeLoginCheck(found)],
@@ -244,7 +244,7 @@ async function removeNativeLogins(
     exitCode: 0,
     data: {
       version: 1,
-      command: 'fleet-accounts',
+      command: 'accounts',
       ok: true,
       applied: true,
       removed: [...new Set(found.map((login) => login.cli))].sort(),
