@@ -451,7 +451,7 @@
       Description=Relieve sustained pressure from agents and transient user jobs
       [Service]
       RuntimeDirectory=personal-fleet-pressure-guard
-      ExecStart=/usr/bin/python3 -I -B /usr/local/lib/personal-fleet-pressure-guard.py --marker /run/personal-fleet-pressure-guard/active --agent-tree /sys/fs/cgroup/user.slice/user-{{ development_uid }}.slice/user@{{ development_uid }}.service/app.slice/app-t3code.slice/app-t3code-agents.slice --app-tree /sys/fs/cgroup/user.slice/user-{{ development_uid }}.slice/user@{{ development_uid }}.service/app.slice --threshold {{ resourceSafety.pressureGuard.threshold }} --duration {{ resourceSafety.pressureGuard.duration }} --cooldown {{ resourceSafety.pressureGuard.cooldown }} --interval {{ resourceSafety.pressureGuard.interval }}
+      ExecStart=/usr/bin/python3 -I -B /usr/local/lib/personal-fleet-pressure-guard.py --marker /run/personal-fleet-pressure-guard/active --agent-tree /sys/fs/cgroup/user.slice/user-{{ development_uid }}.slice/user@{{ development_uid }}.service/app.slice/app-t3code.slice/app-t3code-agents.slice --app-tree /sys/fs/cgroup/user.slice/user-{{ development_uid }}.slice/user@{{ development_uid }}.service/app.slice --threshold {{ resourceSafety.pressureGuard.threshold }} --cpu-threshold {{ resourceSafety.pressureGuard.cpuThreshold }} --duration {{ resourceSafety.pressureGuard.duration }} --cooldown {{ resourceSafety.pressureGuard.cooldown }} --interval {{ resourceSafety.pressureGuard.interval }}
       Restart=always
       RestartSec=5
       MemoryMax=64M

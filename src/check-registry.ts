@@ -559,7 +559,8 @@ export const CHECK_MEANINGS: Record<string, string> = {
     'T3 local API answers with its environment identity within 10 seconds.',
   'worker:convergence':
     'The worker last applied the approved revision and its last apply succeeded.',
-  'worker:pressure-events': 'The pressure guard reports recent agent stops.',
+  'worker:pressure-events':
+    'The pressure guard reports recent CPU, I/O and memory stops of agents.',
   'worker:t3-deadline-restarts':
     'No pending restart of T3 reached its deadline in the last 24 hours: none ended running agent turns.',
   'worker:t3-renderers':

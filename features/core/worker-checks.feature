@@ -121,7 +121,7 @@ Feature: What is measured on a worker
     Scenario: A worker whose firmware powers on after a power loss passes
       Given every command prints:
         """
-        {"BiosSettings":[{"Name":"AfterPowerLoss","BiosSettingCurrentValue":"Power On"}]}
+        {"BiosSettings":[{"Name":"State After G3","BiosSettingCurrentValue":"S0 State"}]}
         """
       When the recovery of the worker after a power loss is checked
       Then the check "worker:power-loss-recovery" passes

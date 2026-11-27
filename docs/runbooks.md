@@ -139,14 +139,14 @@ There are 494 codes; 105 need a person.
 - `SSH_CONFIG_REJECTED`: `sshd -t` refused the complete SSH configuration with the fragments converge wrote. The previous fragments were restored and sshd was not reloaded, so the worker serves SSH as before. On the worker `sudo sshd -t` names the line; it is usually another fragment under `/etc/ssh/sshd_config.d` that a person corrects before `homelab converge` is run again. **Needs a person.**
 
 On workers, automatically named `systemd-run --user` services and scopes
-share the T3 agents' memory budget. Under sustained I/O or memory pressure
-the pressure guard can stop an agent or a transient build, including a job
-still running in `app.slice` from before the policy was applied.
+share the T3 agents' memory budget. Under sustained CPU, I/O or memory
+pressure the pressure guard can stop an agent or a transient build, including
+a job still running in `app.slice` from before the policy was applied.
 Inspect `journalctl -u personal-fleet-pressure-guard --since yesterday` for
 the scope, memory usage and pressure at each decision. During a stall,
 connect with `ssh -t WORKER bash --noprofile --norc` and inspect
-`memory.current` on the T3 agent scopes. To stop a confirmed runaway,
-write `1` to that agent scope’s `cgroup.kill`.
+`memory.current` and `cpu.stat` on the T3 agent scopes. To stop a confirmed
+runaway, write `1` to that agent scope’s `cgroup.kill`.
 
 ## Worker size and features
 
