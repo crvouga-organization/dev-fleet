@@ -1758,9 +1758,9 @@ url = "https://github.com/BurntSushi/ripgrep/releases/download/16.0.0/ripgrep-16
 url_api = "https://api.github.com/repos/BurntSushi/ripgrep/releases/assets/780739355"
 
 [[tools.rust]]
-version = "1.100.0"
+version = "1.100.1"
 backend = "core:rust"
-specifiers = ["1.100.0"]
+specifiers = ["1.100.1"]
 
 [[tools.shellcheck]]
 version = "0.11.0"
