@@ -156,6 +156,33 @@ Then(
   }
 );
 
+Then(
+  'its {string} job runs unless {string} was skipped',
+  (world, name: string, dependency: string) => {
+    expect(jobOf(world, name).if).toBe(
+      `always() && needs.${dependency}.result != 'skipped'`
+    );
+  }
+);
+
+Then(
+  'its {string} job queues unless a caller said not to',
+  (world, name: string) => {
+    expect(jobOf(world, name).if).toBe('always() && inputs.queue != false');
+  }
+);
+
+Then('its {string} job may write issues', (world, name: string) => {
+  expect(jobOf(world, name).permissions?.['issues']).toBe('write');
+});
+
+Then(
+  'its {string} job passes {string} as {string}',
+  (world, name: string, input: string, value: string) => {
+    expect(String(jobOf(world, name).with?.[input])).toBe(value);
+  }
+);
+
 Then('no job of it times out', (world) => {
   const jobs = jobsOf(world);
   const names = Object.keys(jobs);
@@ -206,6 +233,8 @@ function runnerFor(architecture: string): string {
 interface JobShape {
   if?: string;
   needs?: string | string[];
+  permissions?: Record<string, string>;
+  with?: Record<string, unknown>;
   'timeout-minutes'?: unknown;
   strategy?: { matrix?: { include?: unknown } };
 }

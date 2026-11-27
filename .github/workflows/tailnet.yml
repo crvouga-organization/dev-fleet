@@ -16,6 +16,10 @@ on:
         description: The commit to test
         type: string
         required: true
+      queue:
+        description: Queue a failed job. A caller that queues the failure itself passes false.
+        type: boolean
+        default: true
 permissions:
   contents: read
 jobs:
@@ -35,3 +39,28 @@ jobs:
         run: bun test features/tailnet-box
         env:
           HOMELAB_TEST_TAILNET_BOX: required
+  # A weekly run and a hand run queue a failed job. A caller that queues
+  # the failure itself passes queue: false.
+  queue:
+    name: Queue a failure
+    if: always() && inputs.queue != false
+    needs: [tailnet]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Queue a failure or close it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TIER: tailnet
+          RESULTS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEAD_SHA: ${{ inputs.ref || github.sha }}
+        run: bun .github/scripts/ci-issues.ts

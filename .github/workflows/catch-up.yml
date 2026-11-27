@@ -56,3 +56,26 @@ jobs:
             gh issue close "$issue" --repo "$REPO" --reason completed --comment "Fixed by #$pr." ||
               echo "::warning::Issue #$issue could not be closed."
           done
+  # When this fails, main is not checked and the release never starts.
+  # One open issue records that, and the next green run closes it.
+  queue:
+    name: Queue a failure
+    if: always()
+    needs: [reconcile]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version-file: package.json
+      - name: Queue a failure or close it
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TIER: catch-up
+          RESULTS: ${{ toJSON(needs) }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          HEAD_SHA: ${{ github.sha }}
+        run: bun .github/scripts/ci-issues.ts
