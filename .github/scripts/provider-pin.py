@@ -16,6 +16,8 @@ PACKAGES = {
     'opencode': ('aqua:anomalyco/opencode', 'opencode-ai'),
     'grok': ('http:grok', '@xai-official/grok'),
     'antigravity': ('http:antigravity', None),
+    # The install script names one dated build; the artifact URL embeds it.
+    'cursor': ('http:cursor-agent', None),
 }
 PLATFORMS = {
     'linux-x64': 'linux_amd64', 'linux-arm64': 'linux_arm64',
@@ -30,6 +32,17 @@ def fetch(url):
         return json.load(response)
 
 
+def cursor_version():
+    with urlopen('https://cursor.com/install', timeout=60) as response:
+        text = response.read().decode()
+    found = set(re.findall(
+        r'downloads\.cursor\.com/lab/(\d{4}\.\d{2}\.\d{2}-[0-9a-f]+)/', text
+    ))
+    if len(found) != 1:
+        raise ValueError('Cursor install script does not name one release')
+    return found.pop()
+
+
 def main(name):
     tool, package = PACKAGES[name]
     source = CONFIG.read_text()
@@ -38,13 +51,16 @@ def main(name):
     manifests = {}
     if package:
         version = fetch('https://registry.npmjs.org/' + package + '/latest')['version']
+    elif name == 'cursor':
+        version = cursor_version()
     else:
         manifests = {key: fetch(MANIFEST + arch + '.json') for key, arch in PLATFORMS.items()}
         versions = {manifest['version'] for manifest in manifests.values()}
         if len(versions) != 1:
             raise ValueError('Antigravity stable release is incomplete across supported platforms')
         version = versions.pop()
-    if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+    pattern = r'\d{4}\.\d{2}\.\d{2}-[0-9a-f]+' if name == 'cursor' else r'\d+\.\d+\.\d+'
+    if not re.fullmatch(pattern, version):
         raise ValueError('Upstream latest is not a stable release')
     if version == previous:
         print(f'{name} {version} is current')

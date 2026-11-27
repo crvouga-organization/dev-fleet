@@ -55,6 +55,7 @@ const AGENT_TOOLS = [
   'aqua:anomalyco/opencode',
   'http:grok',
   'http:antigravity',
+  'http:cursor-agent',
 ];
 
 function section(text: string, name: string): string {
