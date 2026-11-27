@@ -437,7 +437,7 @@ export async function pressureEvents(run: Runner): Promise<Check> {
       summary: 'Recent pressure guard activity could not be read.',
     };
   const { stops, dryRuns, unclassified } = pressureCounts(events.stdout);
-  const count = stops.io + stops.memory + stops.unknown;
+  const count = stops.cpu + stops.io + stops.memory + stops.unknown;
   const active = await run([
     'test',
     '-e',
@@ -450,13 +450,14 @@ export async function pressureEvents(run: Runner): Promise<Check> {
   return {
     id,
     status: warn ? 'warn' : 'pass',
-    summary: `In the last 24 hours the pressure guard stopped ${count} workloads (I/O: ${stops.io}, memory: ${stops.memory}, unknown cause: ${stops.unknown}). Dry runs: ${dryRuns}. Unclassified historical records: ${unclassified}. ${pressure}`,
+    summary: `In the last 24 hours the pressure guard stopped ${count} workloads (CPU: ${stops.cpu}, I/O: ${stops.io}, memory: ${stops.memory}, unknown cause: ${stops.unknown}). Dry runs: ${dryRuns}. Unclassified historical records: ${unclassified}. ${pressure}`,
     ...(warn
       ? {
           remedy: {
             action:
-              'Inspect current I/O and memory stalls before changing capacity. The counts describe past interventions.',
-            command: 'cat /proc/pressure/io /proc/pressure/memory',
+              'Inspect current CPU, I/O and memory stalls before changing capacity. The counts describe past interventions.',
+            command:
+              'cat /proc/pressure/cpu /proc/pressure/io /proc/pressure/memory',
           },
         }
       : {}),
@@ -523,7 +524,7 @@ export async function rendererCheck(run: Runner): Promise<Check> {
 }
 
 function pressureCounts(output: string) {
-  const stops = { io: 0, memory: 0, unknown: 0 };
+  const stops = { cpu: 0, io: 0, memory: 0, unknown: 0 };
   let dryRuns = 0;
   let unclassified = 0;
   for (const line of output.trim().split('\n').filter(Boolean)) {
@@ -533,11 +534,13 @@ function pressureCounts(output: string) {
       if (event.dry_run === true) dryRuns++;
       else if (event.dry_run === false)
         stops[
-          event.reason === 'io'
-            ? 'io'
-            : event.reason === 'memory'
-              ? 'memory'
-              : 'unknown'
+          event.reason === 'cpu'
+            ? 'cpu'
+            : event.reason === 'io'
+              ? 'io'
+              : event.reason === 'memory'
+                ? 'memory'
+                : 'unknown'
         ]++;
       else unclassified++;
     } catch {

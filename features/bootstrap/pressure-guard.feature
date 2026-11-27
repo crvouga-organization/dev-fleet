@@ -1,10 +1,10 @@
-Feature: A quiet session survives another workload's I/O stalls
+Feature: A quiet session survives another workload's stalls
   Background:
     Given these scopes hold memory in the worker cgroup tree:
-      | scope                                     | memory | swap | bytes per second | io psi |
-      | agents/t3code-terminal-a.scope            | 100    | 10   | 90               | 75     |
-      | agents/thread.slice/t3code-claude-b.scope | 900    | 40   | 1                | 0      |
-      | app-com-t3tools.scope                     | 1000   | 500  | 9                | 80     |
+      | scope                                     | memory | swap | bytes per second | io psi | cpu percent |
+      | agents/t3code-terminal-a.scope            | 100    | 10   | 90               | 75     | 0           |
+      | agents/thread.slice/t3code-claude-b.scope | 900    | 40   | 1                | 0      | 0           |
+      | app-com-t3tools.scope                     | 1000   | 500  | 9                | 80     | 0           |
 
   Scenario: Sustained memory pressure still selects the largest agent by RAM and swap
     Given host memory PSI is 80 percent
@@ -27,12 +27,33 @@ Feature: A quiet session survives another workload's I/O stalls
     When the guard samples host I/O PSI "80,80,80,80,80,80" every 10 seconds with 85 device bytes per second, threshold 50, duration 30 and cooldown 120
     Then it records 1 kills and only "agents/t3code-terminal-a.scope" receives a kill
 
+  Scenario: Sustained CPU saturation sheds the agent that kept a core busy
+    A host at 80% full CPU pressure for the grace period stops the one leaf
+    that itself stayed at or above that share. A spike in one interval, and a
+    scope outside the agent and transient trees, are left running.
+    Given host CPU PSI is 80 percent
+    And these scopes hold memory in the worker cgroup tree:
+      | scope                                     | memory | swap | bytes per second | io psi | cpu percent |
+      | agents/t3code-terminal-a.scope            | 100    | 10   | 0                | 0      | 10          |
+      | agents/thread.slice/t3code-claude-b.scope | 400    | 10   | 0                | 0      | 90          |
+      | app-com-t3tools.scope                     | 800    | 10   | 0                | 0      | 95          |
+    When the guard samples host I/O PSI "0,0,0,0,0,0" every 10 seconds with 0 device bytes per second, threshold 50, duration 30 and cooldown 120
+    Then it records 1 kills and only "agents/thread.slice/t3code-claude-b.scope" receives a kill
+
+  Scenario: One CPU spike during saturation is not the workload that is stopped
+    Given host CPU PSI is 80 percent
+    And these scopes hold memory in the worker cgroup tree:
+      | scope                          | memory | swap | bytes per second | io psi | cpu percent |
+      | agents/t3code-terminal-a.scope | 100    | 10   | 0                | 0      | 10          |
+    When the guard samples host I/O PSI "0,0,0,0,0,0" every 10 seconds with 0 device bytes per second, threshold 50, duration 30 and cooldown 120
+    Then it records 0 kills and only "none" receives a kill
+
   Scenario Outline: Sustained I/O from a detached job can be relieved before or after the worker applies the shared budget
     Given these scopes hold memory in the worker cgroup tree:
-      | scope                      | memory | swap | bytes per second | io psi |
-      | <job>                      | 800    | 10   | 2000             | 80     |
-      | t3code-desktop.service     | 5000   | 100  | 3000             | 90     |
-      | t3code-headless.service    | 5000   | 100  | 3000             | 90     |
+      | scope                   | memory | swap | bytes per second | io psi | cpu percent |
+      | <job>                   | 800    | 10   | 2000             | 80     | 0           |
+      | t3code-desktop.service  | 5000   | 100  | 3000             | 90     | 0           |
+      | t3code-headless.service | 5000   | 100  | 3000             | 90     | 0           |
     When the guard samples host I/O PSI "80,80,80,80,80" every 10 seconds with 2500 device bytes per second, threshold 50, duration 30 and cooldown 120
     Then it records 1 kills and only "<job>" receives a kill
 
