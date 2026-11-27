@@ -1,7 +1,7 @@
 Feature: The manager runs its own agent as a launch agent of its user
   The manager is always a system on its own hub. Its agent is installed on the
   manager itself, never over SSH, as a launch agent of the signed-in user: no
-  sudo, so fleet-sync on the manager stays unattended.
+  sudo, so converge on the manager stays unattended.
 
   Background:
     Given the agent is enrolled as:

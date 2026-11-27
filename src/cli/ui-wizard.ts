@@ -82,7 +82,7 @@ async function registerNode(session: Session): Promise<void> {
     mutation: true,
   });
   session.display.write(
-    'Next: workers --onboard --node ID for operator-owned SSH / authentication guidance, then fleet-status.'
+    'Next: workers --onboard --node ID for operator-owned SSH / authentication guidance, then check.'
   );
 }
 

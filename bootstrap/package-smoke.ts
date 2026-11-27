@@ -97,7 +97,7 @@ function installAndRun(
         `homelab --version names no commit ${expected.commit.slice(0, 7)}${how}.`
       );
     const example = must(
-      run([homelab, 'fleet-state', '--example'], directory),
+      run([homelab, 'state', '--example'], directory),
       `homelab state --example${how}`
     );
     const parsed = JSON.parse(example) as { $schema?: unknown };

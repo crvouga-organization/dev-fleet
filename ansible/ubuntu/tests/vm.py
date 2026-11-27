@@ -25,7 +25,7 @@ IMAGE_SHA = '5645d0318ad21f643ebb1ac4567514620e9893380b07b0201fda163baa5b7eb5'
 # Package installs from snapshot.ubuntu.com can take over ten minutes when the
 # snapshot service is slow; the job's own timeout still bounds the whole run.
 COMMAND_TIMEOUT = 1500
-# The exposure policy this guest declares (worker_exposure, as fleet-sync
+# The exposure policy this guest declares (worker_exposure, as converge
 # passes it from exposure in fleet.json): one port held to the tailnet, as for
 # a remote desktop that cannot bind one address, and one opened to everyone,
 # which is the control that shows a connection from outside arrives at all.
@@ -496,7 +496,7 @@ def test_desktop(ssh, t3):
     reboot(ssh)
     wait_for(ssh, answers(APP), 300, 'the desktop app did not start in the auto-login session after a reboot')
     run(ssh + ['test "$(ss -H -l -n -t "sport = :3773" | awk \'{print $4}\' | sort -u)" = 127.0.0.1:3773'])
-    # As fleet-sync does: recovery only once the app runs, which a desktop
+    # As converge does: recovery only once the app runs, which a desktop
     # worker does only after the reboot into its graphical session.
     play(ssh, 'recovery.yml')
     group = user(ssh, f'systemctl --user show {APP} -p ControlGroup --value').stdout.strip()

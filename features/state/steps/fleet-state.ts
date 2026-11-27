@@ -37,14 +37,14 @@ const VALUES = [
   'timestamp',
 ];
 
-/** A `fleet-state` command line as its options, each value expanded. */
+/** A `state` command line as its options, each value expanded. */
 function options(
   world: StateWorld,
   manager: Manager,
   command: string
 ): FleetStateOptions {
   const [name, ...words] = command.split(' ');
-  if (name !== 'fleet-state') throw new Error(`Not fleet-state: ${command}`);
+  if (name !== 'state') throw new Error(`Not state: ${command}`);
   const parsed: Record<string, string | boolean> = {};
   while (words.length > 0) {
     const flag = words.shift()!.replace(/^--/, '');
@@ -52,12 +52,12 @@ function options(
     else if (SWITCHES.includes(flag)) parsed[flag] = true;
     else if (VALUES.includes(flag))
       parsed[flag] = world.expand(words.shift() ?? '', manager);
-    else throw new Error(`fleet-state has no --${flag}`);
+    else throw new Error(`state has no --${flag}`);
   }
   return parsed as FleetStateOptions;
 }
 
-/** `fleet-state` as the operator runs it on one manager: in its home, with
+/** `state` as the operator runs it on one manager: in its home, with
  * what its commands are passed, and no terminal unless a scenario gives one.
  */
 function run(
@@ -93,7 +93,7 @@ When(
 );
 
 Given(
-  phrase('the operator (runs|ran|tried) "(fleet-state[^"]*)" on ', WHO),
+  phrase('the operator (runs|ran|tried) "(state[^"]*)" on ', WHO),
   (world, verb: string, command: string, name: string | undefined) =>
     act(world, verb, () => run(world, world.manager(name), command))
 );

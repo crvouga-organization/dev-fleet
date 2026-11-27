@@ -1,4 +1,4 @@
-Feature: Every fleet-sync run is kept in a history, and history says how reliable it is
+Feature: Every converge run is kept in a history, and history says how reliable it is
   The history is a document in the fleet state, so it goes to the bucket with
   the rest and survives the manager. It keeps check IDs and machine names
   only, and is capped by age and by count.
@@ -7,7 +7,7 @@ Feature: Every fleet-sync run is kept in a history, and history says how reliabl
     Given a fleet state of its own, holding no history
 
   Scenario: A run is recorded with its duration, its failing checks and the machines that were not ready
-    When fleet-sync records the run of "2026-11-01T10:00:00Z" to "2026-11-01T10:02:30Z" that ended with 1 and reported:
+    When converge records the run of "2026-11-01T10:00:00Z" to "2026-11-01T10:02:30Z" that ended with 1 and reported:
       """
       {
         "ok": false,
@@ -37,7 +37,7 @@ Feature: Every fleet-sync run is kept in a history, and history says how reliabl
   Scenario: A run is recorded with what selected its revision
     Words and a worker's fleet id only; anything else a report says there is
     left out.
-    When fleet-sync records the run of "2026-11-01T10:00:00Z" to "2026-11-01T10:01:00Z" that ended with 0 and reported:
+    When converge records the run of "2026-11-01T10:00:00Z" to "2026-11-01T10:01:00Z" that ended with 0 and reported:
       """
       {
         "ok": true,
@@ -59,7 +59,7 @@ Feature: Every fleet-sync run is kept in a history, and history says how reliabl
     And the history does not mention "PRIVATE"
 
   Scenario: After three runs the report lists three, with their success rate, failing checks and time not ready
-    Given fleet-sync recorded these runs:
+    Given converge recorded these runs:
       | finished             | seconds | ok  | failing                | not ready  |
       | 2026-11-01T10:00:00Z | 60      | yes |                        |            |
       | 2026-11-01T11:00:00Z | 120     | no  | ssh:timeout, tool:node | worker-one |
@@ -78,7 +78,7 @@ Feature: Every fleet-sync run is kept in a history, and history says how reliabl
   Scenario Outline: The report says so when the last run took much longer than the ones before it: <case>
     At least twice the median of the runs before it, and at least a minute
     more; with fewer than five earlier runs there is nothing to compare.
-    Given fleet-sync recorded these runs:
+    Given converge recorded these runs:
       | finished             | seconds  | ok  |
       | 2026-11-01T10:00:00Z | 180      | yes |
       | 2026-11-01T11:00:00Z | 190      | yes |
@@ -96,7 +96,7 @@ Feature: Every fleet-sync run is kept in a history, and history says how reliabl
       | exactly twice the median     | 185    | 370  | says         |
 
   Scenario: Too few earlier runs are nothing to hold the last run against
-    Given fleet-sync recorded these runs:
+    Given converge recorded these runs:
       | finished             | seconds | ok  |
       | 2026-11-01T10:00:00Z | 60      | yes |
       | 2026-11-01T11:00:00Z | 60      | yes |
@@ -105,7 +105,7 @@ Feature: Every fleet-sync run is kept in a history, and history says how reliabl
     Then the fleet report does not say the last run was slower
 
   Scenario: The slower run is named with both times
-    Given fleet-sync recorded these runs:
+    Given converge recorded these runs:
       | finished             | seconds | ok  |
       | 2026-11-01T10:00:00Z | 180     | yes |
       | 2026-11-01T11:00:00Z | 190     | yes |
@@ -117,7 +117,7 @@ Feature: Every fleet-sync run is kept in a history, and history says how reliabl
     Then the fleet report prints "Slower: the last run took 572 s; the median of the 5 before it is 185 s."
 
   Scenario: A machine is not ready from the run that found it so until the run that found it ready
-    Given fleet-sync recorded these runs:
+    Given converge recorded these runs:
       | finished             | ok  | not ready  |
       | 2026-11-01T10:00:00Z | no  | worker-one |
       | 2026-11-01T10:30:00Z | yes |            |
@@ -126,7 +126,7 @@ Feature: Every fleet-sync run is kept in a history, and history says how reliabl
       | worker-one | 30 |
 
   Scenario: Runs before the period are left out of the report
-    Given fleet-sync recorded these runs:
+    Given converge recorded these runs:
       | finished             | ok  |
       | 2026-10-01T10:00:00Z | no  |
       | 2026-11-01T10:00:00Z | yes |
@@ -147,17 +147,17 @@ Feature: Every fleet-sync run is kept in a history, and history says how reliabl
       | 1w    |
 
   Scenario: The history never holds more than 500 runs
-    Given fleet-sync recorded 500 runs, one a minute, the last at "2026-11-01T10:00:00Z"
-    When fleet-sync records a run that finished at "2026-11-01T10:01:00Z"
+    Given converge recorded 500 runs, one a minute, the last at "2026-11-01T10:00:00Z"
+    When converge records a run that finished at "2026-11-01T10:01:00Z"
     Then the history holds 500 runs
     And the oldest run in the history finished at "2026-11-01T01:42:00Z"
 
   Scenario: The history forgets runs older than 90 days
-    Given fleet-sync recorded these runs:
+    Given converge recorded these runs:
       | finished             | ok  |
       | 2026-07-01T10:00:00Z | yes |
       | 2026-09-01T10:00:00Z | yes |
-    When fleet-sync records a run that finished at "2026-11-01T10:00:00Z"
+    When converge records a run that finished at "2026-11-01T10:00:00Z"
     Then the history holds 2 runs
     And the oldest run in the history finished at "2026-09-01T10:00:00Z"
 
@@ -170,7 +170,7 @@ Feature: Every fleet-sync run is kept in a history, and history says how reliabl
     behind a failed canary did not.
 
     Scenario Outline: The last run <case>, so the canary <goes>
-      Given the last fleet-sync run was of the revision "<last>" and left these workers:
+      Given the last converge run was of the revision "<last>" and left these workers:
         | worker     | result   |
         | worker-one | <first>  |
         | worker-two | <second> |
@@ -187,7 +187,7 @@ Feature: Every fleet-sync run is kept in a history, and history says how reliabl
         | did not include a worker                  | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa | applied                          |                   | goes first     | was not |
 
     Scenario: A configuration that changed since is a new input, so the canary goes first
-      Given the last fleet-sync run was of the revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" and left these workers:
+      Given the last converge run was of the revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" and left these workers:
         | worker     | result  |
         | worker-one | applied |
         | worker-two | applied |
@@ -196,7 +196,7 @@ Feature: Every fleet-sync run is kept in a history, and history says how reliabl
       Then the revision was not rolled out before
 
     Scenario: The same configuration is no new input
-      Given the last fleet-sync run was of the revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" and left these workers:
+      Given the last converge run was of the revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" and left these workers:
         | worker     | result  |
         | worker-one | applied |
         | worker-two | applied |

@@ -42,7 +42,7 @@ export async function tailscaleConfiguration(
       summary: 'TAILSCALE_SETUP_OR_LOGIN_REQUIRED',
       remedy: {
         action:
-          'The worker is not logged in to the tailnet. Declare tailnet in fleet.json so fleet-sync enrols it with a single-use key, or sign it in on the worker (sudo tailscale up), then run homelab converge.',
+          'The worker is not logged in to the tailnet. Declare tailnet in fleet.json so converge enrols it with a single-use key, or sign it in on the worker (sudo tailscale up), then run homelab converge.',
       },
     };
   return {

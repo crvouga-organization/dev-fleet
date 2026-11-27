@@ -40,8 +40,8 @@ your project (Git)
     definition.json                     the stored configuration as a file, rewritten from fleet.db
     replicated.json, litestream.yml     bookkeeping
 ~/.config/homelab/bucket.json         optional: credentials saved for unattended runs
-~/.config/homelab/fleet.json          the copy fleet-sync installs for launchers; never edited
-~/.config/homelab/fleet.json.sha256   what that copy was when fleet-sync last wrote it
+~/.config/homelab/fleet.json          the copy converge installs for launchers; never edited
+~/.config/homelab/fleet.json.sha256   what that copy was when converge last wrote it
 ```
 
 ## Set it up
@@ -136,8 +136,8 @@ way, needs no credentials and is the quickest way to try this out.
 ```sh
 homelab state            # read-only: where the state is, and how it stands with the bucket
 homelab state --example  # print a fleet.json to start a project from
-homelab history --since 30d  # read-only: how reliably fleet-sync ran, from the history
-homelab state --export   # print the configuration fleet-sync last applied
+homelab history --since 30d  # read-only: how reliably converge ran, from the history
+homelab state --export   # print the configuration converge last applied
 homelab state --push     # upload changes made while the bucket was unreachable
 homelab state --restore  # replace the local copy with the bucket's
 ```
@@ -254,7 +254,7 @@ state that is replicated differently or not at all:
 | Secrets                                              | Your `secrets` provider (`vault`, `sops`, `file`, `env`) | Unaffected for `vault`; `file` and `env` secrets must be supplied again                                |
 | CLI proxy: provider logins, keys, Tailscale identity | `~/Library/Application Support/cliproxy-fleet/state`     | Restored from its own encrypted restic snapshots ([cliproxy](../cliproxy/README.md)); needs `vault`    |
 | Monitoring hub (Beszel) database                     | `~/Library/Application Support/personal-beszel`          | `sync` recreates accounts and systems; metric history, alerts and settings made by hand are lost |
-| T3 ownership record                                  | `~/.t3/userdata/personal-managed.json`                   | `t3-apply --import ID` adopts instances again                                                          |
+| T3 ownership record                                  | `~/.t3/userdata/personal-managed.json`                   | `t3-reconcile --import ID` adopts instances again                                                          |
 
 The manager reaches a worker that has no SSH alias against
 `~/.local/share/homelab/ssh/known_hosts` (beside the state directory): a
@@ -342,7 +342,7 @@ The fleet state carries a **manager lease**: which machine is the manager,
 and until when. Every change takes or renews it, and it reaches the bucket
 with the change. A second machine (a replacement while the old manager still
 runs, or an old manager that wakes up) reads it from the bucket before it
-writes anything and stops with `FLEET_MANAGER_LEASE_HELD`. `fleet-state
+writes anything and stops with `FLEET_MANAGER_LEASE_HELD`. `state
 --init` still restores the state on such a machine; it only writes nothing.
 
 The lease runs for seven days after the last change. After that, any machine

@@ -24,7 +24,7 @@ The legacy local commands below retain their existing behavior for compatibility
 Use **personal** for node and T3 configuration. Workstation and fleet are internal
 implementation packages; neither exports its own executable.
 
-`fleet-sync` installs the `homelab` launcher on every machine it converges,
+`converge` installs the `homelab` launcher on every machine it converges,
 linked to the fleet-owned checkout of the applied revision. On such a machine:
 
 ```sh
@@ -33,7 +33,7 @@ homelab check
 
 `converge-local` reconciles one machine from a checkout of homelab
 (`--workspace PATH` or `PERSONAL_WORKSPACE` names it). It is for development:
-run from the published package it is refused, because `fleet-sync` does the
+run from the published package it is refused, because `converge` does the
 same from a checkout it owns.
 Each machine still needs its own authorized Vault session, SSH keys and T3 pairing.
 The sync never copies them or provisions infrastructure.
@@ -134,7 +134,7 @@ The protocol a tool speaks to the proxy is its `proxy` field in
    the shared proxy.
 
 Each is a reviewed change to a tracked file, followed by `homelab
-fleet-sync`. A newer CLIProxyAPI is a reviewed change to
+converge`. A newer CLIProxyAPI is a reviewed change to
 `cliproxy/image.lock.json`; a sync never upgrades it to get around a failure.
 
 A model that is merely missing from the catalog is `PROVIDER_MODEL_UNAVAILABLE`

@@ -58,7 +58,7 @@ export interface WatchMemory {
   revision?: string;
 }
 
-/** One machine as fleet-status saw it: the IDs of its failing checks. */
+/** One machine as check saw it: the IDs of its failing checks. */
 export interface Observation {
   node: string;
   failing: string[];

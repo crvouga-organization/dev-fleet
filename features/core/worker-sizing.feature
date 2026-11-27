@@ -57,7 +57,7 @@ Feature: A worker's disk and memory lines scale with the machine
         | 500  | 9000  | warns   |
         | 500  | 80000 | passes  |
 
-  Rule: fleet-status says how many agent sessions the memory policy supports, and how many run
+  Rule: check says how many agent sessions the memory policy supports, and how many run
 
     The memory user workloads may use (90%), less what T3 keeps for itself
     (1536 MiB), in sessions of 512 MiB plus a 4096 MiB build. The size of a

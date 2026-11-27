@@ -34,7 +34,7 @@ export interface FleetServices {
   source: () => Promise<string>;
   /** The tailnet control plane fleet.json declares, asked for devices
    * tagged as workers that no declared worker accounts for. Absent, or null,
-   * fleet-status says nothing about them.
+   * check says nothing about them.
    */
   tailnet?: () => Promise<TailnetControl | null>;
   /** The commit the running package names; absent or null in a checkout. */
@@ -229,7 +229,7 @@ async function diagnose(
 /** What the manager and the workers are measured against. The published
  * package holds no Git history and no bun.lock, and whatever repository
  * surrounds it is the consumer's project: from a package it is the
- * fleet-owned checkout fleet-sync made of the commit the package names. A
+ * fleet-owned checkout converge made of the commit the package names. A
  * checkout (development) is its own reference.
  */
 function statusRoot(settings: Settings, services: FleetServices): string {
@@ -245,10 +245,10 @@ function explainMissingCheckout(reports: NodeReport[], root: string): void {
   const check = reports[0]?.checks.find((item) => item.id === 'workspace');
   if (!check) return;
   check.summary =
-    'This manager has no fleet-owned checkout of the commit this package names; it is made by fleet-sync.';
+    'This manager has no fleet-owned checkout of the commit this package names; it is made by converge.';
   check.remedy = {
     action:
-      'Run homelab converge from the project that holds your fleet.json, then fleet-status again.',
+      'Run homelab converge from the project that holds your fleet.json, then check again.',
   };
 }
 

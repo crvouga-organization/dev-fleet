@@ -121,7 +121,7 @@ async function runningDesktop(
   }
   const action = installed
     ? `When manager sessions have finished, quit T3 Code, then run open ${shellQuote(app)}. Pin that copy in the Dock.`
-    : 'Stage the verified desktop with fleet-sync before opening it.';
+    : 'Stage the verified desktop with converge before opening it.';
   const running = versionCheck(
     observed?.[2] ?? null,
     version,

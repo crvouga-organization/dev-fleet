@@ -61,7 +61,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync: ansible/ubuntu/tasks/user.yml
+      # Managed by personal converge: ansible/ubuntu/tasks/user.yml
       [Desktop Entry]
       Type=Application
       Name=Command-line notifications
@@ -143,7 +143,7 @@
           value: 'false',
           observed: 'false',
         }
-    # fleet-sync owns a worker's packages and reboots; prompts about them
+    # converge owns a worker's packages and reboots; prompts about them
     # would wait for someone who never comes.
     update_notifier_settings:
       - {

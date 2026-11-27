@@ -80,7 +80,7 @@ export async function readDiskGcReport(
 
 const gib = (mib: number): string => `${(mib / 1024).toFixed(1)} GiB`;
 
-/** One line for fleet-status: the last run, what it reclaimed by category,
+/** One line for check: the last run, what it reclaimed by category,
  * and what the worktrees, package stores and tool installs hold. */
 export function describeDiskGc(report: DiskGcReport, now: number): string {
   const minutes = Math.max(0, Math.round((now - report.finished) / 60));

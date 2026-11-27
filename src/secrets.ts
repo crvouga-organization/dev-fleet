@@ -28,7 +28,7 @@ export const OPTIONAL_SECRET_NAMES = [
   'notify-webhook-url',
   'notify-ntfy-url',
   // A short-lived, single-use, tagged Tailscale auth key a new worker joins
-  // the tailnet with (fleet-node-seed).
+  // the tailnet with (provision).
   'tailnet-auth-key',
   // An API credential of the tailnet's control plane (tailnet in fleet.json)
   // that creates one single-use key per new worker. It stays on the manager:

@@ -31,14 +31,14 @@ function backupCheck(
 }
 
 const undeclared = (): string =>
-  `Declare services.monitoring.backups (a schedule, how many to keep and S3-compatible storage off the manager) in ${fleetJson()}, and the secrets monitoring-backup-access-key and monitoring-backup-secret-key; fleet-sync then sets them through the hub.`;
+  `Declare services.monitoring.backups (a schedule, how many to keep and S3-compatible storage off the manager) in ${fleetJson()}, and the secrets monitoring-backup-access-key and monitoring-backup-secret-key; converge then sets them through the hub.`;
 const DECLARED =
-  "fleet-sync sets the backups declared under services.monitoring.backups. Check that the secrets monitoring-backup-access-key and monitoring-backup-secret-key are readable on the manager and that the manager's Vault session is logged in, then rerun converge.";
+  "converge sets the backups declared under services.monitoring.backups. Check that the secrets monitoring-backup-access-key and monitoring-backup-secret-key are readable on the manager and that the manager's Vault session is logged in, then rerun converge.";
 
 /** Reads the hub's own backup settings and its list of backups through the
  * stock PocketBase API of the pinned release (superuser only: GET
  * /api/settings and GET /api/backups): whether they are scheduled, kept off
- * the manager and recent. fleet-sync sets them from the fleet configuration
+ * the manager and recent. converge sets them from the fleet configuration
  * (`hub-darwin.yml`); with them declared, anything but that is a failure, a
  * stale backup after a grace period. Storage names, keys and endpoints are
  * never reported.

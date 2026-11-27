@@ -17,7 +17,7 @@ import type { Check, NodeReport } from '../../../src/types';
 import { cli, outcome, part, temporary, type CliWorld } from './world';
 
 /** notify against a webhook and an ntfy receiver on this machine. The
- * fleet's health is what the scenario says fleet-status sees; the watcher's
+ * fleet's health is what the scenario says check sees; the watcher's
  * memory lives in a directory that stands in for the bucket.
  */
 const { Given, When, Then } = cli;
@@ -163,7 +163,7 @@ Then('notify reports no revision', (world) => {
   expect(outcome(world).data).not.toHaveProperty('revision');
 });
 
-Given('fleet-status sees every worker ready', (world) => {
+Given('check sees every worker ready', (world) => {
   watch(world).nodes = nodes({ 'worker-a': '', 'worker-b': '' });
 });
 
@@ -195,7 +195,7 @@ When('the watcher sends a test notification', async (world) => {
 });
 
 When(
-  'the watcher runs at these times, while fleet-status sees these failing checks:',
+  'the watcher runs at these times, while check sees these failing checks:',
   async (world, table: DataTable) => {
     for (const row of table.hashes()) {
       const { time, ...failing } = row;
@@ -283,7 +283,7 @@ Then('the notify block {string} is refused', (_world, json: string) => {
 });
 
 Given(
-  'fleet-status warns about {string} on {string}',
+  'check warns about {string} on {string}',
   (world, id: string, node: string) => {
     watch(world).nodes = [
       { node, checks: [{ id, status: 'warn', summary: 'low disk' }] },

@@ -14,7 +14,7 @@ The fleet is one singleton **manager** (the human's macOS machine, which runs
 `sync` and every singleton service such as the CLI proxy and Beszel hub)
 and stateless Linux **workers**. See [topology](topology.md).
 
-See [Ubuntu fleet-sync implementation and operator status](ubuntu-sync.md) for
+See [Ubuntu converge implementation and operator status](ubuntu-sync.md) for
 the manager-driven public command and its outstanding full-machine gates.
 
 ## Worker contract
@@ -198,7 +198,7 @@ need normal repository validation. A green install is not a healthy fleet.
    fingerprint out of band. Never expose public SSH or copy private keys/auth
    folders. Cloud provisioning remains an OpenTofu task.
 3. Configure the manager's SSH alias, append the node to the local roster,
-   then run `fleet-nodes` and `workers --onboard --node ID --json`. Onboarding
+   then run `workers` and `workers --onboard --node ID --json`. Onboarding
    emits a ready-to-edit SSH stanza, VS Code settings and ordered instructions;
    it does not overwrite user config. Test `ssh ALIAS` manually first.
 4. Ensure noninteractive shell startup is quiet and Node (or explicit Bun runtime) is reachable. Fleet

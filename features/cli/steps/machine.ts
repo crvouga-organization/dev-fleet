@@ -241,7 +241,7 @@ Given(
   'the manager has its fleet-owned checkout of that commit',
   async (world) => {
     const described = machine(world);
-    // Made elsewhere, then moved where fleet-sync keeps it.
+    // Made elsewhere, then moved where converge keeps it.
     const checkout = await workspace();
     await mkdir(described.runs!, { recursive: true });
     await rename(checkout, runCheckout(described));

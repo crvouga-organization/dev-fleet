@@ -64,7 +64,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync.
+      # Managed by personal converge.
       [zram0]
       zram-size = min(ram / {{ resourceSafety.zram.memoryDivisor }}, {{ resourceSafety.zram.maximumMiB }})
       swap-priority = {{ resourceSafety.zram.priority }}
@@ -81,7 +81,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync.
+      # Managed by personal converge.
       vm.swappiness = {{ resourceSafety.zram.swappiness }}
       vm.page-cluster = {{ resourceSafety.zram.pageCluster }}
 - name: Read the running reclaim settings
@@ -122,7 +122,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync: kill one cgroup before swap or memory pressure stalls the node.
+      # Managed by personal converge: kill one cgroup before swap or memory pressure stalls the node.
       [OOM]
       SwapUsedLimit=90%
       DefaultMemoryPressureLimit=60%
@@ -138,17 +138,17 @@
   loop:
     - dest: /etc/systemd/system/-.slice.d/60-personal-fleet.conf
       content: |
-        # Managed by personal fleet-sync: when swap is exhausted, oomd kills the largest swap user.
+        # Managed by personal converge: when swap is exhausted, oomd kills the largest swap user.
         [Slice]
         ManagedOOMSwap=kill
     - dest: /etc/systemd/system/user.slice.d/60-personal-fleet.conf
       content: |
-        # Managed by personal fleet-sync: user workloads can never take the memory SSH, Tailscale and system services need.
+        # Managed by personal converge: user workloads can never take the memory SSH, Tailscale and system services need.
         [Slice]
         MemoryMax={{ resourceSafety.userMemoryMax }}
     - dest: '/etc/systemd/system/user@{{ development_uid }}.service.d/60-personal-fleet.conf'
       content: |
-        # Managed by personal fleet-sync: Ubuntu hands the user manager cpu, memory and pids only, which leaves
+        # Managed by personal converge: Ubuntu hands the user manager cpu, memory and pids only, which leaves
         # the I/O weights of T3 and the agents without effect. The user manager takes it on its next start.
         [Service]
         Delegate=cpu io memory pids
@@ -162,7 +162,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync. Applies to every t3code-*.scope T3 starts for an agent.
+      # Managed by personal converge. Applies to every t3code-*.scope T3 starts for an agent.
       # OOMPolicy=continue: the kernel kills the largest process in the agent; the agent itself keeps running.
       # IOAccounting=yes: the pressure guard needs each agent's io.stat to tell a writer from a reader it blocks.
       [Scope]
@@ -178,7 +178,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync. Detached builds share the agent budget.
+      # Managed by personal converge. Detached builds share the agent budget.
       [{{ item }}]
       Slice=app-t3code-agents.slice
       MemoryMax={{ resourceSafety.agentMemoryMax }}
@@ -193,7 +193,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync.
+      # Managed by personal converge.
       [Slice]
       MemoryHigh={{ worker_size.memoryMiB | int * item.high | int // 100 }}M
       MemoryMax={{ worker_size.memoryMiB | int * item.max | int // 100 }}M
@@ -246,7 +246,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync.
+      # Managed by personal converge.
       [Journal]
       SystemMaxUse={{ resourceSafety.journalMaxUse }}
       SystemKeepFree={{ resourceSafety.journalKeepFree }}
@@ -264,7 +264,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync; overrides /usr/lib/tmpfiles.d/tmp.conf.
+      # Managed by personal converge; overrides /usr/lib/tmpfiles.d/tmp.conf.
       q /tmp 1777 root root {{ resourceSafety.tmpAge }}
       q /var/tmp 1777 root root {{ resourceSafety.varTmpAge }}
 - name: Clean temporary files hourly instead of daily
@@ -274,7 +274,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync.
+      # Managed by personal converge.
       [Timer]
       OnUnitActiveSec=1h
   register: tmpfiles_timer
@@ -297,7 +297,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync: /tmp is RAM; keep it from taking half of memory.
+      # Managed by personal converge: /tmp is RAM; keep it from taking half of memory.
       [Mount]
       Options=mode=1777,strictatime,nosuid,nodev,size={{ resourceSafety.tmpMaxSize }},nr_inodes=1m,x-systemd.graceful-option=usrquota
   when: tmp_mount.stat.exists
@@ -320,7 +320,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync: ansible/ubuntu/disk-guard.py
+      # Managed by personal converge: ansible/ubuntu/disk-guard.py
       # Source sha256 {{ disk_guard_source.stat.checksum }}
       [Unit]
       Description=Personal Fleet disk guard (stops a runaway user writer before the disk fills)
@@ -385,7 +385,7 @@
   loop:
     - dest: /etc/systemd/system/personal-fleet-disk-gc.service
       content: |
-        # Managed by personal fleet-sync: ansible/ubuntu/disk-gc.py
+        # Managed by personal converge: ansible/ubuntu/disk-gc.py
         # Source sha256 {{ disk_gc_source.stat.checksum }}
         [Unit]
         Description=Personal Fleet disk GC (deletes build output and caches a build recreates)
@@ -408,7 +408,7 @@
         LogRateLimitBurst=200
     - dest: /etc/systemd/system/personal-fleet-disk-gc.timer
       content: |
-        # Managed by personal fleet-sync: ansible/ubuntu/disk-gc.py
+        # Managed by personal converge: ansible/ubuntu/disk-gc.py
         [Unit]
         Description=Run the Personal Fleet disk GC every {{ gc_minutes }} minutes
         [Timer]
@@ -446,7 +446,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync.
+      # Managed by personal converge.
       [Unit]
       Description=Relieve sustained pressure from agents and transient user jobs
       [Service]

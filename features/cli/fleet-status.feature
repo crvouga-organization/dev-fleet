@@ -1,4 +1,4 @@
-Feature: fleet-status checks the manager and its workers without changing them
+Feature: check checks the manager and its workers without changing them
   The manager is always checked. Workers are reached over SSH and run the
   probe the manager sends them; nothing is installed on a worker to check it.
 
@@ -17,7 +17,7 @@ Feature: fleet-status checks the manager and its workers without changing them
     And no probe was bundled for workers
 
   Scenario: A schedule that has not converged the fleet for two of its intervals fails the manager's check
-    The schedule keeps the fleet converged without anyone running fleet-sync,
+    The schedule keeps the fleet converged without anyone running converge,
     so a schedule that silently stopped working is a failure, not a detail.
     Given the fleet state records a schedule turned on at "2026-01-01T00:00:00Z", every 30 minutes, that never succeeded
     When the operator runs "homelab check --local --require none"
@@ -33,8 +33,8 @@ Feature: fleet-status checks the manager and its workers without changing them
 
   Rule: From the published package, everything is measured against the fleet-owned checkout of the commit it names
     The installed package holds no Git history and no bun.lock, and the
-    repository around it is the operator's project. fleet-sync makes a
-    fleet-owned checkout of the package's commit on the manager; fleet-status
+    repository around it is the operator's project. converge makes a
+    fleet-owned checkout of the package's commit on the manager; check
     checks the manager in it and compares every worker with it.
 
     Background:
@@ -58,7 +58,7 @@ Feature: fleet-status checks the manager and its workers without changing them
       And the check "sync:bun.lock" of "one" has the status "pass"
       And the check "sync:package.json" of "one" has the status "pass"
 
-    Scenario: Before fleet-sync has made the checkout, fleet-status says to run it
+    Scenario: Before converge has made the checkout, check says to run it
       When the operator runs "homelab check --local --require none"
       Then the check "workspace" of "manager" has the status "fail"
       And the check "workspace" of "manager" says "no fleet-owned checkout of the commit this package names"
@@ -86,7 +86,7 @@ Feature: fleet-status checks the manager and its workers without changing them
       And every command run over SSH was given the probe "standalone-probe-source"
 
   Rule: Each worker is listed as parked or active, with what an active one is doing
-    A rented worker costs money while it runs. fleet-status says, for every
+    A rented worker costs money while it runs. check says, for every
     worker it reaches, how long it has been up, how many agent turns run on
     it and when an agent last did something (from T3, never the content of
     a session), and adds what fleet.json declares the idle ones cost.
@@ -142,7 +142,7 @@ Feature: fleet-status checks the manager and its workers without changing them
 
   Rule: A device tagged as a worker that no declared worker accounts for is a leftover
     A rebuilt or abandoned rented machine can stay on the tailnet, carrying
-    the fleet's worker tag. fleet-status asks the control plane fleet.json
+    the fleet's worker tag. check asks the control plane fleet.json
     declares for every device with the tag and warns of each one that is no
     declared worker (parked ones included) and no device the roster binds.
     It names the device by its name only.
@@ -155,7 +155,7 @@ Feature: fleet-status checks the manager and its workers without changing them
       And the probe sent to workers is "standalone-probe-source"
       And every worker answers the probe as this workspace does at the commit "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
-    Scenario: A device joined by hand with the worker tag shows up in fleet-status
+    Scenario: A device joined by hand with the worker tag shows up in check
       Given fleet.json declares the hosted Tailscale as its control plane, tagging workers "tag:fleet-worker"
       And the control plane lists these devices:
         | id      | name        | tags             |
@@ -164,12 +164,12 @@ Feature: fleet-status checks the manager and its workers without changing them
         | nByHand | scratch-box | tag:fleet-worker |
         | nLaptop | laptop      | tag:personal     |
       When the operator runs "homelab check --require none"
-      Then fleet-status warns of exactly these leftover devices:
+      Then check warns of exactly these leftover devices:
         | scratch-box |
       And the check "tailscale:leftover" of "tailnet" says "tagged tag:fleet-worker, which is no declared worker"
 
     Scenario: Without a tailnet control plane nothing is asked and nothing is reported
       Given fleet.json declares no tailnet control plane
       When the operator runs "homelab check --require none"
-      Then fleet-status reports no leftover device
+      Then check reports no leftover device
       And the control plane was asked nothing

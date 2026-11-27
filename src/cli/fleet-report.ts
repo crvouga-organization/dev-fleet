@@ -112,7 +112,7 @@ export function reliability(runs: SyncRun[], now: Date): Reliability {
   };
 }
 
-/** Read-only: the reliability of fleet-sync over a period, from the run
+/** Read-only: the reliability of converge over a period, from the run
  * history kept in the fleet state.
  */
 export function fleetReport(
@@ -142,9 +142,9 @@ function minutes(ms: number): string {
 }
 
 function render(since: string, summary: Reliability): string {
-  if (!summary.runs) return `No fleet-sync run in the last ${since}.`;
+  if (!summary.runs) return `No converge run in the last ${since}.`;
   const lines = [
-    `fleet-sync over the last ${since}: ${summary.runs} runs, ${summary.succeeded} succeeded (${Math.round((summary.successRate ?? 0) * 100)}%), ${Math.round((summary.meanDurationMs ?? 0) / 1000)} s on average.`,
+    `converge over the last ${since}: ${summary.runs} runs, ${summary.succeeded} succeeded (${Math.round((summary.successRate ?? 0) * 100)}%), ${Math.round((summary.meanDurationMs ?? 0) / 1000)} s on average.`,
   ];
   if (summary.slowdown)
     lines.push(

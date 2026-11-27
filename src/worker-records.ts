@@ -19,7 +19,7 @@ export interface WorkerRecord {
   /** The port sshd listens on; 22 when absent. */
   port?: number;
   /** The SSH host public key, "TYPE BASE64": pinned, never learned.
-   * Without one the key is the one the fleet state pins (fleet-node-seed
+   * Without one the key is the one the fleet state pins (provision
    * --apply --yes), and until then every session is refused.
    */
   hostKey?: string;

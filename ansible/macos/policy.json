@@ -28,7 +28,7 @@
     "intervalMinutes": 30
   },
   "fleetWatch": {
-    "label": "dev.homelab.fleet-watch",
+    "label": "dev.homelab.notify",
     "intervalMinutes": 15
   },
   "vaultRenewal": {

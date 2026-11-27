@@ -43,7 +43,7 @@ export interface RosterAccount {
   cooldowns: ModelCooldown[];
 }
 
-/** What `homelab cliproxy accounts --json` prints on the manager. */
+/** What `homelab proxy accounts --json` prints on the manager. */
 export interface ProxyRoster {
   version: 1;
   rosterVersion: string;

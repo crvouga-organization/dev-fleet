@@ -48,7 +48,7 @@ upstream:
   claude:
     # Fleet-owned (applied by `ops declared`): the proxy presents itself to
     # Anthropic as this Claude Code version, and Anthropic refuses newer models
-    # to an older one. fleet-sync replaces the version with the `claude` pin in
+    # to an older one. converge replaces the version with the `claude` pin in
     # mise.toml on every run, so it follows the harness every node runs.
     header-defaults:
       user-agent: 'claude-cli/2.1.314 (external, cli)'

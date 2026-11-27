@@ -17,7 +17,7 @@ import { FleetUsageError } from '../errors';
  */
 export const DOCUMENTS = ['definition', 'roster', 'enrollment'] as const;
 /** Kept when there is something to keep; a fleet without them is complete:
- * `history` is the record of recent fleet-sync runs and of the schedule;
+ * `history` is the record of recent converge runs and of the schedule;
  * `workers` what the manager knows of each worker beyond fleet.json: its
  * pinned SSH host key and whether it is parked (src/state/workers.ts).
  */

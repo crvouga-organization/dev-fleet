@@ -39,7 +39,7 @@ export const BEFOREHAND = [
   'node',
 ];
 
-/** Where fleet-sync keeps its state on a worker. */
+/** Where converge keeps its state on a worker. */
 export const FLEET_ROOT = '/home/fleettest/.local/share/personal/fleet';
 
 export async function must(
@@ -254,7 +254,7 @@ export async function discardBoxes(): Promise<void> {
   }
 }
 
-/** The commit under test, bundled once like fleet-sync bundles it, with the
+/** The commit under test, bundled once like converge bundles it, with the
  * example fleet as its configuration.
  */
 export function bootstrapPayload(): Promise<BootstrapPayload> {
@@ -306,7 +306,7 @@ export function firstBootstrap(machine: Box): Promise<Bootstrap> {
   return machine.first;
 }
 
-/** A command on the machine, over the same SSH transport fleet-sync uses. */
+/** A command on the machine, over the same SSH transport converge uses. */
 export async function remote(
   machine: Box,
   command: string,

@@ -1,4 +1,4 @@
-Feature: fleet-sync enrolls every machine on the manager's monitoring hub
+Feature: converge enrolls every machine on the manager's monitoring hub
   The hub runs only on the manager. A worker gets the agent, installed over
   SSH and enrolled against that hub; the manager enrolls itself on its own hub
   and installs its agent locally.

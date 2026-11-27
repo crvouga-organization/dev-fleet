@@ -179,7 +179,7 @@ export function managedHealthScope(
   includeManager = true
 ) {
   // A parked worker is off on purpose: it is not audited, not missing and
-  // its device is not expected online (fleet-status lists it as parked).
+  // its device is not expected online (check lists it as parked).
   const parked = readParked();
   const canonical = {
     ...definition,
@@ -219,7 +219,7 @@ export function managedHealthScope(
           summary:
             'Canonical developer node lacks a verified SSH/check-out registration.',
           remedy: {
-            action: `Enroll ${node.id} with homelab enroll, or use interactive fleet-sync enrollment.`,
+            action: `Enroll ${node.id} with homelab enroll, or use interactive converge enrollment.`,
           },
         })),
       ],

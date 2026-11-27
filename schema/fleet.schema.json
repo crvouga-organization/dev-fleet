@@ -22,7 +22,7 @@
     "manager": {
       "type": "object",
       "additionalProperties": false,
-      "description": "The singleton manager: the human's machine that runs fleet-sync and hosts every singleton service (CLI proxy, Beszel hub).",
+      "description": "The singleton manager: the human's machine that runs converge and hosts every singleton service (CLI proxy, Beszel hub).",
       "required": ["id", "os", "network", "neverSleepOnPower"],
       "properties": {
         "id": {
@@ -63,13 +63,13 @@
               "type": "integer",
               "minimum": 5,
               "maximum": 1440,
-              "description": "fleet-sync --schedule converges the fleet this often (default 30)."
+              "description": "converge --schedule converges the fleet this often (default 30)."
             },
             "watchMinutes": {
               "type": "integer",
               "minimum": 5,
               "maximum": 1440,
-              "description": "fleet-watch checks the fleet and stores its heartbeat this often (default 15). Keep it well under the max-age-minutes of the heartbeat workflow."
+              "description": "notify checks the fleet and stores its heartbeat this often (default 15). Keep it well under the max-age-minutes of the heartbeat workflow."
             }
           }
         }
@@ -127,7 +127,7 @@
               "hostKey": {
                 "type": "string",
                 "pattern": "^(ssh-ed25519|ecdsa-sha2-nistp256|ssh-rsa) [A-Za-z0-9+/=]{16,}$",
-                "description": "The SSH host public key, \"TYPE BASE64\", given as data (a worker record writes it). It is the pinned key; a worker without one is pinned in the fleet state (fleet-node-replace --host-key, fleet-node-seed --apply)."
+                "description": "The SSH host public key, \"TYPE BASE64\", given as data (a worker record writes it). It is the pinned key; a worker without one is pinned in the fleet state (replace --host-key, provision --apply)."
               }
             }
           },
@@ -141,7 +141,7 @@
               },
               "containers": {
                 "type": "boolean",
-                "description": "Docker on the worker: its packages, service, docker group membership, the docker-cli tool and the Docker step of the disk GC. Default true. Turning it off on an existing worker removes what homelab installed for it; fleet-sync --dry-run lists what."
+                "description": "Docker on the worker: its packages, service, docker group membership, the docker-cli tool and the Docker step of the disk GC. Default true. Turning it off on an existing worker removes what homelab installed for it; converge --dry-run lists what."
               },
               "session": {
                 "enum": ["desktop", "headless"],
@@ -253,7 +253,7 @@
                 "pattern": "^[^\\u0000-\\u001f\\u007f]{1,200}$"
               }
             },
-            "description": "What the worker costs while it runs: fleet-status sums it for idle workers."
+            "description": "What the worker costs while it runs: check sums it for idle workers."
           },
           "origin": {
             "const": "records",
@@ -313,7 +313,7 @@
           }
         ]
       },
-      "description": "Where generated worker records are read: their workers join the list above. An infrastructure tool writes them; homelab only reads them and never creates a machine. A worker whose record disappears is retired by the next fleet-sync."
+      "description": "Where generated worker records are read: their workers join the list above. An infrastructure tool writes them; homelab only reads them and never creates a machine. A worker whose record disappears is retired by the next converge."
     },
     "parking": {
       "type": "object",
@@ -327,7 +327,7 @@
         },
         "autoPark": {
           "type": "boolean",
-          "description": "fleet-watch parks a worker idle longer than idleAfterHours. Off unless true."
+          "description": "notify parks a worker idle longer than idleAfterHours. Off unless true."
         },
         "stop": {
           "type": "array",
@@ -346,7 +346,7 @@
           "description": "Run with the worker ID as its last argument when the worker is resumed."
         }
       },
-      "description": "Workers that are stopped on purpose (fleet-node-park) and when an idle one is reported."
+      "description": "Workers that are stopped on purpose (park) and when an idle one is reported."
     },
     "services": {
       "type": "object",
@@ -435,7 +435,7 @@
               "type": "object",
               "additionalProperties": false,
               "required": ["schedule", "keep", "storage"],
-              "description": "Scheduled off-machine backups of the monitoring hub. fleet-sync sets them through the hub's API, with the keys of the secrets monitoring-backup-access-key and monitoring-backup-secret-key; without this block the hub's backups are only read, and beszel:backup warns.",
+              "description": "Scheduled off-machine backups of the monitoring hub. converge sets them through the hub's API, with the keys of the secrets monitoring-backup-access-key and monitoring-backup-secret-key; without this block the hub's backups are only read, and beszel:backup warns.",
               "properties": {
                 "schedule": {
                   "type": "string",
@@ -562,7 +562,7 @@
             },
             "containers": {
               "type": "boolean",
-              "description": "Docker on the worker: its packages, service, docker group membership, the docker-cli tool and the Docker step of the disk GC. Default true. Turning it off on an existing worker removes what homelab installed for it; fleet-sync --dry-run lists what."
+              "description": "Docker on the worker: its packages, service, docker group membership, the docker-cli tool and the Docker step of the disk GC. Default true. Turning it off on an existing worker removes what homelab installed for it; converge --dry-run lists what."
             },
             "session": {
               "enum": ["desktop", "headless"],
@@ -954,7 +954,7 @@
                       "pattern": "^[A-Za-z0-9_]+$"
                     }
                   },
-                  "description": "Only with the webhook notify target: the URL fleet-watch POSTs JSON to."
+                  "description": "Only with the webhook notify target: the URL notify POSTs JSON to."
                 },
                 "notify-ntfy-url": {
                   "type": "object",
@@ -970,7 +970,7 @@
                       "pattern": "^[A-Za-z0-9_]+$"
                     }
                   },
-                  "description": "Only with the ntfy notify target: the ntfy topic URL fleet-watch publishes to."
+                  "description": "Only with the ntfy notify target: the ntfy topic URL notify publishes to."
                 },
                 "github-token": {
                   "type": "object",
@@ -1001,7 +1001,7 @@
                       "pattern": "^[A-Za-z0-9_]+$"
                     }
                   },
-                  "description": "Optional: a short-lived, single-use, tagged Tailscale auth key a new worker joins the tailnet with (fleet-node-seed)."
+                  "description": "Optional: a short-lived, single-use, tagged Tailscale auth key a new worker joins the tailnet with (provision)."
                 },
                 "tailnet-admin": {
                   "type": "object",
@@ -1046,7 +1046,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["name", "email"],
-      "description": "The Git identity every node, the manager included, commits with, and the GitHub credential helper it pushes with. fleet-sync writes them in ~/.config/git/config and measures them as worker:git-identity and worker:git-push-auth.",
+      "description": "The Git identity every node, the manager included, commits with, and the GitHub credential helper it pushes with. converge writes them in ~/.config/git/config and measures them as worker:git-identity and worker:git-push-auth.",
       "properties": {
         "name": {
           "type": "string",
@@ -1070,7 +1070,7 @@
       }
     },
     "notify": {
-      "description": "Where fleet-watch sends a notification when a machine becomes unhealthy or recovers. Each target's address is a secret: notify-webhook-url (a JSON POST) or notify-ntfy-url (an ntfy topic URL).",
+      "description": "Where notify sends a notification when a machine becomes unhealthy or recovers. Each target's address is a secret: notify-webhook-url (a JSON POST) or notify-ntfy-url (an ntfy topic URL).",
       "type": "object",
       "additionalProperties": false,
       "required": ["targets"],
@@ -1149,12 +1149,12 @@
         "sandbox": {
           "type": "string",
           "pattern": "^[a-zA-Z0-9-]{1,39}/[A-Za-z0-9._-]{1,100}$",
-          "description": "owner/name of a repository fleet-github-verify branches, pushes to and opens pull requests on, then cleans up."
+          "description": "owner/name of a repository check-github branches, pushes to and opens pull requests on, then cleans up."
         }
       }
     },
     "tailnet": {
-      "description": "Optional: the tailnet control plane fleet-sync and fleet-node-seed enrol new workers with, without a login on the machine. Its credential is the secret tailnet-admin.",
+      "description": "Optional: the tailnet control plane converge and provision enrol new workers with, without a login on the machine. Its credential is the secret tailnet-admin.",
       "oneOf": [
         {
           "type": "object",

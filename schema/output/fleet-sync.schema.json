@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "fleet-sync.schema.json",
-  "title": "The fleet-sync report, version 3",
+  "title": "The converge report, version 3",
   "description": "What homelab converge prints with --json. A preview (--dry-run) adds plan.",
   "type": "object",
   "required": [
@@ -53,7 +53,7 @@
     },
     "desiredRevision": { "type": ["string", "null"] },
     "selectedBy": {
-      "description": "What selected the desired revision: the installed package, --revision, --rollback, the manager's schedule, the HEAD of the checkout fleet-sync was started in, or the revision already approved.",
+      "description": "What selected the desired revision: the installed package, --revision, --rollback, the manager's schedule, the HEAD of the checkout converge was started in, or the revision already approved.",
       "type": "object",
       "required": ["by"],
       "properties": {

@@ -92,7 +92,7 @@ export async function discardAgentBox(): Promise<void> {
   if (created) await runCommand(['docker', 'rm', '-f', created.container]);
 }
 
-/** The variables fleet-sync delivers: a real key, a disposable token. */
+/** The variables converge delivers: a real key, a disposable token. */
 async function variables(container: string, hub: string): Promise<void> {
   const scratch = await mkdtemp(join(tmpdir(), 'fleet-agent-box-'));
   try {

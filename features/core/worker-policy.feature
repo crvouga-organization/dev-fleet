@@ -30,7 +30,7 @@ Feature: What every worker must have
 
   Scenario: A roster entry for a machine the configuration does not declare is refused
     The refusal names the fleet.json to declare the worker in by the path
-    this run read it from, and never the copy fleet-sync installs.
+    this run read it from, and never the copy converge installs.
     Given a roster of these workers:
       | id          | ssh         | workspace           | required |
       | worker-nine | worker-nine | /home/dev/workspace | nothing  |

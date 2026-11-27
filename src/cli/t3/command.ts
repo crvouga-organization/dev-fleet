@@ -16,7 +16,7 @@ export async function t3Command(
     : await diagnoseT3('deployment', () => deployment(settings.workspace));
   const workspace = deployed?.workspace ?? settings.workspace;
   const target = paths(options, workspace);
-  if (command === 't3-apply' && options.import !== undefined)
+  if (command === 't3-reconcile' && options.import !== undefined)
     return importCommand(target, options);
   const instances = await diagnoseT3('definition', () =>
     declared(command, target.definition, workspace, {
@@ -41,7 +41,7 @@ function declared(
   workspace: string,
   options: T3Options & { id: string }
 ): Promise<Record<string, unknown>> {
-  if (command === 't3-cleanup') return Promise.resolve({});
+  if (command === 't3-remove') return Promise.resolve({});
   // An explicit definition is the complete instance set.
   const roster =
     options.roster ?? (options.definition ? async () => [] : undefined);
@@ -54,11 +54,11 @@ async function importCommand(
 ): Promise<CommandOutcome> {
   if (options.dryRun)
     throw new FleetUsageError(
-      't3-apply --import adopts ownership and cannot be combined with --dry-run; inspect t3-apply --dry-run first.'
+      't3-reconcile --import adopts ownership and cannot be combined with --dry-run; inspect t3-reconcile --dry-run first.'
     );
   if (!options.import || !/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/.test(options.import))
     throw new FleetUsageError(
-      't3-apply --import expects an instance ID. Import authorizes management of that entire provider instance.'
+      't3-reconcile --import expects an instance ID. Import authorizes management of that entire provider instance.'
     );
   return {
     exitCode: 0,
@@ -74,13 +74,13 @@ function reconcileOptions(apply: boolean, options: T3Options) {
 }
 
 function shouldApply(command: string, options: T3Options): boolean {
-  return ['t3-apply', 't3-cleanup'].includes(command) && !options.dryRun;
+  return ['t3-reconcile', 't3-remove'].includes(command) && !options.dryRun;
 }
 function outcomeCode(
   command: string,
   data: { ok: boolean; changed: boolean }
 ): number {
-  return !data.ok || (command === 't3-status' && data.changed) ? 1 : 0;
+  return !data.ok || (command === 't3' && data.changed) ? 1 : 0;
 }
 
 function requireSupportedPlatform(instances: Record<string, unknown>): void {

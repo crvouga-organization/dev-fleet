@@ -1,4 +1,4 @@
-Feature: fleet-sync brings the manager's fleet state up to the bucket before it changes anything, and uploads what it records
+Feature: converge brings the manager's fleet state up to the bucket before it changes anything, and uploads what it records
   A run records the revision it was approved for in the fleet state. With a
   bucket, it first takes the bucket's version when its own copy is stale,
   refuses to run on a copy that diverged, and uploads its record even when it
@@ -14,10 +14,10 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
   `$BUCKET` is the directory that stands in for the bucket.
 
   Background:
-    Given fleet-sync runs on a manager with no worker enrolled
+    Given converge runs on a manager with no worker enrolled
 
   Scenario: Without a bucket a run still records its approval in the local state
-    When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    When converge runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     Then the command exits 1
     And the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
     And the approved revision of the manager is "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -27,7 +27,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
   Scenario: A run uploads its approval even when it stops before its report
     Given the manager saved the bucket "$BUCKET" in its bucket.json
     And manager "b" replicates to the bucket
-    When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    When converge runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     Then the manager stands "in-sync" with the bucket
     And a refresh of manager "b" reports "in-sync"
     And the enrollment in the fleet state of manager "b" contains "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -45,7 +45,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
         "appliedRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
       """
-    When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    When converge runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     Then the run started over 1 time
     And the approved revision of the manager is "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     And the applied revision of the manager is "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
@@ -55,10 +55,10 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
   Scenario: A manager whose state diverged from the bucket changes nothing
     Given the manager saved the bucket "$BUCKET" in its bucket.json
     And manager "b" replicates to the bucket
-    And fleet-sync ran for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    And converge ran for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     And manager "b" refreshed its copy
     And the bucket stopped answering
-    And fleet-sync ran for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    And converge ran for revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     And the bucket answered again
     And manager "b" stored the enrollment and uploaded it:
       """
@@ -68,7 +68,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
         "approvedRevision": "cccccccccccccccccccccccccccccccccccccccc"
       }
       """
-    When fleet-sync runs for revision "dddddddddddddddddddddddddddddddddddddddd"
+    When converge runs for revision "dddddddddddddddddddddddddddddddddddddddd"
     Then the command exits 1
     And the report contains "FLEET_STATE_DIVERGED"
     And the report contains "state --restore --yes"
@@ -77,7 +77,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
 
   Scenario: A preview records no approval
     Given the manager saved the bucket "$BUCKET" in its bucket.json
-    When fleet-sync previews revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    When converge previews revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     Then the command exits 1
     And the manager has no enrollment
 
@@ -95,7 +95,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
         "appliedRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
       """
-    When fleet-sync previews revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    When converge previews revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     Then the run started over 1 time
     And the enrollment of the manager is exactly:
       """
@@ -119,7 +119,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
       """
     And the process runs with the fleet.json "~/fleet.json"
     And manager "b" replicates to the bucket
-    When fleet-sync runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    When converge runs for revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
     Then Litestream was started
     And a refresh of manager "b" reports "in-sync"
     And the fleet state of manager "b" holds the configuration that "~/fleet.json" on the manager declares
@@ -138,7 +138,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
         "previousRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       }
       """
-    When fleet-sync rolls back
+    When converge rolls back
     Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
     And the approved revision of the manager is "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
@@ -156,7 +156,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
         "previousRevision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       }
       """
-    When fleet-sync rolls back
+    When converge rolls back
     Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
     And the approved revision of the manager is "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
@@ -170,7 +170,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
         "appliedRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
       """
-    When fleet-sync rolls back
+    When converge rolls back
     Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
     And the approved revision of the manager is "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
 
@@ -184,7 +184,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
         "appliedRevision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
       }
       """
-    When fleet-sync rolls back
+    When converge rolls back
     Then the command exits 1
     And the report contains "FLEET_ROLLBACK_UNAVAILABLE"
     And the enrollment in the fleet state of the manager is what it was before the run
@@ -210,7 +210,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
 
     Scenario: A branch revision is refused, and the approved revision stays
       Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
-      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      When converge runs for revision "cccccccccccccccccccccccccccccccccccccccc"
       Then the command exits 1
       And the report contains "FLEET_REVISION_UNMERGED"
       And the report contains "selected by --revision"
@@ -220,14 +220,14 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
     Scenario: A preview of a branch revision is refused too
       A preview says what a sync would do.
       Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
-      When fleet-sync previews revision "cccccccccccccccccccccccccccccccccccccccc"
+      When converge previews revision "cccccccccccccccccccccccccccccccccccccccc"
       Then the command exits 1
       And the report contains "FLEET_REVISION_UNMERGED"
 
     Scenario: --rollback to a revision that is not on the default branch is refused
       The revision applied before was itself converged with --allow-unmerged.
       Given the default branch of the source repository does not hold revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-      When fleet-sync rolls back
+      When converge rolls back
       Then the command exits 1
       And the report contains "FLEET_REVISION_UNMERGED"
       And the report contains "selected by --rollback"
@@ -238,7 +238,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
       branch, and the source repository cannot be asked.
       Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
       And the source repository cannot be fetched
-      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      When converge runs for revision "cccccccccccccccccccccccccccccccccccccccc"
       Then the command exits 1
       And the report contains "FLEET_REVISION_UNVERIFIED"
       And the enrollment in the fleet state of the manager is what it was before the run
@@ -246,13 +246,13 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
     Scenario: A revision already known to be on the default branch needs no fetch
       The schedule converges the fleet while the source repository is away.
       Given the source repository cannot be fetched
-      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      When converge runs for revision "cccccccccccccccccccccccccccccccccccccccc"
       Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
       And the approved revision of the manager is "cccccccccccccccccccccccccccccccccccccccc"
 
     Scenario: With --allow-unmerged the revision is approved, and the fleet state says so
       Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
-      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc" with --allow-unmerged
+      When converge runs for revision "cccccccccccccccccccccccccccccccccccccccc" with --allow-unmerged
       Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
       And the approved revision of the manager is "cccccccccccccccccccccccccccccccccccccccc"
       And the fleet state says the approved revision was selected by "--revision (--allow-unmerged)"
@@ -263,23 +263,23 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
       --revision.
       Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
       And the process runs from the fleet-owned checkout of revision "cccccccccccccccccccccccccccccccccccccccc", told "cccccccccccccccccccccccccccccccccccccccc:checkout@worker-one+unmerged"
-      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      When converge runs for revision "cccccccccccccccccccccccccccccccccccccccc"
       Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
-      And the fleet state says the approved revision was selected by "the HEAD of the checkout fleet-sync was started in, handed off from worker-one (--allow-unmerged)"
+      And the fleet state says the approved revision was selected by "the HEAD of the checkout converge was started in, handed off from worker-one (--allow-unmerged)"
 
     Scenario: A run started on the manager's own launcher after a hand-off believes what it was told about its revision
       The worker was given --allow-unmerged; the run on the manager is given
       only --revision.
       Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
       And the process is told "cccccccccccccccccccccccccccccccccccccccc:revision@worker-one+unmerged"
-      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      When converge runs for revision "cccccccccccccccccccccccccccccccccccccccc"
       Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
       And the fleet state says the approved revision was selected by "--revision, handed off from worker-one (--allow-unmerged)"
 
     Scenario: What a run was told about another revision says nothing about this one
       Given the default branch of the source repository does not hold revision "cccccccccccccccccccccccccccccccccccccccc"
       And the process is told "dddddddddddddddddddddddddddddddddddddddd:revision+unmerged"
-      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      When converge runs for revision "cccccccccccccccccccccccccccccccccccccccc"
       Then the command exits 1
       And the report contains "FLEET_REVISION_UNMERGED"
       And the enrollment in the fleet state of the manager is what it was before the run
@@ -308,7 +308,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
 
     Scenario: --rollback to an earlier release that would replace the manager's mise is refused
       Given revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
-      When fleet-sync rolls back
+      When converge rolls back
       Then the command exits 1
       And the report contains "FLEET_MISE_DOWNGRADE"
       And the report contains "pins mise 2026.10.24"
@@ -318,7 +318,7 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
 
     Scenario: A run for such a revision is refused whatever selected it
       Given revision "cccccccccccccccccccccccccccccccccccccccc" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
-      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      When converge runs for revision "cccccccccccccccccccccccccccccccccccccccc"
       Then the command exits 1
       And the report contains "FLEET_MISE_DOWNGRADE"
       And the enrollment in the fleet state of the manager is what it was before the run
@@ -326,23 +326,23 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
     Scenario: A preview of such a revision is refused too
       A preview says what a sync would do.
       Given revision "cccccccccccccccccccccccccccccccccccccccc" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
-      When fleet-sync previews revision "cccccccccccccccccccccccccccccccccccccccc"
+      When converge previews revision "cccccccccccccccccccccccccccccccccccccccc"
       Then the command exits 1
       And the report contains "FLEET_MISE_DOWNGRADE"
 
-    Scenario: Asked only the question, fleet-sync gives the same refusal and records nothing
+    Scenario: Asked only the question, converge gives the same refusal and records nothing
       --measure-mise is how the guard of a hand-off asks the manager's
       installed homelab, before the revision's own run script starts there.
       Given revision "cccccccccccccccccccccccccccccccccccccccc" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
-      When fleet-sync is asked only what revision "cccccccccccccccccccccccccccccccccccccccc" would do to mise
+      When converge is asked only what revision "cccccccccccccccccccccccccccccccccccccccc" would do to mise
       Then the command exits 1
       And the report contains "FLEET_MISE_DOWNGRADE"
       And the report contains "(2026.11.11)"
       And the enrollment in the fleet state of the manager is what it was before the run
 
-    Scenario: Asked only the question about a revision that keeps a newer mise, fleet-sync says so and approves nothing
+    Scenario: Asked only the question about a revision that keeps a newer mise, converge says so and approves nothing
       Given revision "cccccccccccccccccccccccccccccccccccccccc" pins mise "2026.10.24", and its toolchain bootstrap keeps a newer mise
-      When fleet-sync is asked only what revision "cccccccccccccccccccccccccccccccccccccccc" would do to mise
+      When converge is asked only what revision "cccccccccccccccccccccccccccccccccccccccc" would do to mise
       Then the command exits 0
       And the report includes:
         """
@@ -352,21 +352,21 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
 
     Scenario: With --allow-mise-downgrade the rollback goes on
       Given revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
-      When fleet-sync rolls back with --allow-mise-downgrade
+      When converge rolls back with --allow-mise-downgrade
       Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
       And the approved revision of the manager is "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
     Scenario: A revision whose bootstrap keeps a newer mise is not refused
-      Its bootstrap keeps the manager's mise, and fleet-status reports the
+      Its bootstrap keeps the manager's mise, and check reports the
       warning TOOLCHAIN_DOWNGRADE.
       Given revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" pins mise "2026.10.24", and its toolchain bootstrap keeps a newer mise
-      When fleet-sync rolls back
+      When converge rolls back
       Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
       And the approved revision of the manager is "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
     Scenario: A revision that pins the mise the manager runs is not refused
       Given revision "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" pins mise "2026.11.11", and its toolchain bootstrap is from before the rule that keeps a newer mise
-      When fleet-sync rolls back
+      When converge rolls back
       Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"
       And the approved revision of the manager is "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 
@@ -375,5 +375,5 @@ Feature: fleet-sync brings the manager's fleet state up to the bucket before it 
       checkout; the run there is the revision's own code.
       Given revision "cccccccccccccccccccccccccccccccccccccccc" pins mise "2026.10.24", and its toolchain bootstrap is from before the rule that keeps a newer mise
       And the process runs from the fleet-owned checkout of revision "cccccccccccccccccccccccccccccccccccccccc", told "cccccccccccccccccccccccccccccccccccccccc:revision"
-      When fleet-sync runs for revision "cccccccccccccccccccccccccccccccccccccccc"
+      When converge runs for revision "cccccccccccccccccccccccccccccccccccccccc"
       Then the report contains "FLEET_MANAGER_ENROLLMENT_REQUIRED"

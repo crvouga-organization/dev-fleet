@@ -147,7 +147,7 @@ export interface ModelsOptions {
   t3Home: string;
   roster: Roster;
   required?: Record<string, string[]>;
-  /** Write what each account's instance shows (fleet-sync); without it the
+  /** Write what each account's instance shows (converge); without it the
    * check only measures, and says what a sync would change.
    */
   apply?: boolean;
@@ -231,7 +231,7 @@ export async function modelsCheck(options: ModelsOptions): Promise<Check> {
   if (result.changes.size && !options.apply)
     return warn(
       'T3_MODELS_PENDING',
-      `fleet-sync would change what T3 shows for an account’s instance, so that it shows only the models the proxy serves for that account: ${[...result.changes].sort().join('; ')}.`
+      `converge would change what T3 shows for an account’s instance, so that it shows only the models the proxy serves for that account: ${[...result.changes].sort().join('; ')}.`
     );
   return {
     id: 't3:models',

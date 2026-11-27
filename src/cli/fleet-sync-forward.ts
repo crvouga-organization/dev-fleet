@@ -97,7 +97,7 @@ export const ANCESTRY_GUARD = [
   `held "$1" || exit ${GUARD_EXIT.unmerged}`,
 ].join('\n');
 
-/** fleet-sync only ever runs on the manager. Started on a worker, it hands the
+/** converge only ever runs on the manager. Started on a worker, it hands the
  * same request to the manager over host-key-verified SSH (no agent forwarding,
  * no credentials copied) and reports the manager's result unchanged.
  */
@@ -118,7 +118,7 @@ export async function forwardToManager(
   const spawnRemote = remote.spawn ?? spawnInherited;
   const { manager } = definition;
   process.stderr.write(
-    `fleet-sync runs on the manager; handing off to ${manager.id} over SSH…\n`
+    `converge runs on the manager; handing off to ${manager.id} over SSH…\n`
   );
   const result = await spawnRemote(
     managerCommand(definition, options, revision, remote)
@@ -191,7 +191,7 @@ function handOffFailure(
 }
 
 /** With the revision's tracked `fleet-manager-run.sh`, the manager runs
- * fleet-sync from a clean checkout of that exact revision; otherwise (no
+ * converge from a clean checkout of that exact revision; otherwise (no
  * revision, or an older one without the script) its installed launcher.
  * Either way the manager is first asked whether the default branch holds the
  * revision and whether it would replace the mise of the manager or of a
@@ -296,7 +296,7 @@ const INTERNAL = elsewhere(
 );
 
 /** Every option of a request and how the hand-off carries it, in the order
- * the flags are written. An option added to fleet-sync does not compile
+ * the flags are written. An option added to converge does not compile
  * until it is listed here: none is dropped without a reason.
  */
 export const HAND_OFF: {

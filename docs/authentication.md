@@ -68,14 +68,14 @@ repairs. Either way every check on the manager that needed a secret (the
 hub's account, tunnel, viewer and backups, a notification target, the
 tailnet control plane's credential, the GitHub token, the proxy client key)
 reports `SECRET_READ_BLOCKED by manager:vault-renewal` instead of a code of
-its own, and `fleet-node-seed` refuses with the same words. A secret that is
+its own, and `provision` refuses with the same words. A secret that is
 absent while the manager can read its provider keeps the code of the check
 that needs it.
 
 A worker is the same with its own login. `worker:vault-renewal` owns it: a
 session that does not answer while Vault does is
 `UNATTENDED_VAULT_IDENTITY_REQUIRED`, fixed by the worker's token (the next
-sync delivers it, `fleet-node-replace` issues a new one), and a Vault that
+sync delivers it, `replace` issues a new one), and a Vault that
 does not answer the worker, or is sealed, is `VAULT_UNREACHABLE`, which no
 token repairs. The sync that would have delivered a token says the same as
 `auth:vault` and delivers none. Every check on the worker that needed a

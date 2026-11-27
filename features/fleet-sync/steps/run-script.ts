@@ -38,7 +38,7 @@ const IDENTITY = {
 export interface Manager {
   home: string;
   origin: string;
-  /** The manager's own copy of the source repository, as fleet-sync makes it. */
+  /** The manager's own copy of the source repository, as converge makes it. */
   cache: string;
   runs: string;
   env: Record<string, string>;
@@ -209,9 +209,9 @@ When(
 );
 
 When(
-  'the run script is started for the commit {string} with {string}, from the repository fleet-sync prepared',
+  'the run script is started for the commit {string} with {string}, from the repository converge prepared',
   (world, message: string, flags: string) => {
-    // fleet-sync names the repository it prepared: the manager's own copy.
+    // converge names the repository it prepared: the manager's own copy.
     startRunScript(
       world,
       (node) => sha(node, message),

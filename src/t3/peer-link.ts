@@ -174,7 +174,7 @@ function remedy(id: string, reason: string): string {
     case 'unavailable':
       return "The manager's T3 did not answer on this machine. Open the T3 app (or start its service), then run the command again.";
     default:
-      return `The T3 of ${id} refused the link (${reason}). Check that it runs the T3 policy fleet-sync stages (Linked environments on) and answers at its private address, then run homelab converge --node ${id}.`;
+      return `The T3 of ${id} refused the link (${reason}). Check that it runs the T3 policy converge stages (Linked environments on) and answers at its private address, then run homelab converge --node ${id}.`;
   }
 }
 

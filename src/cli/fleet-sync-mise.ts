@@ -74,7 +74,7 @@ function release(stdout: string): string | null {
   return /^(\d+(?:\.\d+){1,3})(?:\s|$)/.exec(stdout.trim())?.[1] ?? null;
 }
 
-/** The flag that makes fleet-sync answer the question and change nothing.
+/** The flag that makes converge answer the question and change nothing.
  * A homelab from before the flag refuses it, which is how the guard of a
  * hand-off tells that the manager's installed one cannot answer.
  */

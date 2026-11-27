@@ -25,7 +25,7 @@ import { git, manager, sha, type Manager } from './run-script';
  */
 const { Given, When, Then } = fleetSync;
 
-/** Starts what fleet-sync would, with the home and identity of the manager. */
+/** Starts what converge would, with the home and identity of the manager. */
 const real =
   (node: Manager): Runner =>
   (command, options) => {

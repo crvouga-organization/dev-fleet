@@ -3,7 +3,7 @@ import type { PackagePlaybook } from './platform/ansible';
 import { protectionWaitsForReboot } from './platform/resource-verify';
 import { blocking, type Check, type FleetNode } from './types';
 
-/** Why fleet-sync reboots a worker: its first converge, which nothing can be
+/** Why converge reboots a worker: its first converge, which nothing can be
  * running on yet, or a maintenance reboot the operator asked for
  * (`--maintenance-reboot`) to apply installed updates.
  */

@@ -22,7 +22,7 @@ const guardsRunning: Probe = async (run) => {
     if (!active.ok || active.stdout.trim() !== 'active')
       return [
         code,
-        `${unit} is not running. Reapply fleet-sync; runaway memory or disk use is unguarded until then.`,
+        `${unit} is not running. Reapply converge; runaway memory or disk use is unguarded until then.`,
       ];
   }
   const timer = await run([
@@ -92,7 +92,7 @@ const memoryReserved: Probe = async (run) => {
     ? undefined
     : [
         'MEMORY_RESERVE_MISSING',
-        'User workloads are not capped below physical memory, or swap exhaustion is unmanaged. Reapply fleet-sync.',
+        'User workloads are not capped below physical memory, or swap exhaustion is unmanaged. Reapply converge.',
       ];
 };
 
@@ -101,7 +101,7 @@ const agentsBounded: Probe = async (run) =>
     ? undefined
     : [
         'AGENT_MEMORY_LIMIT_MISSING',
-        'T3 agent scopes have no per-agent memory limit. Reapply fleet-sync; new agents pick it up without restarts.',
+        'T3 agent scopes have no per-agent memory limit. Reapply converge; new agents pick it up without restarts.',
       ];
 
 const agentSliceBounded: Probe = async (run) => {
@@ -162,7 +162,7 @@ const swapActive: Probe = async (run) => {
   if (!swaps.ok || !rows.length)
     return [
       'SWAP_MISSING',
-      'Reapply fleet-sync with enough free disk for overflow swap.',
+      'Reapply converge with enough free disk for overflow swap.',
     ];
   const zram = policy.resourceSafety.zram;
   const priority = (row: string[]) => Number(row[4]);
@@ -321,7 +321,7 @@ async function missingReserves(group: string, run: Runner): Promise<string[]> {
 
 /** Whether the user manager the listener runs under hands the io controller
  * down to its units. Ubuntu delegates it cpu, memory and pids only, and
- * fleet-sync declares io for it (`Delegate=` on `user@<uid>.service`). The
+ * converge declares io for it (`Delegate=` on `user@<uid>.service`). The
  * manager's `cgroup.controllers` lists io as soon as that is loaded, but the
  * running manager enables only the controllers it found when it started:
  * what it hands down is its `cgroup.subtree_control`, which gains io on its
@@ -347,9 +347,9 @@ const PROTECTION_REMEDY = {
   unobserved:
     'No process of the worker user was found listening on the T3 port, so there is no reserve to measure: T3 is stopped or restarting. Check worker:t3-recovery and worker:t3-health, then rerun homelab check --workers.',
   manager:
-    'The user manager does not hand the io controller down: fleet-sync declares it for the user manager, which takes it on its next start. Reboot the worker while it runs no agent turn (homelab converge --maintenance-reboot). Restarting T3 does not change it, and the CPU and memory reserve are already in place.',
+    'The user manager does not hand the io controller down: converge declares it for the user manager, which takes it on its next start. Reboot the worker while it runs no agent turn (homelab converge --maintenance-reboot). Restarting T3 does not change it, and the CPU and memory reserve are already in place.',
   undeclared:
-    'Run homelab converge on this worker: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. If the check still fails, the listener runs outside the units fleet-sync declares; inspect its cgroup.',
+    'Run homelab converge on this worker: it declares the reserve for the unit T3 serves from and reloads the user manager, which applies it to the running T3 without a restart. If the check still fails, the listener runs outside the units converge declares; inspect its cgroup.',
 };
 
 /** The cgroup of the process listening on the T3 port; undefined when none
@@ -517,7 +517,7 @@ export async function rendererCheck(run: Runner): Promise<Check> {
     summary: 'T3_RENDERER_LIMIT_UNVERIFIED',
     remedy: {
       action:
-        'Apply fleet-sync and check the renderer subgroup after the desktop service next restarts and its recovery timer runs.',
+        'Apply converge and check the renderer subgroup after the desktop service next restarts and its recovery timer runs.',
     },
   };
 }

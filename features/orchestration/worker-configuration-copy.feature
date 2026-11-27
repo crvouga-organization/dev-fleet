@@ -1,6 +1,6 @@
 @linux
 Feature: A worker's copy of the configuration that was edited there is refused, not replaced
-  fleet-sync sends every worker the fleet configuration, and the remote
+  converge sends every worker the fleet configuration, and the remote
   bootstrap installs it at ~/.config/homelab/fleet.json before anything
   else. Beside the copy it keeps its record, fleet.json.sha256: what the copy
   was when it was last written. A copy that no longer matches its record was

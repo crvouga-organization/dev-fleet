@@ -16,7 +16,7 @@ export function parkedCheck(id: string, parkedAt: string, now: Date): Check {
   };
 }
 
-/** What fleet-sync converges once parked workers are set aside: the fleet
+/** What converge converges once parked workers are set aside: the fleet
  * without them (so none is contacted, expected online or made the canary)
  * and a not-applicable check for each, which never changes the exit code.
  */

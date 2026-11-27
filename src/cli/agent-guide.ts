@@ -4,10 +4,10 @@ const SAFETY = [
   'No arguments prints help, including on a TTY. --json returns this document. The menu requires --interactive; --json and --non-interactive never prompt.',
   'Diagnostics, onboarding instructions, schema, catalogs, scripts and repair previews are read-only.',
   'converge, converge-local, t3-reconcile and t3-remove apply by invocation; --dry-run previews. t3-reconcile --import ID explicitly adopts ownership. --json never implies a dry run. enroll and repair require --apply --yes.',
-  'fleet-state alone is read-only; --init, --import, --push and --restore each act on invocation. Bucket credentials come from HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY or a terminal prompt, never from arguments.',
+  'state alone is read-only; --init, --import, --push and --restore each act on invocation. Bucket credentials come from HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY or a terminal prompt, never from arguments.',
   'Do not copy credentials, forward SSH agents, bypass host keys, provision infrastructure or execute unreviewed remedies.',
-  'A healthy manager does not prove another machine can connect to it. Run fleet-status from each intended manager.',
-  'fleet-repair executes only allowlisted owner actions, then reruns diagnostics. Native logins, host trust and resource permissions remain explicit operator steps. Pass the reviewed planHash as --plan-hash to reject a changed plan.',
+  'A healthy manager does not prove another machine can connect to it. Run check from each intended manager.',
+  'repair executes only allowlisted owner actions, then reruns diagnostics. Native logins, host trust and resource permissions remain explicit operator steps. Pass the reviewed planHash as --plan-hash to reject a changed plan.',
   'Shared provider keys are fetched through each machine’s existing Vault authorization by workstation tooling. Never copy machine-local login caches.',
   'Use exact npm versions for automation. The application never self-updates.',
 ];
@@ -39,7 +39,7 @@ function support(release: Release) {
     report:
       'A defect in homelab, or something it cannot do yet, is raised as an issue in the homelab repository: one issue per bug or feature request, after searching the open ones. From any other project that is the only way to change homelab. Tell the operator what is blocked and link the issue.',
     never:
-      'Do not edit the installed package, a checkout fleet-sync owns or a file homelab manages on a machine: the next install or fleet-sync replaces each of them. Do not clone homelab to patch it, vendor a modified copy, or hide the defect behind a workaround in the project that holds fleet.json.',
+      'Do not edit the installed package, a checkout converge owns or a file homelab manages on a machine: the next install or converge replaces each of them. Do not clone homelab to patch it, vendor a modified copy, or hide the defect behind a workaround in the project that holds fleet.json.',
     include:
       'homelab --version, the command and its flags, the error code or the failing check IDs from --json, what happened and what was expected.',
     withhold:
@@ -63,9 +63,9 @@ export function agentGuide(release: Release) {
       'homelab --interactive (explicit opt-in; TTY required, disabled in CI)',
     groups: {
       'fleet-*':
-        'Developer computers: fleet-status, tailnet, fleet-sync, fleet-state, history, converge-local, fleet-repair, fleet-nodes, enroll',
+        'Developer computers: check, tailnet, converge, state, history, converge-local, repair, workers, enroll',
       t3: 'Declared T3 provider instances: t3, t3-reconcile, t3-remove',
-      cliproxy: 'The CLI proxy service on the manager; arguments are forwarded',
+      proxy: 'The CLI proxy service on the manager; arguments are forwarded',
     },
     configuration: {
       workspace:
@@ -73,15 +73,15 @@ export function agentGuide(release: Release) {
       roster:
         '--config PATH, PERSONAL_FLEET_CONFIG, closest ancestor .fleet.local.json, then the roster in the fleet state',
       definition:
-        'HOMELAB_CONFIG, then the closest fleet.json in the working directory or above it (the operator’s project), then the configuration fleet-sync last applied from the fleet state (the homelab CLI on the manager), then the copy fleet-sync installed at ~/.config/homelab/fleet.json. Never edit that copy: fleet-sync replaces it, and refuses with FLEET_CONFIGURATION_COPY_CHANGED when it was edited by hand',
+        'HOMELAB_CONFIG, then the closest fleet.json in the working directory or above it (the operator’s project), then the configuration converge last applied from the fleet state (the homelab CLI on the manager), then the copy converge installed at ~/.config/homelab/fleet.json. Never edit that copy: converge replaces it, and refuses with FLEET_CONFIGURATION_COPY_CHANGED when it was edited by hand',
       state:
         'HOMELAB_STATE or ~/.local/share/homelab/state: a local copy of the roster, the approved revision and the configuration last applied. The bucket named under "state" in the fleet configuration is the source of truth; its credentials are passed in HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY, or saved by homelab state --init in ~/.config/homelab/bucket.json for unattended runs. homelab state --json compares the copies',
       revision:
-        'The commit the published package names (homelab --version). fleet-sync converges every machine to it; --revision SHA selects another',
+        'The commit the published package names (homelab --version). converge converges every machine to it; --revision SHA selects another',
     },
     output: {
       stdout:
-        'Public diagnostics emit one versioned JSON document with --json. cliproxy retains its owner output contract; native agent launch commands stream native output.',
+        'Public diagnostics emit one versioned JSON document with --json. proxy retains its owner output contract; native agent launch commands stream native output.',
       exitCodes: {
         '0': 'Success or preview',
         '1': 'Failed check or operation; strict also rejects warnings/skips',
@@ -91,7 +91,7 @@ export function agentGuide(release: Release) {
       errors:
         'schema/output/error.schema.json: {version:1,ok:false,code,error}; raw subprocess output and exception details are withheld',
       reports:
-        'These outputs have a JSON schema in this package; parse by it and by its version. Diagnostic reports of check, state and repair (whose report names its command repair): schema/output/report.schema.json, version 1. converge: schema/output/fleet-sync.schema.json, version 3 (a --dry-run adds plan). converge --schedule: schema/output/fleet-sync-schedule.schema.json, version 2. state --example and --export: schema/output/fleet-state-definition.schema.json, version 1. history: schema/output/history.schema.json, version 1. Any other --json document carries its version, and command and ok where it reports an outcome, but has no published schema yet.',
+        'These outputs have a JSON schema in this package; parse by it and by its version. Diagnostic reports of check, state and repair (whose report names its command repair): schema/output/report.schema.json, version 1. converge: schema/output/fleet-sync.schema.json, version 3 (a --dry-run adds plan). converge --schedule: schema/output/fleet-sync-schedule.schema.json, version 2. state --example and --export: schema/output/fleet-state-definition.schema.json, version 1. history: schema/output/fleet-report.schema.json, version 1. Any other --json document carries its version, and command and ok where it reports an outcome, but has no published schema yet.',
       checks:
         'schema/check-ids.json (schema/check-ids.schema.json), generated from the code, lists every check ID: meaning, what a passing check means; severity, required (a failure blocks readiness unless the run marks the check out of scope) or advisory (a warning or not required, never blocking); repair, {recipe} the repair recipe that repairs it or {manual} why only a person can. A * stands for a name taken at run time (a node, a tool, an account). Each failing check also carries its own remedy.',
       statuses: ['pass', 'warn', 'fail', 'skip', 'not-applicable'],

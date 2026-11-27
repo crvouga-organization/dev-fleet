@@ -88,7 +88,7 @@ const worker = (table: DataTable): FleetNode => {
 When('the roster {string} is read', (world, path: string) =>
   world.attempt(() => readRoster(path))
 );
-When('the roster {string} is loaded for a fleet-sync', (world, path: string) =>
+When('the roster {string} is loaded for a converge', (world, path: string) =>
   world.attempt(() => loadRoster(path))
 );
 When(
@@ -280,7 +280,7 @@ Then(phrase(WHO, ' has no enrollment'), async (world, name?: string) => {
   expect(await loadEnrollment(null, world.manager(name).stateEnv)).toBeNull();
 });
 
-// ── What one fleet-sync run records ──────────────────────────────────────
+// ── What one converge run records ──────────────────────────────────────
 
 const runs = scratch<{
   record?: RunRecord;
@@ -290,7 +290,7 @@ const runs = scratch<{
   callsAtStart: number;
 }>(() => ({ callsAtStart: 0 }));
 
-/** As fleet-sync does: bring the copy up to the bucket, read what the last
+/** As converge does: bring the copy up to the bucket, read what the last
  * run recorded, then record this run's approval.
  */
 async function approve(
@@ -318,7 +318,7 @@ async function approve(
 }
 
 Given(
-  /^a fleet-sync run for revision "([a-f0-9]{40})" (?:is|was) approved at "([^"]+)", selected by:$/,
+  /^a converge run for revision "([a-f0-9]{40})" (?:is|was) approved at "([^"]+)", selected by:$/,
   (world, revision: string, at: string, selection: string) =>
     approve(world, revision, false, {
       selection: json(selection) as RevisionSelection,
@@ -327,12 +327,12 @@ Given(
 );
 
 Given(
-  /^a fleet-sync run for revision "([a-f0-9]{40})"( scoped with --node)? (?:is|was) approved$/,
+  /^a converge run for revision "([a-f0-9]{40})"( scoped with --node)? (?:is|was) approved$/,
   (world, revision: string, scoped: string | undefined) =>
     approve(world, revision, Boolean(scoped))
 );
 Given(
-  /^a fleet-sync run for revision "([a-f0-9]{40})" (converged|ended without converging)$/,
+  /^a converge run for revision "([a-f0-9]{40})" (converged|ended without converging)$/,
   async (world, revision: string, how: string) => {
     await approve(world, revision);
     await runs(world).record!.settle(how === 'converged');

@@ -7,7 +7,7 @@ Feature: Where the fleet state is kept is a few validated settings
 
     Scenario: An S3 bucket with its keys
       Given these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
@@ -16,7 +16,7 @@ Feature: Where the fleet state is kept is a few validated settings
       Then the bucket is exactly:
         | kind            | s3                     |
         | prefix          | homelab              |
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
@@ -27,7 +27,7 @@ Feature: Where the fleet state is kept is a few validated settings
       When the settings are read
       Then the bucket is exactly:
         | kind   | s3          |
-        | bucket | fleet-state |
+        | bucket | state |
         | prefix | homelab   |
 
     Scenario: A directory
@@ -68,7 +68,7 @@ Feature: Where the fleet state is kept is a few validated settings
 
     Background:
       Given these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
@@ -84,7 +84,7 @@ Feature: Where the fleet state is kept is a few validated settings
       And the saved bucket of the manager is exactly:
         | kind            | s3                     |
         | prefix          | homelab              |
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
@@ -110,7 +110,7 @@ Feature: Where the fleet state is kept is a few validated settings
 
     Scenario Outline: <what> names neither key
       Given these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
@@ -126,7 +126,7 @@ Feature: Where the fleet state is kept is a few validated settings
 
     Scenario: The keys reach Litestream through its environment
       Given these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
@@ -152,7 +152,7 @@ Feature: Where the fleet state is kept is a few validated settings
 
     Scenario: An S3 bucket is an "s3" replica under the prefix
       Given these bucket settings:
-        | bucket          | fleet-state            |
+        | bucket          | state            |
         | endpoint        | https://s3.example.com |
         | region          | auto                   |
         | accessKeyId     | AKIDEXAMPLE            |
@@ -160,7 +160,7 @@ Feature: Where the fleet state is kept is a few validated settings
       When the settings are read
       Then the Litestream configuration of "/state/fleet.db" contains each of:
         | type: s3                         |
-        | bucket: fleet-state              |
+        | bucket: state              |
         | path: homelab/fleet.db         |
         | endpoint: https://s3.example.com |
         | force-path-style: true           |

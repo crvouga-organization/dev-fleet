@@ -29,7 +29,7 @@
     owner: '{{ development_user }}'
     mode: '0600'
     content: |
-      # Managed by personal fleet-sync: ansible/ubuntu/t3-health.sh
+      # Managed by personal converge: ansible/ubuntu/t3-health.sh
       [Unit]
       Description=Keep the worker T3 desktop app running and responsive
       [Service]
@@ -69,7 +69,7 @@
     owner: '{{ development_user }}'
     mode: '0600'
     content: |
-      # Managed by personal fleet-sync: ansible/ubuntu/wip-guard.py
+      # Managed by personal converge: ansible/ubuntu/wip-guard.py
       [Unit]
       Description=Push work in progress of agent worktrees to recovery refs
       [Service]

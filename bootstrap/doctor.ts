@@ -238,7 +238,7 @@ const STANDING: Record<GlobalConfigStanding, string> = {
 
 /** On a fleet machine the global mise configuration belongs to homelab.
  * When anything else replaced it, its pins and the trusted agent worktree
- * roots are gone until the next fleet-sync.
+ * roots are gone until the next converge.
  */
 export function globalConfigCheck(
   dir?: string,

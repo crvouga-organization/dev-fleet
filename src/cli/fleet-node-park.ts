@@ -15,7 +15,7 @@ export interface NodeParkOptions {
   /** Park although agent turns are under way, or cannot be counted. */
   force?: boolean;
   dryRun?: boolean;
-  /** fleet-node-resume: its fleet-sync may converge to a revision that is
+  /** resume: its converge may converge to a revision that is
    * not on the default branch of the source repository.
    */
   allowUnmerged?: boolean;
@@ -28,7 +28,7 @@ export interface NodeParkServices {
   definition: () => FleetDefinition;
   state: () => StateContext;
   now: () => Date;
-  /** A normal fleet-sync of one worker, which verifies it. */
+  /** A normal converge of one worker, which verifies it. */
   sync: ParkSync;
 }
 
@@ -177,13 +177,13 @@ export async function fleetNodePark(
     {
       id: 'worker:parked',
       status: 'pass',
-      summary: `${worker.id} is parked since ${at}: fleet-sync and fleet-status no longer contact it.`,
+      summary: `${worker.id} is parked since ${at}: converge and check no longer contact it.`,
     },
   ]);
 }
 
 /** Brings a parked worker back: runs the declared start command, marks it
- * active, then runs a normal fleet-sync of that worker, which verifies it.
+ * active, then runs a normal converge of that worker, which verifies it.
  * The exit code is the sync's.
  */
 export async function fleetNodeResume(

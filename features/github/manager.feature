@@ -10,10 +10,10 @@ Feature: The manager's GitHub sign-in is checked like every worker's
     And GitHub knows the token "TOKEN_X_PRIVATE_0005" as "someone-else"
     And the store holds "TOKEN_A_PRIVATE_0001" as "github-token"
 
-  Scenario: fleet-status shows the GitHub checks of the manager
+  Scenario: check shows the GitHub checks of the manager
     Given "manager-mac" is signed in with "TOKEN_A_PRIVATE_0001"
     And every other command fails
-    When fleet-status checks the "github" capability on the manager
+    When check checks the "github" capability on the manager
     Then these checks are reported, in this order:
       | auth:github           |
       | github:principal      |

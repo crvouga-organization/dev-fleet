@@ -1,8 +1,8 @@
 Feature: Each process reads the fleet configuration from the one place meant for it
   A file named in HOMELAB_CONFIG comes first. Otherwise the homelab CLI
-  reads the configuration fleet-sync last applied from the fleet state, and
+  reads the configuration converge last applied from the fleet state, and
   everything else (a launcher, a scheduled job, the worker probe) reads the
-  copy fleet-sync installed on the machine: those run under Node, which
+  copy converge installed on the machine: those run under Node, which
   cannot open the state database.
 
   Every scenario runs with the example fleet: examples/fleet.json without the
@@ -41,7 +41,7 @@ Feature: Each process reads the fleet configuration from the one place meant for
     Background:
       Given the fleet state holds the example fleet as its configuration
 
-    Scenario: A process that is not the homelab CLI reads the copy fleet-sync installed
+    Scenario: A process that is not the homelab CLI reads the copy converge installed
       A launcher, a scheduled job, the worker probe.
       When a command on the manager asks for the path of its configuration
       Then the process is not the homelab CLI
@@ -79,28 +79,28 @@ Feature: Each process reads the fleet configuration from the one place meant for
       And the process is the homelab CLI
       Then a command on the manager takes its configuration from an installed copy
 
-  Rule: fleet-sync installs the configuration it ran with as the machine copy
+  Rule: converge installs the configuration it ran with as the machine copy
 
     Background:
       Given the directory "~/.config" exists on the manager
 
     Scenario: The first install writes the copy, for its owner only
-      When fleet-sync installs the configuration on the manager
+      When converge installs the configuration on the manager
       Then the copy was written
       And "~/.config/homelab/fleet.json" on the manager holds the example fleet as machines are sent it
       And "~/.config/homelab/fleet.json" on the manager is readable by its owner only
 
     Scenario: Installing the same configuration again writes nothing
-      Given fleet-sync installed the configuration on the manager
-      When fleet-sync installs the configuration on the manager
+      Given converge installed the configuration on the manager
+      When converge installs the configuration on the manager
       Then the copy was left as it was
 
-    Scenario: Beside the copy fleet-sync records what it wrote
+    Scenario: Beside the copy converge records what it wrote
       The copy is JSON that Node and Python read, so it cannot carry a
       header: the record is a file of its own. The next run compares the two
       to tell a copy edited by hand from one nobody touched
       (installed-copy.feature).
-      When fleet-sync installs the configuration on the manager
+      When converge installs the configuration on the manager
       Then "~/.config/homelab/fleet.json.sha256" on the manager holds the SHA-256 of "~/.config/homelab/fleet.json"
       And "~/.config/homelab/fleet.json.sha256" on the manager is readable by its owner only
 

@@ -46,7 +46,7 @@ Feature: The manager's schedule changes only when that is authorized
         | /usr/bin/env                                                |
         | node                                                        |
         | {root}/runtime/node_modules/@crvouga/homelab/bin/homelab.mjs |
-        | fleet-sync                                                  |
+        | converge                                                  |
         | --revision                                                  |
         | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa                    |
         | --apply                                                     |
@@ -81,7 +81,7 @@ Feature: The manager's schedule changes only when that is authorized
     Scenario: The status lists the last three scheduled runs, newest first
       Given the platform says the schedule is installed and supported, with the detail "loaded"
       And the schedule was turned on at "2026-11-01T08:00:00Z", every 30 minutes
-      And fleet-sync recorded these runs:
+      And converge recorded these runs:
         | finished             | trigger  | ok  | failing     |
         | 2026-11-01T09:00:00Z | schedule | yes |             |
         | 2026-11-01T09:30:00Z | schedule | no  | ssh:timeout |
@@ -99,7 +99,7 @@ Feature: The manager's schedule changes only when that is authorized
 
     Scenario Outline: A schedule whose last success was at <last success> is checked at <now>: <outcome>
       Given the schedule was turned on at "2026-11-01T08:00:00Z", every 30 minutes
-      And fleet-sync recorded these runs:
+      And converge recorded these runs:
         | finished         | trigger  | ok  |
         | <last success>   | schedule | yes |
         | 2026-11-01T11:00:00Z | schedule | no  |

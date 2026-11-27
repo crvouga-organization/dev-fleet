@@ -40,7 +40,7 @@ Feature: A worker proves it can do what agents do on it
       And nothing reported contains "PRIVATE_SENTINEL"
 
     Scenario: A session older than the docker group runs the check in a fresh session
-      fleet-sync adds the worker's user to the docker group, but the session
+      converge adds the worker's user to the docker group, but the session
       that runs the check started before the grant. The group database lists
       the user in docker while the session does not hold the group, so the
       check runs again in a fresh session of the group, and the first sync of

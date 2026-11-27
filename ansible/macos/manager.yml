@@ -1,5 +1,5 @@
 ---
-# The manager's own policy, applied by fleet-sync on every applying run:
+# The manager's own policy, applied by converge on every applying run:
 # check mode first, then for real, with a receipt (macos-manager) that a full
 # re-apply replaces at least once a day. It never asks for a password and no
 # play becomes root: what needs root runs through the narrow grant
@@ -10,7 +10,7 @@
 # Manager power policy. Workers depend on the manager's singleton services
 # (CLI proxy, Beszel hub), so the manager never sleeps on AC power and starts
 # again by itself when power returns (autorestart). Sleep on battery is left
-# to the human. The settings are the `pmset` object in policy.json; fleet-sync
+# to the human. The settings are the `pmset` object in policy.json; converge
 # measures the same object as manager:power.
 - name: Keep the fleet manager awake on AC power
   hosts: localhost
@@ -73,7 +73,7 @@
 
 # Docker Desktop hosts the CLI proxy and the monitoring hub, so it starts at
 # login: after a power cut the manager comes back without a person. The
-# setting is the `dockerDesktop` object in policy.json; fleet-sync measures it
+# setting is the `dockerDesktop` object in policy.json; converge measures it
 # as part of manager:boot-recovery. Only that key of the user's settings file
 # is changed.
 - name: Start Docker Desktop at login
@@ -107,10 +107,10 @@
         - docker_settings_file.stat.exists
         - not (current[dockerDesktop.key] | default(false) | bool)
 
-# fleet-watch compares the fleet's health with its last run, notifies on a
+# notify compares the fleet's health with its last run, notifies on a
 # change and stores the heartbeat the off-machine workflow
 # (.github/workflows/fleet-heartbeat.yml) reads. It runs from the checkout
-# fleet-sync last applied (fleet/current) with that checkout's locked Bun, on
+# converge last applied (fleet/current) with that checkout's locked Bun, on
 # the interval `manager.schedule.watchMinutes` in fleet.json sets
 # (fleet_watch_minutes), or else policy.json's. manager:watch measures it.
 - name: Watch the fleet on a schedule
@@ -153,14 +153,14 @@
       loop:
         - '{{ watch_logs }}'
         - '{{ watch_home }}/Library/LaunchAgents'
-    - name: Install the fleet-watch launch agent
+    - name: Install the notify launch agent
       ansible.builtin.copy:
         dest: '{{ watch_plist }}'
         mode: '0644'
         content: |
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <!-- Managed by homelab: fleet-watch -->
+          <!-- Managed by homelab: notify -->
           <plist version="1.0"><dict>
             <key>Label</key><string>{{ watch_label }}</string>
             <key>ProgramArguments</key><array>
@@ -171,7 +171,7 @@
               <string>--</string>
               <string>bun</string>
               <string>src/cli/cli.ts</string>
-              <string>fleet-watch</string>
+              <string>notify</string>
               <string>--json</string>
             </array>
             <key>WorkingDirectory</key><string>{{ watch_home }}/.local/share/personal/fleet/current</string>

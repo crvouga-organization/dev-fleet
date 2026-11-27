@@ -99,7 +99,7 @@ function clockRemedy(timeService: number | undefined): { action: string } {
   return {
     action:
       timeService === 0
-        ? 'Enable the time service: apply the approved fleet-sync revision, which keeps chrony or systemd-timesyncd enabled on workers (timedatectl set-ntp true is the same setting).'
+        ? 'Enable the time service: apply the approved converge revision, which keeps chrony or systemd-timesyncd enabled on workers (timedatectl set-ntp true is the same setting).'
         : 'Check that the time service reaches a time server (timedatectl timesync-status) and that UDP port 123 is not blocked.',
   };
 }

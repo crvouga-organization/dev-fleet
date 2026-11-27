@@ -170,21 +170,21 @@ Feature: T3 provider instances are reconciled, never taken over
         { "version": 1, "instances": {} }
         """
 
-    Scenario: t3-apply --dry-run plans
+    Scenario: t3-reconcile --dry-run plans
       When the operator runs "homelab t3-reconcile --dry-run --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
       Then it exits with 0
 
-    Scenario: t3-apply applies after a dry run
+    Scenario: t3-reconcile applies after a dry run
       Given the operator has run "homelab t3-reconcile --dry-run --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
       When the operator runs "homelab t3-reconcile --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
       Then it exits with 0
 
-    Scenario: t3-status finds no drift after an apply
+    Scenario: t3 finds no drift after an apply
       Given the operator has run "homelab t3-reconcile --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
       When the operator runs "homelab t3 --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
       Then it exits with 0
 
-    Scenario: t3-cleanup removes what an apply owns
+    Scenario: t3-remove removes what an apply owns
       Given the operator has run "homelab t3-reconcile --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
       And the operator has run "homelab t3 --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
       When the operator runs "homelab t3-remove --t3-home $T3_HOME --definition $T3_HOME/empty.json --json"
@@ -201,8 +201,8 @@ Feature: T3 provider instances are reconciled, never taken over
 
       Examples:
         | command            |
-        | t3-status          |
-        | t3-apply --dry-run |
+        | t3          |
+        | t3-reconcile --dry-run |
 
   Rule: Reading T3 configuration always ends
 

@@ -249,7 +249,7 @@ async function removeOwnedWorkspace(
 }
 
 /** Retires one worker; with `apply` false it only plans. Shared with the
- * retirement of a worker whose record disappeared (fleet-sync).
+ * retirement of a worker whose record disappeared (converge).
  */
 export async function retireWorker(
   worker: MachineDefinition,
@@ -496,7 +496,7 @@ async function tombstone(
  * new device on the tailnet, pins its host key, binds the roster entry to the
  * new device, points its monitoring system at it, removes the manager's T3
  * link to the old environment, pairs the manager's T3 with the new one (now,
- * or in the next fleet-sync once it runs), removes the old tailnet device
+ * or in the next converge once it runs), removes the old tailnet device
  * (when the tailnet control is wired) and issues it a token of its own
  * (revoking the old one).
  * Preview until --apply --yes; then `converge --node ID` brings it to
@@ -684,7 +684,7 @@ async function carryOut(
 
 /** Pairs the manager's T3 with a replacement's environment and records it
  * in the roster. A machine whose T3 does not run yet (or refuses) is left to
- * the next fleet-sync, which pairs it once it runs.
+ * the next converge, which pairs it once it runs.
  */
 function pairReplacement(
   node: FleetNode,

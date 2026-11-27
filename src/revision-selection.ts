@@ -1,6 +1,6 @@
 import { record } from './config';
 
-/** What chose the revision a fleet-sync run converges to. */
+/** What chose the revision a converge run converges to. */
 export const SELECTORS = [
   'package',
   'revision',
@@ -96,7 +96,7 @@ const WORDS: Record<Selector, string> = {
   revision: '--revision',
   rollback: '--rollback',
   schedule: "the manager's schedule",
-  checkout: 'the HEAD of the checkout fleet-sync was started in',
+  checkout: 'the HEAD of the checkout converge was started in',
   approved: 'the revision already approved',
 };
 

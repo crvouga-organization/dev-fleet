@@ -1,4 +1,4 @@
-Feature: fleet-state takes the bucket's credentials from the environment or a prompt, never from arguments
+Feature: state takes the bucket's credentials from the environment or a prompt, never from arguments
   Credentials are passed to a command in HOMELAB_BUCKET_ACCESS_KEY_ID and
   HOMELAB_BUCKET_SECRET_ACCESS_KEY, or typed at its prompt. `--init` saves
   them in bucket.json for the runs a manager starts by itself. No report or
@@ -34,17 +34,17 @@ Feature: fleet-state takes the bucket's credentials from the environment or a pr
         """
 
     Scenario: With no terminal and no credentials passed, the standard AWS environment is used
-      When the operator runs "state --init --bucket fleet-state" on the manager
+      When the operator runs "state --init --bucket state" on the manager
       Then the report includes:
         """
         { "bucket": { "location": "bucket.json", "credentials": "aws" } }
         """
 
     Scenario: An access key passed without its secret is refused
-      Given the operator ran "state --init --bucket fleet-state" on the manager
+      Given the operator ran "state --init --bucket state" on the manager
       And commands on the manager are passed:
         | HOMELAB_BUCKET_ACCESS_KEY_ID | AKID |
-      When the operator runs "state --init --bucket fleet-state" on the manager
+      When the operator runs "state --init --bucket state" on the manager
       Then it is refused with "never taken from arguments"
 
   Rule: A project that names its bucket needs only credentials passed to each command

@@ -213,7 +213,7 @@ async function recordRun(entry: SyncRun, run: Runner): Promise<void> {
   try {
     await mutateState(stateContext(run), () => appendRun(entry));
   } catch {
-    // Reported by the next fleet-state or fleet-sync run.
+    // Reported by the next state or converge run.
   }
 }
 
@@ -270,7 +270,7 @@ function copyRefusal(
     : null;
 }
 
-/** fleet-sync on the machine already known to be the manager. */
+/** converge on the machine already known to be the manager. */
 export async function managerSync(
   options: FleetSyncOptions,
   settings: Settings,
@@ -305,7 +305,7 @@ export async function managerSync(
   if (rehomed === 'unavailable')
     return actionRequired(
       'FLEET_SOURCE_UNAVAILABLE',
-      `Revision ${revision} could not be taken from ${canonicalDefinition.source.repository}, so nothing was changed. Check the network and Git access to it, and that the revision is pushed there; fleet-sync never converges from the package or working tree it was started in.`,
+      `Revision ${revision} could not be taken from ${canonicalDefinition.source.repository}, so nothing was changed. Check the network and Git access to it, and that the revision is pushed there; converge never converges from the package or working tree it was started in.`,
       revision
     );
   if (rehomed !== 'here') return rehomed;
@@ -760,7 +760,7 @@ async function offManager(
   if (options.measureMise)
     return actionRequired(
       'FLEET_NOT_MANAGER',
-      `converge --measure-mise is answered only on the manager (${definition.manager.id}), which a fleet-sync started here asks by itself before it hands a revision over; no machine was asked.`
+      `converge --measure-mise is answered only on the manager (${definition.manager.id}), which a converge started here asks by itself before it hands a revision over; no machine was asked.`
     );
   // Only the manager's fleet state knows the revision applied before.
   if (options.rollback)
@@ -777,7 +777,7 @@ async function offManager(
   if (forwardingDisabled())
     return actionRequired(
       'FLEET_NOT_MANAGER',
-      `fleet-sync runs only on the manager (${definition.manager.id}), which is always a macOS machine; nothing was changed. Run it there, or from a worker that can SSH to the manager.`,
+      `converge runs only on the manager (${definition.manager.id}), which is always a macOS machine; nothing was changed. Run it there, or from a worker that can SSH to the manager.`,
       revision ?? null
     );
   // An accounts-only request is the manager's installed launcher's.
@@ -944,7 +944,7 @@ async function onlyAccounts(
   if (!isRevision(revision))
     return actionRequired(
       'FLEET_REVISION_REQUIRED',
-      'No revision is applied yet. Run a full fleet-sync first.'
+      'No revision is applied yet. Run a full converge first.'
     );
   return syncAccounts(options, settings, { revision, run });
 }

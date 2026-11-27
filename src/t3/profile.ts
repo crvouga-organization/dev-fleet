@@ -178,7 +178,7 @@ export async function profileCheck(
         status: 'warn',
         summary: 'T3_PROFILE_PENDING',
         ...remedy(
-          `fleet-sync would change these T3 settings: ${pending.map((change) => `${change.key} (${change.action})`).join(', ')}.`
+          `converge would change these T3 settings: ${pending.map((change) => `${change.key} (${change.action})`).join(', ')}.`
         ),
       };
     return {

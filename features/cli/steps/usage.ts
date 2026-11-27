@@ -10,7 +10,7 @@ import type { DataTable } from '../../support/gherkin';
 import { machine } from './machine';
 import { cli, outcome, temporary, type CliWorld } from './world';
 
-/** What fleet-status says of each worker beyond its health: parked or
+/** What check says of each worker beyond its health: parked or
  * active, and what an active one is doing.
  */
 const { Given, Then } = cli;

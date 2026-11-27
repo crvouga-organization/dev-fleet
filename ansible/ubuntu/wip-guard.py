@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 """Push work in progress of every agent worktree to a recovery ref.
 
-Managed by personal fleet-sync (tasks/recovery.yml) as
+Managed by personal converge (tasks/recovery.yml) as
 personal-worker-wip-guard.service, started by personal-worker-wip-guard.timer.
 
 Workers are disposable: a worker lost mid-task must lose at most one interval

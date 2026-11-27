@@ -484,7 +484,7 @@ async function inspectManagerNode(
       },
     });
   else {
-    // fleet-sync runs on the manager: the worker's clock is measured
+    // converge runs on the manager: the worker's clock is measured
     // against the manager's own.
     checks.push(...(await inspectBootstrap(node, run, context.clock)));
     checks.push(...identityChecks(node, peer));

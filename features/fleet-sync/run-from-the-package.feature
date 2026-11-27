@@ -1,6 +1,6 @@
 Feature: The manager converges from a fleet-owned checkout of the revision
   The manager converges from a clean checkout of the exact revision, like every
-  worker, never from where fleet-sync was started: that is an installed package
+  worker, never from where converge was started: that is an installed package
   a package manager may remove, or a working tree with uncommitted edits. The
   checkout is made from a repository the manager owns too: the fleet's source
   repository, fetched into the manager's caches.
@@ -48,7 +48,7 @@ Feature: The manager converges from a fleet-owned checkout of the revision
       When the manager starts "converge" at revision "dddddddddddddddddddddddddddddddddddddddd" from "/project/node_modules/homelab"
       Then there is no run
 
-    Scenario Outline: Outside a test, fleet-sync leaves the place it was started in or stops
+    Scenario Outline: Outside a test, converge leaves the place it was started in or stops
       A test never leaves its own process: the same rule as the hand-off from a
       worker.
       Given Git is offline and no directory holds any revision

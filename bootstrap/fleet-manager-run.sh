@@ -1,6 +1,6 @@
 #!/bin/sh
-# Every fleet-sync on the manager runs through this, whether started there or
-# handed off from a worker over strict SSH. Runs fleet-sync from a clean,
+# Every converge on the manager runs through this, whether started there or
+# handed off from a worker over strict SSH. Runs converge from a clean,
 # fleet-owned checkout of the exact approved revision, so the result never
 # depends on the working tree it was started in (uncommitted edits, another
 # branch, a removed worktree). Checkouts are reused when warm and pruned to two:
@@ -11,7 +11,7 @@ revision=$1
 shift
 case "$revision" in *[!a-f0-9]*|'') exit 2;; esac
 [ "${#revision}" = 40 ] || exit 2
-say() { printf 'fleet-sync (manager): %s\n' "$1" >&2; }
+say() { printf 'converge (manager): %s\n' "$1" >&2; }
 # A preview (--dry-run) changes nothing outside homelab's own disposable
 # caches: it never publishes the global mise configuration, never edits shell
 # profiles and never prunes run checkouts. Only an apply does.
@@ -27,7 +27,7 @@ downgrade=''
 export PATH="$HOME/.local/bin:$PATH"
 fleet="$HOME/.local/share/personal/fleet"
 # The repository to take the revision from. Nobody keeps a clone of homelab:
-# fleet-sync names the one it prepared, and a hand-off (which names none) uses
+# converge names the one it prepared, and a hand-off (which names none) uses
 # the manager's own copy of the source repository, or the checkout the homelab
 # launcher is linked into.
 repo=${HOMELAB_REPO:-${DEVFLEET_REPO:-}}
@@ -77,7 +77,7 @@ failed() {
 if [ "$preview" = true ]; then
   # The revision's own locked Bun is enough to preview; mise keeps it beside
   # its other versions without making it the global one.
-  command -v mise >/dev/null 2>&1 || { say 'this manager has no toolchain yet, so a preview cannot run; fleet-sync without --dry-run installs it.'; exit 6; }
+  command -v mise >/dev/null 2>&1 || { say 'this manager has no toolchain yet, so a preview cannot run; converge without --dry-run installs it.'; exit 6; }
   mise install --locked bun >"$log" 2>&1 || failed
 elif [ -n "$downgrade" ] || [ "$(cat "$stamp" 2>/dev/null)" != "$key" ] || [ -z "$(find "$stamp" -mmin -1440 2>/dev/null)" ]; then
   rm -f -- "$stamp"

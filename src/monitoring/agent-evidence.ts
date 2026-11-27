@@ -140,7 +140,7 @@ function newestOutcome(log: string): Omit<Check, 'id'> {
     summary: 'BESZEL_AGENT_CONNECTION_PENDING',
     remedy: {
       action:
-        'The agent has not reached the hub yet. The next fleet-sync, or check --workers, reports whether it did.',
+        'The agent has not reached the hub yet. The next converge, or check --workers, reports whether it did.',
     },
   };
 }

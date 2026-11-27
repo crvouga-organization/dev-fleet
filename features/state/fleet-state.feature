@@ -1,5 +1,5 @@
-Feature: fleet-state shows the fleet state and connects it to a bucket
-  `fleet-state` alone is read-only. Each flag is one explicit action on the
+Feature: state shows the fleet state and connects it to a bucket
+  `state` alone is read-only. Each flag is one explicit action on the
   manager's fleet state or its bucket: --init, --import, --export, --example,
   --push and --restore.
 
@@ -115,9 +115,9 @@ Feature: fleet-state shows the fleet state and connects it to a bucket
       When the operator runs "state --init" on the manager
       Then the output does not contain "Moved into the fleet state"
 
-  Rule: Importing the copy fleet-sync installed keeps the bucket the stored configuration names
+  Rule: Importing the copy converge installed keeps the bucket the stored configuration names
     The installed copy is the configuration without its "state" block, and
-    fleet-sync sends an operator who edited it to this command
+    converge sends an operator who edited it to this command
     (installed-copy.feature). Importing it must not disconnect the bucket.
 
     Background:
@@ -224,7 +224,7 @@ Feature: fleet-state shows the fleet state and connects it to a bucket
         | state --export                                          | holds no fleet configuration |
         | state --restore                                         | No bucket is configured      |
         | state --init --push                                     | Choose one of                |
-        | state --bucket fleet-state                              | belong to --init             |
+        | state --bucket state                              | belong to --init             |
         | state --init --endpoint https://s3.example.com          | need --bucket                |
         | state --init --bucket state --directory /tmp/fleet | not both                     |
 

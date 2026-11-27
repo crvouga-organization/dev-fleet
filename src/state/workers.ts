@@ -18,7 +18,7 @@ export interface WorkerState {
    * retired by itself once its record disappears.
    */
   origin?: 'records';
-  /** When fleet-node-replace put a new machine in the worker's place: the
+  /** When replace put a new machine in the worker's place: the
    * manager pairs its T3 with the new machine's T3 environment as soon as
    * it runs, then forgets this. A worker enrolled for the first time is
    * paired by a person.

@@ -2,7 +2,7 @@
 # Keep the worker's T3 up, responsive and on the installed release: the
 # desktop app (UI and server) on a desktop worker, the native server
 # (t3code-headless.service, t3-headless.yml) on a headless one. Run every
-# minute by personal-worker-recovery.timer (managed by fleet-sync,
+# minute by personal-worker-recovery.timer (managed by converge,
 # tasks/recovery.yml), from the stable copy the role installs beside
 # t3-idle.py.
 # - The former upstream server unit (t3code.service) is stopped and

@@ -89,14 +89,14 @@ your project's `fleet.json` (version 3, checked by [the schema](../schema/fleet.
   reads them and never calls a provider or creates a machine. A record that
   appears is a declared worker, enrolled by the next `sync`; one that
   disappears (a file that is gone holds none) is retired by the next
-  `sync` exactly as `fleet-node-retire` retires one. A worker listed by
+  `sync` exactly as `retire` retires one. A worker listed by
   hand is never retired by itself. An invalid record is refused naming its
   field, such as `$.workerRecords[0].workers[1].hostKey`.
   [`examples/workers-from-infrastructure`](../examples/workers-from-infrastructure/main.tf)
   shows the handoff with a local virtual machine, the seed going in and the
   record coming out. The canary stays the one `canary` names, so the order
   of generated records means nothing.
-- **Replace or retire a worker:** `fleet-node-replace` and `fleet-node-retire`
+- **Replace or retire a worker:** `replace` and `retire`
   take everything of the old machine with it: its pinned host key, its
   monitoring system (pointed at the new machine, or deleted), the manager's
   T3 link to its environment, its Vault token and its tailnet device. The
@@ -126,7 +126,7 @@ verifies it (`--allow-unmerged` is passed on to that sync). `parking.stop` and `
 (an infrastructure tool, never a provider homelab calls) run with the worker
 ID as their last argument. A parked worker found online on the tailnet is a
 warning (`worker:parked-online`); one that comes back as a new machine goes
-through `fleet-node-replace`.
+through `replace`.
 
 `status` reports, for every worker it reaches, its uptime, the agent
 turns under way and the time of the last agent activity, read from what T3

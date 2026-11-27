@@ -184,15 +184,15 @@ Then(
   (world, name: string | undefined, path: string) => {
     const manager = world.manager(name);
     expect(fleetJson(manager.env, manager.home)).toBe(
-      `fleet.json (the one in the project the fleet is synced from, on the manager; not ${world.expand(path, manager)}, the copy fleet-sync installs from it)`
+      `fleet.json (the one in the project the fleet is synced from, on the manager; not ${world.expand(path, manager)}, the copy converge installs from it)`
     );
   }
 );
 
-// ── The copy fleet-sync installs ─────────────────────────────────────────
+// ── The copy converge installs ─────────────────────────────────────────
 
 Given(
-  phrase('fleet-sync (installs|installed) the configuration on ', WHO),
+  phrase('converge (installs|installed) the configuration on ', WHO),
   (world, verb: string, name: string | undefined) =>
     act(world, verb, () => installConfig(world.manager(name).home))
 );

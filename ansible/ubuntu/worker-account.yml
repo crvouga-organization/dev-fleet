@@ -1,6 +1,6 @@
 ---
 # The declared worker account on a machine whose image lets only root in
-# (many rented servers). fleet-sync applies it from the manager, once, over
+# (many rented servers). converge applies it from the manager, once, over
 # the root login: it creates workers[].network.user with the key root was
 # reached with and the fleet's sudo rule (the path and marker
 # authorize-sudo.sh writes), then continues as that account. The developer

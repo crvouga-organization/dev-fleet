@@ -5,7 +5,7 @@
 # Docker packages homelab pinned are removed (not purged: images and volumes
 # under /var/lib/docker stay until a person deletes them). A Docker that
 # another distribution owns (docker-ce) was never homelab's and is left
-# alone. fleet-sync --dry-run lists what this removes; the worker:features
+# alone. converge --dry-run lists what this removes; the worker:features
 # check reports what it removed.
 - name: Read the members of the groups containers gave the developer
   ansible.builtin.getent:

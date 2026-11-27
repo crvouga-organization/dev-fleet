@@ -28,7 +28,7 @@ Feature: Every reader of a secret answers a blocked read the same way
       | src/cli/fleet-node-seed.ts       | is blocked through the shared answer      |
       | src/cli/fleet-sync-manager.ts    | is answered by the reader it hands it to  |
       | src/cli/fleet-sync-remote.ts     | is answered by the reader it hands it to  |
-      | src/cli/notify.ts           | is answered by the reader it hands it to  |
+      | src/cli/fleet-watch.ts      | is answered by the reader it hands it to  |
       | src/cli/fleet.ts                 | is answered by the reader it hands it to  |
       | src/github/checks.ts             | is blocked through the shared answer      |
       | src/github/converge.ts           | is blocked through the shared answer      |

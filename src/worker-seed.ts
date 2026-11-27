@@ -9,7 +9,7 @@ import type { Runner } from './types';
 
 /** What a new worker's first boot needs, and nothing that outlives it: the
  * worker account with the manager's public key, the privilege rule
- * fleet-sync expects, a host key generated here so the manager pins it before
+ * converge expects, a host key generated here so the manager pins it before
  * the machine ever answers (no trust on first use), and a short-lived,
  * single-use Tailscale auth key that is deleted once the machine has joined.
  */

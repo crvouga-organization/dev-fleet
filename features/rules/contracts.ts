@@ -34,7 +34,7 @@ const output = (world: object): unknown => outputs.get(world);
 
 // ── Command output ───────────────────────────────────────────────────────
 
-When('fleet-sync stops before it reaches a machine', (world) => {
+When('converge stops before it reaches a machine', (world) => {
   outputs.set(
     world,
     managerFailure(fleet, 'a'.repeat(40), 'FLEET_FIXTURE', 'Fixture remedy.')
@@ -42,7 +42,7 @@ When('fleet-sync stops before it reaches a machine', (world) => {
 });
 
 When(
-  'fleet-status checks this manager only, where every command succeeds',
+  'check checks this manager only, where every command succeeds',
   async (world) => {
     const commands = new Commands();
     commands.answer(() => true, succeeded());
@@ -57,7 +57,7 @@ When(
 );
 
 When(
-  'fleet-repair previews the repairs of this manager only, where every command succeeds',
+  'repair previews the repairs of this manager only, where every command succeeds',
   async (world) => {
     const commands = new Commands();
     commands.answer(() => true, succeeded());
@@ -84,7 +84,7 @@ function emptyState(world: { defer(undo: () => void): void }): string {
 }
 
 When(
-  'fleet-state checks a fleet state whose bucket cannot be reached',
+  'state checks a fleet state whose bucket cannot be reached',
   async (world) => {
     const state = emptyState(world);
     const commands = new Commands();
@@ -102,7 +102,7 @@ When(
   }
 );
 
-When('fleet-state prints the example configuration', async (world) => {
+When('state prints the example configuration', async (world) => {
   outputs.set(world, (await fleetState({ example: true, json: true })).data);
 });
 
@@ -153,14 +153,14 @@ When('history reads a history of two runs', (world) => {
 
 When('a command is refused as a usage error', async (world) => {
   const outcome = await execute(
-    ['fleet-status', '--apply', '--yes', '--json'],
+    ['check', '--apply', '--yes', '--json'],
     { workspace: root, config: '/no-roster' },
     { version: 'test', releasedAt: null }
   );
   outputs.set(world, outcome.data);
 });
 
-Given('a fleet-sync report that says it is version 1', (world) => {
+Given('a converge report that says it is version 1', (world) => {
   outputs.set(world, {
     ...managerFailure(fleet, null, 'FLEET_FIXTURE', 'Fixture remedy.'),
     version: 1,

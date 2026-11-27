@@ -137,7 +137,7 @@ function tailscaleStatus(computers: TailnetComputer[]): string {
 }
 
 When(
-  /^fleet-sync (applies|previews) the approved revision(?: with "([^"]+)" as its canary)?(, one worker at a time)?$/,
+  /^converge (applies|previews) the approved revision(?: with "([^"]+)" as its canary)?(, one worker at a time)?$/,
   async (
     world,
     mode: string,
@@ -148,7 +148,7 @@ When(
       (command) => command[0] === 'tailscale',
       succeeded(tailscaleStatus(world.computers))
     );
-    // As fleet-sync sets parked workers aside before it converges.
+    // As converge sets parked workers aside before it converges.
     const active = withoutParked(
       need(world.sync.definition, 'a fleet configuration'),
       world.nodes,
@@ -222,7 +222,7 @@ Then(
 );
 
 const report = (world: OrchestrationWorld) =>
-  need(world.sync.report, 'a run of fleet-sync');
+  need(world.sync.report, 'a run of converge');
 const worker = (world: OrchestrationWorld, id: string): ManagerNode =>
   need(
     report(world).nodes.find((node) => node.node === id),

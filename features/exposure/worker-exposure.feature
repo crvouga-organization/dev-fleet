@@ -143,7 +143,7 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
   Rule: What an agent started is reported apart from the fleet's services
     T3 starts each agent in a scope of its own, `t3code-<agent>-<id>.scope`.
     A development server an agent leaves on every address is no fault of a
-    fleet unit and fleet-sync does not change it: it has its own code and
+    fleet unit and converge does not change it: it has its own code and
     remedy, and warns or fails by the declared policy like any listener that
     is not the fleet's.
 
@@ -159,7 +159,7 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
       When the exposure of the worker is checked
       Then the check <verdict>
       And the summary of the check is "WORKER_AGENT_LISTENER_UNRESTRICTED tcp 0.0.0.0:5173 (t3code-claude-7fd17cb0.scope)"
-      And the remedy of the check contains "It is no fleet service and fleet-sync does not change it"
+      And the remedy of the check contains "It is no fleet service and converge does not change it"
       And the remedy of the check does not contain "fault of its unit"
 
       Examples:
@@ -234,7 +234,7 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
       And the summary of the check mentions "Its tailnet-only rules hold to loopback and the tailnet: tcp [::]:3389 (gnome-remote-desktop.service)."
 
     Scenario: The listener fails while the loaded rules do not hold its port
-      The port was declared but fleet-sync has not written its rule yet.
+      The port was declared but converge has not written its rule yet.
       When the exposure of the worker is checked
       Then the check fails
       And the summary of the check is "WORKER_TAILNET_ONLY_RULE_MISSING tcp [::]:3389 (gnome-remote-desktop.service)"
@@ -339,7 +339,7 @@ Feature: Nothing on a worker listens beyond loopback and the tailnet unless the 
       And the remedy of the check contains "homelab converge"
 
     Scenario: SSH kept open beyond the tailnet without the opt-in fails
-      fleet-sync keeps the public SSH port open while it cannot prove the
+      converge keeps the public SSH port open while it cannot prove the
       manager reaches the worker over the tailnet: that must not pass quietly.
       Given the fleet firewall is loaded, keeping SSH open beyond the tailnet
       And these sockets listen:

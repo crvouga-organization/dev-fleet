@@ -1,10 +1,10 @@
-Feature: fleet-sync prints a short report that is the same every time
+Feature: converge prints a short report that is the same every time
   One header line, a grid of the machines, then each problem once with its
   code and its fix. Every line is greppable: plain words when piped, the same
   with symbols and colors on a terminal.
 
   Background:
-    Given a fleet-sync report that applied the revision "abcdef0123456789", with the dashboard "https://beszel.example.com"
+    Given a converge report that applied the revision "abcdef0123456789", with the dashboard "https://beszel.example.com"
 
   Rule: Warning acceptance and final observations are separate from deployment
 
@@ -60,7 +60,7 @@ Feature: fleet-sync prints a short report that is the same every time
         | ssh:fresh-session        | pass   | ssh:fresh-session             |              |
         | provider:codex:inference | warn   | PROVIDER_UPSTREAM_UNAVAILABLE | Retry later. |
       When the report is printed in plain text, for a run of 65000 ms saved at "/r/last-sync.json"
-      Then the first line printed is "fleet-sync  ACTION REQUIRED  revision abcdef012345  in 1m05s"
+      Then the first line printed is "converge  ACTION REQUIRED  revision abcdef012345  in 1m05s"
       And the grid printed has these lines:
         | NODE | ROLE   | NET | SSH  | OS | T3   | LINK | PROXY | AGENTS | MON | RESULT    |
         | w1   | worker | ·   | PASS | ·  | PASS | FAIL | WARN  | ·      | ·   | 1 failing |
@@ -88,7 +88,7 @@ Feature: fleet-sync prints a short report that is the same every time
         """
       And the report says the revision replaces "0123456789abcdef0123456789abcdef01234567"
       When the report is printed in plain text
-      Then the printed report contains "selected   by the HEAD of the checkout fleet-sync was started in, handed off from w1 (--allow-unmerged); replaces 0123456789ab"
+      Then the printed report contains "selected   by the HEAD of the checkout converge was started in, handed off from w1 (--allow-unmerged); replaces 0123456789ab"
 
   Rule: A machine that took a minute or more says where its time went
 
@@ -156,6 +156,6 @@ Feature: fleet-sync prints a short report that is the same every time
         | Plain sentence.                            |                       | Plain sentence.      |
 
   Scenario: Fleet parity remains pending for a worker omitted from a scoped rollout
-    Given a fleet-sync report that applied the revision "approved", with the dashboard "unused"
+    Given a converge report that applied the revision "approved", with the dashboard "unused"
     When version parity is measured for the declared fleet
     Then the parity report lists every unmeasured machine as pending for "rollout"

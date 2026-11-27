@@ -114,7 +114,7 @@ Feature: Every pull request is checked the way machines run
     And its "tailnet" job sets "HOMELAB_TEST_TAILNET_BOX" to "required"
 
   Scenario: A release stamps the commit it is published from into the package
-    fleet-sync run from the package converges every machine to the commit the
+    converge run from the package converges every machine to the commit the
     package names, so a release that does not name one cannot move a fleet.
     When the "Pack the release" step of the "Release" workflow is read
     Then it runs "npm pkg set gitHead=\"$(git rev-parse HEAD)\"" before "npm pack"

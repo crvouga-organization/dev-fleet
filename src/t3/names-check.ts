@@ -30,7 +30,7 @@ export async function providerNames(
           summary: 'T3_PROVIDER_NAMES_PENDING',
           remedy: {
             action:
-              'fleet-sync renames these providers to the convention when applied.',
+              'converge renames these providers to the convention when applied.',
           },
         }
       : {

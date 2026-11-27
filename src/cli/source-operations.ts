@@ -34,8 +34,8 @@ export function sourceOperation(args: string[]): string | undefined {
 
 /** These owners install from Git (a service keeps the commit it runs), so
  * they run from a checkout: the one this CLI is in, or, for an installed
- * package, the fleet-owned checkout of the revision fleet-sync applied on
- * this machine. Null before the first fleet-sync.
+ * package, the fleet-owned checkout of the revision converge applied on
+ * this machine. Null before the first converge.
  */
 export function ownerCheckout(
   workspace: string,
@@ -47,7 +47,7 @@ export function ownerCheckout(
 }
 
 const CHECKOUT_REQUIRED =
-  'This command runs from the revision fleet-sync applied on this machine, and none is applied yet. Run homelab converge first.\n';
+  'This command runs from the revision converge applied on this machine, and none is applied yet. Run homelab converge first.\n';
 
 export async function forwardSourceOperation(
   args: string[],
@@ -70,7 +70,7 @@ export async function forwardSourceOperation(
     });
     child.on('error', () => {
       process.stderr.write(
-        'This command requires python3 and the toolchain fleet-sync installs.\n'
+        'This command requires python3 and the toolchain converge installs.\n'
       );
       resolve(1);
     });

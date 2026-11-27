@@ -154,7 +154,7 @@ export function quotaLimited(checks: Check[]): Set<string> {
 
 /** Other conditions owned by the upstream provider account (outage, billing)
  * do not mean this node is misconfigured: the gateway answered and routed the
- * request. They are warnings, so a provider outage never fails fleet-sync.
+ * request. They are warnings, so a provider outage never fails converge.
  */
 const UPSTREAM: Record<string, string> = {
   PROVIDER_UPSTREAM_UNAVAILABLE:

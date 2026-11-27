@@ -1,6 +1,6 @@
-Feature: fleet-repair previews repairs and applies only what was reviewed
+Feature: repair previews repairs and applies only what was reviewed
   A repair is a fixed action its owner already provides: a setup script, a
-  provider configuration. fleet-repair shows the plan, applies it only with
+  provider configuration. repair shows the plan, applies it only with
   --apply --yes, and then checks again. A login is never automated, and what
   a tool printed never reaches a report.
 
