@@ -100,9 +100,24 @@
       "RestoreACPowerLoss",
       "AfterPowerLoss",
       "PowerOnAfterPowerFail",
-      "ACPowerRecovery"
+      "ACPowerRecovery",
+      "AC BACK",
+      "State After G3",
+      "AfterG3",
+      "Power Failure Recovery",
+      "Restore on AC Power Loss",
+      "PowerOnByAfterPowerLoss"
     ],
-    "values": ["Power On", "Always On", "PowerOn", "On"]
+    "values": [
+      "Power On",
+      "Always On",
+      "PowerOn",
+      "On",
+      "Last State",
+      "S0 State",
+      "Power on",
+      "Enabled"
+    ]
   },
   "features": {
     "containers": {
@@ -198,6 +213,7 @@
     "varTmpAge": "14d",
     "pressureGuard": {
       "threshold": 50,
+      "cpuThreshold": 80,
       "duration": 30,
       "cooldown": 120,
       "interval": 5

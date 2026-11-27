@@ -612,6 +612,7 @@ Then(/^the filesystem is (above|below) its floors$/, (world, side: string) => {
 const pressureGuard = part((world) => ({
   directory: world.directory('pressure-guard-'),
   memoryPsi: 0,
+  cpuPsi: 0,
   scopes: [] as string[],
   decisions: 0,
 }));
@@ -628,14 +629,19 @@ Given(
       writeFileSync(join(path, 'memory.swap.current'), swap!);
       writeFileSync(join(path, 'cgroup.kill'), '');
       writeFileSync(join(path, 'rate'), row['bytes per second']!);
+      writeFileSync(join(path, 'cpu'), row['cpu percent'] ?? '0');
       writeFileSync(join(path, 'io.pressure'), `full avg10=${row['io psi']}\n`);
-      state.scopes.push(scope!);
+      if (!state.scopes.includes(scope!)) state.scopes.push(scope!);
     }
   }
 );
 
 Given('host memory PSI is {int} percent', (world, percent: number) => {
   pressureGuard(world).memoryPsi = percent;
+});
+
+Given('host CPU PSI is {int} percent', (world, percent: number) => {
+  pressureGuard(world).cpuPsi = percent;
 });
 
 When(
@@ -656,6 +662,7 @@ When(
       join(proc, 'pressure/memory'),
       `full avg10=${state.memoryPsi}`
     );
+    writeFileSync(join(proc, 'pressure/cpu'), `full avg10=${state.cpuPsi}`);
     const simulation = `
 import runpy, sys, json
 from pathlib import Path
@@ -670,6 +677,8 @@ for i, psi in enumerate(args.psi):
     for group in [args.cgroup_root, *(file.parent for file in args.app_tree.rglob('rate'))]:
         rate = args.rate if group == args.cgroup_root else int((group / 'rate').read_text())
         (group / 'io.stat').write_text(f'1:0 rbytes=0 wbytes={rate * second}')
+        cpu = 0 if group == args.cgroup_root else int((group / 'cpu').read_text())
+        (group / 'cpu.stat').write_text(f'usage_usec {cpu * 10000 * second}')
     guard.sample(args,second)
 `;
     const result = Bun.spawnSync([
@@ -686,13 +695,18 @@ for i, psi in enumerate(args.psi):
         interval,
         rate,
         threshold,
+        cpu_threshold: 80,
         duration,
         cooldown,
         dry_run: false,
         marker: null,
       }),
     ]);
-    expect(result.exitCode).toBe(0);
+    if (result.exitCode !== 0) {
+      throw new Error(
+        `pressure guard simulation failed: ${result.stderr.toString()}`
+      );
+    }
     state.decisions = result.stdout
       .toString()
       .trim()

@@ -1,5 +1,5 @@
 #!/usr/bin/python3
-"""Shed one T3 agent or transient user job after sustained I/O or memory pressure."""
+"""Shed one T3 agent or transient user job after sustained CPU, I/O or memory pressure."""
 import argparse
 import json
 from pathlib import Path
@@ -12,6 +12,17 @@ def pressure(path):
         if kind == 'full':
             return float(dict(field.split('=') for field in fields)['avg10'])
     raise ValueError('full pressure unavailable')
+
+
+def cpu_use(group):
+    # usage_usec is cumulative. A counter that went backwards is a reset.
+    value = int((group / 'cpu.stat').read_text().split('usage_usec ', 1)[1].split()[0])
+    return value if value >= 0 else None
+
+
+def cpu_delta(previous, current):
+    return {group: count - previous[group] for group, count in current.items()
+            if group in previous and count > previous[group]}
 
 
 def io_bytes(group):
@@ -47,12 +58,21 @@ class Guard:
         self.since = {}
         self.next_action = 0
         self.previous = {}
+        self.cpu = {}
+        self.sampled_at = None
 
     def sample(self, args, now):
         io = pressure(args.proc / 'pressure/io')
         memory = pressure(args.proc / 'pressure/memory')
+        try:
+            cpu = pressure(args.proc / 'pressure/cpu')
+        except (OSError, ValueError, KeyError):
+            cpu = 0
+        elapsed = now - self.sampled_at if self.sampled_at is not None else 0
+        self.sampled_at = now
         active = {}
         counters = {}
+        cpu_use_now = {}
         candidates = []
 
         def sustained(key):
@@ -61,13 +81,14 @@ class Guard:
 
         memory_due = memory >= args.threshold and sustained('memory')
         io_due = io >= args.threshold and sustained('io')
+        cpu_due = cpu >= args.cpu_threshold and sustained('cpu')
         if io >= args.threshold:
             try:
                 counters['host'] = io_bytes(args.cgroup_root)
             except (OSError, ValueError, KeyError):
                 pass
         host_delta = io_delta(self.previous.get('host', {}), counters.get('host', {}))
-        if memory_due or io >= args.threshold:
+        if memory_due or io >= args.threshold or cpu >= args.cpu_threshold:
             for scope in workloads(args):
                 try:
                     if any(child.is_dir() for child in scope.iterdir()):
@@ -76,6 +97,21 @@ class Guard:
                     size += int((scope / 'memory.swap.current').read_text())
                     if memory_due:
                         candidates.append((size, scope, dict(reason='memory', bytes=size)))
+                        continue
+                    if cpu >= args.cpu_threshold:
+                        used = cpu_use(scope)
+                        cpu_use_now[scope] = used
+                        spent = cpu_delta(self.cpu, {scope: used}).get(scope, 0)
+                        # Every interval of the grace period, not the average:
+                        # a scope that spiked once is not the one saturating the host.
+                        # The streak starts with the host's, so both are due together.
+                        if (elapsed > 0
+                                and spent >= args.cpu_threshold / 100 * elapsed * 1_000_000
+                                and sustained((scope, 'cpu'))
+                                and cpu_due):
+                            candidates.append((spent, scope, dict(
+                                reason='cpu', bytes=size, cpu_usec=spent)))
+                    if cpu_due:
                         continue
                     local = pressure(scope / 'io.pressure')
                     current = io_bytes(scope)
@@ -97,9 +133,10 @@ class Guard:
                 except (OSError, ValueError, KeyError):
                     continue
         self.previous = counters
+        self.cpu = cpu_use_now
         self.since = active
         if args.marker and not args.dry_run:
-            if memory_due or io_due:
+            if memory_due or io_due or cpu_due:
                 args.marker.touch()
             else:
                 args.marker.unlink(missing_ok=True)
@@ -110,7 +147,7 @@ class Guard:
             (scope / 'cgroup.kill').write_text('1')
         self.next_action = now + args.cooldown
         print(json.dumps(dict(event='agent_pressure', scope=scope.name, io=io,
-                              memory=memory, dry_run=args.dry_run, **evidence)), flush=True)
+                              memory=memory, cpu=cpu, dry_run=args.dry_run, **evidence)), flush=True)
 
 
 def main():
@@ -120,6 +157,7 @@ def main():
     parser.add_argument('--agent-tree', type=Path, required=True)
     parser.add_argument('--app-tree', type=Path)
     parser.add_argument('--threshold', type=float, required=True)
+    parser.add_argument('--cpu-threshold', type=float, required=True)
     parser.add_argument('--duration', type=int, required=True)
     parser.add_argument('--cooldown', type=int, required=True)
     parser.add_argument('--interval', type=int, required=True)
@@ -133,6 +171,8 @@ def main():
         except (OSError, KeyError, ValueError):
             guard.since.clear()
             guard.previous.clear()
+            guard.cpu.clear()
+            guard.sampled_at = None
             if args.marker and not args.dry_run:
                 args.marker.unlink(missing_ok=True)
         time.sleep(args.interval)

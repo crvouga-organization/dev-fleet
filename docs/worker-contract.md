@@ -148,7 +148,7 @@ The number of sessions is a recommendation, not an admission limit: T3 Code star
 session whenever it is asked for one and its administrator policy has no limit
 on them, so nothing refuses the next session and the check says so. What is
 always enforced is memory: each agent and the agents together are capped, and
-the largest is stopped under sustained pressure.
+the largest is stopped under sustained memory pressure, and the one that kept a core busy is stopped under sustained CPU pressure.
 
 What runs is counted from the scopes T3 Code starts its agents in, which is
 not always one for each session:

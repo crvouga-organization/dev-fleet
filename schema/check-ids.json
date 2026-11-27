@@ -2455,7 +2455,7 @@
     },
     {
       "id": "worker:pressure-events",
-      "meaning": "The pressure guard reports recent agent stops.",
+      "meaning": "The pressure guard reports recent CPU, I/O and memory stops of agents.",
       "severity": "required",
       "repair": {
         "manual": "Re-converge the worker with converge: it applies the whole worker policy at the approved revision."
