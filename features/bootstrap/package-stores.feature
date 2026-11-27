@@ -1,6 +1,6 @@
 Feature: Agent worktrees link their packages from one store per machine
   Every agent worktree installs the same few dependencies. The global mise
-  configuration dev-fleet publishes on every fleet machine (the [env] of
+  configuration homelab publishes on every fleet machine (the [env] of
   mise.toml) gives pnpm one store and Bun one cache, so an install links
   files from the store instead of copying them, and a worktree whose
   node_modules the disk GC removed is installed again from the store without

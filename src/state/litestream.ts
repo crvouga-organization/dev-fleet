@@ -94,7 +94,7 @@ export function litestreamEnvironment(bucket: Bucket): Record<string, string> {
     : {};
 }
 
-/** Litestream is run once per change rather than as a daemon: a devfleet
+/** Litestream is run once per change rather than as a daemon: a homelab
  * command that changed the state has not finished until the bucket has it,
  * and nothing has to be kept running on the manager.
  */
@@ -110,7 +110,7 @@ async function invoke(
   writeFileSync(config, litestreamConfig(database, bucket), { mode: 0o600 });
   const result = await run(
     [litestream, command, '-no-expand-env', '-config', config, ...args],
-    // A bucket that does not answer must not hold a fleet-sync up for long.
+    // A bucket that does not answer must not hold a converge up for long.
     { timeoutMs: 60_000, env: litestreamEnvironment(bucket) }
   );
   return result.ok;

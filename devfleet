@@ -1,5 +1,0 @@
-#!/bin/sh
-# The devfleet command from this checkout, for developing dev-fleet:
-# ./devfleet <command>. A fleet is run with the published package instead
-# (README.md); on workers fleet-sync puts devfleet on PATH.
-exec "$(dirname "$0")/bootstrap/devfleet" "$@"

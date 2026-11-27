@@ -2,7 +2,7 @@ Feature: Every worker is an SSH workspace of super.engineering on the manager
   super.engineering is a desktop app on the manager. It reaches a machine
   over the manager's own SSH and runs Git, terminals and coding agents there,
   in a remote workspace. A fleet that enables it gets one such workspace per
-  worker: fleet-sync asks the app for it through the app's own CLI. The app is
+  worker: converge asks the app for it through the app's own CLI. The app is
   installed, started and updated by a person, so nothing here ever fails a
   sync: what is missing is a warning that says what to do.
 

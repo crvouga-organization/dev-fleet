@@ -17,7 +17,7 @@
     mode: '0644'
     backup: true
     content: |
-      # Managed by personal fleet-sync. Effective after logind reload/reboot.
+      # Managed by personal converge. Effective after logind reload/reboot.
       [Login]
       HandleLidSwitch=ignore
       HandleLidSwitchExternalPower=ignore

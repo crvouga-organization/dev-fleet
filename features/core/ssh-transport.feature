@@ -62,14 +62,14 @@ Feature: The manager reaches a worker over SSH
       Then it has each of these arguments:
         | User=dev                         |
         | Port=2222                        |
-        | HostKeyAlias=devfleet-rented-one |
+        | HostKeyAlias=homelab-rented-one |
         | StrictHostKeyChecking=yes        |
         | GlobalKnownHostsFile=/dev/null   |
         | BatchMode=yes                    |
       And its last argument is "rented-one.tail0a1b2c.ts.net"
       And the known_hosts file it names is not under "~/.ssh" and pins exactly:
         """
-        devfleet-rented-one ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPinnedKeyOfTheRentedWorker
+        homelab-rented-one ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPinnedKeyOfTheRentedWorker
         """
 
     Scenario: A playbook that reaches the worker itself takes the same options and the same pin
@@ -81,7 +81,7 @@ Feature: The manager reaches a worker over SSH
       When the SSH options a playbook reaches the worker with are built
       Then it has each of these arguments:
         | Port=2222                        |
-        | HostKeyAlias=devfleet-rented-one |
+        | HostKeyAlias=homelab-rented-one |
         | StrictHostKeyChecking=yes        |
         | GlobalKnownHostsFile=/dev/null   |
         | BatchMode=yes                    |
@@ -105,7 +105,7 @@ Feature: The manager reaches a worker over SSH
         """
       When the failed session is classified
       Then the check "ssh:host-key" fails
-      And the remedy of the check "ssh:host-key" mentions "devfleet fleet-node-replace --id ID --host-key"
+      And the remedy of the check "ssh:host-key" mentions "homelab replace --id ID --host-key"
       And the remedy of the check "ssh:host-key" mentions "hostKey in its worker record"
 
   Rule: A path is quoted so a POSIX shell evaluates none of it

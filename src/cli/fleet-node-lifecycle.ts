@@ -199,7 +199,7 @@ export async function fleetNodeRetire(
   const entry = roster?.nodes.find((node) => node.id === worker.id);
   if (entry && roster!.nodes.length === 1)
     throw new FleetUsageError(
-      'The roster must keep at least one worker. Add the replacement with fleet-node-add first.'
+      'The roster must keep at least one worker. Add the replacement with enroll first.'
     );
   return retireWorker(worker, entry, services, !preview(options));
 }
@@ -249,7 +249,7 @@ async function removeOwnedWorkspace(
 }
 
 /** Retires one worker; with `apply` false it only plans. Shared with the
- * retirement of a worker whose record disappeared (fleet-sync).
+ * retirement of a worker whose record disappeared (converge).
  */
 export async function retireWorker(
   worker: MachineDefinition,
@@ -261,7 +261,7 @@ export async function retireWorker(
   const owned = readWorkerStates().workers[worker.id]?.superWorkspaceId;
   if (!apply)
     return outcome(
-      'fleet-node-retire',
+      'retire',
       worker.id,
       [
         ...planRetirement(worker, entry, host, services.vault()),
@@ -304,7 +304,7 @@ export async function retireWorker(
   // Nothing of the worker stays in the fleet state but its tombstone.
   await changeWorkers(services.state(), () => ({ [worker.id]: null }));
   checks.push(await tombstone(worker.id, services));
-  return outcome('fleet-node-retire', worker.id, checks, true);
+  return outcome('retire', worker.id, checks, true);
 }
 
 function planRetirement(
@@ -422,7 +422,7 @@ async function onHub(
           : 'BESZEL_API_UNAVAILABLE',
       remedy: {
         action:
-          'The hub was not changed. Run fleet-sync on the manager so the hub answers, then run this command again; fleet-status --workers lists systems that match no declared worker.',
+          'The hub was not changed. Run converge on the manager so the hub answers, then run this command again; check --workers lists systems that match no declared worker.',
       },
     };
   }
@@ -496,10 +496,10 @@ async function tombstone(
  * new device on the tailnet, pins its host key, binds the roster entry to the
  * new device, points its monitoring system at it, removes the manager's T3
  * link to the old environment, pairs the manager's T3 with the new one (now,
- * or in the next fleet-sync once it runs), removes the old tailnet device
+ * or in the next converge once it runs), removes the old tailnet device
  * (when the tailnet control is wired) and issues it a token of its own
  * (revoking the old one).
- * Preview until --apply --yes; then `fleet-sync --node ID` brings it to
+ * Preview until --apply --yes; then `converge --node ID` brings it to
  * ready. When nothing changed (the same device, the same key, a token of its
  * own) it changes nothing.
  */
@@ -511,7 +511,7 @@ export async function fleetNodeReplace(
   const entry = await replaceable(worker, options, services);
   const device = await newDevice(worker, services.run);
   if ('check' in device)
-    return outcome('fleet-node-replace', worker.id, [device.check], false);
+    return outcome('replace', worker.id, [device.check], false);
   const replaced = entry.tailscaleId !== device.computer.id;
   const plan: Replacement = {
     worker,
@@ -536,13 +536,13 @@ export async function fleetNodeReplace(
   };
   if (preview(options))
     return outcome(
-      'fleet-node-replace',
+      'replace',
       worker.id,
       [identity, ...planReplacement(plan)],
       false
     );
   return outcome(
-    'fleet-node-replace',
+    'replace',
     worker.id,
     [identity, ...(await carryOut(plan, services))],
     true
@@ -581,7 +581,7 @@ async function replaceable(
   const entry = roster?.nodes.find((node) => node.id === worker.id);
   if (!entry)
     throw new FleetUsageError(
-      `${worker.id} is not in the roster. Add it with fleet-node-add first.`
+      `${worker.id} is not in the roster. Add it with enroll first.`
     );
   return entry;
 }
@@ -677,14 +677,14 @@ async function carryOut(
   steps.push({
     id: 'rollout:next',
     status: 'pass',
-    summary: `Run devfleet fleet-sync --node ${worker.id} to converge the new machine.`,
+    summary: `Run homelab converge --node ${worker.id} to converge the new machine.`,
   });
   return steps;
 }
 
 /** Pairs the manager's T3 with a replacement's environment and records it
  * in the roster. A machine whose T3 does not run yet (or refuses) is left to
- * the next fleet-sync, which pairs it once it runs.
+ * the next converge, which pairs it once it runs.
  */
 function pairReplacement(
   node: FleetNode,
@@ -760,7 +760,7 @@ function hostKeyFailure(): Check {
     summary: 'SSH_HOST_KEY_NOT_CHANGED',
     remedy: {
       action:
-        'The pinned Ansible could not change known_hosts on this manager. Run devfleet fleet-validate --ansible, then this command again.',
+        'The pinned Ansible could not change known_hosts on this manager. Run homelab check-config --ansible, then this command again.',
     },
   };
 }

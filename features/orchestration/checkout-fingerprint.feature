@@ -15,7 +15,7 @@ Feature: A checkout is compared with the manager's by its commit and its input f
       And every check has passed
 
     Scenario: A checkout without workspace packages matches itself
-      dev-fleet has no packages directory: its set of workspace manifests is
+      homelab has no packages directory: its set of workspace manifests is
       empty and known, not missing.
       Given the checkout has no "packages" directory
       When the fingerprint of the checkout is compared with itself

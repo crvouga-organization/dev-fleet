@@ -7,13 +7,13 @@ name: CLI proxy health
 #   permissions: { contents: read, id-token: write, issues: write }
 #   jobs:
 #     health:
-#       uses: crvouga/dev-fleet/.github/workflows/cliproxy-health.yml@<release tag>
+#       uses: crvouga/homelab/.github/workflows/cliproxy-health.yml@<release tag>
 #       with: { profile: readiness }
 #
 # It needs no stored secret. Everything else comes from the caller's
 # repository: the Vault address and the proxy endpoint from its fleet.json,
 # a short-lived Vault token from GitHub's OIDC token (the Vault role
-# `vault-role` names), and the checks themselves from the exact dev-fleet
+# `vault-role` names), and the checks themselves from the exact homelab
 # release its package.json pins.
 on:
   workflow_call:
@@ -74,7 +74,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Read the fleet configuration and install the pinned dev-fleet
+      - name: Read the fleet configuration and install the pinned homelab
         id: fleet
         env:
           CONFIG: ${{ inputs.config }}
@@ -85,16 +85,16 @@ jobs:
           esac
           config="$GITHUB_WORKSPACE/$CONFIG"
           [ -f "$config" ] || { echo "::error::CLIPROXY_HEALTH_CONFIG_MISSING: no $CONFIG in this repository."; exit 1; }
-          version=$(node -p "const p = require('./package.json'); (p.devDependencies || {})['@crvouga/dev-fleet'] || (p.dependencies || {})['@crvouga/dev-fleet'] || ''")
+          version=$(node -p "const p = require('./package.json'); (p.devDependencies || {})['@crvouga/homelab'] || (p.dependencies || {})['@crvouga/homelab'] || ''")
           if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::CLIPROXY_HEALTH_RELEASE_UNPINNED: package.json must pin @crvouga/dev-fleet to an exact version."
+            echo "::error::CLIPROXY_HEALTH_RELEASE_UNPINNED: package.json must pin @crvouga/homelab to an exact version."
             exit 1
           fi
-          npm install --prefix "$RUNNER_TEMP/devfleet" --ignore-scripts --no-audit --no-fund --silent "@crvouga/dev-fleet@$version"
+          npm install --prefix "$RUNNER_TEMP/homelab" --ignore-scripts --no-audit --no-fund --silent "@crvouga/homelab@$version"
           vault=$(jq -er '.secrets.address' "$config")
           {
-            echo "DEVFLEET_CONFIG=$config"
-            echo "CLIPROXY_SCRIPTS=$RUNNER_TEMP/devfleet/node_modules/@crvouga/dev-fleet/cliproxy/scripts"
+            echo "HOMELAB_CONFIG=$config"
+            echo "CLIPROXY_SCRIPTS=$RUNNER_TEMP/homelab/node_modules/@crvouga/homelab/cliproxy/scripts"
           } >> "$GITHUB_ENV"
           echo "vault=$vault" >> "$GITHUB_OUTPUT"
       - name: Install read-only backup client

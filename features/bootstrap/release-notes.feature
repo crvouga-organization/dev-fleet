@@ -8,7 +8,7 @@ Feature: The notes of a release
       """
       fix(cli): a refused flag says why
       ---
-      feat: fleet-sync --rollback
+      feat: converge --rollback
       ---
       docs: rollback is documented once
       ---
@@ -18,7 +18,7 @@ Feature: The notes of a release
       """
       ## Features
 
-      - fleet-sync --rollback
+      - converge --rollback
 
       ## Fixes
 

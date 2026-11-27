@@ -21,43 +21,43 @@ function dockerFailure(result: CommandResult): {
     return {
       code: 'DOCKER_RUN_TIMEOUT',
       action:
-        'A container did not start and exit in time. Inspect the engine (systemctl status docker) and its disk; rerun fleet-sync.',
+        'A container did not start and exit in time. Inspect the engine (systemctl status docker) and its disk; rerun converge.',
     };
   if (/permission denied[^\n]*docker\.sock/i.test(said))
     return {
       code: 'DOCKER_SOCKET_ACCESS_DENIED',
       action:
-        "This session cannot use the Docker socket. fleet-sync adds the worker's user to the docker group; a session started before that keeps its old groups. Rerun fleet-sync, then restart the session (log out and in, or restart the T3 service).",
+        "This session cannot use the Docker socket. converge adds the worker's user to the docker group; a session started before that keeps its old groups. Rerun converge, then restart the session (log out and in, or restart the T3 service).",
     };
   if (/cannot connect to the docker daemon/i.test(said))
     return {
       code: 'DOCKER_DAEMON_UNREACHABLE',
       action:
-        'The Docker engine is not running. Rerun fleet-sync, which starts and enables docker.service.',
+        'The Docker engine is not running. Rerun converge, which starts and enables docker.service.',
     };
   if (/no such image|pull access denied|not found/i.test(said))
     return {
       code: 'DOCKER_SMOKE_IMAGE_MISSING',
       action:
-        'The pinned smoke-test image is not cached on this worker. Rerun fleet-sync, which pulls it once so this check works offline.',
+        'The pinned smoke-test image is not cached on this worker. Rerun converge, which pulls it once so this check works offline.',
     };
   if (/no space left on device/i.test(said))
     return {
       code: 'DOCKER_DISK_FULL',
       action:
-        'The image store is full. Free space under /var/lib/docker (the disk GC prunes old images) and rerun fleet-sync.',
+        'The image store is full. Free space under /var/lib/docker (the disk GC prunes old images) and rerun converge.',
     };
   return {
     code: 'DOCKER_RUN_FAILED',
     action:
-      'Docker answers but cannot run a container here. Inspect cgroups and the engine log (journalctl -u docker), then rerun fleet-sync.',
+      'Docker answers but cannot run a container here. Inspect cgroups and the engine log (journalctl -u docker), then rerun converge.',
   };
 }
 
 /** A word the shell reads back unchanged. */
 const quoted = (word: string): string => `'${word.replaceAll("'", `'\\''`)}'`;
 
-/** fleet-sync adds the worker's user to the docker group, but a session
+/** converge adds the worker's user to the docker group, but a session
  * started before that keeps its old groups: the group database lists the
  * user in docker while this process does not hold the group. A fresh session
  * made with `sg docker` then reads the group from scratch, as the baseline's
@@ -124,7 +124,7 @@ export async function dockerRunCheck(run: Runner): Promise<Check> {
       id,
       code === 'DOCKER_RUN_FAILED' ? 'DOCKER_BUILD_FAILED' : code,
       code === 'DOCKER_RUN_FAILED'
-        ? 'A container runs but an image does not build. Inspect Buildx (docker buildx ls) and the image store, then rerun fleet-sync.'
+        ? 'A container runs but an image does not build. Inspect Buildx (docker buildx ls) and the image store, then rerun converge.'
         : action
     );
   }
@@ -134,7 +134,7 @@ export async function dockerRunCheck(run: Runner): Promise<Check> {
     summary:
       session === run
         ? 'A container of the pinned image ran and a one-line image built, offline, in this session.'
-        : 'A container of the pinned image ran and a one-line image built, offline, in a fresh session of the docker group: sessions started before fleet-sync granted it need a new login.',
+        : 'A container of the pinned image ran and a one-line image built, offline, in a fresh session of the docker group: sessions started before converge granted it need a new login.',
   };
 }
 
@@ -184,23 +184,23 @@ export async function browserCheck(
     return failure(
       id,
       'BROWSER_NOT_INSTALLED',
-      'The pinned headless Chromium is not installed. Rerun fleet-sync, which installs it on workers with the web profile.'
+      'The pinned headless Chromium is not installed. Rerun converge, which installs it on workers with the web profile.'
     );
   if (/error while loading shared libraries/i.test(said))
     return failure(
       id,
       'BROWSER_LIBRARY_MISSING',
-      'A system library headless Chromium loads is missing. Rerun fleet-sync, which installs the pinned libraries of the web profile.'
+      'A system library headless Chromium loads is missing. Rerun converge, which installs the pinned libraries of the web profile.'
     );
   if (launched.reason === 'timeout')
     return failure(
       id,
       'BROWSER_LAUNCH_TIMEOUT',
-      'Headless Chromium did not exit in time. Check the worker for memory pressure, then rerun fleet-sync.'
+      'Headless Chromium did not exit in time. Check the worker for memory pressure, then rerun converge.'
     );
   return failure(
     id,
     'BROWSER_LAUNCH_FAILED',
-    'Headless Chromium did not load a blank page. Run it by hand with --dump-dom about:blank to see why, then rerun fleet-sync.'
+    'Headless Chromium did not load a blank page. Run it by hand with --dump-dom about:blank to see why, then rerun converge.'
   );
 }

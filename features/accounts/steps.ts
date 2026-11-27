@@ -104,7 +104,7 @@ export class AccountsWorld extends World {
   computed = 0;
 
   temporary(): string {
-    const directory = mkdtempSync(join(tmpdir(), 'devfleet-accounts-'));
+    const directory = mkdtempSync(join(tmpdir(), 'homelab-accounts-'));
     this.defer(() => rmSync(directory, { recursive: true, force: true }));
     return directory;
   }
@@ -275,7 +275,7 @@ Given("the proxy's sign-in is interrupted", (world) => {
 });
 
 When(
-  'the operator runs fleet-accounts with {string}',
+  'the operator runs accounts with {string}',
   async (world, line: string) => {
     const words = line.split(' ').filter(Boolean);
     const options = Object.fromEntries(

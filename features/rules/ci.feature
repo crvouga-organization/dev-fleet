@@ -8,8 +8,8 @@ Feature: Every pull request is checked the way machines run
   Scenario: The fleet state check runs when the diff affects it and cannot skip the tools
     Then the "CI" workflow runs on "pull_request"
     And its "state" job runs when the affected job selects "state"
-    And its "state" job sets "DEVFLEET_TEST_LITESTREAM" to "required"
-    And its "state" job points "DEVFLEET_TEST_S3" at a local S3 service
+    And its "state" job sets "HOMELAB_TEST_LITESTREAM" to "required"
+    And its "state" job points "HOMELAB_TEST_S3" at a local S3 service
 
   Scenario Outline: The <job> check runs when the diff affects it
     Then the "CI" workflow runs on "pull_request"
@@ -35,26 +35,26 @@ Feature: Every pull request is checked the way machines run
     And its "fresh-box" job runs when the affected job selects "fresh"
     And its "fresh-box" job takes its matrix from the affected job
     And its "fresh-box" job runs "bun test features/fresh-box"
-    And its "fresh-box" job sets "DEVFLEET_TEST_FRESH_BOX" to "required"
-    And its "fresh-box" job sets "DEVFLEET_TEST_FRESH_BOX_RELEASE" to "${{ matrix.release }}"
-    And its "fresh-box" job sets "DEVFLEET_TEST_FRESH_BOX_FEATURE" to "${{ matrix.feature }}"
+    And its "fresh-box" job sets "HOMELAB_TEST_FRESH_BOX" to "required"
+    And its "fresh-box" job sets "HOMELAB_TEST_FRESH_BOX_RELEASE" to "${{ matrix.release }}"
+    And its "fresh-box" job sets "HOMELAB_TEST_FRESH_BOX_FEATURE" to "${{ matrix.feature }}"
 
   Scenario: The monitoring agent is applied on a systemd machine when the diff affects it
     Then the "CI" workflow runs on "pull_request"
     And its "agent-box" job runs when the affected job selects "agent"
     And its "agent-box" job runs "bun test features/monitoring"
-    And its "agent-box" job sets "DEVFLEET_TEST_AGENT_BOX" to "required"
+    And its "agent-box" job sets "HOMELAB_TEST_AGENT_BOX" to "required"
 
   Scenario: The pinned CLI proxy is asked about an account it holds back when the diff affects it
     Then the "CI" workflow runs on "pull_request"
     And its "proxy-box" job runs when the affected job selects "proxy"
     And its "proxy-box" job runs "bun test features/accounts"
-    And its "proxy-box" job sets "DEVFLEET_TEST_PROXY_BOX" to "required"
+    And its "proxy-box" job sets "HOMELAB_TEST_PROXY_BOX" to "required"
 
   Scenario: The agents play renders every CLI's configuration when the diff affects it and cannot skip
     Then the "CI" workflow runs on "pull_request"
     And its "check" job runs when the affected job selects "check"
-    And its "check" job sets "DEVFLEET_TEST_ANSIBLE" to "required"
+    And its "check" job sets "HOMELAB_TEST_ANSIBLE" to "required"
 
   Scenario: Every playbook is linted in the production profile and syntax-checked
     Then the "CI" workflow runs on "pull_request"
@@ -94,10 +94,10 @@ Feature: Every pull request is checked the way machines run
     Then the "Tailnet" workflow runs on "schedule"
     And the "Tailnet" workflow runs on "workflow_dispatch"
     And its "tailnet" job runs "bun test features/tailnet-box"
-    And its "tailnet" job sets "DEVFLEET_TEST_TAILNET_BOX" to "required"
+    And its "tailnet" job sets "HOMELAB_TEST_TAILNET_BOX" to "required"
 
   Scenario: A release stamps the commit it is published from into the package
-    fleet-sync run from the package converges every machine to the commit the
+    converge run from the package converges every machine to the commit the
     package names, so a release that does not name one cannot move a fleet.
     When the "Pack the release" step of the "Release" workflow is read
     Then it runs "npm pkg set gitHead=\"$(git rev-parse HEAD)\"" before "npm pack"

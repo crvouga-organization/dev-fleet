@@ -45,7 +45,7 @@ function catalogueOf(
 
 /** Antigravity also discovers models from its live ACP session. Its native
  * IDs can appear in the picker before T3 adds them to the static manifest.
- * The proxy template names the native IDs that dev-fleet routes as aliases.
+ * The proxy template names the native IDs that homelab routes as aliases.
  */
 const antigravityAliases = (
   proxyTemplate as {
@@ -147,7 +147,7 @@ export interface ModelsOptions {
   t3Home: string;
   roster: Roster;
   required?: Record<string, string[]>;
-  /** Write what each account's instance shows (fleet-sync); without it the
+  /** Write what each account's instance shows (converge); without it the
    * check only measures, and says what a sync would change.
    */
   apply?: boolean;
@@ -214,13 +214,13 @@ export async function modelsCheck(options: ModelsOptions): Promise<Check> {
   } catch {
     return warn(
       'T3_MODELS_UNVERIFIED',
-      'The proxy’s model list or T3’s settings could not be read on this machine. Check that the CLI proxy answers and T3 has started once, then run fleet-sync.'
+      'The proxy’s model list or T3’s settings could not be read on this machine. Check that the CLI proxy answers and T3 has started once, then run converge.'
     );
   }
   if (!result)
     return warn(
       'T3_SETTINGS_BUSY',
-      'T3 kept rewriting its settings while dev-fleet hid the models an account does not serve. Run fleet-sync again; nothing was overwritten.'
+      'T3 kept rewriting its settings while homelab hid the models an account does not serve. Run converge again; nothing was overwritten.'
     );
   const problems = mismatches(result, options.required ?? {});
   if (problems.size)
@@ -231,7 +231,7 @@ export async function modelsCheck(options: ModelsOptions): Promise<Check> {
   if (result.changes.size && !options.apply)
     return warn(
       'T3_MODELS_PENDING',
-      `fleet-sync would change what T3 shows for an account’s instance, so that it shows only the models the proxy serves for that account: ${[...result.changes].sort().join('; ')}.`
+      `converge would change what T3 shows for an account’s instance, so that it shows only the models the proxy serves for that account: ${[...result.changes].sort().join('; ')}.`
     );
   return {
     id: 't3:models',
@@ -241,7 +241,7 @@ export async function modelsCheck(options: ModelsOptions): Promise<Check> {
   };
 }
 
-/** What `fleet-sync --only accounts` applies beside the instances: an
+/** What `converge --only accounts` applies beside the instances: an
  * account that was just added shows only what it serves at once.
  */
 export const accountModels = (): Promise<Check> => {
@@ -323,7 +323,7 @@ function defaultProblems(
   const problems = preferred.some((model) => account.models.includes(model))
     ? []
     : [
-        `an account serves none of the preferred defaults (${preferred.join(', ')}) and defaults to ${account.models[0]}; ask for a model it serves to be added to them, with an issue in dev-fleet’s tracker (devfleet --help names it)`,
+        `an account serves none of the preferred defaults (${preferred.join(', ')}) and defaults to ${account.models[0]}; ask for a model it serves to be added to them, with an issue in homelab’s tracker (homelab --help names it)`,
       ];
   for (const [key, name] of Object.entries(SELECTIONS)) {
     const selection = record(settings[key]);

@@ -77,9 +77,7 @@ export function validateOptions(command: string, options: CliOptions): void {
 
 function validateMutation(command: string, options: CliOptions): void {
   if (options.apply && !['add', 'repair'].includes(command))
-    throw new FleetUsageError(
-      '--apply is only valid for fleet-node-add and fleet-repair.'
-    );
+    throw new FleetUsageError('--apply is only valid for enroll and repair.');
   if (options.apply && !options.yes)
     throw new FleetUsageError('Mutation requires both --apply and --yes.');
 }
@@ -102,7 +100,7 @@ function validateScope(command: string, options: CliOptions): void {
 function validateRosterScope(command: string, options: CliOptions): void {
   if ((options.local || options.all) && !['doctor', 'repair'].includes(command))
     throw new FleetUsageError(
-      '--local and --all are only valid for fleet-status and fleet-repair.'
+      '--local and --all are only valid for check and repair.'
     );
 }
 
@@ -120,7 +118,7 @@ function validateRepair(command: string, options: CliOptions): void {
     options.planHash !== undefined;
   if (repairFlags && command !== 'repair')
     throw new FleetUsageError(
-      '--repair, --script and --plan-hash are only valid for fleet-repair without --list.'
+      '--repair, --script and --plan-hash are only valid for repair without --list.'
     );
   if (options.script && options.apply)
     throw new FleetUsageError(
@@ -137,6 +135,6 @@ function validateCatalog(command: string, options: CliOptions): void {
     options.require !== undefined;
   if (command === 'repairs' && filtered)
     throw new FleetUsageError(
-      'fleet-repair --list is a static catalog and does not accept target or capability filters.'
+      'repair --list is a static catalog and does not accept target or capability filters.'
     );
 }

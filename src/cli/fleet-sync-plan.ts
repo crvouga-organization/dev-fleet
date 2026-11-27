@@ -22,7 +22,7 @@ export interface Restart {
   deadlineHours?: number;
 }
 
-/** What `fleet-sync --dry-run` says a sync would change. It is read from
+/** What `converge --dry-run` says a sync would change. It is read from
  * Git (the two revisions' tool pins and the files between them) and the
  * fleet state; nothing on a machine is changed to find it out.
  */

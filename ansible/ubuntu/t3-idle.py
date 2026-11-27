@@ -5,7 +5,7 @@ T3 offers no command that lists the running turns of every project, so this
 reads the runs T3 records in its own state database, read-only. Anything it
 cannot read counts as busy: a restart never ends a turn on a guess.
 
-With --activity it prints one JSON line for fleet-status instead and exits 0:
+With --activity it prints one JSON line for check instead and exits 0:
 how many agent turns are under way and when the last one was requested or
 ended. Only the status and the times of a run are read, never its content.
 

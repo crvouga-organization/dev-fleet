@@ -45,7 +45,7 @@ export interface PairingServices {
 
 /** Pairs the manager's T3 with the environment a worker runs now, without a
  * person (src/t3/peer-link.ts), and records it in the roster. Until it is
- * paired, the fleet state keeps the request, so the next fleet-sync pairs
+ * paired, the fleet state keeps the request, so the next converge pairs
  * it once the worker's T3 runs; once paired, the request is forgotten.
  */
 export async function pairAndRecord(

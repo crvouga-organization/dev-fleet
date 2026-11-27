@@ -1,6 +1,6 @@
 Feature: The manager converges from a fleet-owned checkout of the revision
   The manager converges from a clean checkout of the exact revision, like every
-  worker, never from where fleet-sync was started: that is an installed package
+  worker, never from where converge was started: that is an installed package
   a package manager may remove, or a working tree with uncommitted edits. The
   checkout is made from a repository the manager owns too: the fleet's source
   repository, fetched into the manager's caches.
@@ -18,7 +18,7 @@ Feature: The manager converges from a fleet-owned checkout of the revision
         """
         {"version":3,"ok":true}
         """
-      When the manager starts "fleet-sync --json" at revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" from "/work"
+      When the manager starts "converge --json" at revision "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" from "/work"
       Then it starts "sh -c" with that run script and the arguments "fleet-manager-run bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb --json"
       And the run is told its repository is "/work"
       And the result is exactly exit code 0 and the report:
@@ -27,7 +27,7 @@ Feature: The manager converges from a fleet-owned checkout of the revision
         """
 
     Scenario: Run from the installed package, the revision comes from the source repository into a cache the manager owns
-      "/project/node_modules/dev-fleet" is not a checkout: it is a directory
+      "/project/node_modules/homelab" is not a checkout: it is a directory
       under some project's node_modules.
       Given only a clone of the fleet's source repository holds revision "cccccccccccccccccccccccccccccccccccccccc", with the run script:
         """
@@ -35,7 +35,7 @@ Feature: The manager converges from a fleet-owned checkout of the revision
         echo run
         """
       And the run from the checkout answers with exit code 0 and "done"
-      When the manager starts "fleet-sync" at revision "cccccccccccccccccccccccccccccccccccccccc" from "/project/node_modules/dev-fleet"
+      When the manager starts "converge" at revision "cccccccccccccccccccccccccccccccccccccccc" from "/project/node_modules/homelab"
       Then Git cloned the fleet's source repository with "--no-checkout --origin origin" into "source" in the manager's caches
       And the run is told its repository is "source" in the manager's caches
       And it starts "sh -c" with that run script and the arguments "fleet-manager-run cccccccccccccccccccccccccccccccccccccccc"
@@ -45,15 +45,15 @@ Feature: The manager converges from a fleet-owned checkout of the revision
     Scenario: A revision that cannot be fetched is run from nowhere, least of all in place
       Given Git is offline and no directory holds any revision
       And starting a run would fail the scenario
-      When the manager starts "fleet-sync" at revision "dddddddddddddddddddddddddddddddddddddddd" from "/project/node_modules/dev-fleet"
+      When the manager starts "converge" at revision "dddddddddddddddddddddddddddddddddddddddd" from "/project/node_modules/homelab"
       Then there is no run
 
-    Scenario Outline: Outside a test, fleet-sync leaves the place it was started in or stops
+    Scenario Outline: Outside a test, converge leaves the place it was started in or stops
       A test never leaves its own process: the same rule as the hand-off from a
       worker.
       Given Git is offline and no directory holds any revision
       And the environment sets "NODE_ENV" to "<environment>"
-      When the manager decides where to run "fleet-sync" at revision "dddddddddddddddddddddddddddddddddddddddd", started from "/project/node_modules/dev-fleet"
+      When the manager decides where to run "converge" at revision "dddddddddddddddddddddddddddddddddddddddd", started from "/project/node_modules/homelab"
       Then the answer is "<answer>"
 
       Examples:

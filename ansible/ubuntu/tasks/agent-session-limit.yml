@@ -26,7 +26,7 @@
     group: root
     mode: '0644'
     content: |
-      # Managed by personal fleet-sync.
+      # Managed by personal converge.
       [Unit]
       Description=Refuse T3 agent scopes above the declared limit
       [Service]

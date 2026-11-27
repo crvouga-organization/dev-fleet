@@ -1,14 +1,14 @@
 Feature: The pinned Litestream replicates the fleet state and a new manager restores it
   These scenarios run the Litestream that mise.toml pins, against a directory
   and against a throwaway S3 service: no machine and no real bucket. They are
-  skipped where the toolchain is not installed or DEVFLEET_TEST_S3 names no
-  service. Where DEVFLEET_TEST_LITESTREAM is "required" (the Fleet state job
+  skipped where the toolchain is not installed or HOMELAB_TEST_S3 names no
+  service. Where HOMELAB_TEST_LITESTREAM is "required" (the Fleet state job
   in CI) nothing is skipped: a missing piece fails.
 
   @required
   Scenario: Where these checks are required, nothing they need is missing
     Then the pinned Litestream is installed
-    And DEVFLEET_TEST_S3 names an S3 service
+    And HOMELAB_TEST_S3 names an S3 service
 
   @litestream @slow
   Rule: Litestream replicates the state database to a directory and a new manager restores it
@@ -107,8 +107,8 @@ Feature: The pinned Litestream replicates the fleet state and a new manager rest
       And manager "a" stands "bucket-ahead" with the bucket
 
   @litestream @s3 @slow
-  Rule: fleet-state keeps a fleet in an S3 bucket
-    In a command, `$S3` is the origin DEVFLEET_TEST_S3 names, `$S3_BUCKET` is a
+  Rule: state keeps a fleet in an S3 bucket
+    In a command, `$S3` is the origin HOMELAB_TEST_S3 names, `$S3_BUCKET` is a
     bucket made there for the scenario, `~` is the manager's home and
     examples/fleet.json is the tracked example.
 
@@ -116,20 +116,20 @@ Feature: The pinned Litestream replicates the fleet state and a new manager rest
       Given a new bucket on the S3 service
       And managers "a" and "b" run the pinned Litestream
       And commands on manager "a" are passed:
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
       And commands on manager "b" are passed:
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
 
     Scenario: The bucket is connected
-      When the operator runs "fleet-state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "a"
+      When the operator runs "state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "a"
       Then the S3 service made the new bucket
       And the command exits 0
 
     Scenario: The database is in the bucket under this fleet's prefix only, and the keys are kept in bucket.json alone
-      Given the operator ran "fleet-state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "a"
-      When the operator runs "fleet-state --import examples/fleet.json" on manager "a"
+      Given the operator ran "state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "a"
+      When the operator runs "state --import examples/fleet.json" on manager "a"
       Then the report includes:
         """
         { "standing": "in-sync", "ok": true }
@@ -147,22 +147,22 @@ Feature: The pinned Litestream replicates the fleet state and a new manager rest
       Given a new bucket on the S3 service
       And managers "a" and "b" run the pinned Litestream
       And commands on manager "a" are passed:
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
       And commands on manager "b" are passed:
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
-      And the operator ran "fleet-state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "a"
-      And the operator ran "fleet-state --import examples/fleet.json" on manager "a"
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
+      And the operator ran "state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "a"
+      And the operator ran "state --import examples/fleet.json" on manager "a"
 
     Scenario: Connecting the bucket restores the fleet state
-      When the operator runs "fleet-state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "b"
+      When the operator runs "state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "b"
       Then the command exits 0
       And the output contains "Restored the fleet state from the bucket."
 
     Scenario: The replacement holds the configuration the first manager stored
-      Given the operator ran "fleet-state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "b"
-      When the operator runs "fleet-state --export" on manager "b"
+      Given the operator ran "state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "b"
+      When the operator runs "state --export" on manager "b"
       Then the output is the configuration in the fleet state of manager "a"
 
   @litestream @s3 @slow
@@ -172,35 +172,35 @@ Feature: The pinned Litestream replicates the fleet state and a new manager rest
       Given a new bucket on the S3 service
       And managers "a" and "b" run the pinned Litestream
       And commands on manager "a" are passed:
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
       And commands on manager "b" are passed:
-        | DEVFLEET_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
-        | DEVFLEET_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
-      And the operator ran "fleet-state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "a"
-      And the operator ran "fleet-state --import examples/fleet.json" on manager "a"
-      And the operator ran "fleet-state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "b"
-      And "~/edited.json" on manager "b" holds what "fleet-state --export" prints there, with "worker-two" renamed "worker-renamed"
+        | HOMELAB_BUCKET_ACCESS_KEY_ID     | test-access-key-id     |
+        | HOMELAB_BUCKET_SECRET_ACCESS_KEY | test-secret-access-key |
+      And the operator ran "state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "a"
+      And the operator ran "state --import examples/fleet.json" on manager "a"
+      And the operator ran "state --init --bucket $S3_BUCKET --endpoint $S3 --region us-east-1 --prefix fleets/one" on manager "b"
+      And "~/edited.json" on manager "b" holds what "state --export" prints there, with "worker-two" renamed "worker-renamed"
 
     Scenario: The replacement's change reaches the bucket
-      When the operator runs "fleet-state --import ~/edited.json" on manager "b"
+      When the operator runs "state --import ~/edited.json" on manager "b"
       Then the report includes:
         """
         { "standing": "in-sync" }
         """
 
     Scenario: The first manager is behind the bucket
-      Given the operator ran "fleet-state --import ~/edited.json" on manager "b"
-      When the operator runs "fleet-state" on manager "a"
+      Given the operator ran "state --import ~/edited.json" on manager "b"
+      When the operator runs "state" on manager "a"
       Then the report includes:
         """
         { "standing": "bucket-ahead" }
         """
 
     Scenario: The first manager restores the replacement's change
-      Given the operator ran "fleet-state --import ~/edited.json" on manager "b"
-      And the operator ran "fleet-state" on manager "a"
-      When the operator runs "fleet-state --restore" on manager "a"
+      Given the operator ran "state --import ~/edited.json" on manager "b"
+      And the operator ran "state" on manager "a"
+      When the operator runs "state --restore" on manager "a"
       Then the report includes:
         """
         { "standing": "in-sync" }

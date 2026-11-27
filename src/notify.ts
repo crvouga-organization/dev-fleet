@@ -3,7 +3,7 @@ import type { SecretName, SecretsProvider } from './secrets';
 import type { Check, NodeReport } from './types';
 import { unreadSecret } from './secrets-blocked';
 
-/** Where fleet-watch sends a notification. The address of each target is a
+/** Where notify sends a notification. The address of each target is a
  * secret, read by purpose: a webhook or ntfy URL often carries its own token.
  */
 export const NOTIFY_TARGETS = {
@@ -58,7 +58,7 @@ export interface WatchMemory {
   revision?: string;
 }
 
-/** One machine as fleet-status saw it: the IDs of its failing checks. */
+/** One machine as check saw it: the IDs of its failing checks. */
 export interface Observation {
   node: string;
   failing: string[];
@@ -204,12 +204,12 @@ function revisions(
 export function notificationText(notification: Notification): string {
   const changed = revisions(notification);
   if (notification.event === 'revision-changed' && changed)
-    return `dev-fleet: the approved revision of the fleet changed from ${changed.replaced.slice(0, 12)} to ${changed.approved.slice(0, 12)}${
+    return `homelab: the approved revision of the fleet changed from ${changed.replaced.slice(0, 12)} to ${changed.approved.slice(0, 12)}${
       changed.selectedBy ? `, selected by ${changed.selectedBy}` : ''
     }`;
   const node = safe(notification.node) ? notification.node : 'a machine';
   const checks = notification.checks.filter(safe);
-  return `dev-fleet: ${node} ${WORDS[notification.event]}${
+  return `homelab: ${node} ${WORDS[notification.event]}${
     checks.length ? `. Failing checks: ${checks.join(', ')}` : ''
   }`;
 }
@@ -260,7 +260,7 @@ export async function deliver(
             status: 'fail',
             summary: 'NOTIFY_DELIVERY_FAILED',
             remedy: {
-              action: `Check that the ${target} target answers, then run devfleet fleet-watch --test.`,
+              action: `Check that the ${target} target answers, then run homelab notify --test.`,
             },
           }
     );
@@ -279,7 +279,7 @@ function request(
       method: 'POST',
       body: text,
       headers: {
-        Title: `dev-fleet: ${notification.event}`,
+        Title: `homelab: ${notification.event}`,
         Tags:
           notification.event === 'recovered' ? 'white_check_mark' : 'warning',
       },
@@ -289,7 +289,7 @@ function request(
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      source: 'dev-fleet',
+      source: 'homelab',
       event: notification.event,
       node: safe(notification.node) ? notification.node : null,
       checks: notification.checks.filter(safe),

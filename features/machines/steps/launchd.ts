@@ -70,7 +70,7 @@ When('its launchd job is rendered and linted by macOS', async (world) => {
 const rendered = new WeakMap<MachinesWorld, string>();
 
 When(
-  /^the fleet-watch job of "([^"]+)" is rendered for the home "([^"]+)", every (\d+) minutes, and linted by macOS$/,
+  /^the notify job of "([^"]+)" is rendered for the home "([^"]+)", every (\d+) minutes, and linted by macOS$/,
   async (world, playbook: string, home: string, minutes: string) => {
     const plays = parse(readFileSync(join(root, playbook), 'utf8')) as {
       tasks?: Record<string, unknown>[];
@@ -98,7 +98,7 @@ When(
       }
     );
     rendered.set(world, plist);
-    const scratch = mkdtempSync(join(tmpdir(), 'fleet-watch-'));
+    const scratch = mkdtempSync(join(tmpdir(), 'notify-'));
     world.defer(() => rmSync(scratch, { recursive: true, force: true }));
     const path = join(scratch, 'watch.plist');
     writeFileSync(path, plist);

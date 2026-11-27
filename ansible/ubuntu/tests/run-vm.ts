@@ -44,7 +44,7 @@ export function run(mode: Mode): number {
     `${join(directory, 'verification')}:/verification:ro`,
   ];
   if (mode === 'bootstrap') {
-    // The commit under test, as fleet-sync sends it: never uncommitted edits.
+    // The commit under test, as converge sends it: never uncommitted edits.
     const source = join(directory, 'source');
     writeFileSync(
       join(source, 'revision'),

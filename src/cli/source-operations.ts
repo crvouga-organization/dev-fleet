@@ -16,7 +16,7 @@ interface SourceOperation {
 
 /** Commands implemented by another owner in this checkout and streamed through. */
 export const SOURCE_OPERATIONS: Record<string, SourceOperation> = {
-  cliproxy: {
+  proxy: {
     title: 'CLIProxyAPI service',
     description:
       'Install, inspect, back up, recover and validate model health (model-health, model-suite) of the CLIProxyAPI service.',
@@ -34,8 +34,8 @@ export function sourceOperation(args: string[]): string | undefined {
 
 /** These owners install from Git (a service keeps the commit it runs), so
  * they run from a checkout: the one this CLI is in, or, for an installed
- * package, the fleet-owned checkout of the revision fleet-sync applied on
- * this machine. Null before the first fleet-sync.
+ * package, the fleet-owned checkout of the revision converge applied on
+ * this machine. Null before the first converge.
  */
 export function ownerCheckout(
   workspace: string,
@@ -47,7 +47,7 @@ export function ownerCheckout(
 }
 
 const CHECKOUT_REQUIRED =
-  'This command runs from the revision fleet-sync applied on this machine, and none is applied yet. Run devfleet fleet-sync first.\n';
+  'This command runs from the revision converge applied on this machine, and none is applied yet. Run homelab converge first.\n';
 
 export async function forwardSourceOperation(
   args: string[],
@@ -70,7 +70,7 @@ export async function forwardSourceOperation(
     });
     child.on('error', () => {
       process.stderr.write(
-        'This command requires python3 and the toolchain fleet-sync installs.\n'
+        'This command requires python3 and the toolchain converge installs.\n'
       );
       resolve(1);
     });
@@ -90,7 +90,7 @@ export function registerSourceOperations(
       .allowUnknownOption()
       .addHelpText(
         'after',
-        `\n${operation.description}\nArguments are forwarded to the owning implementation; run devfleet ${name} help for its usage.`
+        `\n${operation.description}\nArguments are forwarded to the owning implementation; run homelab ${name} help for its usage.`
       )
       .action(async (args: string[]) => {
         const exitCode = await forwardSourceOperation(

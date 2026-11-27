@@ -34,7 +34,7 @@ const output = (world: object): unknown => outputs.get(world);
 
 // ── Command output ───────────────────────────────────────────────────────
 
-When('fleet-sync stops before it reaches a machine', (world) => {
+When('converge stops before it reaches a machine', (world) => {
   outputs.set(
     world,
     managerFailure(fleet, 'a'.repeat(40), 'FLEET_FIXTURE', 'Fixture remedy.')
@@ -42,7 +42,7 @@ When('fleet-sync stops before it reaches a machine', (world) => {
 });
 
 When(
-  'fleet-status checks this manager only, where every command succeeds',
+  'check checks this manager only, where every command succeeds',
   async (world) => {
     const commands = new Commands();
     commands.answer(() => true, succeeded());
@@ -57,7 +57,7 @@ When(
 );
 
 When(
-  'fleet-repair previews the repairs of this manager only, where every command succeeds',
+  'repair previews the repairs of this manager only, where every command succeeds',
   async (world) => {
     const commands = new Commands();
     commands.answer(() => true, succeeded());
@@ -74,17 +74,17 @@ When(
 /** An empty fleet state of this scenario's own, removed afterwards. */
 function emptyState(world: { defer(undo: () => void): void }): string {
   const state = mkdtempSync(join(tmpdir(), 'contract-state-'));
-  const before = process.env['DEVFLEET_STATE'];
-  process.env['DEVFLEET_STATE'] = state;
+  const before = process.env['HOMELAB_STATE'];
+  process.env['HOMELAB_STATE'] = state;
   world.defer(() => {
-    process.env['DEVFLEET_STATE'] = before;
+    process.env['HOMELAB_STATE'] = before;
     rmSync(state, { recursive: true, force: true });
   });
   return state;
 }
 
 When(
-  'fleet-state checks a fleet state whose bucket cannot be reached',
+  'state checks a fleet state whose bucket cannot be reached',
   async (world) => {
     const state = emptyState(world);
     const commands = new Commands();
@@ -93,7 +93,7 @@ When(
       { json: true },
       {
         run: commands.run,
-        env: { DEVFLEET_STATE: state, HOME: state },
+        env: { HOMELAB_STATE: state, HOME: state },
         home: state,
         ask: null,
       }
@@ -102,7 +102,7 @@ When(
   }
 );
 
-When('fleet-state prints the example configuration', async (world) => {
+When('state prints the example configuration', async (world) => {
   outputs.set(world, (await fleetState({ example: true, json: true })).data);
 });
 
@@ -126,7 +126,7 @@ When(
   }
 );
 
-When('fleet-report reads a history of two runs', (world) => {
+When('history reads a history of two runs', (world) => {
   emptyState(world);
   const now = new Date('2026-11-01T12:00:00Z');
   for (const [finished, ok] of [
@@ -153,14 +153,14 @@ When('fleet-report reads a history of two runs', (world) => {
 
 When('a command is refused as a usage error', async (world) => {
   const outcome = await execute(
-    ['fleet-status', '--apply', '--yes', '--json'],
+    ['check', '--apply', '--yes', '--json'],
     { workspace: root, config: '/no-roster' },
     { version: 'test', releasedAt: null }
   );
   outputs.set(world, outcome.data);
 });
 
-Given('a fleet-sync report that says it is version 1', (world) => {
+Given('a converge report that says it is version 1', (world) => {
   outputs.set(world, {
     ...managerFailure(fleet, null, 'FLEET_FIXTURE', 'Fixture remedy.'),
     version: 1,
@@ -199,7 +199,7 @@ When('schema\\/check-ids.json is read', (world) => {
 
 Then('it is the registry the code generates', (world) => {
   const generated = renderCheckRegistry();
-  if (process.env['DEVFLEET_UPDATE_DOCS'])
+  if (process.env['HOMELAB_UPDATE_DOCS'])
     writeFileSync(resolve(root, 'schema/check-ids.json'), generated);
   else expect(output(world)).toEqual(JSON.parse(generated));
   expect(readFileSync(resolve(root, 'schema/check-ids.json'), 'utf8')).toBe(

@@ -7,7 +7,7 @@
     "womp": "1",
     "autorestart": "1"
   },
-  "beszelDaemon": "dev.devfleet.beszel-agent",
+  "beszelDaemon": "dev.homelab.beszel-agent",
   "disk": {
     "warnFreeMiB": 20480,
     "failFreeMiB": 5120,
@@ -28,7 +28,7 @@
     "intervalMinutes": 30
   },
   "fleetWatch": {
-    "label": "dev.devfleet.fleet-watch",
+    "label": "dev.homelab.notify",
     "intervalMinutes": 15
   },
   "vaultRenewal": {
@@ -36,9 +36,9 @@
     "expiryWarnHours": 24
   },
   "diskGc": {
-    "label": "dev.devfleet.disk-gc",
+    "label": "dev.homelab.disk-gc",
     "script": ".local/share/personal/fleet/manager/disk-gc.py",
-    "report": "Library/Caches/dev-fleet/disk-gc.json",
+    "report": "Library/Caches/homelab/disk-gc.json",
     "cacheRoots": [".cache", "Library/Caches"]
   },
   "jobLogs": {

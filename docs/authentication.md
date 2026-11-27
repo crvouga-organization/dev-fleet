@@ -1,9 +1,9 @@
 # Authentication and accounts
 
-Where each credential dev-fleet uses lives, who can read it, how it reaches
+Where each credential homelab uses lives, who can read it, how it reaches
 each node, how it rotates and what happens when it fails. The three tables
 are generated from the code; `features/rules/authentication.feature` fails
-when one is out of date (`DEVFLEET_UPDATE_DOCS=1 bun test features/rules`
+when one is out of date (`HOMELAB_UPDATE_DOCS=1 bun test features/rules`
 rewrites them).
 
 ## Where credentials live
@@ -11,7 +11,7 @@ rewrites them).
 | Credential                          | Lives in                                                                                                                       | Read by                                          |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
 | The fleet's secrets (table below)   | The provider `secrets` names in `fleet.json`                                                                                   | The node that needs it, through `src/secrets.ts` |
-| The bucket's two keys               | The environment of the `devfleet` command; `~/.config/dev-fleet/bucket.json` (0600) on the manager after `fleet-state --init`  | The manager only                                 |
+| The bucket's two keys               | The environment of the `homelab` command; `~/.config/homelab/bucket.json` (0600) on the manager after `state --init`           | The manager only                                 |
 | A node's Vault token                | That node's own Vault session (`~/.vault-token`)                                                                               | That node only; never copied                     |
 | A node's GitHub login               | `gh`'s own store on that node                                                                                                  | `gh`, and git through its credential helper      |
 | Provider accounts (Claude, Codex …) | The CLI proxy's store on the manager                                                                                           | The proxy; nodes hold only the proxy client key  |
@@ -19,23 +19,23 @@ rewrites them).
 
 ## How they reach each node
 
-- **Vault.** A person logs each machine in once (`fleet-sync` asks on the
+- **Vault.** A person logs each machine in once (`sync` asks on the
   manager and passes the password to the worker over SSH on standard input).
   From then on the worker's `personal-worker-auth` timer renews its own token
   (`bootstrap/worker-auth.ts`). Nothing renders provider configuration from
-  Vault on a worker: agent profiles come from `fleet-sync`.
+  Vault on a worker: agent profiles come from `sync`.
 - **GitHub.** The same job restores the declared account (`worker.githubLogin`)
   with the GitHub service token it reads from its own Vault session
-  (`bootstrap/worker-github.ts`, on standard input, never argv). `fleet-sync`
+  (`bootstrap/worker-github.ts`, on standard input, never argv). `sync`
   makes `gh` git's credential helper and writes the declared identity
   (`git` in `fleet.json`, `ansible/github/git.yml`) on every node.
 - **The proxy client key** is read by each node from its own secrets provider
   whenever a launcher starts an agent. The node keeps the last key it read in
-  `~/.cache/dev-fleet/proxy-client-key` (0600) and uses it only while the
+  `~/.cache/homelab/proxy-client-key` (0600) and uses it only while the
   provider cannot answer, so an unreachable Vault or an expired session leaves
   that node's agents working until the Vault checks below are fixed.
 - **The monitoring hub's backup storage keys** are read on the manager by
-  `fleet-sync` and handed to the hub's playbook in a private variables file.
+  `sync` and handed to the hub's playbook in a private variables file.
 
 ## Rotation and failure
 
@@ -68,14 +68,14 @@ repairs. Either way every check on the manager that needed a secret (the
 hub's account, tunnel, viewer and backups, a notification target, the
 tailnet control plane's credential, the GitHub token, the proxy client key)
 reports `SECRET_READ_BLOCKED by manager:vault-renewal` instead of a code of
-its own, and `fleet-node-seed` refuses with the same words. A secret that is
+its own, and `provision` refuses with the same words. A secret that is
 absent while the manager can read its provider keeps the code of the check
 that needs it.
 
 A worker is the same with its own login. `worker:vault-renewal` owns it: a
 session that does not answer while Vault does is
 `UNATTENDED_VAULT_IDENTITY_REQUIRED`, fixed by the worker's token (the next
-sync delivers it, `fleet-node-replace` issues a new one), and a Vault that
+sync delivers it, `replace` issues a new one), and a Vault that
 does not answer the worker, or is sealed, is `VAULT_UNREACHABLE`, which no
 token repairs. The sync that would have delivered a token says the same as
 `auth:vault` and delivers none. Every check on the worker that needed a
@@ -99,20 +99,20 @@ Every failure code is in [the runbooks](runbooks.md).
 
 <!-- generated: secrets -->
 
-| Secret                         | Required                     | `env` provider variable                        | `file` provider file                                       |
-| ------------------------------ | ---------------------------- | ---------------------------------------------- | ---------------------------------------------------------- |
-| `proxy-client-key`             | yes                          | `DEVFLEET_SECRET_PROXY_CLIENT_KEY`             | `~/.config/dev-fleet/secrets/proxy-client-key`             |
-| `monitoring-account-password`  | yes                          | `DEVFLEET_SECRET_MONITORING_ACCOUNT_PASSWORD`  | `~/.config/dev-fleet/secrets/monitoring-account-password`  |
-| `monitoring-tunnel-token`      | yes                          | `DEVFLEET_SECRET_MONITORING_TUNNEL_TOKEN`      | `~/.config/dev-fleet/secrets/monitoring-tunnel-token`      |
-| `proxy-tunnel-token`           | yes                          | `DEVFLEET_SECRET_PROXY_TUNNEL_TOKEN`           | `~/.config/dev-fleet/secrets/proxy-tunnel-token`           |
-| `github-token`                 | when its feature is declared | `DEVFLEET_SECRET_GITHUB_TOKEN`                 | `~/.config/dev-fleet/secrets/github-token`                 |
-| `rdp-password`                 | when its feature is declared | `DEVFLEET_SECRET_RDP_PASSWORD`                 | `~/.config/dev-fleet/secrets/rdp-password`                 |
-| `monitoring-backup-access-key` | when its feature is declared | `DEVFLEET_SECRET_MONITORING_BACKUP_ACCESS_KEY` | `~/.config/dev-fleet/secrets/monitoring-backup-access-key` |
-| `monitoring-backup-secret-key` | when its feature is declared | `DEVFLEET_SECRET_MONITORING_BACKUP_SECRET_KEY` | `~/.config/dev-fleet/secrets/monitoring-backup-secret-key` |
-| `notify-webhook-url`           | when its feature is declared | `DEVFLEET_SECRET_NOTIFY_WEBHOOK_URL`           | `~/.config/dev-fleet/secrets/notify-webhook-url`           |
-| `notify-ntfy-url`              | when its feature is declared | `DEVFLEET_SECRET_NOTIFY_NTFY_URL`              | `~/.config/dev-fleet/secrets/notify-ntfy-url`              |
-| `tailnet-auth-key`             | when its feature is declared | `DEVFLEET_SECRET_TAILNET_AUTH_KEY`             | `~/.config/dev-fleet/secrets/tailnet-auth-key`             |
-| `tailnet-admin`                | when its feature is declared | `DEVFLEET_SECRET_TAILNET_ADMIN`                | `~/.config/dev-fleet/secrets/tailnet-admin`                |
+| Secret                         | Required                     | `env` provider variable                       | `file` provider file                                     |
+| ------------------------------ | ---------------------------- | --------------------------------------------- | -------------------------------------------------------- |
+| `proxy-client-key`             | yes                          | `HOMELAB_SECRET_PROXY_CLIENT_KEY`             | `~/.config/homelab/secrets/proxy-client-key`             |
+| `monitoring-account-password`  | yes                          | `HOMELAB_SECRET_MONITORING_ACCOUNT_PASSWORD`  | `~/.config/homelab/secrets/monitoring-account-password`  |
+| `monitoring-tunnel-token`      | yes                          | `HOMELAB_SECRET_MONITORING_TUNNEL_TOKEN`      | `~/.config/homelab/secrets/monitoring-tunnel-token`      |
+| `proxy-tunnel-token`           | yes                          | `HOMELAB_SECRET_PROXY_TUNNEL_TOKEN`           | `~/.config/homelab/secrets/proxy-tunnel-token`           |
+| `github-token`                 | when its feature is declared | `HOMELAB_SECRET_GITHUB_TOKEN`                 | `~/.config/homelab/secrets/github-token`                 |
+| `rdp-password`                 | when its feature is declared | `HOMELAB_SECRET_RDP_PASSWORD`                 | `~/.config/homelab/secrets/rdp-password`                 |
+| `monitoring-backup-access-key` | when its feature is declared | `HOMELAB_SECRET_MONITORING_BACKUP_ACCESS_KEY` | `~/.config/homelab/secrets/monitoring-backup-access-key` |
+| `monitoring-backup-secret-key` | when its feature is declared | `HOMELAB_SECRET_MONITORING_BACKUP_SECRET_KEY` | `~/.config/homelab/secrets/monitoring-backup-secret-key` |
+| `notify-webhook-url`           | when its feature is declared | `HOMELAB_SECRET_NOTIFY_WEBHOOK_URL`           | `~/.config/homelab/secrets/notify-webhook-url`           |
+| `notify-ntfy-url`              | when its feature is declared | `HOMELAB_SECRET_NOTIFY_NTFY_URL`              | `~/.config/homelab/secrets/notify-ntfy-url`              |
+| `tailnet-auth-key`             | when its feature is declared | `HOMELAB_SECRET_TAILNET_AUTH_KEY`             | `~/.config/homelab/secrets/tailnet-auth-key`             |
+| `tailnet-admin`                | when its feature is declared | `HOMELAB_SECRET_TAILNET_ADMIN`                | `~/.config/homelab/secrets/tailnet-admin`                |
 
 <!-- end: secrets -->
 

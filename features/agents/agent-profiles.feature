@@ -1,5 +1,5 @@
 Feature: Agent profiles
-  Every agent on every machine runs from a profile dev-fleet renders and
+  Every agent on every machine runs from a profile homelab renders and
   owns: a direct one, or one routed through the proxy. A profile names where a
   credential is found, never the credential, and is kept apart from the
   agent's own sign-in and state.
@@ -76,7 +76,7 @@ Feature: Agent profiles
 
   Rule: A preview is read-only; applying is repeatable and detects modifications
 
-    The agents play (ansible/agents/agents.yml) writes a profile. dev-fleet
+    The agents play (ansible/agents/agents.yml) writes a profile. homelab
     decides beforehand: it refuses a file someone edited unless the person
     adopts it, says what is backed up, and runs no play when nothing would
     change.

@@ -110,10 +110,10 @@
     "opencode": {
       "binary": "opencode",
       "config": "OPENCODE_CONFIG",
-      "authentication": "Existing dev-fleet opencode sync/Vault; runtime environment key for proxy",
+      "authentication": "Existing homelab opencode sync/Vault; runtime environment key for proxy",
       "proxy": "responses",
       "source": "https://opencode.ai/docs/config/",
-      "directEndpoint": "Existing dev-fleet OpenCode provider catalog and OpenRouter auto policy",
+      "directEndpoint": "Existing homelab OpenCode provider catalog and OpenRouter auto policy",
       "capabilities": {
         "streaming": "unverified on fleet nodes",
         "toolCalls": "unverified on fleet nodes",

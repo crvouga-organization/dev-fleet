@@ -2,7 +2,7 @@
 # The worker's only T3 process: the pinned desktop app, which embeds the server
 # on 127.0.0.1:3773. GDM logs the designated user in automatically and the user
 # unit starts the app with the graphical session, so the UI is on screen and the
-# server is up after every boot. Starting or migrating is left to fleet-sync.
+# server is up after every boot. Starting or migrating is left to converge.
 #
 # The upstream .deb declares libxss1, which current Ubuntu releases no longer
 # ship and the binary does not link. Instead of patching the package or leaving apt with an
@@ -44,7 +44,7 @@
         group: root
         mode: '0644'
         content: |
-          # Managed by personal fleet-sync.
+          # Managed by personal converge.
           [Scope]
           CPUWeight=1000
           IOWeight=1000
@@ -188,7 +188,7 @@
         owner: '{{ development_user }}'
         mode: '0600'
         content: |
-          # Managed by personal fleet-sync: ansible/ubuntu/t3-desktop.yml
+          # Managed by personal converge: ansible/ubuntu/t3-desktop.yml
           [Unit]
           Description=T3 Code desktop (UI and server)
           PartOf=graphical-session.target

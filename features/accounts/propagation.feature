@@ -1,5 +1,5 @@
 Feature: Account changes reach every node without a full sync
-  "fleet-sync --only accounts" applies only the account-derived
+  "converge --only accounts" applies only the account-derived
   configuration: on the manager and on every worker at once, each node
   re-reads the proxy's roster and rewrites its per-account T3 instances. T3
   watches its settings, so nothing restarts and no running turn ends.

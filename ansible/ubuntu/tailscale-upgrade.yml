@@ -1,11 +1,11 @@
 ---
 # Tailscale on one worker upgraded to its pin, applied from the manager by
-# fleet-sync --maintenance-reboot when the worker's converge stopped with
+# converge --maintenance-reboot when the worker's converge stopped with
 # TAILSCALE_UPGRADE_PENDING. The upgrade is the worker's own tailscale.yml of
 # the approved revision, applied with tailscale_upgrade in a transient system
 # unit: a restart of tailscaled that drops this SSH session cannot interrupt
 # it. The play then waits for the worker to answer again and for the unit to
-# end, and reads how it ended. After it returns, fleet-sync converges the
+# end, and reads how it ended. After it returns, converge converges the
 # worker again, which measures Tailscale against its pin.
 # Variables: target (the SSH alias, or the declared tailnet name), login
 # (empty for the alias's own user), ssh_options (the SSH options every session
@@ -51,7 +51,7 @@
   serial: 1
   become: true
   vars:
-    upgrade_unit: devfleet-tailscale-upgrade.service
+    upgrade_unit: homelab-tailscale-upgrade.service
   tasks:
     - name: Find the approved revision's Tailscale play
       ansible.builtin.stat:
@@ -60,7 +60,7 @@
     - name: Require the approved revision on the worker
       ansible.builtin.assert:
         that: tailscale_play.stat.exists
-        fail_msg: WORKER_TAILSCALE_UPGRADE_FAILED; the approved revision is not checked out on the worker. Run fleet-sync first.
+        fail_msg: WORKER_TAILSCALE_UPGRADE_FAILED; the approved revision is not checked out on the worker. Run converge first.
     # A unit that failed in an earlier run stays loaded with its result.
     - name: Forget how an earlier upgrade ended
       ansible.builtin.command:
@@ -80,7 +80,7 @@
         argv:
           - systemd-run
           - '--unit={{ upgrade_unit }}'
-          - --description=dev-fleet Tailscale upgrade to its pin
+          - --description=homelab Tailscale upgrade to its pin
           - '--working-directory={{ worker_checkout }}/ansible/ubuntu'
           - '--setenv=ANSIBLE_CONFIG={{ worker_checkout }}/ansible/ansible.cfg'
           - --setenv=HOME=/root
@@ -120,4 +120,4 @@
         that:
           - upgrade_state.stdout not in ['active', 'activating', 'deactivating']
           - upgrade_result.stdout | trim == 'success'
-        fail_msg: WORKER_TAILSCALE_UPGRADE_FAILED; the upgrade did not end, or failed. Read journalctl -u devfleet-tailscale-upgrade on the worker.
+        fail_msg: WORKER_TAILSCALE_UPGRADE_FAILED; the upgrade did not end, or failed. Read journalctl -u homelab-tailscale-upgrade on the worker.

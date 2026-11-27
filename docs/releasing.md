@@ -1,26 +1,26 @@
 # Releasing
 
-dev-fleet is published to npm as `@crvouga/dev-fleet`. The package is how
-dev-fleet is used: a fleet is a project that depends on it and runs `devfleet`
+homelab is published to npm as `@crvouga/homelab`. The package is how
+homelab is used: a fleet is a project that depends on it and runs `homelab`
 from there (see the [README](../README.md#how-you-use-it)). Nobody clones this
 repository to run a fleet.
 
 ```sh
-npm install --save-dev --save-exact @crvouga/dev-fleet
-npx devfleet fleet-sync
+npm install --save-dev --save-exact @crvouga/homelab
+npx @crvouga/homelab converge
 ```
 
 The package ships the TypeScript sources, the Ansible policy, the bootstrap
 scripts and the proxy scripts, because the CLI reads them at run time. Node
-will not run TypeScript from `node_modules`, so the `devfleet` entry is a small
-JavaScript launcher (`bin/devfleet.mjs`) that runs the CLI on the Bun this
+will not run TypeScript from `node_modules`, so the `homelab` entry is a small
+JavaScript launcher (`bin/homelab.mjs`) that runs the CLI on the Bun this
 release pins (a dependency of the package), falling back to a Bun on `PATH`.
 
-Machines do not run the package. `fleet-sync` rebuilds every machine from one
+Machines do not run the package. `sync` rebuilds every machine from one
 git commit of this repository, and the package says which: the Release
 workflow writes the commit it publishes from into the package's `package.json`
 as `gitHead` ([`src/package-info.ts`](../src/package-info.ts) reads it). Run
-from the package, `fleet-sync` fetches that commit from the repository
+from the package, `sync` fetches that commit from the repository
 `fleet.json` names under `source` into a cache the manager owns, and converges
 the manager and every worker from checkouts of it. So a version of the package
 is a revision of the fleet, and the commit a release names must stay reachable
@@ -33,7 +33,7 @@ Every merge to `main` is a release. When CI passes on `main`, the
 the commits since the newest `vX.Y.Z` tag (or, before there is one, the newest
 version on npm)
 ([`bootstrap/release-version.ts`](../bootstrap/release-version.ts)), publishes it
-to `@crvouga/dev-fleet` with provenance, pushes the tag and creates the GitHub
+to `@crvouga/homelab` with provenance, pushes the tag and creates the GitHub
 Release. The commit messages choose the bump:
 
 | Commits since the last tag                     | Bump                                 |
@@ -58,7 +58,7 @@ Nothing is published until the release has been tried. The workflow packs
 the package once, then, for that commit and that tarball:
 
 - installs the tarball in an empty directory, the way a fleet project does,
-  and runs `devfleet --version` and `devfleet fleet-state --example` on Node
+  and runs `homelab --version` and `homelab state --example` on Node
   22 and 24 ([`bootstrap/package-smoke.ts`](../bootstrap/package-smoke.ts)):
   a broken bin path or a file missing from `files` fails here;
 - runs the [Ubuntu VM test](../.github/workflows/vm.yml) (a real Ubuntu
@@ -142,12 +142,12 @@ skips the confirmation, `--skip-check` skips `bun run check`.
 Verify from a machine that has never seen the package:
 
 ```sh
-npx --yes @crvouga/dev-fleet --version
+npx --yes @crvouga/homelab --version
 ```
 
 If `npm trust` is unavailable, set the publisher in the browser instead:
-<https://www.npmjs.com/package/@crvouga/dev-fleet/access> → Trusted Publisher →
-GitHub Actions → organization `crvouga`, repository `dev-fleet`, workflow
+<https://www.npmjs.com/package/@crvouga/homelab/access> → Trusted Publisher →
+GitHub Actions → organization `crvouga`, repository `homelab`, workflow
 filename `release.yml`, environment empty.
 
 ## Why the package looks like this

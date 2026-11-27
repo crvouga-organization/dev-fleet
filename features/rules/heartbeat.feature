@@ -1,6 +1,6 @@
 Feature: Something off the manager notices when the manager stops watching
   Every watcher runs on the manager, so a manager that is off, asleep or
-  offline notices nothing. Each fleet-watch run stores a heartbeat in the
+  offline notices nothing. Each notify run stores a heartbeat in the
   bucket; a reusable workflow, called from the repository that holds the
   fleet's fleet.json, fails when that heartbeat is too old.
 
@@ -12,8 +12,8 @@ Feature: Something off the manager notices when the manager stops watching
       | prefix          |
       | max-age-minutes |
     And the heartbeat workflow needs the secrets:
-      | DEVFLEET_BUCKET_ACCESS_KEY_ID     |
-      | DEVFLEET_BUCKET_SECRET_ACCESS_KEY |
+      | HOMELAB_BUCKET_ACCESS_KEY_ID     |
+      | HOMELAB_BUCKET_SECRET_ACCESS_KEY |
 
   Scenario: A recent heartbeat passes and names the workers that were degraded
     Given the bucket holds a heartbeat from 10 minutes ago, with "worker-a" degraded

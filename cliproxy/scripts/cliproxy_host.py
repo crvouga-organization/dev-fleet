@@ -35,13 +35,13 @@ SYSTEMD_SCHEDULED = [
     "cliproxy-backup-check.timer",
     "cliproxy-gc.timer",
 ]
-LAUNCHD_SERVICE = "dev.devfleet.cliproxy-fleet"
+LAUNCHD_SERVICE = "dev.homelab.cliproxy-fleet"
 LAUNCHD_SCHEDULED = [
-    "dev.devfleet.cliproxy-monitor",
-    "dev.devfleet.cliproxy-vault-renew",
-    "dev.devfleet.cliproxy-backup",
-    "dev.devfleet.cliproxy-backup-check",
-    "dev.devfleet.cliproxy-gc",
+    "dev.homelab.cliproxy-monitor",
+    "dev.homelab.cliproxy-vault-renew",
+    "dev.homelab.cliproxy-backup",
+    "dev.homelab.cliproxy-backup-check",
+    "dev.homelab.cliproxy-gc",
 ]
 
 

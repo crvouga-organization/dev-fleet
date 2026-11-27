@@ -20,7 +20,7 @@ export async function agentDisk(run: Runner): Promise<Check> {
       status: 'fail',
       summary: 'BESZEL_DISK_UNVERIFIED',
       remedy: {
-        action: `Free space under ${AGENT_PATHS.join(' and ')} could not be measured. Check that df works for the fleet user, then rerun fleet-sync. Nothing was installed.`,
+        action: `Free space under ${AGENT_PATHS.join(' and ')} could not be measured. Check that df works for the fleet user, then rerun converge. Nothing was installed.`,
       },
     };
   const least = Math.min(...free);
@@ -30,7 +30,7 @@ export async function agentDisk(run: Runner): Promise<Check> {
       status: 'fail',
       summary: 'BESZEL_DISK_FULL',
       remedy: {
-        action: `The monitoring agent needs ${AGENT_FREE_KIB / 1024} MiB free under each of ${AGENT_PATHS.join(' and ')}; the fullest has ${Math.floor(least / 1024)} MiB. Free space on the worker, then rerun fleet-sync. Nothing was installed and the running agent was left as it was.`,
+        action: `The monitoring agent needs ${AGENT_FREE_KIB / 1024} MiB free under each of ${AGENT_PATHS.join(' and ')}; the fullest has ${Math.floor(least / 1024)} MiB. Free space on the worker, then rerun converge. Nothing was installed and the running agent was left as it was.`,
       },
     };
   return {
@@ -73,7 +73,7 @@ const OUTCOMES: { pattern: RegExp; check: Omit<Check, 'id'> }[] = [
       summary: 'BESZEL_AGENT_TOKEN_REJECTED',
       remedy: {
         action:
-          "The hub refused this worker's agent token. Rerun fleet-sync from the manager so the worker's enrollment is resumed and its token delivered again. Never register a second record for the worker.",
+          "The hub refused this worker's agent token. Rerun converge from the manager so the worker's enrollment is resumed and its token delivered again. Never register a second record for the worker.",
       },
     },
   },
@@ -84,7 +84,7 @@ const OUTCOMES: { pattern: RegExp; check: Omit<Check, 'id'> }[] = [
       summary: 'BESZEL_AGENT_KEY_REJECTED',
       remedy: {
         action:
-          "The hub the agent reached did not prove the key it was given. Make sure the worker's agent points at the manager's hub, then rerun fleet-sync from the manager so the hub's key is delivered again.",
+          "The hub the agent reached did not prove the key it was given. Make sure the worker's agent points at the manager's hub, then rerun converge from the manager so the hub's key is delivered again.",
       },
     },
   },
@@ -95,7 +95,7 @@ const OUTCOMES: { pattern: RegExp; check: Omit<Check, 'id'> }[] = [
       summary: 'BESZEL_HUB_UNAVAILABLE_TO_AGENT',
       remedy: {
         action:
-          'The private route answered but the hub behind it did not. Keep the manager awake with Docker Desktop running and rerun fleet-sync there; the agent reconnects by itself.',
+          'The private route answered but the hub behind it did not. Keep the manager awake with Docker Desktop running and rerun converge there; the agent reconnects by itself.',
       },
     },
   },
@@ -124,7 +124,7 @@ export async function agentConnection(run: Runner): Promise<Check> {
       summary: 'BESZEL_AGENT_LOG_UNAVAILABLE',
       remedy: {
         action:
-          "The agent's log could not be read, so how the hub answered it is unknown. The hub's own evidence in fleet-status --workers still applies.",
+          "The agent's log could not be read, so how the hub answered it is unknown. The hub's own evidence in check --workers still applies.",
       },
     };
   return { id: 'beszel:hub-connection', ...newestOutcome(result.stdout) };
@@ -140,7 +140,7 @@ function newestOutcome(log: string): Omit<Check, 'id'> {
     summary: 'BESZEL_AGENT_CONNECTION_PENDING',
     remedy: {
       action:
-        'The agent has not reached the hub yet. The next fleet-sync, or fleet-status --workers, reports whether it did.',
+        'The agent has not reached the hub yet. The next converge, or check --workers, reports whether it did.',
     },
   };
 }

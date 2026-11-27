@@ -15,7 +15,7 @@ export class CliWorld extends World {
   /** What `$NAME` stands for in a command line or a path of this scenario. */
   readonly names: Record<string, string> = {};
   release: Release = { version: 'test', releasedAt: null };
-  /** The workspace and roster devfleet is run with. */
+  /** The workspace and roster homelab is run with. */
   where: Settings | undefined;
   /** What the command of the `When` step exited with and answered. */
   outcome: CommandOutcome | undefined;
@@ -26,7 +26,7 @@ export class CliWorld extends World {
   examined = false;
   /** The roster file as it read before the `When` step. */
   rosterBefore: string | null = null;
-  /** Set once a scenario describes this machine's tools: devfleet then runs
+  /** Set once a scenario describes this machine's tools: homelab then runs
    * against those stand-ins instead of starting anything.
    */
   standIn: ((args: string[]) => Promise<CommandOutcome>) | undefined;
@@ -101,7 +101,7 @@ export function outcome(world: CliWorld): CommandOutcome {
 
 export function where(world: CliWorld): Settings {
   if (!world.where)
-    throw new Error('The scenario does not say where devfleet runs.');
+    throw new Error('The scenario does not say where homelab runs.');
   return world.where;
 }
 
@@ -128,8 +128,8 @@ export function expand(world: CliWorld, text: string): string {
 /** The arguments of a command line written as an operator types it. */
 export function argv(world: CliWorld, line: string): string[] {
   const [program, ...args] = line.trim().split(/\s+/);
-  if (program !== 'devfleet')
-    throw new Error(`Not a devfleet command line: ${line}`);
+  if (program !== 'homelab')
+    throw new Error(`Not a homelab command line: ${line}`);
   return args.map((arg) => expand(world, arg));
 }
 

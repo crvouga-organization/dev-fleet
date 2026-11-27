@@ -158,18 +158,18 @@ async function fleetRun(world: FreshBoxWorld, canary?: string): Promise<void> {
 }
 
 When(
-  'fleet-sync applies the commit under test to every machine in one run',
+  'converge applies the commit under test to every machine in one run',
   (world) => fleetRun(world)
 );
 
 When(
-  'fleet-sync applies the commit under test with {string} as its canary',
+  'converge applies the commit under test with {string} as its canary',
   (world, canary: string) => fleetRun(world, canary)
 );
 
 const report = (world: FreshBoxWorld): ManagerReport => {
   const run = fleet(world).report;
-  if (!run) throw new Error('No run of fleet-sync in this scenario.');
+  if (!run) throw new Error('No run of converge in this scenario.');
   return run;
 };
 const nodeReport = (world: FreshBoxWorld, name: string) => {
@@ -209,14 +209,14 @@ Then('no machine is recorded as having the revision applied', (world) => {
 });
 
 Then(
-  'no machine has a schedule of its own that runs fleet-sync',
+  'no machine has a schedule of its own that runs converge',
   async (world) => {
-    // Workers never pull: only the manager schedules fleet-sync.
+    // Workers never pull: only the manager schedules converge.
     for (const machine of fleet(world).machines) {
       const found = await asRoot(
         machine,
         // A unit that runs it, a timer for such a unit, or a cron line.
-        "grep -rlsE '^ExecStart=.*fleet-sync' /etc/systemd /home/fleettest/.config/systemd; ls /etc/systemd/system/*fleet-sync*.timer /home/fleettest/.config/systemd/user/*fleet-sync*.timer 2>/dev/null; grep -rls fleet-sync /etc/cron.d /etc/crontab /var/spool/cron 2>/dev/null; true"
+        "grep -rlsE '^ExecStart=.*converge' /etc/systemd /home/fleettest/.config/systemd; ls /etc/systemd/system/*fleet-sync*.timer /home/fleettest/.config/systemd/user/*fleet-sync*.timer 2>/dev/null; grep -rls fleet-sync /etc/cron.d /etc/crontab /var/spool/cron 2>/dev/null; true"
       );
       expect(`${machine.name}: ${found.stdout}`).toBe(`${machine.name}: `);
     }
@@ -454,7 +454,7 @@ Given(
   }
 );
 
-const INSTALLED_COPY = '/home/fleettest/.config/dev-fleet/fleet.json';
+const INSTALLED_COPY = '/home/fleettest/.config/homelab/fleet.json';
 /** The key a person adds by hand: the copy stays readable JSON. */
 const EDIT = 'edited-by-hand';
 
@@ -558,7 +558,7 @@ async function unpackOnly(world: FreshBoxWorld, name: string, pkg: string) {
 
 // Who started the run makes no difference to the next sync.
 Given(
-  /^a package installation (?:fleet-sync|someone else) started on "([^"]+)" was interrupted after unpacking "([^"]+)"$/,
+  /^a package installation (?:converge|someone else) started on "([^"]+)" was interrupted after unpacking "([^"]+)"$/,
   async (world, name: string, pkg: string) => {
     await unpackOnly(world, name, pkg);
   }
@@ -724,7 +724,7 @@ Given(
     fleet(world).before = (
       await asRoot(
         machine,
-        'stat -c %i-%Y /home/fleettest/.config/dev-fleet/fleet.json'
+        'stat -c %i-%Y /home/fleettest/.config/homelab/fleet.json'
       )
     ).stdout;
   }
@@ -739,7 +739,7 @@ Then(
   async (world, name: string) => {
     const now = await asRoot(
       named(world, name),
-      'stat -c %i-%Y /home/fleettest/.config/dev-fleet/fleet.json'
+      'stat -c %i-%Y /home/fleettest/.config/homelab/fleet.json'
     );
     expect(now.stdout).not.toBe('');
     expect(now.stdout).toBe(fleet(world).before ?? '');
@@ -769,7 +769,7 @@ Then(
  * rebuilt one revision past its pin and installed with dpkg. */
 const PAST_PIN = '+fleettest1';
 Given(
-  'an update outside fleet-sync moved the pinned package {string} on {string} past its pin',
+  'an update outside converge moved the pinned package {string} on {string} past its pin',
   async (world, pkg: string, name: string) => {
     const machine = named(world, name);
     const pinned = packagePins(ubuntuRelease(RELEASE_UNDER_TEST))[pkg]!;

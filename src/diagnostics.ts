@@ -93,6 +93,6 @@ function scope(id: string): Diagnostic['scope'] {
   return 'unverified';
 }
 function owner(phase: string): string {
-  if (phase === 'proxy') return 'cliproxy';
-  return 'dev-fleet';
+  if (phase === 'proxy') return 'proxy';
+  return 'homelab';
 }

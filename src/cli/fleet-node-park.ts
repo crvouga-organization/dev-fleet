@@ -15,7 +15,7 @@ export interface NodeParkOptions {
   /** Park although agent turns are under way, or cannot be counted. */
   force?: boolean;
   dryRun?: boolean;
-  /** fleet-node-resume: its fleet-sync may converge to a revision that is
+  /** resume: its converge may converge to a revision that is
    * not on the default branch of the source repository.
    */
   allowUnmerged?: boolean;
@@ -28,7 +28,7 @@ export interface NodeParkServices {
   definition: () => FleetDefinition;
   state: () => StateContext;
   now: () => Date;
-  /** A normal fleet-sync of one worker, which verifies it. */
+  /** A normal converge of one worker, which verifies it. */
   sync: ParkSync;
 }
 
@@ -147,7 +147,7 @@ export async function fleetNodePark(
   const worker = declared(definition, options.id);
   const parkedAt = readWorkerStates().workers[worker.id]?.parkedAt;
   if (parkedAt)
-    return outcome('fleet-node-park', worker.id, [
+    return outcome('park', worker.id, [
       {
         id: 'worker:parked',
         status: 'pass',
@@ -156,10 +156,10 @@ export async function fleetNodePark(
     ]);
   if (!options.force) {
     const refused = await busy(worker, services);
-    if (refused) return outcome('fleet-node-park', worker.id, [refused]);
+    if (refused) return outcome('park', worker.id, [refused]);
   }
   if (options.dryRun)
-    return outcome('fleet-node-park', worker.id, [
+    return outcome('park', worker.id, [
       {
         id: 'worker:parked',
         status: 'skip',
@@ -167,24 +167,23 @@ export async function fleetNodePark(
       },
     ]);
   const stopped = await hook(worker, 'stop', definition, services.run);
-  if (stopped?.status === 'fail')
-    return outcome('fleet-node-park', worker.id, [stopped]);
+  if (stopped?.status === 'fail') return outcome('park', worker.id, [stopped]);
   const at = services.now().toISOString();
   await changeWorkers(services.state(), (current) => ({
     [worker.id]: { ...current[worker.id], parkedAt: at },
   }));
-  return outcome('fleet-node-park', worker.id, [
+  return outcome('park', worker.id, [
     ...(stopped ? [stopped] : []),
     {
       id: 'worker:parked',
       status: 'pass',
-      summary: `${worker.id} is parked since ${at}: fleet-sync and fleet-status no longer contact it.`,
+      summary: `${worker.id} is parked since ${at}: converge and check no longer contact it.`,
     },
   ]);
 }
 
 /** Brings a parked worker back: runs the declared start command, marks it
- * active, then runs a normal fleet-sync of that worker, which verifies it.
+ * active, then runs a normal converge of that worker, which verifies it.
  * The exit code is the sync's.
  */
 export async function fleetNodeResume(
@@ -195,20 +194,20 @@ export async function fleetNodeResume(
   const worker = declared(definition, options.id);
   const parkedAt = readWorkerStates().workers[worker.id]?.parkedAt;
   if (options.dryRun)
-    return outcome('fleet-node-resume', worker.id, [
+    return outcome('resume', worker.id, [
       {
         id: 'worker:parked',
         status: 'skip',
         summary: parkedAt
-          ? `Planned: ${definition.parking?.start ? 'run the declared start command, ' : ''}mark ${worker.id} active and run fleet-sync --node ${worker.id}.`
-          : `Planned: ${worker.id} is active already; run fleet-sync --node ${worker.id}.`,
+          ? `Planned: ${definition.parking?.start ? 'run the declared start command, ' : ''}mark ${worker.id} active and run converge --node ${worker.id}.`
+          : `Planned: ${worker.id} is active already; run converge --node ${worker.id}.`,
       },
     ]);
   const checks: Check[] = [];
   if (parkedAt) {
     const started = await hook(worker, 'start', definition, services.run);
     if (started?.status === 'fail')
-      return outcome('fleet-node-resume', worker.id, [started]);
+      return outcome('resume', worker.id, [started]);
     if (started) checks.push(started);
     await changeWorkers(services.state(), (current) => {
       const { parkedAt: _parked, ...rest } = current[worker.id] ?? {};
@@ -230,18 +229,18 @@ export async function fleetNodeResume(
       ? {
           id: 'rollout:node',
           status: 'pass',
-          summary: `fleet-sync --node ${worker.id} converged and verified it.`,
+          summary: `converge --node ${worker.id} converged and verified it.`,
         }
       : {
           id: 'rollout:node',
           status: 'fail',
           summary: 'WORKER_RESUME_FAILED',
           remedy: {
-            action: `fleet-sync --node ${worker.id} did not end ready; its report (sync in this output) says why. Fix that, then run devfleet fleet-sync --node ${worker.id}. FLEET_REVISION_UNMERGED there means this command was started from a revision that is not on the default branch: run it from the installed package, or repeat it with --allow-unmerged.`,
+            action: `converge --node ${worker.id} did not end ready; its report (sync in this output) says why. Fix that, then run homelab converge --node ${worker.id}. FLEET_REVISION_UNMERGED there means this command was started from a revision that is not on the default branch: run it from the installed package, or repeat it with --allow-unmerged.`,
           },
         }
   );
-  return outcome('fleet-node-resume', worker.id, checks, {
+  return outcome('resume', worker.id, checks, {
     sync: synced.data,
   });
 }

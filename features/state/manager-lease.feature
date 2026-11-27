@@ -47,20 +47,20 @@ Feature: One manager at a time holds the lease on the fleet state
     Then it is refused with "FLEET_MANAGER_LEASE_HELD"
 
   Scenario: Connecting a second manager to the bucket restores the fleet state and takes no lease
-    When the operator runs "fleet-state --init --directory $BUCKET" on manager "b"
+    When the operator runs "state --init --directory $BUCKET" on manager "b"
     Then the command exits 0
     And the output contains "FLEET_MANAGER_LEASE_HELD"
     And the fleet state of manager "b" holds the configuration "from a"
     And the fleet state of manager "b" names "a" in the manager lease
 
-  Scenario: fleet-state --import from a second manager is refused with the lease's code
-    Given the operator ran "fleet-state --init --directory $BUCKET" on manager "b"
-    When the operator runs "fleet-state --import examples/fleet.json" on manager "b"
+  Scenario: state --import from a second manager is refused with the lease's code
+    Given the operator ran "state --init --directory $BUCKET" on manager "b"
+    When the operator runs "state --import examples/fleet.json" on manager "b"
     Then it is refused with "FLEET_MANAGER_LEASE_HELD"
 
-  Scenario: fleet-state --import --take-over makes the second machine the manager
-    Given the operator ran "fleet-state --init --directory $BUCKET" on manager "b"
-    When the operator runs "fleet-state --import examples/fleet.json --take-over" on manager "b"
+  Scenario: state --import --take-over makes the second machine the manager
+    Given the operator ran "state --init --directory $BUCKET" on manager "b"
+    When the operator runs "state --import examples/fleet.json --take-over" on manager "b"
     Then the report includes:
       """
       { "standing": "in-sync" }
@@ -77,17 +77,17 @@ Feature: One manager at a time holds the lease on the fleet state
     Background:
       Given the time was noted
       And manager "a" changed the configuration to "later"
-      And the operator ran "fleet-state --init --directory $BUCKET" on manager "b"
+      And the operator ran "state --init --directory $BUCKET" on manager "b"
 
     Scenario: A second manager is refused before it replaces the bucket
-      When the operator runs "fleet-state --restore --timestamp $NOTED --yes" on manager "b"
+      When the operator runs "state --restore --timestamp $NOTED --yes" on manager "b"
       Then it is refused with "FLEET_MANAGER_LEASE_HELD"
       And the fleet state of manager "b" holds the configuration "later"
       And manager "a" stands "in-sync" with the bucket
 
     Scenario: The manager that holds the lease restores an earlier version
-      Given the operator ran "fleet-state --init --directory $BUCKET" on manager "a"
-      When the operator runs "fleet-state --restore --timestamp $NOTED --yes" on manager "a"
+      Given the operator ran "state --init --directory $BUCKET" on manager "a"
+      When the operator runs "state --restore --timestamp $NOTED --yes" on manager "a"
       Then the report includes:
         """
         { "standing": "in-sync" }
@@ -96,7 +96,7 @@ Feature: One manager at a time holds the lease on the fleet state
       And the fleet state of manager "a" names "a" in the manager lease
 
     Scenario: --take-over restores an earlier version and makes the second machine the manager
-      Given the operator ran "fleet-state --restore --timestamp $NOTED --yes --take-over" on manager "b"
+      Given the operator ran "state --restore --timestamp $NOTED --yes --take-over" on manager "b"
       When manager "a" changes the configuration to "from a again"
       Then it is refused with "FLEET_MANAGER_LEASE_HELD"
       And the fleet state of manager "a" holds the configuration "from a"
@@ -104,13 +104,13 @@ Feature: One manager at a time holds the lease on the fleet state
 
     Scenario: On a corrupt replica the lease this machine last saw refuses a second manager
       Given the bucket's latest version was cut short
-      When the operator runs "fleet-state --restore --timestamp $NOTED --yes" on manager "b"
+      When the operator runs "state --restore --timestamp $NOTED --yes" on manager "b"
       Then it is refused with "FLEET_MANAGER_LEASE_HELD"
 
     Scenario: On a corrupt replica the manager that holds the lease restores an earlier version
-      Given the operator ran "fleet-state --init --directory $BUCKET" on manager "a"
+      Given the operator ran "state --init --directory $BUCKET" on manager "a"
       And the bucket's latest version was cut short
-      When the operator runs "fleet-state --restore --timestamp $NOTED --yes" on manager "a"
+      When the operator runs "state --restore --timestamp $NOTED --yes" on manager "a"
       Then the report includes:
         """
         { "standing": "in-sync" }

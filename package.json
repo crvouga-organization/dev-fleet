@@ -1,16 +1,16 @@
 {
-  "name": "@crvouga/dev-fleet",
+  "name": "@crvouga/homelab",
   "version": "0.0.0-development",
   "description": "Keeps a set of development machines in sync: one manager and many workers",
   "license": "MIT",
-  "repository": "github:crvouga/dev-fleet",
-  "homepage": "https://github.com/crvouga/dev-fleet#readme",
+  "repository": "github:crvouga/homelab",
+  "homepage": "https://github.com/crvouga/homelab#readme",
   "bugs": {
-    "url": "https://github.com/crvouga/dev-fleet/issues"
+    "url": "https://github.com/crvouga/homelab/issues"
   },
   "type": "module",
   "bin": {
-    "devfleet": "./bin/devfleet.mjs"
+    "homelab": "./bin/homelab.mjs"
   },
   "files": [
     "bin",
@@ -35,14 +35,14 @@
     "access": "public"
   },
   "scripts": {
-    "devfleet": "bun src/cli/cli.ts",
+    "homelab": "bun src/cli/cli.ts",
     "bootstrap": "bun bootstrap/npm.ts",
     "tc": "tsc --noEmit",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --check .",
     "test": "bun test",
-    "test:cliproxy": "DEVFLEET_CONFIG=$PWD/examples/fleet.json python3 -B -m unittest discover -s cliproxy/tests -p \"test_*.py\"",
-    "lint:cliproxy": "DEVFLEET_CONFIG=$PWD/examples/fleet.json python3 -B cliproxy/scripts/check.py",
+    "test:cliproxy": "HOMELAB_CONFIG=$PWD/examples/fleet.json python3 -B -m unittest discover -s cliproxy/tests -p \"test_*.py\"",
+    "lint:cliproxy": "HOMELAB_CONFIG=$PWD/examples/fleet.json python3 -B cliproxy/scripts/check.py",
     "check": "bun run format && bun run tc && bun run lint && bun test && bun run lint:cliproxy && bun run test:cliproxy"
   },
   "dependencies": {

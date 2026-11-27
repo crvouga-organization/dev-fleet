@@ -21,7 +21,7 @@ export interface GithubPolicy {
   repositories: string[];
   /** Organisations whose single sign-on must have authorised the token. */
   organizations: string[];
-  /** `owner/name` of a repository `fleet-github-verify` may branch, push to
+  /** `owner/name` of a repository `check-github` may branch, push to
    * and open pull requests on, then clean up.
    */
   sandbox?: string;
@@ -112,7 +112,7 @@ export interface GithubNode {
    * none (no worker policy).
    */
   login: string | null;
-  /** Whether dev-fleet signs this node in from the stored credential, or only
+  /** Whether homelab signs this node in from the stored credential, or only
    * checks a person's own login.
    */
   managed: boolean;

@@ -27,13 +27,13 @@ import {
 
 export const repo = resolve(import.meta.dir, '../../..');
 
-/** The Ubuntu release the machines run: DEVFLEET_TEST_FRESH_BOX_RELEASE, or
+/** The Ubuntu release the machines run: HOMELAB_TEST_FRESH_BOX_RELEASE, or
  * the newest the Ubuntu policy accepts. CI runs the features once for every
  * accepted release; the Dockerfile pins the image of each.
  */
 export const RELEASE_UNDER_TEST =
-  process.env['DEVFLEET_TEST_FRESH_BOX_RELEASE'] || UBUNTU_RELEASES[0]!.release;
-const image = `dev-fleet-fresh-box:${RELEASE_UNDER_TEST}`;
+  process.env['HOMELAB_TEST_FRESH_BOX_RELEASE'] || UBUNTU_RELEASES[0]!.release;
+const image = `homelab-fresh-box:${RELEASE_UNDER_TEST}`;
 
 /** The commands a machine must not have before the fleet bootstraps it. */
 export const BEFOREHAND = [
@@ -46,7 +46,7 @@ export const BEFOREHAND = [
   'node',
 ];
 
-/** Where fleet-sync keeps its state on a worker. */
+/** Where converge keeps its state on a worker. */
 export const FLEET_ROOT = '/home/fleettest/.local/share/personal/fleet';
 
 export async function must(
@@ -294,7 +294,7 @@ export async function discardBoxes(): Promise<void> {
   for (const created of boxes.values()) {
     const machine = await created.catch(() => null);
     if (!machine) continue;
-    const keep = process.env['DEVFLEET_TEST_FRESH_BOX'] === 'keep';
+    const keep = process.env['HOMELAB_TEST_FRESH_BOX'] === 'keep';
     // Unmount the caches before removing them. apt owns files inside them.
     if (keep) console.log(`Kept ${machine.container} (docker exec -it … sh).`);
     else await runCommand(['docker', 'rm', '-f', machine.container]);
@@ -306,7 +306,7 @@ export async function discardBoxes(): Promise<void> {
   }
 }
 
-/** The commit under test, bundled once like fleet-sync bundles it, with the
+/** The commit under test, bundled once like converge bundles it, with the
  * example fleet as its configuration.
  */
 export function bootstrapPayload(): Promise<BootstrapPayload> {
@@ -358,7 +358,7 @@ export function firstBootstrap(machine: Box): Promise<Bootstrap> {
   return machine.first;
 }
 
-/** A command on the machine, over the same SSH transport fleet-sync uses. */
+/** A command on the machine, over the same SSH transport converge uses. */
 export async function remote(
   machine: Box,
   command: string,

@@ -100,7 +100,7 @@ When(
           PATH: `${directory}:${process.env['PATH']}`,
           BUCKET: 'bucket',
           ENDPOINT: '',
-          PREFIX: 'dev-fleet',
+          PREFIX: 'homelab',
           MAX_AGE_MINUTES: String(limit),
         },
       });

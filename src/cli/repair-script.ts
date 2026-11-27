@@ -38,7 +38,7 @@ export function repairScript(
             [
               'bun',
               'src/cli/cli.ts',
-              'fleet-repair',
+              'repair',
               '--local',
               '--repair',
               'workspace',
@@ -67,7 +67,7 @@ export function repairScript(
   }
   lines.push(
     '',
-    '# Re-run devfleet fleet-status --tailnet --json for fresh whole-tailnet coverage.'
+    '# Re-run homelab check --tailnet --json for fresh whole-tailnet coverage.'
   );
   return `${lines.join('\n')}\n`;
 }

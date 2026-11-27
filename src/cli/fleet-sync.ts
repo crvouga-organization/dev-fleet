@@ -98,7 +98,7 @@ export interface FleetSyncOptions {
   allowMiseDowngrade?: boolean;
   /** Only answer whether --revision's own bootstrap would replace a newer
    * mise on the manager or on a worker the request selects, and change
-   * nothing. The guard of a hand-off asks the manager's installed devfleet
+   * nothing. The guard of a hand-off asks the manager's installed homelab
    * this before the revision's run script starts there.
    */
   measureMise?: boolean;
@@ -203,7 +203,7 @@ export async function fleetSync(
 
 /** Runs the manager's schedule starts say so in their environment. */
 function runTrigger(env = process.env): Trigger {
-  return env['DEVFLEET_TRIGGER'] === 'schedule' ? 'schedule' : 'operator';
+  return env['HOMELAB_TRIGGER'] === 'schedule' ? 'schedule' : 'operator';
 }
 
 /** Appends the run to the history in the fleet state and uploads it. A
@@ -213,7 +213,7 @@ async function recordRun(entry: SyncRun, run: Runner): Promise<void> {
   try {
     await mutateState(stateContext(run), () => appendRun(entry));
   } catch {
-    // Reported by the next fleet-state or fleet-sync run.
+    // Reported by the next state or converge run.
   }
 }
 
@@ -270,7 +270,7 @@ function copyRefusal(
     : null;
 }
 
-/** fleet-sync on the machine already known to be the manager. */
+/** converge on the machine already known to be the manager. */
 export async function managerSync(
   options: FleetSyncOptions,
   settings: Settings,
@@ -305,7 +305,7 @@ export async function managerSync(
   if (rehomed === 'unavailable')
     return actionRequired(
       'FLEET_SOURCE_UNAVAILABLE',
-      `Revision ${revision} could not be taken from ${canonicalDefinition.source.repository}, so nothing was changed. Check the network and Git access to it, and that the revision is pushed there; fleet-sync never converges from the package or working tree it was started in.`,
+      `Revision ${revision} could not be taken from ${canonicalDefinition.source.repository}, so nothing was changed. Check the network and Git access to it, and that the revision is pushed there; converge never converges from the package or working tree it was started in.`,
       revision
     );
   if (rehomed !== 'here') return rehomed;
@@ -436,7 +436,7 @@ async function managerRevision(
   if (explicit === null)
     return actionRequired(
       'FLEET_ROLLBACK_UNAVAILABLE',
-      'Nothing was changed: the fleet state records no revision applied before the approved one. Install the dev-fleet version to go back to and run fleet-sync.'
+      'Nothing was changed: the fleet state records no revision applied before the approved one. Install the homelab version to go back to and run converge.'
     );
   const { revision, by } = await selectedRevision(
     explicit,
@@ -447,7 +447,7 @@ async function managerRevision(
   if (!isRevision(revision))
     return actionRequired(
       'FLEET_REVISION_REQUIRED',
-      'No revision to converge to. Run the published dev-fleet package (it names the commit it was built from), or select a full commit SHA with --revision.'
+      'No revision to converge to. Run the published homelab package (it names the commit it was built from), or select a full commit SHA with --revision.'
     );
   return {
     revision,
@@ -511,7 +511,7 @@ async function unmergedRefusal(
       )
     : actionRequired(
         'FLEET_REVISION_UNVERIFIED',
-        `Nothing was changed: ${repository} could not be fetched into the manager's own copy of it, so it is not known whether its default branch holds revision ${revision} (${selected}). Check the network and Git access to it, then run fleet-sync again; --allow-unmerged converges without asking.`,
+        `Nothing was changed: ${repository} could not be fetched into the manager's own copy of it, so it is not known whether its default branch holds revision ${revision} (${selected}). Check the network and Git access to it, then run converge again; --allow-unmerged converges without asking.`,
         revision
       );
 }
@@ -555,7 +555,7 @@ async function miseRefusal(
 
 /** `--measure-mise`: the answer to the question above and nothing else, for
  * the guard of a hand-off. That guard runs on the manager before the
- * revision's run script, in the manager's installed devfleet: the newest
+ * revision's run script, in the manager's installed homelab: the newest
  * code there is before the revision's own takes over. No revision is
  * approved, no checkout is made and no machine is changed.
  */
@@ -760,13 +760,13 @@ async function offManager(
   if (options.measureMise)
     return actionRequired(
       'FLEET_NOT_MANAGER',
-      `fleet-sync --measure-mise is answered only on the manager (${definition.manager.id}), which a fleet-sync started here asks by itself before it hands a revision over; no machine was asked.`
+      `converge --measure-mise is answered only on the manager (${definition.manager.id}), which a converge started here asks by itself before it hands a revision over; no machine was asked.`
     );
   // Only the manager's fleet state knows the revision applied before.
   if (options.rollback)
     return actionRequired(
       'FLEET_NOT_MANAGER',
-      `fleet-sync --rollback runs only on the manager (${definition.manager.id}); nothing was changed.`
+      `converge --rollback runs only on the manager (${definition.manager.id}); nothing was changed.`
     );
   const { revision, by } = await selectedRevision(
     options.revision,
@@ -777,7 +777,7 @@ async function offManager(
   if (forwardingDisabled())
     return actionRequired(
       'FLEET_NOT_MANAGER',
-      `fleet-sync runs only on the manager (${definition.manager.id}), which is always a macOS machine; nothing was changed. Run it there, or from a worker that can SSH to the manager.`,
+      `converge runs only on the manager (${definition.manager.id}), which is always a macOS machine; nothing was changed. Run it there, or from a worker that can SSH to the manager.`,
       revision ?? null
     );
   // An accounts-only request is the manager's installed launcher's.
@@ -944,7 +944,7 @@ async function onlyAccounts(
   if (!isRevision(revision))
     return actionRequired(
       'FLEET_REVISION_REQUIRED',
-      'No revision is applied yet. Run a full fleet-sync first.'
+      'No revision is applied yet. Run a full converge first.'
     );
   return syncAccounts(options, settings, { revision, run });
 }
@@ -974,7 +974,7 @@ function interactive(options: FleetSyncOptions): boolean {
 }
 
 /** The commit an installed package was published from: the version of
- * dev-fleet you run is the revision the fleet moves to.
+ * homelab you run is the revision the fleet moves to.
  */
 function packageRevision(): string | undefined {
   return packageInfo().revision ?? undefined;

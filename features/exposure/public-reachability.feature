@@ -1,5 +1,5 @@
 Feature: The manager tries the worker's public address from outside the tailnet
-  worker:public-reachability runs on the manager during fleet-status
+  worker:public-reachability runs on the manager during check
   --workers. When Tailscale knows a public address for a worker, the manager
   tries its SSH, T3 and monitoring ports there, and fails if any accepts a
   connection. It is optional: the manager may share the worker's network, so
@@ -65,7 +65,7 @@ Feature: The manager tries the worker's public address from outside the tailnet
       | its tailnet address      | 100.101.102.103:41641                   |
       | no endpoint              |                                         |
 
-  Scenario: fleet-status --workers adds the check to every declared worker it reports
+  Scenario: check --workers adds the check to every declared worker it reports
     Given Tailscale reaches "worker-one.tail0a1b2c.ts.net" at "203.0.113.20:41641"
     And no port accepts a connection
     When the manager adds public reachability to the reports of:

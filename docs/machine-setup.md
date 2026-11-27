@@ -1,11 +1,11 @@
-> This document was written for the fleet dev-fleet was extracted from. Paths and
+> This document was written for the fleet homelab was extracted from. Paths and
 > commands were updated; some statements still describe that fleet and are being
 > revised. The README is authoritative, and what a machine must offer to be a
 > worker is listed only in [worker requirements](worker-requirements.md).
 
 ## Machine setup: macOS, Windows and Linux
 
-This is the shared development setup for **crvouga/dev-fleet**. One versioned
+This is the shared development setup for **crvouga/homelab**. One versioned
 manifest, `mise.toml`, owns the developer tools; `mise.lock` and `.mise/locks/`
 own resolved artifacts and dependency graphs. Both bootstraps apply that same
 manifest to the current user globally. Other projects can override versions with
@@ -14,18 +14,18 @@ install the toolchain.
 
 ### New machine
 
-A manager or a worker is set up by `fleet-sync`, run from the published
+A manager or a worker is set up by `sync`, run from the published
 package ([README](../README.md#quickstart)): it checks out the revision on the
 machine and runs `bootstrap/bootstrap.sh` from that checkout. Nothing is
 downloaded and run by hand.
 
-To develop dev-fleet, run `bash bootstrap/bootstrap.sh` from a checkout. The
+To develop homelab, run `bash bootstrap/bootstrap.sh` from a checkout. The
 script only ever installs the toolchain of the checkout it is in.
 
 Native Windows, in x64 PowerShell (5.1 or newer):
 
 ```powershell
-Invoke-WebRequest https://raw.githubusercontent.com/crvouga/dev-fleet/main/bootstrap/bootstrap.ps1 -OutFile "$env:TEMP\workspace-bootstrap.ps1"
+Invoke-WebRequest https://raw.githubusercontent.com/crvouga/homelab/main/bootstrap/bootstrap.ps1 -OutFile "$env:TEMP\workspace-bootstrap.ps1"
 & "$env:TEMP\workspace-bootstrap.ps1"
 ```
 
@@ -187,16 +187,16 @@ railway login
 
 Only sign into providers the task actually needs. On fleet machines the Git
 identity and the GitHub credential helper come from the `git` block of
-`fleet.json`: `fleet-sync` writes them in `~/.config/git/config` and checks
+`fleet.json`: `sync` writes them in `~/.config/git/config` and checks
 them as `worker:git-identity` and `worker:git-push-auth`. The helper
 `gh auth setup-git` writes in `~/.gitconfig` may stay; a `user.name`,
 `user.email` or other GitHub helper there wins over the block and fails
 `git:configuration`, so remove it before declaring the block. With
 `"signing": "ssh"` in that block every node also makes an SSH key of its own
-(`~/.ssh/dev-fleet-git-signing`, never copied off the node) and signs every
+(`~/.ssh/homelab-git-signing`, never copied off the node) and signs every
 commit and tag with it, checked as `worker:git-signing`; GitHub shows those
 commits as verified once you add each node's `.pub` to the account as a
-signing key (`gh ssh-key add ~/.ssh/dev-fleet-git-signing.pub --type signing`
+signing key (`gh ssh-key add ~/.ssh/homelab-git-signing.pub --type signing`
 on the node). Elsewhere set `git
 config --global user.name` and `user.email` after confirming them; do not guess
 an email or overwrite an existing identity. Enable Git LFS hooks when needed with `git lfs install`.
@@ -205,10 +205,10 @@ Optional existing workstation/agent settings:
 
 ```sh
 sh bootstrap/install-launcher.sh
-devfleet fleet-status --local
+homelab check --local
 # Only for tasks needing the workspace's managed secrets:
 vault login --method=userpass username=example-user
-devfleet fleet-sync
+homelab converge
 ```
 
 The machine bootstrap installs tools/dependencies only. `personal:install` additionally
@@ -295,17 +295,17 @@ mise install --locked bun
 mise exec --locked bun -- bun bootstrap/setup.ts
 ```
 
-On fleet machines `devfleet fleet-sync` refreshes the toolchain, the global
+On fleet machines `homelab converge` refreshes the toolchain, the global
 configuration and frozen dependencies; `mise exec --locked bun -- bun
 bootstrap/setup.ts --tools-only` reapplies tool pins and the global
 configuration without touching project dependencies, and `bun
 bootstrap/doctor.ts --json` verifies them. Sync is explicit; Git commits do not silently update other machines.
 
 For multiple development computers, use [the fleet package](operations.md):
-`devfleet fleet-node-add` registers an existing SSH alias in a local roster,
-`devfleet fleet-nodes --onboard` generates per-node connection/auth/editor steps,
-and `devfleet fleet-status --json` diagnoses SSH, authentication, T3 Connect
-settings/API and checkout/lockfile drift. `devfleet fleet-repair --repair workspace`
+`homelab enroll` registers an existing SSH alias in a local roster,
+`homelab workers --onboard` generates per-node connection/auth/editor steps,
+and `homelab check --json` diagnoses SSH, authentication, T3 Connect
+settings/API and checkout/lockfile drift. `homelab repair --repair workspace`
 previews convergence through this same setup script; applying requires
 `--apply --yes`. No credentials are copied or cloud resources provisioned;
 VS Code/T3 end-to-end tests remain explicit operator steps.
@@ -315,9 +315,9 @@ tool discovery through its actual SSH alias (not just an interactive terminal):
 
 ```sh
 ssh YOUR_ALIAS 'command -v mise; command -v bun; command -v node; command -v npm'
-devfleet fleet-status --json
-devfleet fleet-repair --repair workspace
-devfleet fleet-repair --repair workspace --apply --yes
+homelab check --json
+homelab repair --repair workspace
+homelab repair --repair workspace --apply --yes
 ```
 
 Review the sync plan before applying. SSH must already work and nodes must be in
@@ -368,7 +368,7 @@ upstream `SHA256SUMS` omits packages) and started by the `t3code-desktop.service
 user unit in the GDM auto-login session. It shares `~/.t3` with the former
 headless service, so environment identity and pairing are kept. A conflicting
 launcher version requires reviewed maintenance; the recovery timer stops a
-still-running headless service. Routine fleet-sync never ends a running turn
+still-running headless service. Routine converge never ends a running turn
 to load a new pin or policy: the app restarts into them at the first idle
 check (`t3:running-version`, `t3:policy-loaded`). Private routing and paired
 execution require separate evidence.
@@ -400,9 +400,9 @@ unit and keeps `~/.t3`; GDM auto-login, if the machine had it, is left as it
 was. A headless worker installs none of the desktop-only packages
 (`features.desktop` in `ansible/ubuntu/policy.json`) and reports their checks
 as not applicable. The server prints a one-time pairing token to its own
-journal at start, as `t3 serve` does anywhere; dev-fleet never reads it.
+journal at start, as `t3 serve` does anywhere; homelab never reads it.
 Pairing is done from the manager: by a person the first time, and by
-`fleet-node-replace` or the next `fleet-sync` for a machine that replaces a
+`replace` or the next `sync` for a machine that replaces a
 worker.
 
 The disposable Ubuntu VM test (`ansible/ubuntu/tests/vm.py`) converges each
@@ -410,7 +410,7 @@ session type, reboots with nobody logged in and kills the T3 process to
 prove the recovery timer brings it back.
 
 Normal Ubuntu fleet setup is controller-led:
-`devfleet fleet-sync`. See the
+`homelab converge`. See the
 [Fleet runbook](ubuntu-sync.md). A controller without
 Node/npm must first run this tracked bootstrap (or install the documented Node
 prerequisite); `npx` cannot execute before Node/npm exist. Reachable remote targets
@@ -427,11 +427,11 @@ Project scripts use `bash bootstrap/project-action.sh ACTION` from the checkout.
 Actions are named exactly like the `personal` command they run, so a T3 script
 label reads the same as the CLI: `warm`, `portfolio`, `workstation-sync`,
 `workstation-update`, `workstation-net-fix`, `workstation-net-check`,
-`workstation-net-fix-check`, `fleet-sync`, `fleet-status`, `fleet-repair`, `infra-cliproxy`. Label
+`workstation-net-fix-check`, `sync`, `status`, `repair`, `infra-cliproxy`. Label
 each T3 script `Domain: Command words` (`Fleet: Sync`, `Fleet: Status`,
-`Workstation: Net check`, `Infra: Cliproxy model health` running `infra-cliproxy model-health`; `infra-cliproxy model-suite --target mock` is the offline, credential-free suite). `fleet-sync` selects the current checkout HEAD as its
+`Workstation: Net check`, `Infra: Cliproxy model health` running `infra-cliproxy model-health`; `infra-cliproxy model-suite --target mock` is the offline, credential-free suite). `sync` selects the current checkout HEAD as its
 exact revision and retains its approval flow; extra arguments such as `--dry-run`
-are forwarded. `fleet-status` runs `devfleet fleet-status --workers`, the
+are forwarded. `status` runs `homelab check --workers`, the
 canonical worker audit that reports excluded service hosts. Repair previews without applying. Each invocation runs the shared bootstrap first, reusing installed
 locked tools and converging dependencies for the current branch. `warm` performs
 only that setup. No global `ws` or `personal` launcher is required. Setup may
@@ -453,14 +453,14 @@ Tool profiles add locked tool sets on top of it: `worker.toolProfiles` in
 `fleet.json` (fleet-wide) or `toolProfiles` on one worker selects `web` (pnpm,
 Deno, Yarn and headless Chromium for browser tests), `go`, `rust` (with CMake
 and Ninja) or `jvm` (Temurin), each a `worker_profile_<name>` under `[vars]` in
-`mise.toml`. `worker.tools` adds single tools dev-fleet already pins. The setup
+`mise.toml`. `worker.tools` adds single tools homelab already pins. The setup
 installs them (`--node` reads the installed configuration) and the doctor
 checks each as `tool:<name>` (`--profiles`, `--tools`). The base tools include
 `tmux`, for sessions that outlive an SSH connection.
 
-A tool dev-fleet does not ship belongs to the project that needs it: pin it in
+A tool homelab does not ship belongs to the project that needs it: pin it in
 the project's own `mise.toml` and lock it with `mise lock`. On every fleet
-machine dev-fleet's global configuration sets `locked = true` for the
+machine homelab's global configuration sets `locked = true` for the
 `project` scope, so mise installs a project's tools in a checkout only from
 that project's `mise.lock` and refuses a tool the lock does not name;
 `mise install --locked` in the checkout installs and verifies them.

@@ -6,9 +6,9 @@ import type { Check } from './types';
  */
 const PLAY_STOPS: Record<string, string> = {
   TAILSCALE_UPGRADE_PENDING:
-    'Tailscale on this worker is older than its pin, and a converge never upgrades an active VPN. Run devfleet fleet-sync --maintenance-reboot: it upgrades Tailscale to the pin in a detached unit on the worker and waits for the worker to answer again.',
+    'Tailscale on this worker is older than its pin, and a converge never upgrades an active VPN. Run homelab converge --maintenance-reboot: it upgrades Tailscale to the pin in a detached unit on the worker and waits for the worker to answer again.',
   TAILSCALE_SOURCE_OWNER_CONFLICT:
-    'Another file under /etc/apt/sources.list.d names the Tailscale repository. Keep one signed source, at /etc/apt/sources.list.d/tailscale.list, then run devfleet fleet-sync.',
+    'Another file under /etc/apt/sources.list.d names the Tailscale repository. Keep one signed source, at /etc/apt/sources.list.d/tailscale.list, then run homelab converge.',
 };
 
 const PASSED =
@@ -42,7 +42,7 @@ export async function tailscaleConfiguration(
       summary: 'TAILSCALE_SETUP_OR_LOGIN_REQUIRED',
       remedy: {
         action:
-          'The worker is not logged in to the tailnet. Declare tailnet in fleet.json so fleet-sync enrols it with a single-use key, or sign it in on the worker (sudo tailscale up), then run devfleet fleet-sync.',
+          'The worker is not logged in to the tailnet. Declare tailnet in fleet.json so converge enrols it with a single-use key, or sign it in on the worker (sudo tailscale up), then run homelab converge.',
       },
     };
   return {
@@ -51,7 +51,7 @@ export async function tailscaleConfiguration(
     summary: 'TAILSCALE_CONFIGURATION_INCOMPLETE',
     remedy: {
       action:
-        'The worker is logged in and running, but the Tailscale play stopped before its end without a code of its own (a package source or the daemon). Run devfleet fleet-sync again; when it repeats, apply ansible/ubuntu/tailscale.yml of the approved revision on the worker to see the task that stops.',
+        'The worker is logged in and running, but the Tailscale play stopped before its end without a code of its own (a package source or the daemon). Run homelab converge again; when it repeats, apply ansible/ubuntu/tailscale.yml of the approved revision on the worker to see the task that stops.',
     },
   };
 }

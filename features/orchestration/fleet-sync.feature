@@ -1,5 +1,5 @@
-Feature: fleet-sync converges every worker on one approved revision
-  One run of fleet-sync uses one revision. The manager first inspects every
+Feature: converge converges every worker on one approved revision
+  One run of converge uses one revision. The manager first inspects every
   worker the fleet configuration names, then deploys to those it may. A worker
   it cannot reach, or whose device changed, stays in the report: nothing is
   left out silently, and a computer that is merely on the tailnet is never
@@ -28,7 +28,7 @@ Feature: fleet-sync converges every worker on one approved revision
     Given deploying a worker reports these checks:
       | id       | status | summary |
       | verified | pass   | fixture |
-    When fleet-sync applies the approved revision
+    When converge applies the approved revision
     Then the revision was deployed to these workers, in order:
       | first  |
       | second |
@@ -43,7 +43,7 @@ Feature: fleet-sync converges every worker on one approved revision
     And deploying a worker reports these checks:
       | id   | status | summary |
       | done | pass   | fixture |
-    When fleet-sync applies the approved revision
+    When converge applies the approved revision
     Then the revision was deployed to these workers, in order:
       | first |
     And the report covers, in order:
@@ -57,7 +57,7 @@ Feature: fleet-sync converges every worker on one approved revision
     And deploying a worker reports these checks:
       | id   | status | summary |
       | done | pass   | fixture |
-    When fleet-sync applies the approved revision
+    When converge applies the approved revision
     Then the revision was deployed to no worker
     And every worker has a check that says "WORKER_ENVIRONMENT_UNSUPPORTED: <named>"
     And the fleet is not ready
@@ -73,7 +73,7 @@ Feature: fleet-sync converges every worker on one approved revision
     And deploying a worker reports these checks:
       | id   | status | summary |
       | done | pass   | fixture |
-    When fleet-sync applies the approved revision
+    When converge applies the approved revision
     Then the revision was deployed to no worker
     And every worker has a check "platform:worker-size" that says "WORKER_SIZE_BELOW_MINIMUM: memory 1983 MiB < 3584 MiB"
     And every worker has a check "platform:machine-class" that says "Virtual machine (kvm)"
@@ -84,7 +84,7 @@ Feature: fleet-sync converges every worker on one approved revision
     And deploying a worker reports these checks:
       | id   | status | summary |
       | done | pass   | fixture |
-    When fleet-sync applies the approved revision
+    When converge applies the approved revision
     Then the revision was deployed to these workers, in order:
       | first  |
       | second |
@@ -96,7 +96,7 @@ Feature: fleet-sync converges every worker on one approved revision
     And deploying a worker reports these checks:
       | id       | status | summary |
       | verified | pass   | fixture |
-    When fleet-sync applies the approved revision
+    When converge applies the approved revision
     Then every worker had been inspected, and none deployed to, when the manager was done
     And the revision was deployed to these workers, in order:
       | first  |
@@ -105,7 +105,7 @@ Feature: fleet-sync converges every worker on one approved revision
   Scenario: A failed canary stops promotion, and the workers after it are still inspected
     What a failed deployment threw may hold anything, so it is never reported.
     Given deploying a worker fails with the error "secret detail"
-    When fleet-sync applies the approved revision with "first" as its canary
+    When converge applies the approved revision with "first" as its canary
     Then the revision was deployed to these workers, in order:
       | first |
     And the report covers, in order:
@@ -121,7 +121,7 @@ Feature: fleet-sync converges every worker on one approved revision
     Given deploying a worker reports these checks:
       | id              | status | summary                    |
       | ubuntu:baseline | fail   | UBUNTU_BASELINE_INCOMPLETE |
-    When fleet-sync applies the approved revision with "retired" as its canary
+    When converge applies the approved revision with "retired" as its canary
     Then the revision was deployed to these workers, in order:
       | first |
     And the last check of "second" says "FLEET_PROMOTION_BLOCKED"
@@ -134,7 +134,7 @@ Feature: fleet-sync converges every worker on one approved revision
     And deploying a worker reports these checks:
       | id   | status | summary |
       | done | pass   | fixture |
-    When fleet-sync applies the approved revision with "first" as its canary
+    When converge applies the approved revision with "first" as its canary
     Then the revision was deployed to these workers, in order:
       | second |
     And the report names "second" as the canary
@@ -147,7 +147,7 @@ Feature: fleet-sync converges every worker on one approved revision
     Given deploying a worker reports these checks:
       | id   | status | summary |
       | done | pass   | fixture |
-    When fleet-sync applies the approved revision with "second" as its canary
+    When converge applies the approved revision with "second" as its canary
     Then the revision was deployed to these workers, in order:
       | second |
       | first  |
@@ -156,7 +156,7 @@ Feature: fleet-sync converges every worker on one approved revision
   Scenario: A preview deploys nothing, and a worker the manager has not registered is still accounted for
     Given the manager has no registration for "second"
     And deploying a worker fails with the error "must not deploy"
-    When fleet-sync previews the approved revision
+    When converge previews the approved revision
     Then the report covers, in order:
       | first  |
       | second |
@@ -167,7 +167,7 @@ Feature: fleet-sync converges every worker on one approved revision
   Scenario: A replaced device blocks every write, even when SSH succeeds
     Given every registration records the tailscale id "old"
     And deploying a worker fails with the error "must not deploy"
-    When fleet-sync applies the approved revision
+    When converge applies the approved revision
     Then nothing was applied
     And every worker has a check that says "TAILSCALE_DEVICE_REPLACED"
 
@@ -179,7 +179,7 @@ Feature: fleet-sync converges every worker on one approved revision
     And deploying a worker reports these checks:
       | id            | status | summary                                      |
       | fixture:apply | pass   | Applied; no fresh tailnet evidence supplied. |
-    When fleet-sync applies the approved revision
+    When converge applies the approved revision
     Then the revision was deployed to these workers, in order:
       | first  |
       | second |
@@ -193,7 +193,7 @@ Feature: fleet-sync converges every worker on one approved revision
     Given every registration authorizes bootstrap over SSH
     And every registration records the tailscale id "replaced"
     And deploying a worker fails with the error "must not deploy"
-    When fleet-sync applies the approved revision
+    When converge applies the approved revision
     Then nothing was applied
 
   Scenario: A missing monitoring account or client pairing leaves a worker incomplete without stopping the others
@@ -201,7 +201,7 @@ Feature: fleet-sync converges every worker on one approved revision
       | id                | status | summary                        |
       | beszel:enrollment | fail   | BESZEL_ACCOUNT_REQUIRED        |
       | t3:end-to-end     | skip   | REQUIRED_ACCEPTANCE_UNVERIFIED |
-    When fleet-sync applies the approved revision with "first" as its canary
+    When converge applies the approved revision with "first" as its canary
     Then the revision was deployed to these workers, in order:
       | first  |
       | second |
@@ -214,7 +214,7 @@ Feature: fleet-sync converges every worker on one approved revision
       | configuration:apply        | pass   | ok                            |
       | provider:codex:inference   | warn   | PROVIDER_UPSTREAM_UNAVAILABLE |
       | worker:power-loss-recovery | skip   | unobservable                  |
-    When fleet-sync applies the approved revision
+    When converge applies the approved revision
     Then the fleet is ready
     And these workers are recorded as having these revisions applied:
       | worker | revision                                 |
@@ -236,7 +236,7 @@ Feature: fleet-sync converges every worker on one approved revision
       And deploying "second" reports these checks:
         | id   | status | summary |
         | done | pass   | fixture |
-      When fleet-sync applies the approved revision with "first" as its canary, one worker at a time
+      When converge applies the approved revision with "first" as its canary, one worker at a time
       Then the revision was deployed to these workers, in order:
         | first |
       And the last check of "second" says "FLEET_PROMOTION_BLOCKED"
@@ -248,7 +248,7 @@ Feature: fleet-sync converges every worker on one approved revision
       And deploying "second" reports these checks:
         | id   | status | summary |
         | done | pass   | fixture |
-      When fleet-sync applies the approved revision with "first" as its canary, one worker at a time
+      When converge applies the approved revision with "first" as its canary, one worker at a time
       Then the revision was deployed to these workers, in order:
         | first |
       And the last check of "second" says "FLEET_PROMOTION_BLOCKED"
@@ -260,7 +260,7 @@ Feature: fleet-sync converges every worker on one approved revision
       And deploying "second" reports these checks:
         | id            | status | summary                  |
         | worker:reboot | pass   | Rebooted for maintenance |
-      When fleet-sync applies the approved revision with "second" as its canary, one worker at a time
+      When converge applies the approved revision with "second" as its canary, one worker at a time
       Then the revision was deployed to these workers, in order:
         | second |
         | first  |
@@ -273,14 +273,14 @@ Feature: fleet-sync converges every worker on one approved revision
       And deploying "second" reports these checks:
         | id   | status | summary |
         | done | pass   | fixture |
-      When fleet-sync applies the approved revision with "first" as its canary, one worker at a time
+      When converge applies the approved revision with "first" as its canary, one worker at a time
       Then the revision was deployed to these workers, in order:
         | first  |
         | second |
 
   Rule: A parked worker is off on purpose
     A rented machine is stopped, or destroyed, while nobody needs it
-    (devfleet fleet-node-park). It is listed as parked, never contacted,
+    (homelab park). It is listed as parked, never contacted,
     never the canary, and the fleet is ready without it.
 
     Scenario: Parking the first worker does not block promotion to the others
@@ -288,7 +288,7 @@ Feature: fleet-sync converges every worker on one approved revision
       And deploying a worker reports these checks:
         | id   | status | summary |
         | done | pass   | fixture |
-      When fleet-sync applies the approved revision with "first" as its canary
+      When converge applies the approved revision with "first" as its canary
       Then the revision was deployed to these workers, in order:
         | second |
       And the report names "second" as the canary

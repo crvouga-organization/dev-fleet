@@ -11,7 +11,7 @@ import { monitoring, type MonitoringWorld } from './world';
 const { Given, When, Then } = monitoring;
 
 const root = resolve(import.meta.dir, '../../..');
-const image = 'dev-fleet-agent-box';
+const image = 'homelab-agent-box';
 const AGENT = `/usr/local/lib/personal-beszel/${lock.version}/beszel-agent`;
 const UNIT = '/etc/systemd/system/beszel-agent.service';
 
@@ -98,7 +98,7 @@ export async function discardAgentBox(): Promise<void> {
   if (created) await runCommand(['docker', 'rm', '-f', created.container]);
 }
 
-/** The variables fleet-sync delivers: a real key, a disposable token. */
+/** The variables converge delivers: a real key, a disposable token. */
 async function variables(container: string, hub: string): Promise<void> {
   const scratch = await mkdtemp(join(tmpdir(), 'fleet-agent-box-'));
   try {

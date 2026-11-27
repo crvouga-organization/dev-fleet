@@ -3,7 +3,7 @@ import { DIVERGED_REMEDY, type Standing } from './sync';
 import { fleetJson } from '../fleet-config';
 
 const init = (): string =>
-  `Name a bucket under "state" in ${fleetJson()} and pass its credentials in DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY (see docs/state.md); without a fleet.json, devfleet fleet-state --init --bucket NAME --endpoint https://HOST. Until then a lost manager loses the roster, the approved revision and the configuration last applied.`;
+  `Name a bucket under "state" in ${fleetJson()} and pass its credentials in HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY (see docs/state.md); without a fleet.json, homelab state --init --bucket NAME --endpoint https://HOST. Until then a lost manager loses the roster, the approved revision and the configuration last applied.`;
 
 const FINDINGS: Record<
   Standing,
@@ -25,39 +25,39 @@ const FINDINGS: Record<
     status: 'warn',
     summary: 'Neither this machine nor the bucket holds any fleet state yet.',
     action:
-      'Run devfleet fleet-sync from the project that holds your fleet.json: it records the configuration, the roster and the approved revision. devfleet fleet-state --example prints a fleet.json to start from.',
+      'Run homelab converge from the project that holds your fleet.json: it records the configuration, the roster and the approved revision. homelab state --example prints a fleet.json to start from.',
   },
   unpublished: {
     status: 'warn',
     summary:
       'The bucket holds no fleet state yet; this machine has the only copy.',
-    action: 'Upload it: devfleet fleet-state --push.',
+    action: 'Upload it: homelab state --push.',
   },
   'local-ahead': {
     status: 'warn',
     summary: 'This machine has fleet state the bucket has not received.',
-    action: 'Upload it: devfleet fleet-state --push.',
+    action: 'Upload it: homelab state --push.',
   },
   'bucket-ahead': {
     status: 'warn',
     summary:
       'The bucket holds a newer fleet state than this machine; another manager changed it.',
     action:
-      'The next fleet-sync takes it automatically; devfleet fleet-state --restore takes it now.',
+      'The next converge takes it automatically; homelab state --restore takes it now.',
   },
   unreachable: {
     status: 'fail',
     summary:
       'The bucket did not answer, so the fleet state could not be compared or uploaded.',
     action:
-      'Check the network, the bucket named under "state" in fleet.json (or saved in bucket.json) and its credentials: DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY for this command, or the ones devfleet fleet-state --init saved on this machine. Then run devfleet fleet-state --push, which also installs the pinned Litestream when it is missing (that needs mise, which the first fleet-sync on a machine installs). Details are withheld to protect credentials.',
+      'Check the network, the bucket named under "state" in fleet.json (or saved in bucket.json) and its credentials: HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY for this command, or the ones homelab state --init saved on this machine. Then run homelab state --push, which also installs the pinned Litestream when it is missing (that needs mise, which the first converge on a machine installs). Details are withheld to protect credentials.',
   },
   corrupt: {
     status: 'fail',
     summary:
       'The bucket answered, but the fleet state it holds cannot be read: the replica is damaged.',
     action:
-      'The network and the credentials work; the latest version in the bucket does not. Restore the last good version from before the damage, which also uploads it as the current one: devfleet fleet-state --restore --timestamp 2026-11-01T00:00:00Z --yes (a time before the damage; Litestream keeps thirty days). See docs/state.md.',
+      'The network and the credentials work; the latest version in the bucket does not. Restore the last good version from before the damage, which also uploads it as the current one: homelab state --restore --timestamp 2026-11-01T00:00:00Z --yes (a time before the damage; Litestream keeps thirty days). See docs/state.md.',
   },
   diverged: {
     status: 'fail',

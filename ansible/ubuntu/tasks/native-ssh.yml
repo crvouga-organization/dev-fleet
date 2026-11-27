@@ -1,7 +1,7 @@
 ---
 - name: Add the enrolled worker using its verified transport
   ansible.builtin.add_host:
-    name: devfleet_ssh_worker
+    name: homelab_ssh_worker
     ansible_connection: ssh
     ansible_host: '{{ target }}'
     ansible_ssh_args: -o ControlMaster=no -o ControlPath=none
@@ -12,7 +12,7 @@
 - name: Verify the worker's existing strict path to the manager
   ansible.builtin.command:
     argv: '{{ manager_probe }}'
-  delegate_to: devfleet_ssh_worker
+  delegate_to: homelab_ssh_worker
   register: native_handoff
   check_mode: false
   changed_when: false
@@ -30,7 +30,7 @@
   ansible.builtin.command:
     argv: [tailscale, status, '--json']
   delegate_to: '{{ item }}'
-  loop: [localhost, devfleet_ssh_worker]
+  loop: [localhost, homelab_ssh_worker]
   register: native_status
   check_mode: false
   changed_when: false
@@ -43,7 +43,7 @@
     argv: [tailscale, debug, netmap]
   become: "{{ item != 'localhost' }}"
   delegate_to: '{{ item }}'
-  loop: [localhost, devfleet_ssh_worker]
+  loop: [localhost, homelab_ssh_worker]
   register: native_map
   check_mode: false
   changed_when: false
@@ -62,7 +62,7 @@
   ansible.builtin.command:
     argv: [tailscale, debug, prefs]
   become: true
-  delegate_to: devfleet_ssh_worker
+  delegate_to: homelab_ssh_worker
   register: worker_prefs
   check_mode: false
   changed_when: false
@@ -85,7 +85,7 @@
     - name: Prove native worker to manager handoff with the original host key
       ansible.builtin.command:
         argv: '{{ manager_native_probe }}'
-      delegate_to: devfleet_ssh_worker
+      delegate_to: homelab_ssh_worker
       register: native_manager_login
       check_mode: false
       changed_when: false
@@ -93,13 +93,13 @@
       no_log: true
       timeout: 30
     - name: Arm a worker-local rollback in case access is lost during adoption
-      delegate_to: devfleet_ssh_worker
+      delegate_to: homelab_ssh_worker
       become: true
       ansible.builtin.command:
         argv:
           [
             systemd-run,
-            '--unit=devfleet-ssh-rollback',
+            '--unit=homelab-ssh-rollback',
             '--on-active=2min',
             '--collect',
             /usr/bin/tailscale,
@@ -112,7 +112,7 @@
       become: true
       ansible.builtin.command:
         argv: [tailscale, set, '--ssh=true', '--accept-risk=lose-ssh']
-      delegate_to: devfleet_ssh_worker
+      delegate_to: homelab_ssh_worker
       when: native_change_worker
       changed_when: true
     - name: Prove the manager reaches the native server as the enrolled account
@@ -125,10 +125,10 @@
       no_log: true
       timeout: 30
     - name: Keep the working SSH preference
-      delegate_to: devfleet_ssh_worker
+      delegate_to: homelab_ssh_worker
       become: true
       ansible.builtin.systemd_service:
-        name: devfleet-ssh-rollback.timer
+        name: homelab-ssh-rollback.timer
         state: stopped
       when: native_change_worker
   rescue:

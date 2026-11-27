@@ -44,7 +44,7 @@ Given('a checkout at commit {string}', async (world, commit: string) => {
   );
 });
 
-Given('a checkout that holds no dev-fleet package', checkout);
+Given('a checkout that holds no homelab package', checkout);
 
 Given('an empty directory', async (world) => {
   const root = await mkdtemp(join(tmpdir(), 'fleet-'));

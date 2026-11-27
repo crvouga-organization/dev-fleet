@@ -167,7 +167,7 @@ export async function tailnetLeftovers(
     });
 }
 
-/** Adds the leftover devices to a fleet-status report, as their own
+/** Adds the leftover devices to a check report, as their own
  * `tailnet` entry; nothing when there are none.
  */
 export async function appendTailnetLeftovers(

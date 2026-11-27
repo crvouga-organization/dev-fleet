@@ -2,7 +2,7 @@
 
 The one list of what a machine needs before it can be a worker, wherever it
 runs: a computer at home, a virtual machine on your own host or an instance
-rented from any provider. Everything else, `fleet-sync` installs. No vendor is
+rented from any provider. Everything else, `sync` installs. No vendor is
 required; any provider that boots a stock Ubuntu image with SSH and cloud-init
 user data works the same way.
 
@@ -17,13 +17,13 @@ has no row here, or when the image, architecture and size rows disagree with
 
 ## The machine
 
-| Requirement                                                                                                                                                                                                      | How to check it                                       | Check                  | Failure code                     |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- | ---------------------- | -------------------------------- |
-| A stock Ubuntu image of an accepted release: **26.04** (resolute) or **24.04** (noble). No distribution upgrade is ever made.                                                                                    | `. /etc/os-release; echo $VERSION_ID`                 | `ubuntu:release`       | `UBUNTU_BASELINE_MISMATCH`       |
-| An accepted architecture: **amd64** (x86_64) or **arm64** (aarch64).                                                                                                                                             | `uname -m`                                            | `ubuntu:release`       | `UBUNTU_BASELINE_MISMATCH`       |
-| A machine of its own: physical, or a full virtual machine (KVM, Xen, VMware, Hyper-V, or any hypervisor `systemd-detect-virt --vm` names). A container (Docker, LXC, systemd-nspawn, OpenVZ) or WSL2 is refused. | `systemd-detect-virt`                                 | `platform:environment` | `WORKER_ENVIRONMENT_UNSUPPORTED` |
-| At least **2 CPUs**, **3584 MiB** of memory (a 4 GiB instance) and a **20480 MiB** root filesystem. What dev-fleet installs is measured in CI; the operating system is estimated.                                | `nproc; free -m; df -m /`                             | `platform:worker-size` | `WORKER_SIZE_BELOW_MINIMUM`      |
-| Survives one reboot: the first converge ends with a reboot while no agent runs, and the worker must answer SSH again within 15 minutes.                                                                          | `devfleet fleet-status --workers` after the first run | `worker:reboot`        | `WORKER_REBOOT_FAILED`           |
+| Requirement                                                                                                                                                                                                      | How to check it                               | Check                  | Failure code                     |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- | ---------------------- | -------------------------------- |
+| A stock Ubuntu image of an accepted release: **26.04** (resolute) or **24.04** (noble). No distribution upgrade is ever made.                                                                                    | `. /etc/os-release; echo $VERSION_ID`         | `ubuntu:release`       | `UBUNTU_BASELINE_MISMATCH`       |
+| An accepted architecture: **amd64** (x86_64) or **arm64** (aarch64).                                                                                                                                             | `uname -m`                                    | `ubuntu:release`       | `UBUNTU_BASELINE_MISMATCH`       |
+| A machine of its own: physical, or a full virtual machine (KVM, Xen, VMware, Hyper-V, or any hypervisor `systemd-detect-virt --vm` names). A container (Docker, LXC, systemd-nspawn, OpenVZ) or WSL2 is refused. | `systemd-detect-virt`                         | `platform:environment` | `WORKER_ENVIRONMENT_UNSUPPORTED` |
+| At least **2 CPUs**, **3584 MiB** of memory (a 4 GiB instance) and a **20480 MiB** root filesystem. What homelab installs is measured in CI; the operating system is estimated.                                  | `nproc; free -m; df -m /`                     | `platform:worker-size` | `WORKER_SIZE_BELOW_MINIMUM`      |
+| Survives one reboot: the first converge ends with a reboot while no agent runs, and the worker must answer SSH again within 15 minutes.                                                                          | `homelab check --workers` after the first run | `worker:reboot`        | `WORKER_REBOOT_FAILED`           |
 
 The minimum size is `sizing.minimumWorker` in `ansible/ubuntu/policy.json`;
 [the worker contract](worker-contract.md#size) explains the estimate and what
@@ -33,27 +33,27 @@ platform and why the others are refused.
 
 ## Access
 
-| Requirement                                                                                                                                                                                          | How to check it                          | Check                     | Failure code                        |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------- | ----------------------------------- |
-| SSH with a key, from the manager, without a password.                                                                                                                                                | `ssh -o BatchMode=yes WORKER true`       | `ssh:auth`                | -                                   |
-| A host key the manager knows before the first connection: generated by `devfleet fleet-node-seed`, given as `hostKey` in a worker record, or pinned with `devfleet fleet-node-replace --host-key`.   | `devfleet fleet-status --workers`        | `ssh:host-key`            | -                                   |
-| A non-root account that may use `sudo` without a password, as `workers[].network.user` names it. An image that lets only root in is fine: `fleet-sync` creates the account over the root login once. | `ssh WORKER 'id -u; sudo -n true'`       | `bootstrap:privilege`     | `SUDO_AUTHORIZATION_REQUIRED`       |
-| With only a root login, `workers[].network.user` names the account to create.                                                                                                                        | `fleet.json`                             | `worker:account`          | `WORKER_ACCOUNT_UNDECLARED`         |
-| Joined to the fleet's tailnet: by the seed at first boot, or by `fleet-sync` with a single-use key the control plane `fleet.json` declares (`tailnet`) mints for it.                                 | `tailscale status --json` on the manager | `tailscale:configuration` | `TAILSCALE_SETUP_OR_LOGIN_REQUIRED` |
+| Requirement                                                                                                                                                                                    | How to check it                          | Check                     | Failure code                        |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- | ------------------------- | ----------------------------------- |
+| SSH with a key, from the manager, without a password.                                                                                                                                          | `ssh -o BatchMode=yes WORKER true`       | `ssh:auth`                | -                                   |
+| A host key the manager knows before the first connection: generated by `homelab provision`, given as `hostKey` in a worker record, or pinned with `homelab replace --host-key`.                | `homelab check --workers`                | `ssh:host-key`            | -                                   |
+| A non-root account that may use `sudo` without a password, as `workers[].network.user` names it. An image that lets only root in is fine: `sync` creates the account over the root login once. | `ssh WORKER 'id -u; sudo -n true'`       | `bootstrap:privilege`     | `SUDO_AUTHORIZATION_REQUIRED`       |
+| With only a root login, `workers[].network.user` names the account to create.                                                                                                                  | `fleet.json`                             | `worker:account`          | `WORKER_ACCOUNT_UNDECLARED`         |
+| Joined to the fleet's tailnet: by the seed at first boot, or by `sync` with a single-use key the control plane `fleet.json` declares (`tailnet`) mints for it.                                 | `tailscale status --json` on the manager | `tailscale:configuration` | `TAILSCALE_SETUP_OR_LOGIN_REQUIRED` |
 
 ## First-boot data
 
 A rented machine is set up from cloud-init user data and nothing else.
-`devfleet fleet-node-seed --id ID --output PATH` writes it: the account with
+`homelab provision --id ID --output PATH` writes it: the account with
 the manager's key, the sudo rule, a host key generated for the machine, the
 pinned Tailscale and a short-lived single-use key. Any image that runs
 cloud-init accepts it (`--autoinstall` writes an Ubuntu autoinstall file for a
 machine installed from the ISO). The seed holds a secret: pass it to the
 provider as user data and delete it afterwards.
 
-| Requirement                                                                                                     | How to check it            | Check                  | Failure code                              |
-| --------------------------------------------------------------------------------------------------------------- | -------------------------- | ---------------------- | ----------------------------------------- |
-| The image runs cloud-init, or nothing at first boot. `fleet-sync` waits for a first boot that is still running. | `cloud-init status --wait` | `bootstrap:first-boot` | `FIRST_BOOT_FAILED`, `FIRST_BOOT_PENDING` |
+| Requirement                                                                                               | How to check it            | Check                  | Failure code                              |
+| --------------------------------------------------------------------------------------------------------- | -------------------------- | ---------------------- | ----------------------------------------- |
+| The image runs cloud-init, or nothing at first boot. `sync` waits for a first boot that is still running. | `cloud-init status --wait` | `bootstrap:first-boot` | `FIRST_BOOT_FAILED`, `FIRST_BOOT_PENDING` |
 
 ## Network
 
@@ -77,9 +77,9 @@ Outbound, the worker opens HTTPS (TCP 443) to:
 | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ---------------------------- | ---------------------------------------------------------- |
 | Reaches the Ubuntu archive and the snapshot.                                                                                                               | `ssh WORKER 'sudo apt-get update'`             | `bootstrap:prerequisites`    | `APT_REPOSITORY_UNAVAILABLE`, `APT_DNS_UNAVAILABLE`        |
 | Reaches GitHub.                                                                                                                                            | `ssh WORKER 'curl -sI https://api.github.com'` | `worker:github-sync`         | `GITHUB_UNREACHABLE`                                       |
-| Reaches the CLI proxy.                                                                                                                                     | `devfleet fleet-status --workers`              | `proxy:reachable-from`       | -                                                          |
+| Reaches the CLI proxy.                                                                                                                                     | `homelab check --workers`                      | `proxy:reachable-from`       | -                                                          |
 | Accepts no inbound connection beyond loopback and the tailnet, but what `exposure` in `fleet.json` declares. The fleet firewall closes the rest by itself. | `sudo nft list table inet personal_fleet`      | `worker:exposure`            | `WORKER_LISTENER_UNRESTRICTED`, `WORKER_FIREWALL_INACTIVE` |
-| Its public address, when it has one, answers on no fleet port.                                                                                             | `devfleet fleet-status --workers`              | `worker:public-reachability` | `WORKER_PUBLIC_PORT_UNRESTRICTED`                          |
+| Its public address, when it has one, answers on no fleet port.                                                                                             | `homelab check --workers`                      | `worker:public-reachability` | `WORKER_PUBLIC_PORT_UNRESTRICTED`                          |
 
 A provider's own firewall (a security group) may stay closed to all inbound
 traffic: Tailscale needs none, and SSH from the internet is never needed once
@@ -90,7 +90,7 @@ the seed has joined the machine to the tailnet.
 - A display, a desktop or a GPU: `"session": "headless"` (the `editing`
   preset) runs T3 as a service with no graphical session.
 - A public inbound port, a fixed address or a domain name.
-- Git, curl, Python, Node, Bun or mise beforehand: `fleet-sync` installs them.
+- Git, curl, Python, Node, Bun or mise beforehand: `sync` installs them.
 - Docker beforehand: the `containers` feature (on unless a worker turns it
   off) installs it.
 - A password for SSH or `sudo`, or anyone at the console.
@@ -100,7 +100,7 @@ the seed has joined the machine to the tailnet.
 
 [examples/workers-from-infrastructure](../examples/workers-from-infrastructure/main.tf)
 shows the handoff with a local virtual machine: the seed from
-`devfleet fleet-node-seed` goes in as user data, and a worker record
+`homelab provision` goes in as user data, and a worker record
 (`schema/worker-record.schema.json`) comes out for `fleet.json` to read. For a
 hosted provider only these change: the provider block and its credentials, the
 image (the provider's stock Ubuntu image of an accepted release), the instance

@@ -1,7 +1,7 @@
 Feature: A worker is replaced or retired with one command
   Workers are cattle. A fresh machine takes a worker's place under the same id
-  with fleet-node-replace, and a worker leaves the fleet for good with
-  fleet-node-retire. Both preview what they would do until --apply --yes, and
+  with replace, and a worker leaves the fleet for good with
+  retire. Both preview what they would do until --apply --yes, and
   running either again changes nothing more.
 
   Background:
@@ -13,7 +13,7 @@ Feature: A worker is replaced or retired with one command
   Rule: Retiring a worker revokes everything that let it in
 
     Scenario: A preview says what would change, and changes nothing
-      When the operator runs fleet-node-retire for "worker-one"
+      When the operator runs retire for "worker-one"
       Then the report lists these planned steps:
         | auth:worker-token     |
         | ssh:host-key          |
@@ -25,7 +25,7 @@ Feature: A worker is replaced or retired with one command
       And the roster still holds "worker-one"
 
     Scenario: A retired worker's token is revoked, its host key forgotten and a tombstone left
-      When the operator runs fleet-node-retire for "worker-one" with --apply --yes
+      When the operator runs retire for "worker-one" with --apply --yes
       Then the command exits with 0
       And Vault revoked the token with the accessor "acc-worker-one-0001"
       And no command line contains a Vault token
@@ -36,14 +36,14 @@ Feature: A worker is replaced or retired with one command
     Scenario: Retirement deletes the workspace recorded when the fleet created it
       Given the fleet state owns Super workspace "created-id" for "worker-one"
       And the app accepts deletion of workspace "created-id"
-      When the operator runs fleet-node-retire for "worker-one" with --apply --yes
+      When the operator runs retire for "worker-one" with --apply --yes
       Then the command exits with 0
       And the app deleted only workspace "created-id"
       And the fleet state records "worker-one" as retired
 
     Scenario: Retiring twice changes nothing more
       Given the operator has retired "worker-one"
-      When the operator runs fleet-node-retire for "worker-one" with --apply --yes
+      When the operator runs retire for "worker-one" with --apply --yes
       Then the command exits with 0
       And the roster holds only "worker-two"
       And the fleet state records "worker-one" as retired, at the time of the first retirement
@@ -54,7 +54,7 @@ Feature: A worker is replaced or retired with one command
       Given the tailnet shows "worker-one" online as the new device "new-one"
 
     Scenario: The new device, its host key and a token of its own replace the old ones
-      When the operator runs fleet-node-replace for "worker-one" with the host key "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyForTheNewMachine" and --apply --yes
+      When the operator runs replace for "worker-one" with the host key "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyForTheNewMachine" and --apply --yes
       Then the command exits with 0
       And the roster binds "worker-one" to "new-one"
       And Ansible pinned "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyForTheNewMachine" for "worker-one.tail0a1b2c.ts.net"
@@ -64,14 +64,14 @@ Feature: A worker is replaced or retired with one command
 
     Scenario: Replacing twice is a no-op
       Given the operator has replaced "worker-one"
-      When the operator runs fleet-node-replace for "worker-one" with --apply --yes
+      When the operator runs replace for "worker-one" with --apply --yes
       Then the command exits with 0
       And Vault issued no token
       And the roster binds "worker-one" to "new-one"
 
     Scenario: Without an online device carrying its name, nothing is changed
       Given the tailnet shows "worker-one" offline
-      When the operator runs fleet-node-replace for "worker-one" with --apply --yes
+      When the operator runs replace for "worker-one" with --apply --yes
       Then the command exits with 1
       And the report mentions "TAILSCALE_NODE_MISSING"
       And the roster binds "worker-one" to "old-one"
@@ -89,7 +89,7 @@ Feature: A worker is replaced or retired with one command
     Scenario: Retiring deletes the monitoring system and the T3 link, and says the device is left to a person
       Without a tailnet control plane in fleet.json nothing can remove a
       device, so the report says what a person does instead.
-      When the operator runs fleet-node-retire for "worker-one" with --apply --yes
+      When the operator runs retire for "worker-one" with --apply --yes
       Then the command exits with 0
       And the monitoring hub watches only:
         | name       | host                         |
@@ -107,23 +107,23 @@ Feature: A worker is replaced or retired with one command
         { "api": "tailscale", "tag": "tag:fleet-worker" }
         """
       And the secrets provider holds a tailnet-admin credential generated for this scenario
-      When the operator runs fleet-node-retire for "worker-one" with --apply --yes
+      When the operator runs retire for "worker-one" with --apply --yes
       Then the command exits with 0
       And the control plane was asked to delete only the device "old-one"
       And the control plane was asked "DELETE" "https://api.tailscale.com/api/v2/device/old-one"
       And the request carried the credential as a bearer token
       And the report has the check "tailscale:device" passed, saying "The tailnet no longer holds the device old-one"
 
-    Scenario: Replacing points the monitoring system at the new machine, leaves the T3 pairing to fleet-sync and removes the old device
-      The new machine's T3 does not run until fleet-sync converges it, so
-      the next fleet-sync pairs the manager with it.
+    Scenario: Replacing points the monitoring system at the new machine, leaves the T3 pairing to converge and removes the old device
+      The new machine's T3 does not run until converge converges it, so
+      the next converge pairs the manager with it.
       Given the fleet declares the tailnet control plane:
         """
         { "api": "tailscale", "tag": "tag:fleet-worker" }
         """
       And the secrets provider holds a tailnet-admin credential generated for this scenario
       And the tailnet shows "worker-one" online as the new device "new-one"
-      When the operator runs fleet-node-replace for "worker-one" with --apply --yes
+      When the operator runs replace for "worker-one" with --apply --yes
       Then the command exits with 0
       And the monitoring hub watches only:
         | name       | host                         |
@@ -131,7 +131,7 @@ Feature: A worker is replaced or retired with one command
         | worker-two | worker-two.tail0a1b2c.ts.net |
       And the manager's T3 forgot the environment "0b0c0d0e-1111-4222-8333-444455556666"
       And the roster records no T3 environment of "worker-one"
-      And the report has the check "t3:link" skipped, saying "devfleet fleet-sync --node worker-one pairs the manager with it once it runs"
+      And the report has the check "t3:link" skipped, saying "homelab converge --node worker-one pairs the manager with it once it runs"
       And the fleet state asks for a T3 pairing of "worker-one"
       And the control plane was asked to delete only the device "old-one"
       And the report has the check "tailscale:device" passed, saying "The tailnet no longer holds the device old-one"
@@ -142,7 +142,7 @@ Feature: A worker is replaced or retired with one command
         { "api": "tailscale", "tag": "tag:fleet-worker" }
         """
       And the secrets provider holds no tailnet-admin credential
-      When the operator runs fleet-node-retire for "worker-one" with --apply --yes
+      When the operator runs retire for "worker-one" with --apply --yes
       Then the command exits with 0
       And the control plane was asked nothing
       And the report has the check "tailscale:device" skipped, saying "the secrets provider holds no tailnet-admin"
@@ -154,7 +154,7 @@ Feature: A worker is replaced or retired with one command
         """
       And the secrets provider holds a tailnet-admin credential generated for this scenario
       And the manager <fault> its secrets provider
-      When the operator runs fleet-node-retire for "worker-one" with --apply --yes
+      When the operator runs retire for "worker-one" with --apply --yes
       Then the command exits with 0
       And the control plane was asked nothing
       And the report has the check "tailscale:device" skipped, saying "SECRET_READ_BLOCKED by manager:vault-renewal"
@@ -179,7 +179,7 @@ Feature: A worker is replaced or retired with one command
     Scenario: A new machine whose T3 already runs is paired at once
       Given the T3 of "worker-one" runs the environment "7a7b7c7d-1111-4222-8333-444455556666"
       And the manager's T3 links the environment it is handed a code for
-      When the operator runs fleet-node-replace for "worker-one" with --apply --yes
+      When the operator runs replace for "worker-one" with --apply --yes
       Then the command exits with 0
       And the report has the check "t3:link" passed, saying "The manager's T3 is paired with the T3 environment 7a7b7c7d-1111-4222-8333-444455556666 of worker-one"
       And the roster records the T3 environment "7a7b7c7d-1111-4222-8333-444455556666" of "worker-one"
@@ -189,12 +189,12 @@ Feature: A worker is replaced or retired with one command
       And the pairing code appears in no command line, report, printed output or fleet state
       And the fleet state asks for no T3 pairing of "worker-one"
 
-    Scenario: A new machine whose T3 did not run yet is paired by the next fleet-sync
+    Scenario: A new machine whose T3 did not run yet is paired by the next converge
       Given the operator has replaced "worker-one" before its T3 ran
       And the T3 of "worker-one" runs the environment "7a7b7c7d-1111-4222-8333-444455556666"
       And the manager's T3 links the environment it is handed a code for
-      When fleet-sync pairs the T3 of "worker-one" if it was asked to
-      Then fleet-sync reports:
+      When converge pairs the T3 of "worker-one" if it was asked to
+      Then converge reports:
         | id      | status |
         | t3:link | pass   |
       And the roster records the T3 environment "7a7b7c7d-1111-4222-8333-444455556666" of "worker-one"
@@ -207,8 +207,8 @@ Feature: A worker is replaced or retired with one command
       And the tailnet shows "worker-one" online as the new device "old-one"
       And the T3 of "worker-one" runs the environment "7a7b7c7d-1111-4222-8333-444455556666"
       And the manager's T3 links the environment it is handed a code for
-      When fleet-sync pairs the T3 of "worker-one" if it was asked to
-      Then fleet-sync reports:
+      When converge pairs the T3 of "worker-one" if it was asked to
+      Then converge reports:
         | id      | status |
         | t3:link | pass   |
       And the roster records the T3 environment "7a7b7c7d-1111-4222-8333-444455556666" of "worker-one"
@@ -216,15 +216,15 @@ Feature: A worker is replaced or retired with one command
     Scenario: A worker nobody replaced is left to a person
       A worker's first pairing is approved by a person in the manager's T3.
       Given the T3 of "worker-one" runs the environment "7a7b7c7d-1111-4222-8333-444455556666"
-      When fleet-sync pairs the T3 of "worker-one" if it was asked to
-      Then fleet-sync reports:
+      When converge pairs the T3 of "worker-one" if it was asked to
+      Then converge reports:
         | id | status |
       And no pairing code was minted on "worker-one"
 
     Scenario Outline: A refused pairing fails, says why, and is asked for again
       Given the T3 of "worker-one" runs the environment "7a7b7c7d-1111-4222-8333-444455556666"
       And the manager's T3 refuses the link because "<reason>"
-      When the operator runs fleet-node-replace for "worker-one" with --apply --yes
+      When the operator runs replace for "worker-one" with --apply --yes
       Then the command exits with 1
       And the report has the check "t3:link" failed, saying "T3_LINK_PAIRING_FAILED"
       And the remedy of the check "t3:link" says "<remedy>"
@@ -243,7 +243,7 @@ Feature: A worker is replaced or retired with one command
       Given the manager's T3 server runs at "http://192.0.2.10:3773"
       And the T3 of "worker-one" runs the environment "7a7b7c7d-1111-4222-8333-444455556666"
       And the manager's T3 links the environment it is handed a code for
-      When the operator runs fleet-node-replace for "worker-one" with --apply --yes
+      When the operator runs replace for "worker-one" with --apply --yes
       Then the command exits with 1
       And the remedy of the check "t3:link" says "The manager's T3 did not answer on this machine"
       And the manager's T3 was sent nothing
@@ -260,18 +260,18 @@ Feature: A worker is replaced or retired with one command
       And the tailnet shows "worker-one" online as the new device "new-one"
 
     Scenario: Replacing pins the new key with one command
-      When the operator runs fleet-node-replace for "worker-one" with the host key "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyForTheNewMachine" and --apply --yes
+      When the operator runs replace for "worker-one" with the host key "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyForTheNewMachine" and --apply --yes
       Then the command exits with 0
       And the fleet state pins "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyForTheNewMachine" for "worker-one"
       And the fleet-owned known_hosts pins exactly:
         """
-        devfleet-worker-one ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyForTheNewMachine
+        homelab-worker-one ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFakeKeyForTheNewMachine
         """
       And no personal known_hosts was changed
 
     Scenario: Retiring forgets the pinned key
       Given the operator has replaced "worker-one"
-      When the operator runs fleet-node-retire for "worker-one" with --apply --yes
+      When the operator runs retire for "worker-one" with --apply --yes
       Then the command exits with 0
       And the fleet state pins no host key for "worker-one"
       And the fleet-owned known_hosts pins exactly:
@@ -280,14 +280,14 @@ Feature: A worker is replaced or retired with one command
 
   Rule: Workers that come from worker records come and go with their records
     A record that appears is a declared worker, enrolled by the next sync. One
-    that disappears is retired by the same path as fleet-node-retire. A worker
+    that disappears is retired by the same path as retire. A worker
     someone listed in fleet.json by hand is never retired by itself.
 
     Scenario: A worker whose record disappeared is retired by the next sync
       Given the fleet state records that "worker-three" was enrolled from a worker record, bound to the device "old-three"
       And the monitoring hub watches "worker-three" at "worker-three.tail0a1b2c.ts.net"
-      When fleet-sync reads the worker records
-      Then fleet-sync reports:
+      When converge reads the worker records
+      Then converge reports:
         | id                | status |
         | enrollment:record | pass   |
       And the roster does not hold "worker-three"
@@ -297,15 +297,15 @@ Feature: A worker is replaced or retired with one command
 
     Scenario: A preview only plans the retirement
       Given the fleet state records that "worker-three" was enrolled from a worker record, bound to the device "old-three"
-      When fleet-sync reads the worker records to preview them
-      Then fleet-sync reports:
+      When converge reads the worker records to preview them
+      Then converge reports:
         | id                | status |
         | enrollment:record | skip   |
       And the roster holds "worker-three"
 
     Scenario: A worker removed from fleet.json by hand is not retired by itself
       Given the roster still holds "worker-three", which fleet.json listed by hand
-      When fleet-sync reads the worker records
-      Then fleet-sync reports:
+      When converge reads the worker records
+      Then converge reports:
         | id | status |
       And the roster holds "worker-three"

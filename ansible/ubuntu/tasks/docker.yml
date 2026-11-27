@@ -91,7 +91,7 @@
         ls,
         --all,
         --filter,
-        label=dev-fleet.smoke-image,
+        label=homelab.smoke-image,
         --format,
         '{{ "{{.Names}}" }}',
       ]
@@ -102,7 +102,7 @@
   register: docker_smoke_references
 - name: Retain the current offline smoke image across disk cleanup
   vars:
-    reference: "dev-fleet-smoke-{{ dockerSmokeTest.image.split('@sha256:')[1] }}"
+    reference: "homelab-smoke-{{ dockerSmokeTest.image.split('@sha256:')[1] }}"
   block:
     - name: Create a stopped reference to the pinned image
       ansible.builtin.command:
@@ -113,7 +113,7 @@
             --name,
             '{{ reference }}',
             --label,
-            dev-fleet.smoke-image,
+            homelab.smoke-image,
             --network,
             none,
             --pull,
@@ -126,7 +126,7 @@
     - name: Retire stopped references to earlier fleet smoke images
       ansible.builtin.command:
         argv: [docker, container, rm, '{{ item }}']
-      loop: "{{ docker_smoke_references.stdout_lines | default([]) | select('match', '^dev-fleet-smoke-[0-9a-f]{64}$') | reject('equalto', reference) | list }}"
+      loop: "{{ docker_smoke_references.stdout_lines | default([]) | select('match', '^homelab-smoke-[0-9a-f]{64}$') | reject('equalto', reference) | list }}"
       changed_when: true
 - name: Run a container as the developer, offline (DOCKER_RUN_FAILED)
   ansible.builtin.command:

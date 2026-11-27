@@ -1,7 +1,7 @@
 import { FleetUsageError } from '../errors';
 import { record } from '../config';
 
-/** The IDEs dev-fleet supports. The support matrix in the README lists the
+/** The IDEs homelab supports. The support matrix in the README lists the
  * same; enabling one on the fleet is `ides` in fleet.json, not new code.
  */
 export const SUPPORTED_IDES = ['t3', 'super', 'orca', 'paradev'] as const;
@@ -21,7 +21,7 @@ export interface T3Definition {
 }
 
 const KEY = /^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/;
-/** Settings another part of dev-fleet owns. */
+/** Settings another part of homelab owns. */
 const RESERVED = ['providerInstances'];
 
 function invalid(detail: string): never {

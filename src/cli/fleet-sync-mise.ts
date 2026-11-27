@@ -12,7 +12,7 @@ import { loadRoster } from './roster';
  * flag is never forwarded to it. The value is the revision it is about, so
  * it says nothing about any other run.
  */
-export const ALLOW_MISE_DOWNGRADE_ENV = 'DEVFLEET_MISE_DOWNGRADE_ALLOWED';
+export const ALLOW_MISE_DOWNGRADE_ENV = 'HOMELAB_MISE_DOWNGRADE_ALLOWED';
 
 /** A toolchain bootstrap that names this flag keeps a newer mise unless it
  * is given the flag. One that does not is from before that rule and installs
@@ -74,8 +74,8 @@ function release(stdout: string): string | null {
   return /^(\d+(?:\.\d+){1,3})(?:\s|$)/.exec(stdout.trim())?.[1] ?? null;
 }
 
-/** The flag that makes fleet-sync answer the question and change nothing.
- * A devfleet from before the flag refuses it, which is how the guard of a
+/** The flag that makes converge answer the question and change nothing.
+ * A homelab from before the flag refuses it, which is how the guard of a
  * hand-off tells that the manager's installed one cannot answer.
  */
 export const MEASURE_MISE_FLAG = '--measure-mise';
@@ -85,12 +85,12 @@ export const MEASURE_MISE_FLAG = '--measure-mise';
  * at once: read from the manager's own copy of the source repository, which
  * fetches the revision when it is not there. For any other, the shell
  * compares the manager's own mise with the pin (`downgrade`), then asks the
- * manager's installed devfleet (the code the manager runs now, not the
+ * manager's installed homelab (the code the manager runs now, not the
  * revision's) the question `miseDowngrade` answers, about the manager and
  * every worker the request selects. Its refusal is printed and ends the
- * hand-off; an installed devfleet that cannot answer (none, or one from
+ * hand-off; an installed homelab that cannot answer (none, or one from
  * before the question) ends it with `unmeasured`, never with a pass. `$1` is
- * the revision; what follows it is given to the installed devfleet (--node,
+ * the revision; what follows it is given to the installed homelab (--node,
  * --json).
  */
 export const miseGuard = (exit: {
@@ -111,7 +111,7 @@ export const miseGuard = (exit: {
     '  newest=$(printf \'%s\\n%s\\n\' "$pin" "$installed" | sort -t. -k1,1n -k2,2n -k3,3n | tail -n 1)',
     `  [ "$installed" = "$pin" ] || [ "$newest" != "$installed" ] || exit ${exit.downgrade}`,
     'fi',
-    `answer=$(devfleet fleet-sync ${MEASURE_MISE_FLAG} --revision "$revision" "$@" 2>/dev/null) && exit 0`,
+    `answer=$(homelab converge ${MEASURE_MISE_FLAG} --revision "$revision" "$@" 2>/dev/null) && exit 0`,
     `case "$answer" in *FLEET_MISE_*) printf '%s\\n' "$answer"; exit 1;; esac`,
     `exit ${exit.unmeasured}`,
   ].join('\n');
@@ -254,7 +254,7 @@ export function miseDowngradeRemedy(
   const later =
     'Converge to a revision whose bootstrap keeps a newer mise (any release since that rule)';
   if (!machines.length)
-    return `${start}, so it would replace a newer one, and ${silent} did not say which mise it runs: a worker that does not answer now may answer when that bootstrap reaches it. Every checkout there whose mise.toml asks for a newer mise would then stop working. ${later}; or bring ${silent} back and run this again, park it (devfleet fleet-node-park), or name the other workers with --node; or pass --allow-mise-downgrade to install the older mise on purpose.`;
+    return `${start}, so it would replace a newer one, and ${silent} did not say which mise it runs: a worker that does not answer now may answer when that bootstrap reaches it. Every checkout there whose mise.toml asks for a newer mise would then stop working. ${later}; or bring ${silent} back and run this again, park it (homelab park), or name the other workers with --node; or pass --allow-mise-downgrade to install the older mise on purpose.`;
   const also = unmeasured.length
     ? ` ${silent} did not say which mise it runs, and is not known to be safe either.`
     : '';

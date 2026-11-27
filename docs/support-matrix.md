@@ -1,6 +1,6 @@
 # Support matrix
 
-Which platforms dev-fleet runs on, in which role, and what happens to the
+Which platforms homelab runs on, in which role, and what happens to the
 rest. The default is one macOS manager and Ubuntu workers treated as cattle.
 
 - **supported**: converged, measured and tested on every pull request.
@@ -22,9 +22,9 @@ rest. The default is one macOS manager and Ubuntu workers treated as cattle.
 | worker         | Windows   | any                 | any             | refused     | The fleet configuration accepts only Linux workers.                                       |
 | worker         | WSL2      | any                 | any             | refused     | WORKER_ENVIRONMENT_UNSUPPORTED                                                            |
 | worker         | container | any                 | any             | refused     | WORKER_ENVIRONMENT_UNSUPPORTED                                                            |
-| toolchain only | macOS     | any                 | arm64, x86_64   | best effort | No fleet role: devfleet bootstrap installs the pinned tools (docs/machine-setup.md).      |
-| toolchain only | Linux     | any                 | x86_64, aarch64 | best effort | No fleet role: devfleet bootstrap installs the pinned tools (docs/machine-setup.md).      |
-| toolchain only | WSL2      | any                 | x86_64          | best effort | Treated as Linux: devfleet bootstrap installs the pinned tools (docs/machine-setup.md).   |
+| toolchain only | macOS     | any                 | arm64, x86_64   | best effort | No fleet role: homelab bootstrap installs the pinned tools (docs/machine-setup.md).       |
+| toolchain only | Linux     | any                 | x86_64, aarch64 | best effort | No fleet role: homelab bootstrap installs the pinned tools (docs/machine-setup.md).       |
+| toolchain only | WSL2      | any                 | x86_64          | best effort | Treated as Linux: homelab bootstrap installs the pinned tools (docs/machine-setup.md).    |
 | toolchain only | Windows   | any                 | x64             | best effort | No fleet role: bootstrap/bootstrap.ps1 installs the pinned tools (docs/machine-setup.md). |
 | toolchain only | Alpine    | any                 | any             | refused     | musl: the pinned mise build needs glibc.                                                  |
 
@@ -49,7 +49,7 @@ only when Tailscale signs its suite with another key than the common one.
 `ansible/ubuntu/tasks/release.yml` selects the entry from the facts, so the
 playbooks need no change of their own. The release is supported once the
 fresh-box features pass on it: CI runs them for every accepted release
-(`DEVFLEET_TEST_FRESH_BOX_RELEASE`), with its image pinned in
+(`HOMELAB_TEST_FRESH_BOX_RELEASE`), with its image pinned in
 `features/fresh-box/Dockerfile`.
 
 ## Not yet supported

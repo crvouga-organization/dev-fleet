@@ -13,11 +13,11 @@ const checkout = resolve(import.meta.dir, '../../..');
 
 /** Scenarios tagged @ansible run the real agents play with the Ansible the
  * manager runs (the locked project in ansible/). They are skipped where uv
- * is missing, except where DEVFLEET_TEST_ANSIBLE=required (CI), where a
+ * is missing, except where HOMELAB_TEST_ANSIBLE=required (CI), where a
  * missing uv fails them instead.
  */
 export const ansibleAvailable =
-  process.env['DEVFLEET_TEST_ANSIBLE'] === 'required' ||
+  process.env['HOMELAB_TEST_ANSIBLE'] === 'required' ||
   spawnSync('uv', ['--version'], { stdio: 'ignore' }).status === 0;
 
 /** One run of the play, as the scenario observes it. */

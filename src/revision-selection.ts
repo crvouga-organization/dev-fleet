@@ -1,6 +1,6 @@
 import { record } from './config';
 
-/** What chose the revision a fleet-sync run converges to. */
+/** What chose the revision a converge run converges to. */
 export const SELECTORS = [
   'package',
   'revision',
@@ -34,7 +34,7 @@ export interface RevisionSelection {
  * given `--revision`, which says nothing about who chose it. The value names
  * the revision it is about, so it says nothing about any other run.
  */
-export const SELECTED_BY_ENV = 'DEVFLEET_SELECTED_BY';
+export const SELECTED_BY_ENV = 'HOMELAB_SELECTED_BY';
 
 const WORKER = /^[a-z][a-z0-9-]{0,62}$/;
 const TOLD = new RegExp(
@@ -92,11 +92,11 @@ export function parseSelection(value: unknown): RevisionSelection | null {
 }
 
 const WORDS: Record<Selector, string> = {
-  package: 'the installed dev-fleet package',
+  package: 'the installed homelab package',
   revision: '--revision',
   rollback: '--rollback',
   schedule: "the manager's schedule",
-  checkout: 'the HEAD of the checkout fleet-sync was started in',
+  checkout: 'the HEAD of the checkout converge was started in',
   approved: 'the revision already approved',
 };
 

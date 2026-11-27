@@ -24,7 +24,7 @@ export async function workerAccessChecks(
 
 const GITHUB_REMEDIES: Record<string, string> = {
   GITHUB_TOKEN_MISSING:
-    'The secrets provider holds no GitHub token for this worker. Store it under github-token (github-token-<node> with github.credential "per-node"); the next sign-in job or fleet-sync signs the worker in.',
+    'The secrets provider holds no GitHub token for this worker. Store it under github-token (github-token-<node> with github.credential "per-node"); the next sign-in job or converge signs the worker in.',
   GITHUB_TOKEN_REJECTED:
     'GitHub refuses the stored token: it was revoked or has expired. Store a new one under github-token; nothing about the secret store itself needs fixing.',
   GITHUB_LOGIN_MISMATCH:
@@ -32,7 +32,7 @@ const GITHUB_REMEDIES: Record<string, string> = {
   GITHUB_UNREACHABLE:
     'GitHub did not answer from this worker. Check its network and DNS; the worker keeps the sign-in it has.',
   GITHUB_SIGN_IN_FAILED:
-    'The stored token is valid but this worker has not adopted it. Inspect the job with: journalctl --user -u personal-worker-github.service, or run fleet-sync.',
+    'The stored token is valid but this worker has not adopted it. Inspect the job with: journalctl --user -u personal-worker-github.service, or run converge.',
 };
 
 /** GitHub sign-in is measured on its own, so a GitHub fault is never reported
@@ -103,7 +103,7 @@ async function proxyAuthentication(run: Runner): Promise<Check> {
     summary: 'VAULT_POLICY_PERMISSION_REQUIRED',
     remedy: {
       action:
-        'This worker’s Vault identity was refused the proxy client key by its policy. Grant that identity read access to the declared location in the Vault policy you manage. fleet-sync seeds no secret, writes no policy and adds no secret store.',
+        'This worker’s Vault identity was refused the proxy client key by its policy. Grant that identity read access to the declared location in the Vault policy you manage. converge seeds no secret, writes no policy and adds no secret store.',
     },
   };
   const unavailable = {
@@ -222,7 +222,7 @@ const VAULT_UNREACHABLE = (
 ): Pick<Check, 'summary' | 'remedy'> => ({
   summary: 'VAULT_UNREACHABLE',
   remedy: {
-    action: `Vault at ${addr} does not answer this worker, or is sealed; a new token does not help, so issue none. On the worker, vault status -address=${addr} says which: no answer is the network between them (the tailnet, DNS, the address under secrets in the fleet configuration) or a Vault that is not running; "Sealed true" is a Vault to unseal. Then run devfleet fleet-sync. A session the worker held is still held if Vault returns before it lapses; no credentials are copied between machines.`,
+    action: `Vault at ${addr} does not answer this worker, or is sealed; a new token does not help, so issue none. On the worker, vault status -address=${addr} says which: no answer is the network between them (the tailnet, DNS, the address under secrets in the fleet configuration) or a Vault that is not running; "Sealed true" is a Vault to unseal. Then run homelab converge. A session the worker held is still held if Vault returns before it lapses; no credentials are copied between machines.`,
   },
 });
 

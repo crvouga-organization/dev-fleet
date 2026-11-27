@@ -3,7 +3,7 @@ Feature: One page says what a machine must offer to be a worker, and its checks 
   it can be a worker. Each requirement a check enforces names the check and
   the failure code it reports, so a person or an agent writing the
   infrastructure code can check a machine before renting it, and so the page
-  cannot drift from what dev-fleet measures. A check of what the machine
+  cannot drift from what homelab measures. A check of what the machine
   itself must offer carries "requirement": true in schema/check-ids.json.
 
   Scenario: Every requirement names a registered check and codes the runbooks explain

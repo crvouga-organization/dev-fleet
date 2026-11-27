@@ -1,5 +1,5 @@
 /** Optional apt, mise and image caches for the fresh-worker job.
- * Off unless DEVFLEET_FRESH_BOX_CACHE is set on Linux, so a laptop run
+ * Off unless HOMELAB_FRESH_BOX_CACHE is set on Linux, so a laptop run
  * stays a machine with empty caches. Each container gets its own hardlinked
  * copy: workers bootstrap at the same time and must not share one apt
  * directory. */
@@ -14,7 +14,7 @@ const ROOT = join(homedir(), '.cache', 'devfleet-fresh');
 
 export function freshCacheEnabled(): boolean {
   return (
-    Boolean(process.env['DEVFLEET_FRESH_BOX_CACHE']) &&
+    Boolean(process.env['HOMELAB_FRESH_BOX_CACHE']) &&
     process.platform === 'linux'
   );
 }

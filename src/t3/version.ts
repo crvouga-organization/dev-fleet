@@ -30,7 +30,7 @@ export function versionCheck(
       status: 'warn',
       summary: 'T3_VERSION_UNKNOWN',
       remedy: {
-        action: `Fleet could not read the running T3 version on ${where}. Check the T3 service and rerun fleet-sync.`,
+        action: `Fleet could not read the running T3 version on ${where}. Check the T3 service and rerun converge.`,
       },
     };
   if (observed !== pinned)
@@ -58,7 +58,7 @@ export async function workerVersion(
     (await liveServerVersion(run, sshArgs(node))) ?? null,
     await pinnedT3Version(workspace),
     `worker ${node.id}`,
-    'Run fleet-sync for that worker: it installs the pinned desktop app and restarts T3 when its policy changed.'
+    'Run converge for that worker: it installs the pinned desktop app and restarts T3 when its policy changed.'
   );
 }
 

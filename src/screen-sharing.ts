@@ -10,7 +10,7 @@ import { PACKAGE_ROOT } from './package-info';
 const RDP = 'org.gnome.desktop.remote-desktop.rdp';
 const remedy = {
   action:
-    'Run fleet-sync for this desktop worker and check its active graphical login and per-worker rdp-password in the secrets provider.',
+    'Run converge for this desktop worker and check its active graphical login and per-worker rdp-password in the secrets provider.',
 };
 
 export async function applyScreenSharing(

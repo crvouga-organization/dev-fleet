@@ -36,7 +36,7 @@ export async function managerDesktop(
     throw new Error('Invalid macOS desktop pin.');
   const parent = join(
     home,
-    'Applications/dev-fleet',
+    'Applications/homelab',
     version + '-' + digest.slice(0, 12)
   );
   const app = join(parent, APP);
@@ -77,7 +77,7 @@ export async function managerDesktop(
     ...(!installed
       ? {
           remedy: {
-            action: `Run fleet-sync to stage the pinned app. If ${app} already exists and fails verification, quit it during maintenance and move it aside first.`,
+            action: `Run converge to stage the pinned app. If ${app} already exists and fails verification, quit it during maintenance and move it aside first.`,
           },
         }
       : {}),
@@ -114,14 +114,14 @@ async function runningDesktop(
         status: 'fail',
         summary: 'T3_DESKTOP_ACTIVATION_FAILED',
         remedy: {
-          action: `Open the verified desktop with open ${shellQuote(app)} and rerun fleet-sync.`,
+          action: `Open the verified desktop with open ${shellQuote(app)} and rerun converge.`,
         },
       };
     return runningDesktop({ ...context, apply: false }, pin);
   }
   const action = installed
     ? `When manager sessions have finished, quit T3 Code, then run open ${shellQuote(app)}. Pin that copy in the Dock.`
-    : 'Stage the verified desktop with fleet-sync before opening it.';
+    : 'Stage the verified desktop with converge before opening it.';
   const running = versionCheck(
     observed?.[2] ?? null,
     version,

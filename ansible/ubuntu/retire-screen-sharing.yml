@@ -7,14 +7,14 @@
   tasks:
     - name: Inspect the credential publisher ownership marker
       ansible.builtin.slurp:
-        src: /etc/systemd/system/devfleet-rdp-credential.service
+        src: /etc/systemd/system/homelab-rdp-credential.service
       register: rdp_unit_file
     - name: Refuse a publisher managed by someone else
       ansible.builtin.assert:
-        that: (rdp_unit_file.content | b64decode).startswith('# Managed by dev-fleet screen sharing')
+        that: (rdp_unit_file.content | b64decode).startswith('# Managed by homelab screen sharing')
     - name: Stop publishing the session credential at boot
       ansible.builtin.systemd_service:
-        name: devfleet-rdp-credential.service
+        name: homelab-rdp-credential.service
         state: stopped
         enabled: false
     - name: Retire sharing in the desktop user's session
@@ -58,7 +58,7 @@
       loop:
         - /etc/personal-fleet/rdp-password.cred
         - /etc/personal-fleet/screen-sharing-credential.py
-        - /etc/systemd/system/devfleet-rdp-credential.service
+        - /etc/systemd/system/homelab-rdp-credential.service
     - name: Reload the system manager after removing the credential service
       ansible.builtin.systemd_service:
         daemon_reload: true

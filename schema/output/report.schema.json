@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "report.schema.json",
-  "title": "A dev-fleet diagnostic report, version 1",
-  "description": "What fleet-status, fleet-state and the other diagnostic commands print with --json.",
+  "title": "A homelab diagnostic report, version 1",
+  "description": "What check, state and the other diagnostic commands print with --json.",
   "type": "object",
   "required": ["version", "command", "ok", "generatedAt", "nodes", "summary"],
   "properties": {

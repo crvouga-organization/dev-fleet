@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "fleet-report.schema.json",
-  "title": "The fleet-report output, version 1",
+  "title": "The history output, version 1",
   "type": "object",
   "required": [
     "version",
@@ -18,7 +18,7 @@
   ],
   "properties": {
     "version": { "const": 1 },
-    "command": { "const": "fleet-report" },
+    "command": { "const": "history" },
     "ok": { "type": "boolean" },
     "since": { "type": "string" },
     "runs": { "type": "integer" },
@@ -79,7 +79,7 @@
           "trigger": { "enum": ["operator", "schedule"] },
           "revision": { "type": ["string", "null"] },
           "selectedBy": {
-            "description": "What selected the revision, as in the fleet-sync report. Runs recorded before it was kept have none.",
+            "description": "What selected the revision, as in the converge report. Runs recorded before it was kept have none.",
             "type": "object"
           },
           "ok": { "type": "boolean" },

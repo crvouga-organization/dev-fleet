@@ -184,7 +184,7 @@ class FleetSingleton(unittest.TestCase):
         self.assertTrue(result['ok'])
         self.assertFalse(result['changed'])
         self.assertEqual(result['phases'][-1]['code'], 'PROXY_ENDPOINT_AUTH')
-        self.assertIn('PROXY_UNIT_DEV_DEVFLEET_CLIPROXY_FLEET', {p['code'] for p in result['phases']})
+        self.assertIn('PROXY_UNIT_DEV_HOMELAB_CLIPROXY_FLEET', {p['code'] for p in result['phases']})
         self.assertTrue(all(call[:2] == ['launchctl', 'print'] or self.declared_check(call)
                             for call in self.calls))
 

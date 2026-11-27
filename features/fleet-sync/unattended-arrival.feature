@@ -1,5 +1,5 @@
-Feature: A new worker reaches ready in one fleet-sync, with no hands on it
-  Around each worker's converge, fleet-sync does what a person used to do on
+Feature: A new worker reaches ready in one converge, with no hands on it
+  Around each worker's converge, converge does what a person used to do on
   a new machine: it hands a worker that is not on the tailnet a single-use
   key, keeps an enrolled worker's node key from expiring, creates the
   declared account on an image that lets only root in, and reboots a worker
@@ -204,7 +204,7 @@ Feature: A new worker reaches ready in one fleet-sync, with no hands on it
         | --maintenance-reboot --force | true  |
 
     Scenario: --maintenance-reboot reboots a ready worker whose T3 io reserve waits for the user manager
-      The user manager takes the io controller fleet-sync declares on its
+      The user manager takes the io controller converge declares on its
       next start, and nothing but a reboot starts it again: the remedy of the
       warning sends the operator here, with or without pending updates.
       Given the first converge reports:
@@ -267,7 +267,7 @@ Feature: A new worker reaches ready in one fleet-sync, with no hands on it
       When the worker is deployed with --maintenance-reboot
       Then the worker was converged 1 time
       And the deployment reports "worker:tailscale-upgrade" as "fail", saying "WORKER_TAILSCALE_UPGRADE_FAILED"
-      And the remedy of "worker:tailscale-upgrade" names "journalctl -u devfleet-tailscale-upgrade"
+      And the remedy of "worker:tailscale-upgrade" names "journalctl -u homelab-tailscale-upgrade"
       And "PRIVATE_SENTINEL" appears nowhere in what the deployment reports
 
     Scenario: Without --maintenance-reboot, Tailscale below its pin is left alone

@@ -73,7 +73,7 @@ Feature: On a worker an agent's command is the fleet's launcher
     Scenario: A checkout the fleet does not own gets no link
       A development checkout converges the machine it is on, which may be
       the operator's own.
-      When the agent commands are converged from the checkout "work/dev-fleet" of the home directory
+      When the agent commands are converged from the checkout "work/homelab" of the home directory
       Then the machine reports "agent:commands" as skipped
       And the fleet directory holds no "agent-commands"
       And the agent commands play was not run

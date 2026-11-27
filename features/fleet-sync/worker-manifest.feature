@@ -1,5 +1,5 @@
 Feature: A worker's manifest proves it can be rebuilt
-  devfleet fleet-manifest measures what a worker is made of: every installed
+  homelab measure measures what a worker is made of: every installed
   package, the active mise tools and the state of each always-on service. Two
   workers built from the same revision have the same manifest and the same
   digest. The check worker:manifest reports every difference from the pins
@@ -19,25 +19,25 @@ Feature: A worker's manifest proves it can be rebuilt
 
   Scenario: A worker like its fresh build passes
     Given the fresh build's manifest is the worker's own
-    When the operator runs fleet-manifest for "worker-one" against the fresh build
+    When the operator runs measure for "worker-one" against the fresh build
     Then the command exits with 0
     And the reported check "worker:manifest" passes
 
   Scenario: A package installed out of band shows up in worker:manifest
     Given the fresh build's manifest is the worker's own
     And someone installed the package "cowsay" at "3.03+dfsg2-8" on the worker
-    When the operator runs fleet-manifest for "worker-one" against the fresh build
+    When the operator runs measure for "worker-one" against the fresh build
     Then the command exits with 1
     And the check "worker:manifest" fails, naming "packages:cowsay absent -> 3.03+dfsg2-8"
 
   Scenario: A pinned package at another version fails, even without a fresh build
     Given someone upgraded the package "curl" to "9.0.0-1" on the worker
-    When the operator runs fleet-manifest for "worker-one"
+    When the operator runs measure for "worker-one"
     Then the command exits with 1
     And the check "worker:manifest" fails, naming "packages:curl"
 
   Scenario: Measuring changes nothing on the worker
-    When the operator runs fleet-manifest for "worker-one"
+    When the operator runs measure for "worker-one"
     Then the worker was asked only to list, with dpkg-query, mise ls and systemctl is-enabled and is-active
 
   Scenario: A worker of another accepted release is measured against that release's own pins
@@ -46,12 +46,12 @@ Feature: A worker's manifest proves it can be rebuilt
     and one holding the 26.04 curl differs from them.
     Given the worker runs Ubuntu "24.04", with every package at the pin of that release
     And someone upgraded the package "curl" to "8.18.0-1ubuntu2.8" on the worker
-    When the operator runs fleet-manifest for "worker-one"
+    When the operator runs measure for "worker-one"
     Then the command exits with 1
     And the check "worker:manifest" fails, naming "packages:curl 8.5.0-2ubuntu10.16 -> 8.18.0-1ubuntu2.8"
 
   Scenario: A worker of another accepted release at that release's pins passes
     Given the worker runs Ubuntu "24.04", with every package at the pin of that release
-    When the operator runs fleet-manifest for "worker-one"
+    When the operator runs measure for "worker-one"
     Then the command exits with 0
     And the reported check "worker:manifest" passes

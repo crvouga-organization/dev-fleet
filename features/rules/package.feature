@@ -1,11 +1,11 @@
 Feature: The published package is the whole CLI and nothing else
-  `npx devfleet` runs what `npm pack` ships: a file the CLI reads at run time
+  `npx homelab` runs what `npm pack` ships: a file the CLI reads at run time
   but the archive omits only fails once it is published.
 
   Scenario: The package carries everything the CLI reads
     When the package is packed
     Then it contains:
-      | bin/devfleet.mjs               |
+      | bin/homelab.mjs               |
       | src/cli/cli.ts                 |
       | src/package-info.ts            |
       | bootstrap/fleet-manager-run.sh |
@@ -27,7 +27,7 @@ Feature: The published package is the whole CLI and nothing else
     Then the file the manager's schedule runs, once the package is installed, is one it contains
 
   Scenario: The package carries the documents an agent sets a fleet up from
-    An agent in a project that uses dev-fleet reads them from node_modules,
+    An agent in a project that uses homelab reads them from node_modules,
     at the version the project pins, without fetching anything.
     When the package is packed
     Then it contains:
@@ -39,7 +39,7 @@ Feature: The published package is the whole CLI and nothing else
   Scenario: The package is a command and declares no library entry point
     Nothing under src/ is a supported import: a consumer that imported it
     would break on any release, and nobody would know before it upgraded.
-    Then the package manifest declares the command "devfleet"
+    Then the package manifest declares the command "homelab"
     And the package manifest declares none of these fields:
       | main    |
       | module  |
@@ -52,7 +52,7 @@ Feature: The published package is the whole CLI and nothing else
     Then it contains no test file, no test directory and no feature
 
   Scenario: The launcher starts the CLI through Bun and reports the manifest version
-    When "node bin/devfleet.mjs --version" is run in the checkout
+    When "node bin/homelab.mjs --version" is run in the checkout
     Then it prints "0.0.0-development (unreleased source build)"
 
   Scenario Outline: The launcher runs the pinned Bun only when it is an executable
@@ -74,4 +74,4 @@ Feature: The published package is the whole CLI and nothing else
     Given the installed launcher's pinned Bun is a stub left by skipped install scripts
     And no Bun is on PATH
     When the installed launcher is run
-    Then it exits 127 and says "dev-fleet needs Bun"
+    Then it exits 127 and says "homelab needs Bun"

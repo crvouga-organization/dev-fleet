@@ -124,9 +124,9 @@ Feature: The doctor checks a machine's toolchain
       Then the check "agent-worktree-trust" fails
 
   Rule: The global mise configuration must be the one this revision publishes
-    On a fleet machine it belongs to dev-fleet. A project that publishes its
+    On a fleet machine it belongs to homelab. A project that publishes its
     own takes away the pins and the trusted agent worktree roots until the
-    next fleet-sync, and the doctor says so.
+    next converge, and the doctor says so.
 
     Background:
       Given a toolchain whose "mise.toml" reads:
@@ -136,7 +136,7 @@ Feature: The doctor checks a machine's toolchain
         """
       And the toolchain's "mise.lock" holds "fixture lock"
 
-    Scenario: The configuration fleet-sync published passes
+    Scenario: The configuration converge published passes
       Given the global configuration has been published
       When the doctor checks the global mise configuration
       Then the check "global-mise-config" passes
@@ -146,7 +146,7 @@ Feature: The doctor checks a machine's toolchain
       Then the check "global-mise-config" fails
       And the check says "There is no global mise configuration"
 
-    Scenario: A configuration another project published fails, and says to run fleet-sync
+    Scenario: A configuration another project published fails, and says to run converge
       Given the global configuration has been published
       And the published "config.toml" has since been replaced with:
         """
@@ -157,9 +157,9 @@ Feature: The doctor checks a machine's toolchain
       When the doctor checks the global mise configuration
       Then the check "global-mise-config" fails
       And the check says "Another project or tool replaced"
-      And the check says "Run fleet-sync"
+      And the check says "Run converge"
 
-    Scenario: dev-fleet's configuration from another revision fails
+    Scenario: homelab's configuration from another revision fails
       Given the global configuration has been published
       And the toolchain's "mise.lock" holds "a newer lock"
       When the doctor checks the global mise configuration

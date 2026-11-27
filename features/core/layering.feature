@@ -1,5 +1,5 @@
-Feature: dev-fleet is the lower layer
-  The CLI and Workstation may use dev-fleet, never the other way round. Code
+Feature: homelab is the lower layer
+  The CLI and Workstation may use homelab, never the other way round. Code
   they share moves into this package instead.
 
   Scenario: No source file imports Workstation or the personal CLI

@@ -53,10 +53,10 @@ jobs:
       - name: Bootstrap a fresh machine over SSH
         run: bun test features/fresh-box
         env:
-          DEVFLEET_TEST_FRESH_BOX: required
-          DEVFLEET_TEST_FRESH_BOX_RELEASE: ${{ matrix.release }}
-          DEVFLEET_TEST_FRESH_BOX_FEATURE: ${{ matrix.feature }}
-          DEVFLEET_FRESH_BOX_CACHE: '1'
+          HOMELAB_TEST_FRESH_BOX: required
+          HOMELAB_TEST_FRESH_BOX_RELEASE: ${{ matrix.release }}
+          HOMELAB_TEST_FRESH_BOX_FEATURE: ${{ matrix.feature }}
+          HOMELAB_FRESH_BOX_CACHE: '1'
   agent-box:
     name: Monitoring agent on systemd
     needs: [affected]
@@ -79,8 +79,8 @@ jobs:
       - name: Apply the agent playbook on a systemd machine
         run: bun test features/monitoring
         env:
-          DEVFLEET_TEST_AGENT_BOX: required
-          DEVFLEET_DOWNLOAD_CACHE: '1'
+          HOMELAB_TEST_AGENT_BOX: required
+          HOMELAB_DOWNLOAD_CACHE: '1'
   gate:
     name: Nightly result
     if: always()

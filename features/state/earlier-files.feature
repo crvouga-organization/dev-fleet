@@ -52,17 +52,17 @@ Feature: What a manager kept in files before the fleet state existed moves into 
 
     Scenario: A state directory named explicitly is another fleet's
       Given commands on the manager are passed:
-        | DEVFLEET_STATE | /elsewhere |
+        | HOMELAB_STATE | /elsewhere |
       Then the manager has no earlier roster file
 
   Rule: A configuration kept in a file of your own is not copied into the state
 
     Background:
-      Given the manager kept the example fleet.json as its configuration in "~/.config/dev-fleet/fleet.json"
+      Given the manager kept the example fleet.json as its configuration in "~/.config/homelab/fleet.json"
 
     Scenario: With a fleet.json named, the installed copy stays where it is
       Given commands on the manager are passed:
-        | DEVFLEET_CONFIG | /repo/fleet.json |
+        | HOMELAB_CONFIG | /repo/fleet.json |
       When the earlier files of the manager are moved into the fleet state
       Then nothing is moved
       And no state database exists
@@ -76,7 +76,7 @@ Feature: What a manager kept in files before the fleet state existed moves into 
 
     Background:
       Given commands on the manager are passed:
-        | DEVFLEET_STATE | ~/state |
+        | HOMELAB_STATE | ~/state |
       And "~/manager/enrollment.json" on the manager holds:
         """
         {"version":1,"id":"manager","approvedRevision":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
@@ -105,4 +105,4 @@ Feature: What a manager kept in files before the fleet state existed moves into 
         """
       And the enrollment was stored as '{"version":1}'
       When the enrollment of the manager is loaded, with "~/manager" as where it was kept before
-      Then it is refused with "fleet-state --restore"
+      Then it is refused with "state --restore"

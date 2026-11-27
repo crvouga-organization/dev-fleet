@@ -16,8 +16,8 @@ import {
 import type { Check, NodeReport } from '../../../src/types';
 import { cli, outcome, part, temporary, type CliWorld } from './world';
 
-/** fleet-watch against a webhook and an ntfy receiver on this machine. The
- * fleet's health is what the scenario says fleet-status sees; the watcher's
+/** notify against a webhook and an ntfy receiver on this machine. The
+ * fleet's health is what the scenario says check sees; the watcher's
  * memory lives in a directory that stands in for the bucket.
  */
 const { Given, When, Then } = cli;
@@ -149,21 +149,21 @@ Then(
   }
 );
 
-Then('fleet-watch reports the revision:', (world, json: string) => {
+Then('notify reports the revision:', (world, json: string) => {
   expect((outcome(world).data as { revision?: unknown }).revision).toEqual(
     JSON.parse(json)
   );
 });
 
-Then('fleet-watch prints {string}', (world, line: string) => {
+Then('notify prints {string}', (world, line: string) => {
   expect((outcome(world).text ?? '').split('\n')).toContain(line);
 });
 
-Then('fleet-watch reports no revision', (world) => {
+Then('notify reports no revision', (world) => {
   expect(outcome(world).data).not.toHaveProperty('revision');
 });
 
-Given('fleet-status sees every worker ready', (world) => {
+Given('check sees every worker ready', (world) => {
   watch(world).nodes = nodes({ 'worker-a': '', 'worker-b': '' });
 });
 
@@ -195,7 +195,7 @@ When('the watcher sends a test notification', async (world) => {
 });
 
 When(
-  'the watcher runs at these times, while fleet-status sees these failing checks:',
+  'the watcher runs at these times, while check sees these failing checks:',
   async (world, table: DataTable) => {
     for (const row of table.hashes()) {
       const { time, ...failing } = row;
@@ -238,16 +238,13 @@ Then('nothing the receiver got contains {string}', (world, text: string) => {
     expect(entry.body + JSON.stringify(entry.headers)).not.toContain(text);
 });
 
-Then(
-  'nothing fleet-watch reported contains {string}',
-  (world, text: string) => {
-    expect(JSON.stringify(outcome(world).data)).not.toContain(text);
-    expect(outcome(world).text ?? '').not.toContain(text);
-  }
-);
+Then('nothing notify reported contains {string}', (world, text: string) => {
+  expect(JSON.stringify(outcome(world).data)).not.toContain(text);
+  expect(outcome(world).text ?? '').not.toContain(text);
+});
 
 Then(
-  /^fleet-watch exits with (\d+) and its check "([^"]+)" (passes|fails|warns)$/,
+  /^notify exits with (\d+) and its check "([^"]+)" (passes|fails|warns)$/,
   (world, code: string, id: string, verdict: string) => {
     const result = outcome(world);
     expect(result.exitCode).toBe(Number(code));
@@ -261,7 +258,7 @@ Then(
 );
 
 Then(
-  'the check {string} of fleet-watch says {string}',
+  'the check {string} of notify says {string}',
   (world, id: string, summary: string) => {
     const { checks } = outcome(world).data as { checks: Check[] };
     expect(checks.find((check) => check.id === id)?.summary).toBe(summary);
@@ -283,7 +280,7 @@ Then('the notify block {string} is refused', (_world, json: string) => {
 });
 
 Given(
-  'fleet-status warns about {string} on {string}',
+  'check warns about {string} on {string}',
   (world, id: string, node: string) => {
     watch(world).nodes = [
       { node, checks: [{ id, status: 'warn', summary: 'low disk' }] },

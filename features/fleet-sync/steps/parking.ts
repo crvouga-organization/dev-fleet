@@ -11,8 +11,8 @@ import { declareFleet } from '../../support/fleet';
 import { fleetSync, type FleetSyncWorld } from '../support/world';
 import { services } from './lifecycle';
 
-/** fleet-node-park and fleet-node-resume, against workers whose T3 answers
- * from the scenario, and a fleet-sync that is only recorded.
+/** park and resume, against workers whose T3 answers
+ * from the scenario, and a converge that is only recorded.
  */
 const { Given, When, Then } = fleetSync;
 
@@ -103,7 +103,7 @@ Given(
   }
 );
 
-Given('the fleet-sync after a resume does not end ready', (world) => {
+Given('the converge after a resume does not end ready', (world) => {
   parking(world).syncOk = false;
 });
 
@@ -154,13 +154,10 @@ Then('no declared command ran', (world) => {
   expect(parking(world).hooks).toEqual([]);
 });
 
-Then('fleet-sync ran for {string} only', (world, id: string) => {
+Then('converge ran for {string} only', (world, id: string) => {
   expect(parking(world).synced).toEqual([`--node ${id}`]);
 });
 
-Then(
-  'the fleet-sync of the resume was given {string}',
-  (world, text: string) => {
-    expect(parking(world).synced).toEqual([text]);
-  }
-);
+Then('the converge of the resume was given {string}', (world, text: string) => {
+  expect(parking(world).synced).toEqual([text]);
+});

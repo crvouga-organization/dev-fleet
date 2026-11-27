@@ -1,5 +1,5 @@
 Feature: The manager says whether the hub's own backups would survive losing it
-  The hub keeps history, settings and every machine's identity. fleet-sync
+  The hub keeps history, settings and every machine's identity. converge
   sets its scheduled backups from the fleet configuration
   (services.monitoring.backups) through the hub's API, and reads them back as
   the hub's superuser through the two stock API requests of the pinned
@@ -85,7 +85,7 @@ Feature: The manager says whether the hub's own backups would survive losing it
       When the hub's backups are read with the fleet login "fleet@example.test"
       Then the check passes
 
-  Rule: fleet-sync hands the declared backups to the hub's playbook, with the storage keys from the secrets
+  Rule: converge hands the declared backups to the hub's playbook, with the storage keys from the secrets
 
     Scenario: The schedule, the storage and its two keys reach the playbook's variables
       Given the secret store holds "PRIVATE_ACCESS_KEY" for "beszel/backups" "ACCESS_KEY_ID"

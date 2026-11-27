@@ -1,5 +1,5 @@
 /** Who repairs a check: a repair recipe (`repair`), or the reason only a
- * person can (`manual`). Every check ID dev-fleet reports matches one entry,
+ * person can (`manual`). Every check ID homelab reports matches one entry,
  * by its exact ID or by a prefix ending in `*` (`beszel:*`). The most
  * specific match wins. `login:*` is the sign-in recipe named after the rest
  * of an `auth:` check's ID.
@@ -20,7 +20,7 @@ const HARDWARE =
   'It is a property of the hardware, the firmware or the operating system release, which no command changes.';
 
 const PARKING =
-  'Whether a worker runs is the operator’s choice: park it with fleet-node-park or resume it with fleet-node-resume.';
+  'Whether a worker runs is the operator’s choice: park it with park or resume it with resume.';
 
 export const CHECK_OWNERS: CheckOwner[] = [
   // Toolchain and workstation: automatic.
@@ -38,7 +38,7 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 't3:mesh-*',
     manual:
-      'Verify the enrolled identities and their tailnet connections, then run fleet-sync to reconcile the directed grants declared by t3.meshAccess.',
+      'Verify the enrolled identities and their tailnet connections, then run converge to reconcile the directed grants declared by t3.meshAccess.',
   },
   // The checks that fail when a machine breaks.
   { pattern: 'worker:service-recovery', repair: 'recovery' },
@@ -57,7 +57,7 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'beszel:*',
     manual:
-      'The monitoring hub and its accounts are converged by fleet-sync on the manager; follow the remedy, then run fleet-sync.',
+      'The monitoring hub and its accounts are converged by converge on the manager; follow the remedy, then run converge.',
   },
   {
     pattern: 'tailscale:*',
@@ -73,23 +73,23 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'worker:*',
     manual:
-      'Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision.',
+      'Re-converge the worker with converge: it applies the whole worker policy at the approved revision.',
   },
   { pattern: 'worker:power-loss-recovery', repair: 'power' },
   {
     pattern: 'worker:account',
     manual:
-      'fleet-sync creates the declared account over a root login; when it cannot, the account is created by the operator on the machine, or declared in fleet.json.',
+      'converge creates the declared account over a root login; when it cannot, the account is created by the operator on the machine, or declared in fleet.json.',
   },
   {
     pattern: 'worker:reboot',
     manual:
-      'A reboot ends running agent turns, so it waits for them: rerun fleet-sync --maintenance-reboot once they end, or with --force.',
+      'A reboot ends running agent turns, so it waits for them: rerun converge --maintenance-reboot once they end, or with --force.',
   },
   {
     pattern: 'worker:tailscale-upgrade',
     manual:
-      'Upgrading Tailscale can drop the SSH session, so it waits for a maintenance run: rerun fleet-sync --maintenance-reboot once the remedy is followed.',
+      'Upgrading Tailscale can drop the SSH session, so it waits for a maintenance run: rerun converge --maintenance-reboot once the remedy is followed.',
   },
   {
     pattern: 'worker:t3-deadline-restarts',
@@ -116,7 +116,7 @@ export const CHECK_OWNERS: CheckOwner[] = [
     manual:
       'Whether a device tagged as a worker belongs to the fleet is the operator’s choice: declare it, or remove it from the tailnet.',
   },
-  // Whether a worker runs is the operator's choice (fleet-node-park).
+  // Whether a worker runs is the operator's choice (park).
   { pattern: 'worker:idle', manual: PARKING },
   { pattern: 'worker:park*', manual: PARKING },
   { pattern: 'worker:auto-park', manual: PARKING },
@@ -125,7 +125,7 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'manager:*',
     manual:
-      'The manager converges itself in fleet-sync; what needs an administrator is granted once with ansible-playbook -e user=$(id -un) -K ansible/macos/manager-privilege.yml.',
+      'The manager converges itself in converge; what needs an administrator is granted once with ansible-playbook -e user=$(id -un) -K ansible/macos/manager-privilege.yml.',
   },
   { pattern: 'manager:identity', manual: DECLARATION },
   {
@@ -138,66 +138,66 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'ubuntu:*',
     manual:
-      'Re-converge the worker with fleet-sync: it applies the Ubuntu baseline.',
+      'Re-converge the worker with converge: it applies the Ubuntu baseline.',
   },
   { pattern: 'platform:*', manual: HARDWARE },
   {
     pattern: 'ssh:*',
     manual:
-      'SSH trust (host keys, keys in the agent, the alias) is set up by a person once per machine; dev-fleet never accepts a host key for you.',
+      'SSH trust (host keys, keys in the agent, the alias) is set up by a person once per machine; homelab never accepts a host key for you.',
   },
   { pattern: 'login:*', manual: IDENTITY },
   { pattern: 'provider:*', manual: IDENTITY },
   {
     pattern: 'agent:*',
     manual:
-      'Re-converge the machine with fleet-sync; an agent that needs a sign-in is a person’s.',
+      'Re-converge the machine with converge; an agent that needs a sign-in is a person’s.',
   },
   {
     pattern: 't3:desktop-installed',
     manual:
-      'Run fleet-sync to install the verified desktop and switch a running manager desktop to that release.',
+      'Run converge to install the verified desktop and switch a running manager desktop to that release.',
   },
   {
     pattern: 't3:*',
     manual:
-      'Approve first T3 pairing in interactive fleet-sync or with t3.pairOnEnrollment; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest.',
+      'Approve first T3 pairing in interactive converge or with t3.pairOnEnrollment; a replaced worker is paired by replace or the next converge, and converge applies the rest.',
   },
   {
     pattern: 'orca:*',
     manual:
-      'Orca is installed and started by a person. fleet-sync reads orca host list and names an SSH target that is missing; the person adds it under Settings → SSH. Orca has no command that adds one.',
+      'Orca is installed and started by a person. converge reads orca host list and names an SSH target that is missing; the person adds it under Settings → SSH. Orca has no command that adds one.',
   },
   {
     pattern: 'paradev:*',
     manual:
-      'Paradev is installed and signed in by a person (paradev auth login, or SUPERSET_API_KEY). fleet-sync starts the host and runs paradev hosts add so every machine holds every other machine. On Linux, lingering (loginctl enable-linger) is the person’s.',
+      'Paradev is installed and signed in by a person (paradev auth login, or SUPERSET_API_KEY). converge starts the host and runs paradev hosts add so every machine holds every other machine. On Linux, lingering (loginctl enable-linger) is the person’s.',
   },
   {
     pattern: 'super:*',
     manual:
-      'super.engineering is installed, started and updated by a person on the manager, and reaches a worker with the manager’s own SSH configuration; fleet-sync creates each worker’s workspace once the app answers.',
+      'super.engineering is installed, started and updated by a person on the manager, and reaches a worker with the manager’s own SSH configuration; converge creates each worker’s workspace once the app answers.',
   },
   { pattern: 'vscode:*', manual: IDENTITY },
   {
     pattern: 'git:*',
     manual:
-      'Uncommitted or unpushed work belongs to a person; dev-fleet never resets a checkout.',
+      'Uncommitted or unpushed work belongs to a person; homelab never resets a checkout.',
   },
   {
     pattern: 'git:configuration',
     manual:
-      'fleet-sync writes the Git identity and credential helper with ansible/github/git.yml; run it from the manager.',
+      'converge writes the Git identity and credential helper with ansible/github/git.yml; run it from the manager.',
   },
   {
     pattern: 'github:*',
     manual:
-      'fleet-sync signs every node in to GitHub from the stored github-token (a worker retries every ten minutes); a token that is missing, expired or short of a scope or organisation needs a person to issue a new one.',
+      'converge signs every node in to GitHub from the stored github-token (a worker retries every ten minutes); a token that is missing, expired or short of a scope or organisation needs a person to issue a new one.',
   },
   {
     pattern: 'github:git-credential',
     manual:
-      'fleet-sync writes the GitHub credential helper with ansible/github/git.yml when the git block is declared; run it from the manager.',
+      'converge writes the GitHub credential helper with ansible/github/git.yml when the git block is declared; run it from the manager.',
   },
   { pattern: 'github:rate-limit', manual: EVIDENCE },
   { pattern: 'github:workflow', manual: EVIDENCE },
@@ -208,12 +208,12 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'proxy:*',
     manual:
-      'The CLI proxy is installed with devfleet cliproxy install and its accounts are signed in by a person.',
+      'The CLI proxy is installed with homelab proxy install and its accounts are signed in by a person.',
   },
   {
     pattern: 'accounts:roster-current',
     manual:
-      'The roster reaches every node with devfleet fleet-sync --only accounts, run from the manager.',
+      'The roster reaches every node with homelab converge --only accounts, run from the manager.',
   },
   { pattern: 'accounts:native-login', manual: IDENTITY },
   { pattern: 'accounts:verification', manual: EVIDENCE },
@@ -226,22 +226,22 @@ export const CHECK_OWNERS: CheckOwner[] = [
   {
     pattern: 'revision',
     manual:
-      'The checkout of that computer differs from the manager’s: reconcile its branch, or converge it with fleet-sync; dev-fleet never resets a working tree.',
+      'The checkout of that computer differs from the manager’s: reconcile its branch, or converge it with converge; homelab never resets a working tree.',
   },
   {
     pattern: 'sync:*',
     manual:
-      'The checkout of that computer differs from the manager’s: reconcile its lockfiles and pins, or converge it with fleet-sync; dev-fleet never resets a working tree.',
+      'The checkout of that computer differs from the manager’s: reconcile its lockfiles and pins, or converge it with converge; homelab never resets a working tree.',
   },
   {
     pattern: 'restore:*',
     manual:
-      'fleet-restore rebuilds a replacement manager from the bucket; what it needs first (the project’s fleet.json, the bucket’s credentials, Git, Docker Desktop, a tailnet sign-in) is the operator’s: follow the remedy, then run fleet-restore again.',
+      'recover rebuilds a replacement manager from the bucket; what it needs first (the project’s fleet.json, the bucket’s credentials, Git, Docker Desktop, a tailnet sign-in) is the operator’s: follow the remedy, then run recover again.',
   },
   {
     pattern: 'watch:*',
     manual:
-      'The heartbeat is kept in the bucket fleet.json names: name it, or restore access to it, then run fleet-watch again.',
+      'The heartbeat is kept in the bucket fleet.json names: name it, or restore access to it, then run notify again.',
   },
 ];
 

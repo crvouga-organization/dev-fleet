@@ -9,7 +9,7 @@
 # logged in. It listens on 127.0.0.1:3773 like the desktop app, so the private
 # route, the policy, the provider instances, the recovery timer and the checks
 # are the same for both session types. ~/.t3 is kept when a worker changes
-# type. Starting or migrating is left to fleet-sync.
+# type. Starting or migrating is left to converge.
 - name: Run the pinned T3 server as a lingering user service
   hosts: localhost
   connection: local
@@ -27,7 +27,7 @@
         that:
           - t3_server_binary.stat.exists
           - t3_server_binary.stat.executable
-        fail_msg: T3_SERVER_INSTALL_FAILED; the pinned T3 server is not installed. Run fleet-sync, which installs the toolchain first.
+        fail_msg: T3_SERVER_INSTALL_FAILED; the pinned T3 server is not installed. Run converge, which installs the toolchain first.
     - name: Check whether the server is running before an update
       become: true
       become_user: '{{ development_user }}'
@@ -68,7 +68,7 @@
         owner: '{{ development_user }}'
         mode: '0600'
         content: |
-          # Managed by personal fleet-sync: ansible/ubuntu/t3-headless.yml
+          # Managed by personal converge: ansible/ubuntu/t3-headless.yml
           [Unit]
           Description=T3 Code server (headless)
           StartLimitIntervalSec=300

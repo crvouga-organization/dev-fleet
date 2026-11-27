@@ -42,7 +42,7 @@ const result = await bootstrapRemote(
     digest: createHash('sha256').update(bundle).digest('hex'),
     bundle: bundle.toString('base64'),
     script: await readFile(join(source, 'bootstrap.sh'), 'utf8'),
-    // The fleet configuration travels beside the code, as fleet-sync sends
+    // The fleet configuration travels beside the code, as converge sends
     // it: the example fleet of the repository mounted at /workspace.
     config: installedDefinition(config),
   },

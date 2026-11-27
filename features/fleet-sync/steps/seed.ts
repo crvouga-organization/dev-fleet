@@ -26,7 +26,7 @@ import {
 import { services } from './lifecycle';
 import { controlPlane, controlSecrets, http } from './tailnet';
 
-/** fleet-node-seed, with ssh-keygen and the secrets provider answered here. */
+/** provision, with ssh-keygen and the secrets provider answered here. */
 const { Given, When, Then } = fleetSync;
 
 interface Seeding {
@@ -39,7 +39,7 @@ const seedings = new WeakMap<FleetSyncWorld, Seeding>();
 function seeding(world: FleetSyncWorld): Seeding {
   let found = seedings.get(world);
   if (!found) {
-    const directory = mkdtempSync(join(tmpdir(), 'devfleet-seed-test-'));
+    const directory = mkdtempSync(join(tmpdir(), 'homelab-seed-test-'));
     world.defer(() => rmSync(directory, { recursive: true, force: true }));
     found = { directory, secrets: {} };
     seedings.set(world, found);
@@ -201,10 +201,10 @@ Then('the seed deletes the auth key once the machine has joined', (world) => {
   const joined = lines.findIndex((line) => line.startsWith('tailscale up'));
   expect(joined).toBeGreaterThan(-1);
   expect(lines[joined]).toContain(
-    '--auth-key=file:/run/devfleet/tailnet-auth-key'
+    '--auth-key=file:/run/homelab/tailnet-auth-key'
   );
   expect(lines.slice(joined + 1)).toContain(
-    'rm -f /run/devfleet/tailnet-auth-key'
+    'rm -f /run/homelab/tailnet-auth-key'
   );
 });
 

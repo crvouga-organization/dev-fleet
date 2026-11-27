@@ -3,7 +3,7 @@ import { dirname, join } from 'node:path';
 
 type Schema = Record<string, unknown>;
 
-/** The part of JSON Schema dev-fleet's output schemas use: type, const,
+/** The part of JSON Schema homelab's output schemas use: type, const,
  * enum, required, properties, items, pattern and $ref to a file beside the
  * schema. Returns where the document does not match, empty when it does.
  */

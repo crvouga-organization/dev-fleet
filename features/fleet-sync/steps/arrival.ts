@@ -155,7 +155,7 @@ When(
           });
         },
         control: () =>
-          // As fleet-sync asks: through the manager's secrets.
+          // As converge asks: through the manager's secrets.
           plane.credential
             ? fleetTailnetControl(config, controlSecrets(world), http(world))
             : Promise.resolve(null),

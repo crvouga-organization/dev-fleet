@@ -344,7 +344,7 @@ export async function managerAgentProfiles(
         status: 'fail',
         summary: 'MANAGER_AGENT_PROFILES_FAILED',
         remedy: {
-          action: `Run bun src/agents/cli.ts --yes agents apply --node ${id} --tool ${tool} --profile proxy in the dev-fleet checkout on the manager and review the result.`,
+          action: `Run bun src/agents/cli.ts --yes agents apply --node ${id} --tool ${tool} --profile proxy in the homelab checkout on the manager and review the result.`,
         },
       },
     ];
@@ -375,7 +375,7 @@ function failedTool(stdout: string): string | undefined {
   return undefined;
 }
 
-/** fleet-sync runs only on the declared manager. */
+/** converge runs only on the declared manager. */
 export async function managerIdentity(
   id: string,
   run: Runner,
@@ -396,8 +396,8 @@ export async function managerIdentity(
         remedy: {
           action:
             platform === 'darwin'
-              ? `Run fleet-sync on the manager (${id}). Workers are never controlled from another worker; change the manager only by editing manager in fleet.json and moving its singleton services.`
-              : `This machine runs ${platform}, and the manager is always a macOS machine. Run fleet-sync on the manager (${id}), or from a worker that can SSH to it.`,
+              ? `Run converge on the manager (${id}). Workers are never controlled from another worker; change the manager only by editing manager in fleet.json and moving its singleton services.`
+              : `This machine runs ${platform}, and the manager is always a macOS machine. Run converge on the manager (${id}), or from a worker that can SSH to it.`,
         },
       };
 }
@@ -430,7 +430,7 @@ export async function managerPower(
           ? 'MANAGER_SLEEPS_ON_POWER'
           : `MANAGER_POWER_POLICY_DRIFT ${drifted.join(' ')}`,
         remedy: {
-          action: `Workers lose the CLI proxy and Beszel hub while the manager sleeps. Grant the manager its power settings once, as an administrator; every fleet-sync then applies the policy with no prompt: cd ${workspace} && ${ansibleCommand().join(' ')} -e user=$(id -un) -K ansible/macos/manager-privilege.yml`,
+          action: `Workers lose the CLI proxy and Beszel hub while the manager sleeps. Grant the manager its power settings once, as an administrator; every converge then applies the policy with no prompt: cd ${workspace} && ${ansibleCommand().join(' ')} -e user=$(id -un) -K ansible/macos/manager-privilege.yml`,
         },
       };
 }
@@ -550,7 +550,7 @@ export async function convergeManagerPolicy(
   };
 }
 
-/** Whether launchd holds the fleet-watch job manager.yml installs. Reads only. */
+/** Whether launchd holds the notify job manager.yml installs. Reads only. */
 export async function watchLoaded(run: Runner, uid: number): Promise<boolean> {
   return jobLoaded(run, uid, macos.fleetWatch.label);
 }
@@ -602,7 +602,7 @@ export async function managerDocker(
       ? 'MANAGER_DOCKER_DESKTOP_DRIFT'
       : 'MANAGER_DOCKER_DESKTOP_UNOBSERVED',
     remedy: {
-      action: `The manager's services are tested on ${pinned}. Install that release and turn off its automatic updates, or expect differences; fleet-sync does not install or replace Docker Desktop.`,
+      action: `The manager's services are tested on ${pinned}. Install that release and turn off its automatic updates, or expect differences; converge does not install or replace Docker Desktop.`,
     },
   };
 }

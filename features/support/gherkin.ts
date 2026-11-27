@@ -14,7 +14,7 @@ import {
   RegularExpression,
 } from '@cucumber/cucumber-expressions';
 
-/** What dev-fleet does is written as Gherkin features; this runs them under
+/** What homelab does is written as Gherkin features; this runs them under
  * `bun test`. Each `.feature` file is a group of tests, each scenario (and
  * each row of a scenario outline) one test. A scenario gets a new world, runs
  * its steps in order and stops at the first that fails.

@@ -42,7 +42,7 @@ const boots = new WeakMap<OrchestrationWorld, FirstBoot>();
 function firstBoot(world: OrchestrationWorld): FirstBoot {
   let found = boots.get(world);
   if (!found) {
-    const bin = mkdtempSync(join(tmpdir(), 'devfleet-first-boot-'));
+    const bin = mkdtempSync(join(tmpdir(), 'homelab-first-boot-'));
     world.defer(() => rmSync(bin, { recursive: true, force: true }));
     // Every Ubuntu worker has GNU timeout; older macOS runners have none, so
     // there a stand-in with its exit code 124 takes its place.

@@ -11,7 +11,7 @@ import {
 /** The tailnet control plane a fleet enrols its workers with: the hosted
  * Tailscale (API v2) or a self-hosted Headscale (its REST API). The contract
  * is "a control plane that can issue pre-authorised keys": for each new
- * worker dev-fleet asks it for one key that is single-use, pre-authorised,
+ * worker homelab asks it for one key that is single-use, pre-authorised,
  * tagged and expires within minutes. The credential that asks is the secret
  * `tailnet-admin`; it stays on the manager and never reaches a worker.
  */
@@ -239,7 +239,7 @@ function tailscaleApi(
           },
         },
         expirySeconds: seconds(request),
-        description: `devfleet ${request.worker}`.slice(0, 50),
+        description: `homelab ${request.worker}`.slice(0, 50),
       });
       if (!record(answer))
         throw new TailnetControlError('TAILNET_CONTROL_RESPONSE_INVALID');

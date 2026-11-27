@@ -2,7 +2,7 @@ Feature: A tailnet control plane issues one single-use key per new worker
   A machine created by infrastructure-as-code has nobody at a console. The
   fleet declares its tailnet control plane in fleet.json (tailnet) and keeps an
   API credential for it as the secret tailnet-admin, which stays on the
-  manager. For each new worker dev-fleet asks the control plane for one key:
+  manager. For each new worker homelab asks the control plane for one key:
   single-use, pre-authorised, tagged and expiring within minutes. The hosted
   Tailscale and a self-hosted Headscale both answer, so the contract is "a
   control plane that can issue pre-authorised keys", not one vendor.
@@ -135,7 +135,7 @@ Feature: A tailnet control plane issues one single-use key per new worker
       Then its join runs only when these hold:
         | tailnet_key.stat.exists                                       |
         | (tailscale_status.stdout \| from_json).BackendState == 'NeedsLogin' |
-      And its join passes "--auth-key=file:/run/devfleet/tailnet-auth-key" and the declared worker ID as the hostname
+      And its join passes "--auth-key=file:/run/homelab/tailnet-auth-key" and the declared worker ID as the hostname
       And its join advertises no tag: the key carries the fleet's tag
       And its join logs nothing
       And after the join the key file is removed, whatever the join did

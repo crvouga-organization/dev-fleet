@@ -71,7 +71,7 @@ export class GithubWorld extends CommandWorld {
     if (this.provider === 'env') {
       const env: Record<string, string> = {};
       for (const [name, value] of this.stored)
-        env[`DEVFLEET_SECRET_${name.toUpperCase().replaceAll('-', '_')}`] =
+        env[`HOMELAB_SECRET_${name.toUpperCase().replaceAll('-', '_')}`] =
           value;
       return secretsProvider({ provider: 'env' }, { env });
     }

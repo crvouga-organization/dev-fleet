@@ -10,10 +10,10 @@ Feature: The manager's GitHub sign-in is checked like every worker's
     And GitHub knows the token "TOKEN_X_PRIVATE_0005" as "someone-else"
     And the store holds "TOKEN_A_PRIVATE_0001" as "github-token"
 
-  Scenario: fleet-status shows the GitHub checks of the manager
+  Scenario: check shows the GitHub checks of the manager
     Given "manager-mac" is signed in with "TOKEN_A_PRIVATE_0001"
     And every other command fails
-    When fleet-status checks the "github" capability on the manager
+    When check checks the "github" capability on the manager
     Then these checks are reported, in this order:
       | auth:github           |
       | github:principal      |
@@ -63,7 +63,7 @@ Feature: The manager's GitHub sign-in is checked like every worker's
 
     Scenario Outline: A sign-in job that found no token while the manager <state> leaves "github:sync" blocked
       Given the command "vault status -address=https://vault.example.com -format=json" <status>
-      And the command "bun bootstrap/worker-github.ts" prints {"name":"dev-fleet-github","event":"job_finished","code":"GITHUB_TOKEN_MISSING","adopted":false}
+      And the command "bun bootstrap/worker-github.ts" prints {"name":"homelab-github","event":"job_finished","code":"GITHUB_TOKEN_MISSING","adopted":false}
       When the GitHub sign-in of the manager is converged
       Then the check "github:sync" fails
       And the check "github:sync" says "SECRET_READ_BLOCKED by manager:vault-renewal"
@@ -75,7 +75,7 @@ Feature: The manager's GitHub sign-in is checked like every worker's
 
     Scenario: A token Vault does not hold keeps the sign-in's own code
       Given the command "vault token lookup -address=https://vault.example.com -format=json" succeeds
-      And the command "bun bootstrap/worker-github.ts" prints {"name":"dev-fleet-github","event":"job_finished","code":"GITHUB_TOKEN_MISSING","adopted":false}
+      And the command "bun bootstrap/worker-github.ts" prints {"name":"homelab-github","event":"job_finished","code":"GITHUB_TOKEN_MISSING","adopted":false}
       When the GitHub sign-in of the manager is converged
       Then the check "github:sync" says "GITHUB_TOKEN_MISSING"
 

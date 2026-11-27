@@ -52,7 +52,7 @@ Feature: A worker is audited without changing or revealing anything
     Then the check is "worker:package:tailscale"
     And the check fails
     And the summary of the check is "PACKAGE_BELOW_PIN tailscale 1.104.5, pinned 1.104.7"
-    And the remedy of the check contains "devfleet fleet-sync --maintenance-reboot"
+    And the remedy of the check contains "homelab converge --maintenance-reboot"
 
   Scenario: A release's own package pins replace the common pins of the Ubuntu policy
     Adding a release is one entry in the policy with the pins that differ

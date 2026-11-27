@@ -20,7 +20,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import cliproxy_host
 
 PACKAGE = "cliproxy"
-REPOSITORY = "https://github.com/crvouga/dev-fleet.git"
+REPOSITORY = "https://github.com/crvouga/homelab.git"
 LEGACY_FILES = [
     "scripts/tailscale-admin",
     "scripts/install-system",
@@ -227,7 +227,7 @@ def link_units(target, backend):
     prefix, suffixes = (
         ("cliproxy-", [".service", ".timer"])
         if backend.name == "systemd"
-        else ("dev.devfleet.cliproxy-", [".plist"])
+        else ("dev.homelab.cliproxy-", [".plist"])
     )
     backend.unit_directory.mkdir(parents=True, exist_ok=True)
     for file in (target / backend.source_directory).iterdir():

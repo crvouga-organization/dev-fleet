@@ -1,5 +1,5 @@
 Feature: The interactive menu
-  devfleet --interactive is a command palette over the same commands an agent
+  homelab --interactive is a command palette over the same commands an agent
   runs. It opens only for a person who asks for it, runs nothing that changes
   a machine without an explicit yes, and shows the exact command it runs.
 
@@ -12,21 +12,21 @@ Feature: The interactive menu
 
       Examples:
         | command                           | where               | opens         |
-        | devfleet                          | at a terminal       | does not open |
-        | devfleet --config /tmp/fleet.json | at a terminal       | does not open |
-        | devfleet --interactive            | at a terminal       | opens         |
-        | devfleet --interactive            | at a terminal in CI | does not open |
-        | devfleet --interactive t3-cleanup | at a terminal       | does not open |
-        | devfleet fleet-nodes              | at a terminal       | does not open |
-        | devfleet --json --interactive     | at a terminal       | does not open |
-        | devfleet --non-interactive        | at a terminal       | does not open |
-        | devfleet                          | without a terminal  | does not open |
-        | devfleet                          | at a terminal in CI | does not open |
+        | homelab                          | at a terminal       | does not open |
+        | homelab --config /tmp/fleet.json | at a terminal       | does not open |
+        | homelab --interactive            | at a terminal       | opens         |
+        | homelab --interactive            | at a terminal in CI | does not open |
+        | homelab --interactive t3-remove | at a terminal       | does not open |
+        | homelab workers              | at a terminal       | does not open |
+        | homelab --json --interactive     | at a terminal       | does not open |
+        | homelab --non-interactive        | at a terminal       | does not open |
+        | homelab                          | without a terminal  | does not open |
+        | homelab                          | at a terminal in CI | does not open |
 
   Rule: The palette is one flat list of every command
 
     Background:
-      Given the interactive menu of devfleet "1.2.3", released at "2026-01-02T03:04:05.000Z", for the workspace "/workspace" and the roster "/fleet.json"
+      Given the interactive menu of homelab "1.2.3", released at "2026-01-02T03:04:05.000Z", for the workspace "/workspace" and the roster "/fleet.json"
 
     Scenario: With nothing typed, every command is listed once, A to Z
       When the palette is searched for ""
@@ -36,12 +36,12 @@ Feature: The interactive menu
 
     Scenario: Typing narrows the palette to what matches
       When the palette is searched for "nodes"
-      Then it offers the command "fleet-nodes"
+      Then it offers the command "workers"
 
   Rule: The menu runs the same commands an agent would, and changes nothing without a yes
 
     Background:
-      Given the interactive menu of devfleet "1.2.3", released at "2026-01-02T03:04:05.000Z", for the workspace "/workspace" and the roster "/fleet.json"
+      Given the interactive menu of homelab "1.2.3", released at "2026-01-02T03:04:05.000Z", for the workspace "/workspace" and the roster "/fleet.json"
       And the operator ticks "github, t3" whenever a list of boxes is offered
       And every command the menu runs answers:
         """
@@ -49,15 +49,15 @@ Feature: The interactive menu
         """
 
     Scenario: A command for this manager only does not ask which workers
-      Given the operator opens "fleet-status --local" from the palette, then exits
+      Given the operator opens "check --local" from the palette, then exits
       When the menu runs
       Then the menu runs exactly these commands:
-        | fleet-status --local |
+        | check --local |
       And the operator is never asked "Choose target scope"
       And the screen shows "--json"
 
     Scenario: Registering a worker writes nothing when the operator declines
-      Given the operator opens "fleet-node-add" from the palette, then exits
+      Given the operator opens "enroll" from the palette, then exits
       And the operator types, in turn:
         | dev-one             |
         | dev-one             |
@@ -69,7 +69,7 @@ Feature: The interactive menu
       And the screen shows "no roster was written"
 
     Scenario: Registering a worker, once confirmed, runs the command an agent would
-      Given the operator opens "fleet-node-add" from the palette, then exits
+      Given the operator opens "enroll" from the palette, then exits
       And the operator types, in turn:
         | dev-one             |
         | dev-one             |
@@ -78,7 +78,7 @@ Feature: The interactive menu
       And the operator confirms when asked
       When the menu runs
       Then the menu runs exactly these commands:
-        | fleet-node-add --id dev-one --ssh dev-one --path /home/dev/workspace --runtime /usr/bin/node --require github,t3 --apply --yes |
+        | enroll --id dev-one --ssh dev-one --path /home/dev/workspace --runtime /usr/bin/node --require github,t3 --apply --yes |
 
     Scenario: Approving a repair applies the plan that was reviewed
       Given every command the menu runs answers this, as applied only when run with "--apply":
@@ -92,7 +92,7 @@ Feature: The interactive menu
           "steps": []
         }
         """
-      And the operator opens "fleet-repair" from the palette, then exits
+      And the operator opens "repair" from the palette, then exits
       And the operator picks from each list, in turn:
         | local |
         | apply |
@@ -100,8 +100,8 @@ Feature: The interactive menu
       And the operator confirms when asked
       When the menu runs
       Then the menu runs exactly these commands:
-        | fleet-repair --local                                                                                            |
-        | fleet-repair --local --plan-hash bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb --apply --yes |
+        | repair --local                                                                                            |
+        | repair --local --plan-hash bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb --apply --yes |
       And the screen shows "Vault"
 
     Scenario: Cancelling leaves the menu without showing what was thrown
@@ -114,7 +114,7 @@ Feature: The interactive menu
   Rule: A result is shown as it is, and a suggestion is never run
 
     Background:
-      Given the interactive menu of devfleet "1.2.3", released at "2026-01-02T03:04:05.000Z", for the workspace "/workspace" and the roster "/fleet.json"
+      Given the interactive menu of homelab "1.2.3", released at "2026-01-02T03:04:05.000Z", for the workspace "/workspace" and the roster "/fleet.json"
       And every command the menu runs answers:
         """
         { "version": 1, "ok": true, "nodes": [] }

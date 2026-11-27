@@ -56,7 +56,7 @@ export function release(root = PACKAGE_ROOT): Release {
     ) as { bin?: unknown };
     bin = typeof manifest.bin === 'string' ? manifest.bin : null;
     if (typeof manifest.bin === 'object' && manifest.bin !== null)
-      bin = (manifest.bin as Record<string, unknown>)['devfleet'] ?? null;
+      bin = (manifest.bin as Record<string, unknown>)['homelab'] ?? null;
   } catch {
     bin = null;
   }
@@ -79,7 +79,7 @@ export function publishedRelease(release: Release): boolean {
 }
 
 /** What launchd (or the systemd timer) runs: the installed package's own
- * entry point under Node, with the tools fleet-sync installs on PATH. No path
+ * entry point under Node, with the tools converge installs on PATH. No path
  * into the project or the package the operator ran is written into it.
  */
 export function scheduledCommand(
@@ -91,7 +91,7 @@ export function scheduledCommand(
     '/usr/bin/env',
     'node',
     join(prefix, 'node_modules', release.name, release.bin ?? ''),
-    'fleet-sync',
+    'converge',
     '--revision',
     revision,
     '--apply',
@@ -112,7 +112,7 @@ export function scheduledEnvironment(home = homedir()): Record<string, string> {
       '/usr/bin',
       '/bin',
     ].join(':'),
-    DEVFLEET_TRIGGER: 'schedule',
+    HOMELAB_TRIGGER: 'schedule',
   };
 }
 
@@ -136,7 +136,7 @@ function statusReport(platform: Platform, now = new Date()): CommandOutcome {
     exitCode: 0,
     data: {
       version: 2,
-      command: 'fleet-sync',
+      command: 'converge',
       execution: 'manager-push',
       scheduling: scheduleStatus(platform),
       intervalSeconds:
@@ -176,7 +176,7 @@ function removeSchedule(
     exitCode: result.ok ? 0 : 1,
     data: {
       version: 2,
-      command: 'fleet-sync',
+      command: 'converge',
       ok: result.ok,
       scheduling: input.action,
       summary: result.ok
@@ -228,7 +228,7 @@ async function enableSchedule(
     exitCode: result.ok ? 0 : 1,
     data: {
       version: 2,
-      command: 'fleet-sync',
+      command: 'converge',
       ok: result.ok,
       scheduling: result.ok ? 'enabled' : 'action-required',
       revision: input.revision,
@@ -242,7 +242,7 @@ function required(summary: string): CommandOutcome {
     exitCode: 1,
     data: {
       version: 2,
-      command: 'fleet-sync',
+      command: 'converge',
       ok: false,
       scheduling: 'action-required',
       summary,

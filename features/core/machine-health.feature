@@ -90,7 +90,7 @@ Feature: The health of a machine itself
       And the remedy of the check "worker:clock" mentions "systemd-timesyncd"
 
   Rule: The manager measures each worker's clock against its own
-    fleet-sync reads the worker's clock on the last line of the same SSH
+    converge reads the worker's clock on the last line of the same SSH
     probe that reads its release and its size. The worker read it somewhere
     between the moment the manager sent the probe and the moment the answer
     came back, so only the smallest
@@ -193,16 +193,16 @@ Feature: The health of a machine itself
     Background:
       Given these commands print:
         | command        | prints                                                                                  |
-        | test -x /Users/dev/.local/bin/devfleet | |
+        | test -x /Users/dev/.local/bin/homelab | |
         | sw_vers        | 15.1                                                                                    |
         | softwareupdate | No new software available.                                                              |
         | df             | Filesystem 1024-blocks Used Available Capacity Mounted␊/dev/disk3s5 1 1 104857600 1% /x |
         | docker         | 10GB␊1.5GB␊0B␊500MB                                                                     |
         | cat            | {}                                                                                      |
         | sudo -n /usr/sbin/systemsetup | Network Time: On |
-        | /bin/launchctl print gui/501/dev.devfleet.fleet-watch | state = not running |
-        | /bin/launchctl print gui/501/dev.devfleet.disk-gc | state = not running |
-        | cat /etc/newsyslog.d/dev-fleet-dev.conf | # Managed by dev-fleet: manager job logs␊/Users/dev/.local/share/personal/fleet/manager/logs/personal-fleet-sync.out.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/personal-fleet-sync.err.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/dev.devfleet.fleet-watch.out.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/dev.devfleet.fleet-watch.err.log dev:staff 600 3 1024 * NZ |
+        | /bin/launchctl print gui/501/dev.homelab.notify | state = not running |
+        | /bin/launchctl print gui/501/dev.homelab.disk-gc | state = not running |
+        | cat /etc/newsyslog.d/homelab-dev.conf | # Managed by homelab: manager job logs␊/Users/dev/.local/share/personal/fleet/manager/logs/personal-fleet-sync.out.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/personal-fleet-sync.err.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/dev.homelab.notify.out.log dev:staff 600 3 1024 * NZ␊/Users/dev/.local/share/personal/fleet/manager/logs/dev.homelab.notify.err.log dev:staff 600 3 1024 * NZ |
 
     Scenario: A manager with nothing to do passes every check
       When the health of the manager is checked
@@ -228,10 +228,10 @@ Feature: The health of a machine itself
         | 80 GB in Docker              | manager:disk    | docker         | 80GB                                                                                                                                  | warns   | MANAGER_DOCKER_DISK_LARGE  |
 
     Scenario: A manager whose launcher is dangling can repair it from the fleet project
-      Given the command "test -x /Users/dev/.local/bin/devfleet" fails
+      Given the command "test -x /Users/dev/.local/bin/homelab" fails
       When the health of the manager is checked
       Then the check "workstation:configuration" fails
-      And the remedy of the check "workstation:configuration" mentions "npx devfleet fleet-sync"
+      And the remedy of the check "workstation:configuration" mentions "npx homelab converge"
 
     Scenario: A manager whose clock is off network time fails, and is told how to turn it on
       Given the command "sudo -n /usr/sbin/systemsetup" prints "Network Time: Off"
@@ -248,36 +248,36 @@ Feature: The health of a machine itself
       And the remedy of the check "manager:clock" mentions "manager-privilege.yml"
 
     Scenario: A manager whose watch job is not loaded fails: no heartbeat reaches the bucket
-      Given the command "/bin/launchctl print gui/501/dev.devfleet.fleet-watch" fails
+      Given the command "/bin/launchctl print gui/501/dev.homelab.notify" fails
       When the health of the manager is checked
       Then the check "manager:watch" fails
       And the summary of the check "manager:watch" mentions "MANAGER_WATCH_NOT_LOADED"
-      And the remedy of the check "manager:watch" mentions "devfleet fleet-sync"
+      And the remedy of the check "manager:watch" mentions "homelab converge"
 
     Scenario: A watch job whose last run failed warns, and points at its log
-      Given the command "/bin/launchctl print gui/501/dev.devfleet.fleet-watch" prints "state = not running␊last exit code = 1"
+      Given the command "/bin/launchctl print gui/501/dev.homelab.notify" prints "state = not running␊last exit code = 1"
       When the health of the manager is checked
       Then the check "manager:watch" warns
       And the summary of the check "manager:watch" mentions "MANAGER_WATCH_FAILING exit 1"
-      And the remedy of the check "manager:watch" mentions "dev.devfleet.fleet-watch.err.log"
+      And the remedy of the check "manager:watch" mentions "dev.homelab.notify.err.log"
 
     Scenario: A manager whose disk GC job is not loaded fails: nothing reclaims its disk
-      Given the command "/bin/launchctl print gui/501/dev.devfleet.disk-gc" fails
+      Given the command "/bin/launchctl print gui/501/dev.homelab.disk-gc" fails
       When the health of the manager is checked
       Then the check "manager:disk-gc" fails
       And the summary of the check "manager:disk-gc" mentions "MANAGER_DISK_GC_NOT_LOADED"
-      And the remedy of the check "manager:disk-gc" mentions "devfleet fleet-sync"
+      And the remedy of the check "manager:disk-gc" mentions "homelab converge"
 
     Scenario: A disk GC job whose last run failed warns, and points at its log
-      Given the command "/bin/launchctl print gui/501/dev.devfleet.disk-gc" prints "state = not running␊last exit code = 1"
+      Given the command "/bin/launchctl print gui/501/dev.homelab.disk-gc" prints "state = not running␊last exit code = 1"
       When the health of the manager is checked
       Then the check "manager:disk-gc" warns
       And the summary of the check "manager:disk-gc" mentions "MANAGER_DISK_GC_FAILING exit 1"
-      And the remedy of the check "manager:disk-gc" mentions "dev.devfleet.disk-gc.err.log"
+      And the remedy of the check "manager:disk-gc" mentions "dev.homelab.disk-gc.err.log"
 
     Scenario Outline: The manager's disk GC <did> and the check <verdict>
       The report is the one the collector leaves in
-      ~/Library/Caches/dev-fleet/disk-gc.json after each run.
+      ~/Library/Caches/homelab/disk-gc.json after each run.
       Given the manager's disk GC reported '<report>', where NOW is the time now
       When the health of the manager is checked
       Then the check "manager:disk-gc" <verdict>
@@ -290,7 +290,7 @@ Feature: The health of a machine itself
         | last ran four hours ago                | {"version":1,"finished":NOW-14400,"disposable":false,"reclaimedMiB":0,"categoriesMiB":{},"worktreesMiB":0,"storesMiB":0,"toolsMiB":0,"hardlinkedPercent":0,"sameFilesystem":null} | warns | MANAGER_DISK_GC_STALE last run 4 hours ago |
 
     Scenario: A rotation that misses a log of a scheduled job is not in place
-      Given the command "cat /etc/newsyslog.d/dev-fleet-dev.conf" prints "# Managed by dev-fleet: manager job logs␊/Users/dev/.local/share/personal/fleet/manager/logs/personal-fleet-sync.out.log dev:staff 600 3 1024 * NZ"
+      Given the command "cat /etc/newsyslog.d/homelab-dev.conf" prints "# Managed by homelab: manager job logs␊/Users/dev/.local/share/personal/fleet/manager/logs/personal-fleet-sync.out.log dev:staff 600 3 1024 * NZ"
       When the health of the manager is checked
       Then the check "manager:job-logs" warns
       And the summary of the check "manager:job-logs" mentions "MANAGER_JOB_LOG_ROTATION_MISSING"

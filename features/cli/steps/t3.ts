@@ -334,7 +334,7 @@ Given(
 );
 
 When(
-  'the providers are worked out for the machine {string} with dev-fleet at {string}',
+  'the providers are worked out for the machine {string} with homelab at {string}',
   async (world, id: string, workspace: string) => {
     const state = t3(world);
     state.declared = await attempt(world, () =>

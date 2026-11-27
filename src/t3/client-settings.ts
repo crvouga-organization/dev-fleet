@@ -72,7 +72,7 @@ export const clientFailure = (): Check => ({
   summary: 'T3_CLIENT_SETTINGS_UNVERIFIED',
   remedy: {
     action:
-      'Check that the T3 desktop settings and keybindings are readable, the pinned T3 CLI accepts the published themes, the user session is available and the fleet state is accessible. Rerun fleet-sync.',
+      'Check that the T3 desktop settings and keybindings are readable, the pinned T3 CLI accepts the published themes, the user session is available and the fleet state is accessible. Rerun converge.',
   },
 });
 

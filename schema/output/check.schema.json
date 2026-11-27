@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "check.schema.json",
-  "title": "One check of a dev-fleet report",
+  "title": "One check of a homelab report",
   "description": "The id is listed in schema/check-ids.json.",
   "type": "object",
   "required": ["id", "status", "summary"],

@@ -1,5 +1,5 @@
 Feature: Every check is repaired by a recipe, or says why only a person can
-  fleet-repair turns failing checks into repairs. A check is owned by a
+  repair turns failing checks into repairs. A check is owned by a
   recipe (a playbook the machine already applies, restricted to one tag, or a
   fixed command), or by a documented reason it is left to a person: a
   sign-in, a choice in fleet.json, the hardware.

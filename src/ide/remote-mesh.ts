@@ -136,7 +136,7 @@ function unanswered(
       status: 'warn',
       summary: warnings.absent,
       remedy: {
-        action: `Install ${spec.product} on ${where} (${spec.docs}) and start it once, then run fleet-sync.`,
+        action: `Install ${spec.product} on ${where} (${spec.docs}) and start it once, then run converge.`,
       },
     };
   if (answer.refused === 'UNAVAILABLE' || answer.refused === 'unavailable')
@@ -145,7 +145,7 @@ function unanswered(
       status: 'warn',
       summary: warnings.stopped,
       remedy: {
-        action: `Start ${spec.product} on ${where}, then run fleet-sync.`,
+        action: `Start ${spec.product} on ${where}, then run converge.`,
       },
     };
   return {
@@ -153,7 +153,7 @@ function unanswered(
     status: 'warn',
     summary: warnings.refused,
     remedy: {
-      action: `${spec.product} on ${where} answered ${answer.refused}. Update the app, start it again, then run fleet-sync.`,
+      action: `${spec.product} on ${where} answered ${answer.refused}. Update the app, start it again, then run converge.`,
     },
   };
 }
@@ -305,7 +305,7 @@ async function orcaHost(
   return warn(
     id,
     'ORCA_SSH_TARGET_MISSING',
-    `In Orca on ${where}, open Settings → SSH and add ${address} for ${target.id} (https://www.onorca.dev/docs/ssh), then run fleet-sync. Orca has no command that adds an SSH target.`
+    `In Orca on ${where}, open Settings → SSH and add ${address} for ${target.id} (https://www.onorca.dev/docs/ssh), then run converge. Orca has no command that adds an SSH target.`
   );
 }
 
@@ -332,7 +332,7 @@ async function paradevSignedIn(
   return warn(
     id,
     'PARADEV_NOT_SIGNED_IN',
-    `Sign in to Paradev on ${where} with \`paradev auth login\`, or set SUPERSET_API_KEY for that account (https://docs.paradev.com/remote-access), then run fleet-sync.`
+    `Sign in to Paradev on ${where} with \`paradev auth login\`, or set SUPERSET_API_KEY for that account (https://docs.paradev.com/remote-access), then run converge.`
   );
 }
 
@@ -393,7 +393,7 @@ function listedHost(
     return warn(
       'paradev:host',
       'PARADEV_HOST_OFFLINE',
-      `Paradev on ${where} lists ${target.id} and it is offline. Start Paradev there, then run fleet-sync.`
+      `Paradev on ${where} lists ${target.id} and it is offline. Start Paradev there, then run converge.`
     );
   return held(where, target.id);
 }

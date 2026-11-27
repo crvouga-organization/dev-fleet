@@ -213,10 +213,10 @@ Feature: The disk GC removes only what a node can rebuild
         | with processes elsewhere only             | loses   | gone  |
         | with an error                             | keeps   | kept  |
 
-  Rule: A node keeps two dev-fleet checkouts: the current one and the previous one
+  Rule: A node keeps two homelab checkouts: the current one and the previous one
 
     Background:
-      Given the directory ".local/share/personal/fleet/revisions" holds these dev-fleet checkouts, oldest first:
+      Given the directory ".local/share/personal/fleet/revisions" holds these homelab checkouts, oldest first:
         | 1111111111111111111111111111111111111111 |
         | 2222222222222222222222222222222222222222 |
         | 3333333333333333333333333333333333333333 |
@@ -308,7 +308,7 @@ Feature: The disk GC removes only what a node can rebuild
         | 30000 | under pressure  | gone    |
         | 40000 | not under it    | kept    |
 
-  Rule: Each run leaves a report fleet-status reads
+  Rule: Each run leaves a report check reads
 
     Scenario: An under-target disposable disk reports that it reached its target
       Given a disk of 100000 MiB with 45000 MiB free

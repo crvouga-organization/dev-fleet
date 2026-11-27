@@ -23,8 +23,8 @@ import lock from './support/lock.json';
 
 const root = resolve(import.meta.dir, '../..');
 const support = resolve(import.meta.dir, 'support');
-const IMAGE = 'dev-fleet-tailnet-box';
-const KEY_FILE = '/run/devfleet/tailnet-auth-key';
+const IMAGE = 'homelab-tailnet-box';
+const KEY_FILE = '/run/homelab/tailnet-auth-key';
 
 export class TailnetBoxWorld extends World {
   /** The control plane as fleet.json declares it. */
@@ -402,7 +402,7 @@ async function tailscalePlay(
 ): Promise<{ ok: boolean; output: string }> {
   const delivered = await on(
     box,
-    `umask 077 && mkdir -p /run/devfleet && cat > ${KEY_FILE}`,
+    `umask 077 && mkdir -p /run/homelab && cat > ${KEY_FILE}`,
     { input: `${key}\n` }
   );
   expect(delivered.ok).toBe(true);

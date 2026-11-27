@@ -64,7 +64,7 @@ export async function managerRunScript(
 }
 
 /** The manager converges from a clean, fleet-owned checkout of the exact
- * revision, like every worker, never from where fleet-sync was started: that
+ * revision, like every worker, never from where converge was started: that
  * is an installed package a package manager may remove, or a working tree
  * with uncommitted edits. The checkout is made from a repository this machine
  * owns too: the fleet's source repository fetched into the manager's cache
@@ -88,7 +88,7 @@ export async function runFromCheckout(
     repository && (await trackedScript(repository, revision, RUN_SCRIPT, run));
   if (!repository || !script) return null;
   // The run script makes its checkout from this repository.
-  process.env['DEVFLEET_REPO'] = repository;
+  process.env['HOMELAB_REPO'] = repository;
   // It is given --revision, which does not say what selected the revision.
   if (source.selection)
     process.env[SELECTED_BY_ENV] = encodeSelection(revision, source.selection);
@@ -120,7 +120,7 @@ export async function runFromCheckout(
 /** `here` when this process is already the run checkout (or a test, which
  * never leaves its own process: the same rule as the worker hand-off).
  * `unavailable` when the revision could not be checked out: nothing may
- * converge from the place fleet-sync happened to be started in.
+ * converge from the place converge happened to be started in.
  */
 export async function rehome(
   options: FleetSyncOptions,

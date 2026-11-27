@@ -40,7 +40,7 @@ export function workerVaultPolicy(
 ): string {
   const own = workerTokenLocation(node, vault);
   return [
-    `# dev-fleet: the policy of the worker ${node}. Written by dev-fleet; do not edit.`,
+    `# homelab: the policy of the worker ${node}. Written by homelab; do not edit.`,
     `path "${vault.mount}/data/${shared}" {`,
     '  capabilities = ["read"]',
     '}',

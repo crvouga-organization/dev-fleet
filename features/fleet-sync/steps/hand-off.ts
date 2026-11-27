@@ -172,10 +172,7 @@ Then(
       const asked = row['the manager is asked for']!;
       // The option is in the request it is said to be handed off from.
       expect(given.split(' ')).toContain(row['option']!);
-      const forwarded = forwardedFlags(
-        request(`fleet-sync ${given}`),
-        undefined
-      );
+      const forwarded = forwardedFlags(request(`converge ${given}`), undefined);
       if (asked.startsWith('--')) expect(forwarded).toEqual(asked.split(' '));
       else {
         expect(asked).toMatch(/^nothing: \S/);
@@ -231,7 +228,7 @@ Given('nothing stands in for the SSH connection to the manager', (world) => {
   world.spawn = undefined;
 });
 
-When('fleet-sync is started with {string}', async (world, text: string) => {
+When('converge is started with {string}', async (world, text: string) => {
   world.outcome = await runFleetSync(
     flags(text),
     world.settings,
@@ -318,7 +315,7 @@ const caches = (world: FleetSyncWorld): string =>
 
 function source(world: FleetSyncWorld, revision: string, workspace: string) {
   // The run names its repository in the environment of this process.
-  setEnv(world, 'DEVFLEET_REPO', process.env['DEVFLEET_REPO']);
+  setEnv(world, 'HOMELAB_REPO', process.env['HOMELAB_REPO']);
   return { revision, workspace, root: caches(world) };
 }
 
@@ -360,14 +357,14 @@ Then(
 Then(
   /^the run is told its repository is "([^"]*)"$/,
   (_world, path: string) => {
-    expect(process.env['DEVFLEET_REPO']).toBe(path);
+    expect(process.env['HOMELAB_REPO']).toBe(path);
   }
 );
 
 Then(
   "the run is told its repository is {string} in the manager's caches",
   (world, directory: string) => {
-    expect(process.env['DEVFLEET_REPO']).toBe(join(caches(world), directory));
+    expect(process.env['HOMELAB_REPO']).toBe(join(caches(world), directory));
   }
 );
 

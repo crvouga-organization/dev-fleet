@@ -1,5 +1,5 @@
 Feature: No fleet's identity is in this repository
-  dev-fleet is for anyone's machines. A fleet's own accounts, hostnames,
+  homelab is for anyone's machines. A fleet's own accounts, hostnames,
   tailnet and repository belong in that fleet's fleet.json, never here.
 
   Scenario: The tracked files name no real email address
@@ -39,7 +39,7 @@ Feature: No fleet's identity is in this repository
       | profile   |
 
   # A consumer can assert its own names never leak into a fork or a patch:
-  #   DEVFLEET_FORBIDDEN='my-host,mydomain.dev' bun test features/rules
-  Scenario: Names listed in DEVFLEET_FORBIDDEN appear nowhere
-    When every tracked text file is searched for the names in DEVFLEET_FORBIDDEN
+  #   HOMELAB_FORBIDDEN='my-host,mydomain.dev' bun test features/rules
+  Scenario: Names listed in HOMELAB_FORBIDDEN appear nowhere
+    When every tracked text file is searched for the names in HOMELAB_FORBIDDEN
     Then none is found

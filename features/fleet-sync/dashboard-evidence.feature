@@ -52,7 +52,7 @@ Feature: The health of the workers includes what the dashboard knows of them
         | beszel:freshness    | pass   |
 
     Scenario: A system that matches no declared worker is a leftover
-      A worker destroyed outside dev-fleet, or removed from fleet.json by
+      A worker destroyed outside homelab, or removed from fleet.json by
       hand, leaves its system on the hub.
       Given health reports, without any check yet, for:
         | worker-one.tail0a1b2c.ts.net |

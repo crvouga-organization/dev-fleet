@@ -3,12 +3,12 @@
 <plist version="1.0">
 <dict>
 	<key>Label</key>
-	<string>dev.devfleet.cliproxy-backup</string>
+	<string>dev.homelab.cliproxy-vault-renew</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/bin/sh</string>
 		<string>-c</string>
-		<string>PATH="$HOME/Library/Application Support/cliproxy-fleet/tools/bin:$PATH" exec "$HOME/Library/Application Support/cliproxy-fleet/scripts/backup" backup</string>
+		<string>PATH="$HOME/Library/Application Support/cliproxy-fleet/tools/bin:$PATH" exec "$HOME/Library/Application Support/cliproxy-fleet/scripts/vault-renew"</string>
 	</array>
 	<key>EnvironmentVariables</key>
 	<dict>
@@ -23,26 +23,9 @@
 	<string>Background</string>
 	<key>Nice</key>
 	<integer>10</integer>
-	<key>StartCalendarInterval</key>
-	<array>
-		<dict>
-			<key>Minute</key>
-			<integer>0</integer>
-		</dict>
-		<dict>
-			<key>Minute</key>
-			<integer>15</integer>
-		</dict>
-		<dict>
-			<key>Minute</key>
-			<integer>30</integer>
-		</dict>
-		<dict>
-			<key>Minute</key>
-			<integer>45</integer>
-		</dict>
-	</array>
-	<key>LowPriorityIO</key>
+	<key>RunAtLoad</key>
 	<true/>
+	<key>StartInterval</key>
+	<integer>900</integer>
 </dict>
 </plist>

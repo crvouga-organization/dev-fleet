@@ -109,7 +109,7 @@ export async function ensurePublicViewer(
     return viewerCheck(
       'warn',
       'BESZEL_VIEWER_UNPROVISIONED',
-      "The fleet admin login is unavailable. Log the manager's Vault session in with read access to BESZEL_FLEET_AUTH and rerun fleet-sync; until then the public dashboard shows the login page."
+      "The fleet admin login is unavailable. Log the manager's Vault session in with read access to BESZEL_FLEET_AUTH and rerun converge; until then the public dashboard shows the login page."
     );
   try {
     const anonymous: Session = { fetcher, base, token: '' };

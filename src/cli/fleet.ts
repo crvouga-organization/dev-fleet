@@ -34,7 +34,7 @@ export interface FleetServices {
   source: () => Promise<string>;
   /** The tailnet control plane fleet.json declares, asked for devices
    * tagged as workers that no declared worker accounts for. Absent, or null,
-   * fleet-status says nothing about them.
+   * check says nothing about them.
    */
   tailnet?: () => Promise<TailnetControl | null>;
   /** The commit the running package names; absent or null in a checkout. */
@@ -118,7 +118,7 @@ function rosterResult(
     ...(command === 'nodes' ? { configured } : {}),
     nodes:
       command === 'onboard'
-        ? nodes.map((node) => onboarding(node, 'devfleet'))
+        ? nodes.map((node) => onboarding(node, 'homelab'))
         : nodes,
   });
 }
@@ -130,11 +130,11 @@ function resolveNodes(
 ): FleetNode[] {
   if (!roster && !options.local && !['doctor', 'nodes'].includes(command))
     throw new FleetUsageError(
-      'No fleet roster. Use fleet-node-add or the interactive Register action; use fleet-status --local for this machine.'
+      'No fleet roster. Use enroll or the interactive Register action; use check --local for this machine.'
     );
   if (options.node?.length && !roster)
     throw new FleetUsageError(
-      'Cannot select nodes without a roster. Use fleet-node-add first.'
+      'Cannot select nodes without a roster. Use enroll first.'
     );
   return roster ? selectNodes(roster, options.node ?? []) : [];
 }
@@ -160,7 +160,7 @@ async function register(
     node,
     nodes: added.roster.nodes,
     next: options.apply
-      ? 'Run fleet-nodes --onboard, then fleet-status --json.'
+      ? 'Run workers --onboard, then check --json.'
       : 'Review this preview, then repeat with --apply --yes.',
   });
 }
@@ -229,7 +229,7 @@ async function diagnose(
 /** What the manager and the workers are measured against. The published
  * package holds no Git history and no bun.lock, and whatever repository
  * surrounds it is the consumer's project: from a package it is the
- * fleet-owned checkout fleet-sync made of the commit the package names. A
+ * fleet-owned checkout converge made of the commit the package names. A
  * checkout (development) is its own reference.
  */
 function statusRoot(settings: Settings, services: FleetServices): string {
@@ -237,7 +237,7 @@ function statusRoot(settings: Settings, services: FleetServices): string {
   return revision && runs ? join(runs, revision) : settings.workspace;
 }
 
-/** The manager has not run fleet-sync at this package's commit yet (a
+/** The manager has not run converge at this package's commit yet (a
  * checkout is its own reference, so it always exists).
  */
 function explainMissingCheckout(reports: NodeReport[], root: string): void {
@@ -245,10 +245,10 @@ function explainMissingCheckout(reports: NodeReport[], root: string): void {
   const check = reports[0]?.checks.find((item) => item.id === 'workspace');
   if (!check) return;
   check.summary =
-    'This manager has no fleet-owned checkout of the commit this package names; it is made by fleet-sync.';
+    'This manager has no fleet-owned checkout of the commit this package names; it is made by converge.';
   check.remedy = {
     action:
-      'Run devfleet fleet-sync from the project that holds your fleet.json, then fleet-status again.',
+      'Run homelab converge from the project that holds your fleet.json, then check again.',
   };
 }
 
@@ -280,7 +280,7 @@ function missingRoster(): NodeReport {
           'No developer fleet roster is configured. Only this manager could be checked; fleet-wide health is unknown.',
         remedy: {
           action:
-            'Open personal --interactive and choose Register a developer computer, or run devfleet fleet-node-add --help. Then run fleet-status --json.',
+            'Open personal --interactive and choose Register a developer computer, or run homelab enroll --help. Then run check --json.',
         },
       },
     ],

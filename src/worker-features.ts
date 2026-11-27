@@ -8,7 +8,7 @@ import type { Check, Runner } from './types';
 
 export { DEFAULT_FEATURES, workerFeatures, type WorkerFeatures };
 
-/** What dev-fleet installs for a feature, as `features` in
+/** What homelab installs for a feature, as `features` in
  * ansible/ubuntu/policy.json declares it. */
 export interface FeatureParts {
   packages: string[];
@@ -83,7 +83,7 @@ export function declaredFor<
 }
 
 /** What switching a worker from one set of features to another removes,
- * in the words `fleet-sync --dry-run` prints. Turning a feature on removes
+ * in the words `converge --dry-run` prints. Turning a feature on removes
  * nothing; turning the session to headless retires the desktop unit and keeps
  * ~/.t3. */
 export function featureRemovals(
@@ -158,7 +158,7 @@ export async function presentParts(
 const REMOVAL_INCOMPLETE = 'WORKER_FEATURE_REMOVAL_INCOMPLETE';
 
 /** `worker:features`: the worker has the features fleet.json declares, and
- * nothing dev-fleet installed for a feature it turned off remains. `before`,
+ * nothing homelab installed for a feature it turned off remains. `before`,
  * when given, is what was present before this run: the difference is what
  * the run removed, and it is reported. */
 export function featuresCheck(
@@ -178,7 +178,7 @@ export function featuresCheck(
       summary: `${REMOVAL_INCOMPLETE}: ${declared}; still present: ${remaining.join(', ')}.`,
       remedy: {
         action:
-          'Rerun fleet-sync, which removes what dev-fleet installed for a feature that is off, and read the ubuntu:baseline output. A package another package depends on stays until a person removes that one.',
+          'Rerun converge, which removes what homelab installed for a feature that is off, and read the ubuntu:baseline output. A package another package depends on stays until a person removes that one.',
       },
     };
   const removed = before

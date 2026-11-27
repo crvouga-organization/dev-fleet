@@ -82,7 +82,7 @@ async function dispatch(session: Session, choice: string): Promise<boolean> {
 async function openCommand(session: Session, id: string): Promise<void> {
   const command = session.options.commands.find((entry) => entry.id === id);
   if (!command) return;
-  if (command.id === 'fleet-node-add') await addNode(session);
+  if (command.id === 'enroll') await addNode(session);
   else await runCommand(session, command);
 }
 

@@ -10,7 +10,7 @@ import type { FleetNode, NodeReport, Runner } from '../types';
 import { fleetUsage, usageSummary, type WorkerUsage } from '../worker-activity';
 import { parkedCheck, parkedOnline } from '../worker-parking';
 
-/** The workers fleet-status contacts: every one that is not parked. */
+/** The workers check contacts: every one that is not parked. */
 export function activeNodes(nodes: FleetNode[]): FleetNode[] {
   const parked = readParked();
   return nodes.filter((node) => !parked[node.id]);
@@ -84,14 +84,14 @@ export function convergenceCheck(
           status: 'warn',
           summary: ['WORKER_NOT_CONVERGED', details.join(' ')].join(': '),
           remedy: {
-            action: `Run devfleet fleet-sync --node ${id} and inspect the failed check.`,
+            action: `Run homelab converge --node ${id} and inspect the failed check.`,
           },
         }
       : { status: behind ? 'skip' : 'pass', summary: details.join(' ') }),
   };
 }
 
-/** Adds to fleet-status what it says about each worker beyond its health:
+/** Adds to check what it says about each worker beyond its health:
  * parked workers as parked (and a warning when one is online anyway), and
  * for every active worker it reaches its uptime, agent turns, last agent
  * activity and `worker:idle`. Returns the `workers` of the JSON output and

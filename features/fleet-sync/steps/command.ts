@@ -66,11 +66,11 @@ function state(world: FleetSyncWorld): Command {
   return found;
 }
 
-// ── The devfleet command line ────────────────────────────────────────────
+// ── The homelab command line ────────────────────────────────────────────
 
 When('the operator runs {string}', async (world, line: string) => {
   const [name, ...args] = line.split(' ');
-  if (name !== 'devfleet') throw new Error(`Not devfleet: ${line}`);
+  if (name !== 'homelab') throw new Error(`Not homelab: ${line}`);
   world.outcome = await execute(args, world.settings, world.version);
 });
 
@@ -107,7 +107,7 @@ Then('no capability is required', (world) => {
 });
 
 Then(
-  'every capability dev-fleet knows is required, except {string}',
+  'every capability homelab knows is required, except {string}',
   (world, except: string) => {
     expect(state(world).capabilities).toEqual(
       CAPABILITIES.filter((entry) => entry !== except)
@@ -289,7 +289,7 @@ Then('the roster it started from still enrolls:', (world, table: DataTable) => {
 Then(
   'the manager keeps reports under {string} in the temporary test home',
   (_world, path: string) => {
-    const home = dirname(process.env['DEVFLEET_STATE']!);
+    const home = dirname(process.env['HOMELAB_STATE']!);
     expect(process.env['HOME']).toBe(home);
     expect(join(machineRoot(), 'reports')).toBe(join(home, path));
   }

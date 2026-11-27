@@ -43,7 +43,7 @@ const settings = scratch<{
   written: unknown;
   /** What the fleet configuration names. */
   declared: Bucket | null;
-  /** What `fleet-state --init` saved on the manager. */
+  /** What `state --init` saved on the manager. */
   saved: Bucket | null;
 }>(() => ({ written: undefined, declared: null, saved: null }));
 

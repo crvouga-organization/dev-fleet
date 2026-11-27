@@ -37,6 +37,7 @@ import {
   parkServices,
   type NodeParkOptions,
 } from './fleet-node-park';
+import { commandNames } from './names';
 
 type Complete = (outcome: CommandOutcome) => void;
 
@@ -67,41 +68,41 @@ function withSettings(defaults: Settings, options: CliOptions) {
 
 /** Internal fleet actions are selected by flags; the public surface stays flat. */
 function fleetAction(name: string, options: CliOptions): string {
-  if (name === 'fleet-status')
+  const command = name;
+  if (command === 'check')
     return options.tailnet || options.workers ? 'health' : 'doctor';
-  if (name === 'fleet-repair') return options.list ? 'repairs' : 'repair';
-  if (name === 'fleet-nodes')
+  if (command === 'repair') return options.list ? 'repairs' : 'repair';
+  if (command === 'workers')
     return options.onboard ? 'onboard' : options.schema ? 'schema' : 'nodes';
-  if (name === 'fleet-node-add') return 'add';
+  if (command === 'enroll') return 'add';
   return 'discover';
 }
 
 function register(
   { program, defaults, complete }: Registration,
-  name: string,
+  legacy: string,
   description: string
 ): Command {
-  return program
-    .command(name)
-    .description(description)
-    .action(async (_options, command: Command) => {
-      const options = command.optsWithGlobals<CliOptions>();
-      const settings = await withSettings(defaults, options);
-      complete(
-        await executeFleet(
-          fleetAction(name, options),
-          { ...options, ...(options.workers ? { managed: true } : {}) },
-          settings
-        )
-      );
-    });
+  const { name } = commandNames(legacy);
+  const command = program.command(name).description(description);
+  return command.action(async (_options, command: Command) => {
+    const options = command.optsWithGlobals<CliOptions>();
+    const settings = await withSettings(defaults, options);
+    complete(
+      await executeFleet(
+        fleetAction(command.name(), options),
+        { ...options, ...(options.workers ? { managed: true } : {}) },
+        settings
+      )
+    );
+  });
 }
 
 function registerStatus(registration: Registration) {
   targetOptions(
     register(
       registration,
-      'fleet-status',
+      'check',
       'Check this computer and registered nodes without changing them'
     )
   )
@@ -133,7 +134,7 @@ function registerRepair(registration: Registration) {
   targetOptions(
     register(
       registration,
-      'fleet-repair',
+      'repair',
       'Preview owner-managed repairs; --apply --yes executes them'
     )
   )
@@ -160,14 +161,14 @@ function registerRepair(registration: Registration) {
     .option('--yes', 'Confirm an explicitly requested --apply operation')
     .addHelpText(
       'after',
-      '\nExample: devfleet fleet-repair --local --repair workspace --plan-hash REVIEWED_SHA256 --apply --yes --json'
+      '\nExample: homelab repair --local --repair workspace --plan-hash REVIEWED_SHA256 --apply --yes --json'
     );
 }
 
 function registerNodes(registration: Registration) {
   register(
     registration,
-    'fleet-nodes',
+    'workers',
     'List registered developer computers; --onboard and --schema add guidance'
   )
     .option('--node <id>', 'Select a registered node; repeatable', collect, [])
@@ -178,7 +179,7 @@ function registerNodes(registration: Registration) {
     .option('--schema', 'Print the versioned roster JSON schema');
   register(
     registration,
-    'fleet-node-add',
+    'enroll',
     'Register an existing computer in the local roster; writes need --apply --yes'
   )
     .requiredOption('--id <name>', 'Unique lowercase node ID')
@@ -199,15 +200,20 @@ function registerNodes(registration: Registration) {
     .option('--yes', 'Confirm an explicitly requested --apply operation');
 }
 
+function named(program: Command, legacy: string, description: string): Command {
+  const { name } = commandNames(legacy);
+  return program.command(name).description(description);
+}
+
 function registerSync({ program, defaults, complete }: Registration) {
-  program
-    .command('fleet-sync')
-    .description(
-      'Synchronize the enrolled Ubuntu fleet from this manager over verified SSH'
-    )
+  named(
+    program,
+    'converge',
+    'Synchronize the enrolled Ubuntu fleet from this manager over verified SSH'
+  )
     .option(
       '--revision <sha>',
-      'Converge to an exact source commit; defaults to the commit the dev-fleet package you run was published from'
+      'Converge to an exact source commit; defaults to the commit the homelab package you run was published from'
     )
     .option(
       '--rollback',
@@ -257,7 +263,7 @@ function registerSync({ program, defaults, complete }: Registration) {
     )
     .option(
       '--apply',
-      'Accepted for compatibility; fleet-sync applies by default (schedule writes still need --apply --yes)'
+      'Accepted for compatibility; converge applies by default (schedule writes still need --apply --yes)'
     )
     .option('--yes', 'Accepted for compatibility with --apply')
     .option(
@@ -291,11 +297,11 @@ function registerSync({ program, defaults, complete }: Registration) {
         })
       );
     });
-  program
-    .command('fleet-node-sync')
-    .description(
-      'Reconcile this node’s locked tools, launcher, Codex proxy profile and T3 instances; applies by default'
-    )
+  named(
+    program,
+    'converge-local',
+    'Reconcile this node’s locked tools, launcher, Codex proxy profile and T3 instances; applies by default'
+  )
     .option(
       '--id <name>',
       'Stable node name; defaults to this machine hostname'
@@ -312,11 +318,11 @@ function registerSync({ program, defaults, complete }: Registration) {
 }
 
 function registerState({ program, complete }: Registration) {
-  program
-    .command('fleet-state')
-    .description(
-      'Show where the fleet state is kept and whether the bucket holds it; flags connect, upload and restore'
-    )
+  named(
+    program,
+    'state',
+    'Show where the fleet state is kept and whether the bucket holds it; flags connect, upload and restore'
+  )
     .option(
       '--init',
       'Connect the bucket: restore the fleet state from it, or seed it from this machine, and save its credentials for runs this machine starts by itself'
@@ -330,18 +336,18 @@ function registerState({ program, complete }: Registration) {
       'With --init: https origin of the S3 service; omit for AWS S3'
     )
     .option('--region <name>', 'With --init: bucket region, such as auto')
-    .option('--prefix <prefix>', 'With --init: key prefix; default dev-fleet')
+    .option('--prefix <prefix>', 'With --init: key prefix; default homelab')
     .option(
       '--directory <path>',
       'With --init: replicate to a directory instead of a bucket'
     )
     .option(
       '--import <path>',
-      'Store a fleet configuration without running fleet-sync'
+      'Store a fleet configuration without running converge'
     )
     .option(
       '--export',
-      'Print the stored fleet configuration: the one fleet-sync last applied'
+      'Print the stored fleet configuration: the one converge last applied'
     )
     .option('--example', 'Print an example fleet.json to start a project from')
     .option('--push', 'Upload this machine’s changes to the bucket')
@@ -360,7 +366,7 @@ function registerState({ program, complete }: Registration) {
     )
     .addHelpText(
       'after',
-      '\nRead-only without a flag. The bucket is the one named under "state" in fleet.json. Every command reads its credentials from DEVFLEET_BUCKET_ACCESS_KEY_ID and DEVFLEET_BUCKET_SECRET_ACCESS_KEY; --init also asks on the terminal. They are never taken from arguments.'
+      '\nRead-only without a flag. The bucket is the one named under "state" in fleet.json. Every command reads its credentials from HOMELAB_BUCKET_ACCESS_KEY_ID and HOMELAB_BUCKET_SECRET_ACCESS_KEY; --init also asks on the terminal. They are never taken from arguments.'
     )
     .action(async (_options, command: Command) => {
       complete(await fleetState(command.optsWithGlobals<FleetStateOptions>()));
@@ -368,11 +374,11 @@ function registerState({ program, complete }: Registration) {
 }
 
 function registerReport({ program, complete }: Registration) {
-  program
-    .command('fleet-report')
-    .description(
-      'Report how reliably fleet-sync ran: success rate, duration, failing checks and time not ready'
-    )
+  named(
+    program,
+    'history',
+    'Report how reliably sync ran: success rate, duration, failing checks and time not ready'
+  )
     .option('--since <duration>', 'How far back: 30d (default), 12h or 90m')
     .action((_options, command: Command) => {
       complete(fleetReport(command.optsWithGlobals<FleetReportOptions>()));
@@ -380,15 +386,15 @@ function registerReport({ program, complete }: Registration) {
 }
 
 function registerWatch({ program, defaults, complete }: Registration) {
-  program
-    .command('fleet-watch')
-    .description(
-      "Check the workers and notify the fleet's targets when one becomes unhealthy or recovers"
-    )
+  named(
+    program,
+    'notify',
+    "Check the workers and notify the fleet's targets when one becomes unhealthy or recovers"
+  )
     .option('--test', 'Send one test notification to every target and stop')
     .addHelpText(
       'after',
-      '\nRuns fleet-status --workers, compares it with the previous run kept in the bucket and notifies only on a change (and again every repeatHours while a worker stays unhealthy). Targets come from "notify" in fleet.json; their addresses are secrets. Every run stores a heartbeat in the bucket for an off-machine check.'
+      '\nRuns check --workers, compares it with the previous run kept in the bucket and notifies only on a change (and again every repeatHours while a worker stays unhealthy). Targets come from "notify" in fleet.json; their addresses are secrets. Every run stores a heartbeat in the bucket for an off-machine check.'
     )
     .action(async (_options, command: Command) => {
       const options = command.optsWithGlobals<
@@ -422,7 +428,7 @@ function registerWatch({ program, defaults, complete }: Registration) {
           const parked = await fleetNodePark(
             { id: worker.id },
             parkServices(settings.config, () =>
-              Promise.reject(new Error('fleet-watch never resumes a worker'))
+              Promise.reject(new Error('notify never resumes a worker'))
             )
           );
           checks.push({
@@ -436,7 +442,7 @@ function registerWatch({ program, defaults, complete }: Registration) {
               ? {}
               : {
                   remedy: {
-                    action: `fleet-node-park refused ${worker.id}; run devfleet fleet-node-park --id ${worker.id} to see why.`,
+                    action: `park refused ${worker.id}; run homelab park --id ${worker.id} to see why.`,
                   },
                 }),
           });
@@ -456,11 +462,11 @@ function registerWatch({ program, defaults, complete }: Registration) {
 }
 
 function registerRestore({ program, complete }: Registration) {
-  program
-    .command('fleet-restore')
-    .description(
-      'Bring a replacement manager back from the bucket (docs/manager-recovery.md)'
-    )
+  named(
+    program,
+    'recover',
+    'Bring a replacement manager back from the bucket (docs/manager-recovery.md)'
+  )
     .option(
       '--dry-run',
       'Verify every prerequisite and list what would be restored; change nothing'
@@ -473,11 +479,11 @@ function registerRestore({ program, complete }: Registration) {
 }
 
 function registerValidate({ program, complete }: Registration) {
-  program
-    .command('fleet-validate')
-    .description(
-      'Validate fleet.json and name the field that breaks a rule; contacts nothing'
-    )
+  named(
+    program,
+    'check-config',
+    'Validate fleet.json and name the field that breaks a rule; contacts nothing'
+  )
     .option(
       '--file <path>',
       'The fleet.json to validate; defaults to the project’s'
@@ -508,24 +514,24 @@ function registerLifecycle({ program, defaults, complete }: Registration) {
           : await fleetNodeRetire(options, services)
       );
     };
-  program
-    .command('fleet-node-replace')
-    .description(
-      'Put a fresh machine in place of a worker under the same id; writes need --apply --yes'
-    )
+  named(
+    program,
+    'replace',
+    'Put a fresh machine in place of a worker under the same id; writes need --apply --yes'
+  )
     .requiredOption('--id <name>', 'The declared worker being replaced')
     .option(
       '--host-key <key>',
-      'The new machine’s SSH host key, "TYPE BASE64", verified out of band or printed by fleet-node-seed'
+      'The new machine’s SSH host key, "TYPE BASE64", verified out of band or printed by provision'
     )
     .option('--apply', 'Change the manager and Vault; requires --yes')
     .option('--yes', 'Confirm an explicitly requested --apply operation')
     .action(action('replace'));
-  program
-    .command('fleet-node-retire')
-    .description(
-      'Take a worker out of the fleet: revoke its token, forget its host key and roster entry; writes need --apply --yes'
-    )
+  named(
+    program,
+    'retire',
+    'Take a worker out of the fleet: revoke its token, forget its host key and roster entry; writes need --apply --yes'
+  )
     .requiredOption('--id <name>', 'The declared worker to retire')
     .option(
       '--apply',
@@ -560,11 +566,11 @@ function registerLifecycle({ program, defaults, complete }: Registration) {
           : await fleetNodeResume(options, services)
       );
     };
-  program
-    .command('fleet-node-park')
-    .description(
-      'Park a worker that is stopped or destroyed on purpose: it is no longer contacted, never the canary and does not fail the fleet'
-    )
+  named(
+    program,
+    'park',
+    'Park a worker that is stopped or destroyed on purpose: it is no longer contacted, never the canary and does not fail the fleet'
+  )
     .requiredOption('--id <name>', 'The declared worker to park')
     .option(
       '--force',
@@ -572,23 +578,23 @@ function registerLifecycle({ program, defaults, complete }: Registration) {
     )
     .option('--dry-run', 'Say what would change; change nothing')
     .action(parking('park'));
-  program
-    .command('fleet-node-resume')
-    .description(
-      'Bring a parked worker back: run the declared start command, then fleet-sync that worker and verify it'
-    )
+  named(
+    program,
+    'resume',
+    'Bring a parked worker back: run the declared start command, then sync that worker and verify it'
+  )
     .requiredOption('--id <name>', 'The declared worker to resume')
     .option(
       '--allow-unmerged',
-      'Let the fleet-sync of that worker converge to a revision that is not on the default branch of the source repository, as fleet-sync --allow-unmerged does'
+      'Let the converge of that worker converge to a revision that is not on the default branch of the source repository, as converge --allow-unmerged does'
     )
     .option('--dry-run', 'Say what would change; change nothing')
     .action(parking('resume'));
-  program
-    .command('fleet-node-seed')
-    .description(
-      'Write cloud-init (or autoinstall) user data a new worker joins the fleet with by itself'
-    )
+  named(
+    program,
+    'provision',
+    'Write cloud-init (or autoinstall) user data a new worker joins the fleet with by itself'
+  )
     .requiredOption('--id <name>', 'The declared worker to seed')
     .requiredOption(
       '--output <path>',
@@ -612,15 +618,15 @@ function registerLifecycle({ program, defaults, complete }: Registration) {
 }
 
 function registerManifest({ program, defaults, complete }: Registration) {
-  program
-    .command('fleet-manifest')
-    .description(
-      'Measure what a worker is made of and check it against the pins and a fresh build'
-    )
+  named(
+    program,
+    'measure',
+    'Measure what a worker is made of and check it against the pins and a fresh build'
+  )
     .requiredOption('--id <name>', 'The enrolled worker to measure')
     .option(
       '--reference <path>',
-      'A fleet-manifest --json of a fresh build of the same revision'
+      'A measure --json of a fresh build of the same revision'
     )
     .action(async (_options: unknown, command: Command) => {
       const options = command.optsWithGlobals<
@@ -640,7 +646,7 @@ export function registerFleet(
   registerStatus(registration);
   register(
     registration,
-    'fleet-discover',
+    'tailnet',
     'List computers visible through Tailscale, including offline devices'
   );
   registerSync(registration);
@@ -658,11 +664,11 @@ export function registerFleet(
 }
 
 function registerAccounts({ program, defaults, complete }: Registration) {
-  program
-    .command('fleet-accounts [args...]')
-    .description(
-      'List the provider accounts signed in on the CLI proxy and their state; add, sign in again or remove one'
-    )
+  named(
+    program,
+    'accounts [args...]',
+    'List the provider accounts signed in on the CLI proxy and their state; add, sign in again or remove one'
+  )
     .option('--diff', 'Also compare what this machine offers with the roster')
     .option('--add', 'Sign a new account in: --add PROVIDER')
     .option('--relogin', 'Sign one account in again: --relogin PROVIDER INDEX')

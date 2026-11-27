@@ -206,7 +206,7 @@ Then('the monitoring hub is reached at {string}', (world, url: string) => {
   expect(hubUrl(definition(world))).toBe(url);
 });
 
-Then('machines take dev-fleet from {string}', (world, repository: string) => {
+Then('machines take homelab from {string}', (world, repository: string) => {
   expect(definition(world).source.repository).toBe(repository);
 });
 

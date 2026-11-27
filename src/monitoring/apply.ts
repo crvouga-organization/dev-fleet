@@ -38,7 +38,7 @@ export async function applyAgent(
 }
 
 /** Workers (Linux) install a hardened systemd unit. The macOS manager's own
- * agent is a per-user launch agent installed locally by fleet-sync
+ * agent is a per-user launch agent installed locally by converge
  * (installManagerAgent), never through this remote entry point.
  */
 async function installAgent(
@@ -167,16 +167,16 @@ export function refusal(error: unknown): Check[] {
 }
 const REFUSALS: Record<string, string> = {
   BESZEL_NOT_HUB:
-    'The Beszel hub runs only on the manager. Workers run only the agent; converge the hub from the manager with fleet-sync.',
+    'The Beszel hub runs only on the manager. Workers run only the agent; converge the hub from the manager with converge.',
   get BESZEL_NOT_ENROLLED() {
     return `Declare this machine (the manager or a worker) in ${fleetJson()} before enrolling monitoring.`;
   },
   BESZEL_SOURCE_MISMATCH:
-    'The checkout is not the clean, expected revision. Rerun fleet-sync so the reviewed source is installed first.',
+    'The checkout is not the clean, expected revision. Rerun converge so the reviewed source is installed first.',
   BESZEL_HUB_MISMATCH:
-    "Agents connect only to the manager's private hub URL from fleet.json. Rerun fleet-sync from an up-to-date checkout.",
+    "Agents connect only to the manager's private hub URL from fleet.json. Rerun converge from an up-to-date checkout.",
   BESZEL_CREDENTIALS_REQUIRED:
-    'Agent enrollment credentials were not delivered. Rerun fleet-sync from the manager.',
+    'Agent enrollment credentials were not delivered. Rerun converge from the manager.',
 };
 if (import.meta.main) {
   const checks = await main().catch(refusal);

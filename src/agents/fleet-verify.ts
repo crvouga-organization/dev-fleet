@@ -154,7 +154,7 @@ export function quotaLimited(checks: Check[]): Set<string> {
 
 /** Other conditions owned by the upstream provider account (outage, billing)
  * do not mean this node is misconfigured: the gateway answered and routed the
- * request. They are warnings, so a provider outage never fails fleet-sync.
+ * request. They are warnings, so a provider outage never fails converge.
  */
 const UPSTREAM: Record<string, string> = {
   PROVIDER_UPSTREAM_UNAVAILABLE:
@@ -170,7 +170,7 @@ const UPSTREAM: Record<string, string> = {
  */
 const INCOMPATIBLE: Record<string, string> = {
   PROVIDER_PROTOCOL_INCOMPATIBLE:
-    'The gateway does not serve the protocol this route uses (no such endpoint, method or media type). Nothing on this machine can fix it: change the route in agents/registry.json to one listed under "Supported alternatives" in agents/setup.md, then run fleet-sync.',
+    'The gateway does not serve the protocol this route uses (no such endpoint, method or media type). Nothing on this machine can fix it: change the route in agents/registry.json to one listed under "Supported alternatives" in agents/setup.md, then run converge.',
 };
 
 export function inferenceFailure(provider: string, code: string): Check {
