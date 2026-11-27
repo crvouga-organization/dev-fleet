@@ -13,7 +13,7 @@ export function downloadCacheDir(): string | undefined {
   if (!value) return undefined;
   if (value.startsWith('/') || value.startsWith('~'))
     return value.replace(/^~/, homedir());
-  return join(homedir(), '.cache', 'devfleet-downloads');
+  return join(homedir(), '.cache', 'homelab-downloads');
 }
 
 export async function readHashed(sha256: string): Promise<Buffer | undefined> {

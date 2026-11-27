@@ -424,19 +424,22 @@ is not a reason to skip drift inspection.
 ### T3 project actions
 
 Project scripts use `bash bootstrap/project-action.sh ACTION` from the checkout.
-Actions are named exactly like the `personal` command they run, so a T3 script
-label reads the same as the CLI: `warm`, `portfolio`, `workstation-sync`,
-`workstation-update`, `workstation-net-fix`, `workstation-net-check`,
-`workstation-net-fix-check`, `sync`, `status`, `repair`, `infra-cliproxy`. Label
-each T3 script `Domain: Command words` (`Fleet: Sync`, `Fleet: Status`,
-`Workstation: Net check`, `Infra: Cliproxy model health` running `infra-cliproxy model-health`; `infra-cliproxy model-suite --target mock` is the offline, credential-free suite). `sync` selects the current checkout HEAD as its
-exact revision and retains its approval flow; extra arguments such as `--dry-run`
-are forwarded. `status` runs `homelab check --workers`, the
-canonical worker audit that reports excluded service hosts. Repair previews without applying. Each invocation runs the shared bootstrap first, reusing installed
-locked tools and converging dependencies for the current branch. `warm` performs
-only that setup. No global `ws` or `personal` launcher is required. Setup may
-install tools on first use; application logins (including Vault for portfolio)
-remain per-machine prerequisites. Configuration actions affect the current machine.
+`ACTION` is the homelab command: `converge`, `converge-local`, `check`,
+`tailnet`, `state`, `repair`, `workers`, `proxy`. Label each T3 script
+`Homelab: Command words` (`Homelab: Sync` runs `converge`).
+
+`converge` and `converge-local` select the current checkout HEAD as their
+exact revision. A caller that already passed `--revision` or `--rollback`
+keeps that choice, and so does `--schedule` or `--only`. Extra arguments
+such as `--dry-run` are forwarded. `sync` is the same action as `converge`.
+
+`check` runs `homelab check`. `status` runs `homelab check --workers`, the
+canonical worker audit that reports excluded service hosts, unless the caller
+already passed `--local`, `--workers`, `--tailnet`, `--node` or `--all`.
+`repair` previews and does not apply. `proxy` is `homelab proxy`
+(`infra-cliproxy` is the same action). Each invocation runs the shared
+bootstrap first, reusing installed locked tools. `warm` performs only that
+setup. Setup may install tools on first use.
 
 ### Minimal worker profile
 

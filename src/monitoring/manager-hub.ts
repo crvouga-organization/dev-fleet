@@ -123,7 +123,7 @@ export async function convergeManagerHub(
   )
     return failure(
       'BESZEL_HUB_UPGRADE_PENDING',
-      'Take and verify a hub backup, then perform the planned image upgrade as described in ansible/monitoring/README.md before rerunning fleet-sync.'
+      'Take and verify a hub backup, then perform the planned image upgrade as described in ansible/monitoring/README.md before running homelab converge.'
     );
   if (!result.ok)
     return failure(

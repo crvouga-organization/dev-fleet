@@ -233,3 +233,14 @@ Feature: Native agents are verified on every machine
         | grok     | update  |
         | claude   | update  |
         | opencode | upgrade |
+
+    Scenario Outline: A managed launcher names the one repair for a provider failure
+      A missing account is a login on the manager. The fleet propagates it.
+      Drift on this machine is homelab converge. Neither is a login on this machine.
+      When the managed launcher reports "<failure>"
+      Then the launcher directs the operator to "<repair>"
+
+      Examples:
+        | failure                                              | repair           |
+        | This account is not signed in on the CLI proxy.     | homelab accounts |
+        | The codex proxy profile for node a is out of date.  | homelab converge |

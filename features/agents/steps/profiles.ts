@@ -1,4 +1,7 @@
-import { managedUpdateRemedy } from '../../../agents/managed-proxy';
+import {
+  managedRepairHint,
+  managedUpdateRemedy,
+} from '../../../agents/managed-proxy';
 import { expect } from 'bun:test';
 import {
   mkdir,
@@ -507,6 +510,10 @@ When(
     profile(world).settings = managedUpdateRemedy(tool, [command]);
   }
 );
+
+When('the managed launcher reports {string}', (world, failure: string) => {
+  profile(world).settings = managedRepairHint(failure);
+});
 
 Then(
   'the launcher directs the operator to {string}',

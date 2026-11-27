@@ -4,6 +4,7 @@ import { mise } from './mise';
 import { packageSmoke } from './package-smoke';
 import { packageStores } from './package-stores';
 import { pins } from './pins';
+import { projectAction } from './project-action';
 import { notes } from './release-notes';
 import { publishing } from './publishing';
 import { toolchain } from './toolchain';
@@ -23,6 +24,7 @@ export const bootstrap = [
   worker,
   diskGc,
   pins,
+  projectAction,
   packageSmoke,
   packageStores,
   notes,
