@@ -295,9 +295,10 @@ export async function discardBoxes(): Promise<void> {
     const machine = await created.catch(() => null);
     if (!machine) continue;
     const keep = process.env['DEVFLEET_TEST_FRESH_BOX'] === 'keep';
-    await machine.giveBack?.(!keep);
+    // Unmount the caches before removing them. apt owns files inside them.
     if (keep) console.log(`Kept ${machine.container} (docker exec -it … sh).`);
     else await runCommand(['docker', 'rm', '-f', machine.container]);
+    await machine.giveBack?.(!keep);
   }
   if (client) {
     const { scratch } = await client;

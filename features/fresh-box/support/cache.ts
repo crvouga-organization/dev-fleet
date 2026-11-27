@@ -145,8 +145,31 @@ async function giveBack(
     console.warn(`The fresh caches could not be saved: ${message(error)}`);
   }
   if (!remove) return;
-  await rm(apt, { recursive: true, force: true });
-  await rm(mise, { recursive: true, force: true });
+  // apt and mise write these as root inside the container. A directory the
+  // runner cannot remove must not fail the scenarios that already passed.
+  await removeTree(apt);
+  await removeTree(mise);
+}
+
+async function removeTree(path: string): Promise<void> {
+  try {
+    await rm(path, { recursive: true, force: true });
+    return;
+  } catch (error) {
+    const denied =
+      error instanceof Error &&
+      'code' in error &&
+      (error as { code?: unknown }).code === 'EACCES';
+    if (!denied) {
+      console.warn(
+        `The fresh cache ${path} could not be removed: ${message(error)}`
+      );
+      return;
+    }
+  }
+  const cleared = await runCommand(['sudo', '-n', 'rm', '-rf', '--', path]);
+  if (!cleared.ok)
+    console.warn(`The fresh cache ${path} could not be removed.`);
 }
 
 function message(error: unknown): string {
