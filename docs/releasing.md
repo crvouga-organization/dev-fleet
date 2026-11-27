@@ -91,8 +91,10 @@ CI never receives an npm token: it publishes through npm Trusted Publishing
 ## When a release fails
 
 A release that fails publishes nothing, and neither does any merge after it
-until one passes: npm stays at the last version. GitHub emails the failure;
-`gh run list --workflow release.yml` finds the run. A failed VM test keeps
+until one passes: npm stays at the last version. The failed job opens or
+updates one issue, `CI failure: publish / <job>`, and the next release that
+passes that job closes it. `gh run list --workflow release.yml` finds the
+run. A failed VM test keeps
 its redacted results and the guest's logs as an artifact of the run
 (`gh run download <run>`). The next passing release publishes everything
 since the last tag. The same holds for CI on `main`, which the release waits

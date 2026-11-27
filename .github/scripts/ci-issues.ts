@@ -1,5 +1,8 @@
 /** One open issue per tier and job. A failure or a cancellation updates it,
- * a success closes it, and a skip leaves it: a skipped job did not pass. */
+ * a success closes it, and a skip leaves it: a skipped job did not pass.
+ * CI and Nightly pass the tier they planned. Release passes `publish`,
+ * the weekly machine tests pass `vm` and `tailnet`, and catch-up passes
+ * `catch-up`. */
 export function issueTitle(tier: string, job: string): string {
   return `CI failure: ${tier} / ${job}`;
 }
