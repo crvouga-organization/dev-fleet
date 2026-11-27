@@ -164,6 +164,16 @@ export const CHECK_OWNERS: CheckOwner[] = [
       'Approve first T3 pairing in interactive fleet-sync or with t3.pairOnEnrollment; a replaced worker is paired by fleet-node-replace or the next fleet-sync, and fleet-sync applies the rest.',
   },
   {
+    pattern: 'orca:*',
+    manual:
+      'Orca is installed and started by a person. fleet-sync reads orca host list and names an SSH target that is missing; the person adds it under Settings → SSH. Orca has no command that adds one.',
+  },
+  {
+    pattern: 'paradev:*',
+    manual:
+      'Paradev is installed and signed in by a person (paradev auth login, or SUPERSET_API_KEY). fleet-sync starts the host and runs paradev hosts add so every machine holds every other machine. On Linux, lingering (loginctl enable-linger) is the person’s.',
+  },
+  {
     pattern: 'super:*',
     manual:
       'super.engineering is installed, started and updated by a person on the manager, and reaches a worker with the manager’s own SSH configuration; fleet-sync creates each worker’s workspace once the app answers.',

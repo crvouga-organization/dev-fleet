@@ -65,16 +65,22 @@ Then(
 Then(
   /^the check "([^"]+)" (warns|fails) with "([^"]+)"$/,
   (world, id: string, verdict: string, summary: string) => {
-    const check = named(world, id);
-    expect(check.status).toBe(verdict === 'warns' ? 'warn' : 'fail');
-    expect(check.summary).toBe(summary);
+    const check = world.checks.find(
+      (candidate) => candidate.id === id && candidate.summary === summary
+    );
+    expect(check, `no ${id} with ${summary}`).toBeDefined();
+    expect(check!.status).toBe(verdict === 'warns' ? 'warn' : 'fail');
   }
 );
 
 Then(
   'the remedy of the check {string} mentions {string}',
   (world, id: string, text: string) => {
-    expect(named(world, id).remedy?.action).toContain(withPin(text));
+    const check =
+      world.checks.find(
+        (candidate) => candidate.id === id && candidate.remedy
+      ) ?? named(world, id);
+    expect(check.remedy?.action).toContain(withPin(text));
   }
 );
 
