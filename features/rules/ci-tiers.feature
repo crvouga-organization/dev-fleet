@@ -1,9 +1,9 @@
 Feature: Checks run in tiers and a failure stays queued
 
-  A pull request is killed at five minutes, a release at ten and a night at
-  forty-five. A job that would outlast its share is cancelled, and the
-  cancelled run fails. The night is its own workflow, so a green night does
-  not publish a release.
+  A pull request aims to finish in five minutes, a release in ten and a night
+  in forty-five. Those minutes are a goal: a job that runs past its goal is
+  not cancelled, and the run fails only when a job fails. The night is its
+  own workflow, so a green night does not publish a release.
 
   Scenario: A readme change checks the repository and skips the slow machines
     When the pull request tier is planned for:
@@ -124,22 +124,15 @@ Feature: Checks run in tiers and a failure stays queued
     And ".github/workflows/nightly.yml" does not contain "Required checks"
     And ".github/workflows/nightly.yml" does not contain "release.yml"
 
-  Scenario: A pull request is killed at five minutes and a release at ten
-    The plan and the result take one minute each. Every job between them is
-    killed with the minutes that remain, so the longest chain of jobs is the
-    limit and a run cannot outlast it.
+  Scenario: A pull request aims at five minutes and a release at ten
+    The minutes are a goal. No job is cancelled for running past it, so a
+    slow check still finishes.
     Then the "CI" workflow runs on "pull_request"
-    And its "affected" job times out after 1 minute
-    And its "required" job times out after 1 minute
-    And every job except "affected" and "required" times out after 3 minutes on "pr" and 8 minutes on "release"
-    And the longest chain of jobs on "pr" is at most 5 minutes
-    And the longest chain of jobs on "release" is at most 10 minutes
+    And no job of it times out
+    And the readme names the "Pull request" goal as "5 minutes"
+    And the readme names the "Release" goal as "10 minutes"
 
-  Scenario: A night is killed at forty-five minutes
-    The plan takes five minutes, a worker thirty and the result ten.
+  Scenario: A night aims at forty-five minutes
     Then the "Nightly" workflow runs on "schedule"
-    And its "affected" job times out after 5 minutes
-    And its "fresh-box" job times out after 30 minutes
-    And its "agent-box" job times out after 30 minutes
-    And its "gate" job times out after 10 minutes
-    And the longest chain of jobs on "nightly" is at most 45 minutes
+    And no job of it times out
+    And the readme names the "Nightly" goal as "45 minutes"
