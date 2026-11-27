@@ -941,6 +941,13 @@ Then(
   }
 );
 
+Then('Renovate keeps no dependency dashboard', () => {
+  const { dependencyDashboard } = JSON.parse(read('renovate.json')) as {
+    dependencyDashboard?: boolean;
+  };
+  expect(dependencyDashboard).toBe(false);
+});
+
 Then('Renovate does not ask GitHub for Dependabot alerts', () => {
   const { vulnerabilityAlerts } = JSON.parse(read('renovate.json')) as {
     vulnerabilityAlerts?: { enabled?: boolean };

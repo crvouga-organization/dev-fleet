@@ -6,8 +6,8 @@ name: Renovate
 #
 # Renovate commits through GitHub's API. The workflow's own token may not
 # change a file under .github/workflows, so an update to an action or image
-# there is refused and Renovate says so only in its debug log; the dashboard
-# lists the branch under "Other Branches" for ever. PINS_TOKEN (a fine-grained
+# there is refused and Renovate says so only in its debug log. There is no
+# dependency dashboard issue to list that branch. PINS_TOKEN (a fine-grained
 # token for this repository with contents, issues, pull requests and workflows
 # write) lets those updates through; without it the run warns.
 on:

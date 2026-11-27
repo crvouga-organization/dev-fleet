@@ -357,7 +357,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_QUOTA_COVERAGE_MISSING`: the manager could not match a hub quota reading to each declared Antigravity account. Check its T3 usage-limit source and the account on the proxy.
 - `T3_CLI_MISSING`: the provider check could not start the T3 CLI from PATH or its user installation. Restore the executable and rerun fleet-sync to verify the account sessions.
 - `T3_ANTIGRAVITY_SESSION_UNVERIFIED`: T3 could not open an authenticated ACP session for the reported account positions. Check that T3 is running on this machine, refresh those instances in Settings > Providers, and compare their proxy account session checks before rerunning fleet-sync.
-- `T3_PROVIDERS_UNVERIFIED`: t3 providers unverified.
+- `T3_PROVIDERS_UNVERIFIED`: provider reconciliation stopped before it could report a plan. The remedy is the authored cause (a stale plan, a held lock, or the credential playbook). An unexpected error stays out of the report, because it can carry a secret. Run `devfleet t3-apply --dry-run` on the machine.
 - `T3_PROVIDER_CONFLICT`: t3 provider conflict.
 - `T3_PROVIDER_NAMES_PENDING`: t3 provider names pending.
 - `T3_PROVIDER_NAMES_UNVERIFIED`: t3 provider names unverified.

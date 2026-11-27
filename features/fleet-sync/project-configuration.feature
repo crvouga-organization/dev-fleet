@@ -143,6 +143,17 @@ Feature: A fleet is a project of your own, run with the published package
       When the package says what it is
       Then it names no revision
 
+  Rule: The worker probe uses the revision it is started in
+
+    The account probe is one bundled script on the worker's standard input.
+    It has no file of its own, and the directory above the revision is not a
+    package. Provider playbooks are read from that revision.
+
+    Scenario: A probe on standard input reads the revision as its package
+      Given an applied revision whose package is only in that revision
+      When the account probe reads its package root from standard input in that revision
+      Then the package root is the revision
+
   Rule: Code run from a checkout uses the dev-fleet checkout the command is started in
 
     Scenario: The workspace is the checkout above the working directory
