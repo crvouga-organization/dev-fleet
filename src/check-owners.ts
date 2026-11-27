@@ -75,7 +75,7 @@ export const CHECK_OWNERS: CheckOwner[] = [
     manual:
       'Re-converge the worker with fleet-sync: it applies the whole worker policy at the approved revision.',
   },
-  { pattern: 'worker:power-loss-recovery', manual: HARDWARE },
+  { pattern: 'worker:power-loss-recovery', repair: 'power' },
   {
     pattern: 'worker:account',
     manual:

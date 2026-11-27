@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones fleet-sync reports are here.
 
-There are 484 codes; 100 need a person.
+There are 485 codes; 100 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -34,6 +34,7 @@ There are 484 codes; 100 need a person.
 - `ROOT_DEVELOPMENT_USER_REJECTED`: root development user rejected.
 - `UBUNTU_ARCHITECTURE_UNSUPPORTED`: ubuntu architecture unsupported. **Needs a person.**
 - `WORKER_ENVIRONMENT_UNSUPPORTED`: worker environment unsupported: a container or WSL2. **Needs a person.**
+- `POWER_LOSS_RECOVERY_UNSET`: the firmware exposes a recognized restore-after-AC-loss setting and it is not set to power on. `devfleet fleet-sync` sets it; the firmware applies it at the next boot, which `worker:reboot` reports. A virtual machine is restarted by its provider and the check does not apply.
 - `REMOTE_BOOTSTRAP_INCOMPLETE`: the remote bootstrap ended in the phase the check names without a failure of its own: a command of that phase failed, or the run was cut off. No success receipt advanced. Check that no other operation still holds the worker (`FLEET_REMOTE_LOCKED`), then run `devfleet fleet-sync`.
 
 ## Ubuntu packages
