@@ -1,6 +1,8 @@
 import type { reconcileProviderKeys } from './provider-keys';
+import { AgentConfigurationError } from '../agents/errors';
 import { checkedProviders, type refreshAntigravity } from './antigravity';
 import { T3DiagnosticError } from './diagnostics';
+import { FleetUsageError } from '../errors';
 import type { Check } from '../types';
 import { desired, nodeId, paths } from './desired';
 import type { Roster } from './accounts';
@@ -76,11 +78,25 @@ export async function machineProviders(
         };
   } catch (error) {
     if (error instanceof T3DiagnosticError) return error.check;
-    return {
-      id: 't3:providers',
-      status: 'fail',
-      summary: 'T3_PROVIDERS_UNVERIFIED',
-      remedy,
-    };
+    return unverified(error, remedy);
   }
+}
+
+/** An unexpected message can carry a credential or a response. An authored
+ * failure (a stale plan, a held lock, the credential playbook) cannot, so
+ * the check repeats it. */
+function unverified(
+  error: unknown,
+  remedy: NonNullable<Check['remedy']>
+): Check {
+  const cause =
+    error instanceof FleetUsageError || error instanceof AgentConfigurationError
+      ? error.message
+      : undefined;
+  return {
+    id: 't3:providers',
+    status: 'fail',
+    summary: 'T3_PROVIDERS_UNVERIFIED',
+    remedy: cause ? { action: cause } : remedy,
+  };
 }

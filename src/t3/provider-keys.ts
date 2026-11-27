@@ -1,10 +1,15 @@
 import { dirname, join } from 'node:path';
 import { proxyKey } from '../agents/secrets';
 import { record } from '../config';
+import { FleetUsageError } from '../errors';
 import { PACKAGE_ROOT } from '../package-info';
 import { runAnsible } from '../platform/ansible';
 import { runCommand } from '../runner';
 import type { Change } from './plan';
+
+/** Authored: a provider check may repeat it. It names no path and no secret. */
+export const PROVIDER_KEYS_UNRECONCILED =
+  'Could not reconcile the local T3 provider credentials.';
 
 // T3 encodes each segment of its provider-config secret name independently.
 function slot(id: string) {
@@ -40,6 +45,5 @@ export async function reconcileProviderKeys(
       t3_retired_keys: retired,
     }),
   });
-  if (!result.ok)
-    throw new Error('Could not reconcile the local T3 provider credentials.');
+  if (!result.ok) throw new FleetUsageError(PROVIDER_KEYS_UNRECONCILED);
 }

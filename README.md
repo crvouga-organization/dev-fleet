@@ -18,7 +18,7 @@ fleet is a small project of your own:
 ```
 my-fleet/               your repository
   fleet.json            your machines, your services, the bucket that holds the state
-  package.json          pins the homelab version every machine runs
+  package.json          pins the `homelab` version every machine runs
 ```
 
 You run `homelab` from inside that project and pass it the credentials of a
@@ -96,7 +96,7 @@ out of Git: pass them from wherever you keep secrets (a password manager's
 environment and never taken from arguments.
 
 `fleet-sync` converges the manager first, then every worker over SSH. It
-fetches the commit your homelab version was published from, sends it and
+fetches the commit your `homelab` version was published from, sends it and
 your configuration to each machine, installs the pinned toolchain, applies the
 Ansible policy and verifies the result. It prints one table and writes a full
 JSON report. Use `--fail-on-warning` for unattended acceptance.
@@ -462,7 +462,7 @@ the project that holds your `fleet.json`:
 The fleet is managed with homelab (`npx homelab`, pinned in package.json).
 Read `npx homelab commands --json` before using it. Never edit homelab
 itself: not node_modules, not a clone, not what it installs on a machine. A
-bug in homelab or a feature it lacks is a GitHub issue at
+bug in `homelab` or a feature it lacks is a GitHub issue at
 https://github.com/crvouga/homelab/issues; tell me what is blocked and link
 it. Issues are public: no credentials, hostnames, accounts, domains or
 fleet.json contents.

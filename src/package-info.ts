@@ -1,9 +1,29 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** Where this code's own files live: the published package, or a checkout. */
-export const PACKAGE_ROOT = fileURLToPath(new URL('..', import.meta.url));
+/** Where this code's own files live: the published package, or a checkout.
+ *
+ * This file lives in `src/`, so the package is its parent. The worker probe
+ * is that code bundled into one script and executed from standard input
+ * (`node --input-type=module -`) after the session changes into the applied
+ * revision. The script has no path of its own: `import.meta.url` names
+ * `[eval1]` or `[stdin]` inside the revision, and `..` is the directory
+ * above the revision, which holds no package. The revision is the package.
+ * A published install never takes that branch: its module URL already sits
+ * inside the package, so the directory the command was started in is unused.
+ */
+export function packageRoot(
+  moduleUrl = import.meta.url,
+  cwd = process.cwd()
+): string {
+  const fromModule = fileURLToPath(new URL('..', moduleUrl));
+  if (existsSync(join(fromModule, 'package.json'))) return fromModule;
+  if (existsSync(join(cwd, 'package.json'))) return cwd;
+  return fromModule;
+}
+
+export const PACKAGE_ROOT = packageRoot();
 
 export interface PackageInfo {
   name: string;

@@ -1,6 +1,6 @@
 # Set up a fleet from your own project
 
-This is the whole procedure for connecting homelab to your own machines,
+This is the whole procedure for connecting the `homelab` package to your own machines,
 written so a coding agent can do it in one pass from the project that will hold
 the fleet configuration. It assumes nothing about your accounts, hosts or
 domains: every value below in `UPPER_CASE` or under `example.com` is a
@@ -13,11 +13,11 @@ the steps in order. Stop and ask the human only at the points marked **Ask**.
 
 ```
 your-fleet/                 any Git repository you own (it may hold other things too)
-  package.json              pins @crvouga/homelab to one exact version
+  package.json              pins this package to one exact version
   package-lock.json         or bun.lock, pnpm-lock.yaml: commit it
   fleet.json                your machines, services, secrets locations, state bucket
   .gitignore                keeps credentials and node_modules out of Git
-  AGENTS.md                 tells future agents how to use homelab here
+  AGENTS.md                 tells future agents how to use `homelab` here
 ```
 
 Nothing else is needed. You never clone homelab, copy its files or write a
@@ -251,7 +251,7 @@ Put this in the project's `AGENTS.md` (or `CLAUDE.md`):
 The fleet is managed with homelab (`npx homelab`, pinned in package.json).
 Read `npx homelab commands --json` before using it. Never edit homelab
 itself: not node_modules, not a clone, not what it installs on a machine. A
-bug in homelab or a feature it lacks is a GitHub issue at
+bug in `homelab` or a feature it lacks is a GitHub issue at
 https://github.com/crvouga/homelab/issues; tell me what is blocked and link
 it. Issues are public: no credentials, hostnames, accounts, domains or
 fleet.json contents.

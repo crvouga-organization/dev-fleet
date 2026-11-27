@@ -22,9 +22,9 @@ rest. The default is one macOS manager and Ubuntu workers treated as cattle.
 | worker         | Windows   | any                 | any             | refused     | The fleet configuration accepts only Linux workers.                                       |
 | worker         | WSL2      | any                 | any             | refused     | WORKER_ENVIRONMENT_UNSUPPORTED                                                            |
 | worker         | container | any                 | any             | refused     | WORKER_ENVIRONMENT_UNSUPPORTED                                                            |
-| toolchain only | macOS     | any                 | arm64, x86_64   | best effort | No fleet role: homelab bootstrap installs the pinned tools (docs/machine-setup.md).      |
-| toolchain only | Linux     | any                 | x86_64, aarch64 | best effort | No fleet role: homelab bootstrap installs the pinned tools (docs/machine-setup.md).      |
-| toolchain only | WSL2      | any                 | x86_64          | best effort | Treated as Linux: homelab bootstrap installs the pinned tools (docs/machine-setup.md).   |
+| toolchain only | macOS     | any                 | arm64, x86_64   | best effort | No fleet role: homelab bootstrap installs the pinned tools (docs/machine-setup.md).       |
+| toolchain only | Linux     | any                 | x86_64, aarch64 | best effort | No fleet role: homelab bootstrap installs the pinned tools (docs/machine-setup.md).       |
+| toolchain only | WSL2      | any                 | x86_64          | best effort | Treated as Linux: homelab bootstrap installs the pinned tools (docs/machine-setup.md).    |
 | toolchain only | Windows   | any                 | x64             | best effort | No fleet role: bootstrap/bootstrap.ps1 installs the pinned tools (docs/machine-setup.md). |
 | toolchain only | Alpine    | any                 | any             | refused     | musl: the pinned mise build needs glibc.                                                  |
 

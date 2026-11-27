@@ -1,7 +1,7 @@
 # Fleet state
 
 A fleet is described in two places you own. Your project in Git holds
-`fleet.json` and pins the homelab version. Everything else the manager
+`fleet.json` and pins the `homelab` version. Everything else the manager
 cannot rebuild from Git is the **fleet state**:
 
 | Document     | What it is                                                                                                                                                                    |
@@ -34,7 +34,7 @@ whole machine, and the next command brings the fleet back.
 ```
 your project (Git)
     fleet.json                          the configuration; says where the bucket is
-    package.json                        the homelab version
+    package.json                        the `homelab` version
 ~/.local/share/homelab/state/         the local copy of the state; safe to delete
     fleet.db                            the database Litestream replicates
     definition.json                     the stored configuration as a file, rewritten from fleet.db
@@ -360,7 +360,7 @@ The database records its schema version in `PRAGMA user_version`. The schema
 is a series of numbered migrations (`src/state/migrations/0001-….sql`, …),
 and a command brings an older database forward before it writes. A database a
 newer homelab wrote is refused with `FLEET_STATE_NEWER_THAN_CLI`, read or
-written, and nothing in it changes: install the homelab version the fleet
+written, and nothing in it changes: install the `homelab` version the fleet
 runs.
 
 ## Local command locking

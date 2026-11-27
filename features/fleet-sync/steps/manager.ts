@@ -24,6 +24,8 @@ import {
   checkedProviders,
   refreshAntigravity,
 } from '../../../src/t3/antigravity';
+import { FleetUsageError } from '../../../src/errors';
+import { PROVIDER_KEYS_UNRECONCILED } from '../../../src/t3/provider-keys';
 import { machineProviders } from '../../../src/t3/providers';
 import { MACOS_MANAGER } from '../../../src/platform/manager-host';
 import type { Check, Status } from '../../../src/types';
@@ -88,6 +90,21 @@ const unchecked = new WeakMap<FleetSyncWorld, string>();
 Given('T3 cannot authenticate instance {string}', (world, id: string) => {
   unchecked.set(world, id);
 });
+
+const reconciliationFailure = new WeakMap<FleetSyncWorld, Error>();
+Given('the provider credential playbook cannot run', (world) => {
+  reconciliationFailure.set(
+    world,
+    new FleetUsageError(PROVIDER_KEYS_UNRECONCILED)
+  );
+});
+
+Given(
+  'provider reconciliation fails with {string}',
+  (world, message: string) => {
+    reconciliationFailure.set(world, new Error(message));
+  }
+);
 
 const installedCli = join(homedir(), '.t3', 'bin', 't3');
 Given(
@@ -166,7 +183,10 @@ function providers(
   return machineProviders(id, ROOT, apply, {
     t3Home: t3Home!,
     roster: async () => accounts,
-    keys: async () => {},
+    keys: async () => {
+      const failure = reconciliationFailure.get(world);
+      if (failure) throw failure;
+    },
     refresh: async (instanceId) => instanceId !== unchecked.get(world),
   });
 }

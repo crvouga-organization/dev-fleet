@@ -99,8 +99,8 @@ Every failure code is in [the runbooks](runbooks.md).
 
 <!-- generated: secrets -->
 
-| Secret                         | Required                     | `env` provider variable                        | `file` provider file                                       |
-| ------------------------------ | ---------------------------- | ---------------------------------------------- | ---------------------------------------------------------- |
+| Secret                         | Required                     | `env` provider variable                       | `file` provider file                                     |
+| ------------------------------ | ---------------------------- | --------------------------------------------- | -------------------------------------------------------- |
 | `proxy-client-key`             | yes                          | `HOMELAB_SECRET_PROXY_CLIENT_KEY`             | `~/.config/homelab/secrets/proxy-client-key`             |
 | `monitoring-account-password`  | yes                          | `HOMELAB_SECRET_MONITORING_ACCOUNT_PASSWORD`  | `~/.config/homelab/secrets/monitoring-account-password`  |
 | `monitoring-tunnel-token`      | yes                          | `HOMELAB_SECRET_MONITORING_TUNNEL_TOKEN`      | `~/.config/homelab/secrets/monitoring-tunnel-token`      |

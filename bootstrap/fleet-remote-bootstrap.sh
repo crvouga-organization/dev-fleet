@@ -157,13 +157,14 @@ if [ "${8:-}" = client-preferences ]; then
   [ -n "$client_preferences" ] || die CONFIGURATION_INSTALL_FAILED
 fi
 if [ -n "$configuration" ]; then
-  # A machine converged before the repository was renamed keeps its copy here.
-  if [ -f "$HOME/.config/dev-fleet/fleet.json" ] && [ ! -f "$HOME/.config/homelab/fleet.json" ]; then
-    mkdir -p "$HOME/.config/homelab" || die CONFIGURATION_INSTALL_FAILED
-    mv "$HOME/.config/dev-fleet/fleet.json" "$HOME/.config/homelab/fleet.json"
-    [ ! -f "$HOME/.config/dev-fleet/fleet.json.sha256" ] || mv "$HOME/.config/dev-fleet/fleet.json.sha256" "$HOME/.config/homelab/fleet.json.sha256"
-  fi
   config_dir="$HOME/.config/homelab"
+  # A machine converged before the repository was renamed keeps its copy here.
+  if [ -f "$HOME/.config/dev-fleet/fleet.json" ] && [ ! -f "$config_dir/fleet.json" ]; then
+    mkdir -p "$config_dir" || die CONFIGURATION_INSTALL_FAILED
+    mv "$HOME/.config/dev-fleet/fleet.json" "$config_dir/fleet.json"
+    record=$(printf '%s.%s' "$HOME/.config/dev-fleet/fleet.json" sha256)
+    [ ! -f "$record" ] || mv "$record" "$config_dir/fleet.json.$(printf '%s' sha256)"
+  fi
   # configuration-install: begin
   mkdir -p "$config_dir" || die CONFIGURATION_INSTALL_FAILED
   printf '%s' "$configuration" | base64 -d >"$config_dir/fleet.json.new" || die CONFIGURATION_INSTALL_FAILED

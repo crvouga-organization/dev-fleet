@@ -357,7 +357,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `T3_QUOTA_COVERAGE_MISSING`: the manager could not match a hub quota reading to each declared Antigravity account. Check its T3 usage-limit source and the account on the proxy.
 - `T3_CLI_MISSING`: the provider check could not start the T3 CLI from PATH or its user installation. Restore the executable and rerun fleet-sync to verify the account sessions.
 - `T3_ANTIGRAVITY_SESSION_UNVERIFIED`: T3 could not open an authenticated ACP session for the reported account positions. Check that T3 is running on this machine, refresh those instances in Settings > Providers, and compare their proxy account session checks before rerunning fleet-sync.
-- `T3_PROVIDERS_UNVERIFIED`: t3 providers unverified.
+- `T3_PROVIDERS_UNVERIFIED`: provider reconciliation stopped before it could report a plan. The remedy is the authored cause (a stale plan, a held lock, or the credential playbook). An unexpected error stays out of the report, because it can carry a secret. Run `devfleet t3-apply --dry-run` on the machine.
 - `T3_PROVIDER_CONFLICT`: t3 provider conflict.
 - `T3_PROVIDER_NAMES_PENDING`: t3 provider names pending.
 - `T3_PROVIDER_NAMES_UNVERIFIED`: t3 provider names unverified.
@@ -626,7 +626,7 @@ write `1` to that agent scope’s `cgroup.kill`.
 - `CONTAINER_RESTARTED_UNHEALTHY`: the container watchdog restarted a container of the manager that stayed unhealthy, within the last hour; the check names it. A warning: read the watchdog log and the container's logs for the cause.
 - `CONTAINER_RESTART_STORM`: the watchdog reached its limit of restarts for a container within the last hour and stopped restarting it. Read the watchdog log and the container's logs, fix the cause, then `docker restart` the container.
 - `FLEET_MANAGER_LEASE_HELD`: another manager holds the fleet state until the instant the message names. Nothing was changed. Run homelab from that manager; to make this machine the manager once the other is gone, repeat with `--take-over` (see [Recovering the manager](manager-recovery.md)). **Needs a person.**
-- `FLEET_STATE_NEWER_THAN_CLI`: a newer homelab wrote the fleet state, and this one cannot read its schema version. Nothing was read or changed. Install the homelab version the fleet runs, then run the command again.
+- `FLEET_STATE_NEWER_THAN_CLI`: a newer `homelab` wrote the fleet state, and this one cannot read its schema version. Nothing was read or changed. Install the `homelab` version the fleet runs, then run the command again.
 - `MANAGER_BOOT_RECOVERY_INCOMPLETE`: after a power cut the manager would not come back by itself; the check names what is missing (restart after power loss, a user session, the container engine at login). Follow the remedy. A Mac with FileVault waits for a person at the disk password: that is a warning.
 - `MANAGER_DISK_FULL`: the manager's data volume has less free space than `disk.failFreeMiB` of the macOS policy. Free space: `docker system prune` removes unused images and build cache.
 - `MANAGER_DISK_LOW`: the same below `disk.warnFreeMiB`: a warning.
