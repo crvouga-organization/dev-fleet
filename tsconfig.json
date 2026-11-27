@@ -28,6 +28,7 @@
     "ansible/**/*.ts",
     "bootstrap/**/*.ts",
 
-    "features/**/*.ts"
+    "features/**/*.ts",
+    ".github/scripts/**/*.ts"
   ]
 }

@@ -538,22 +538,37 @@ words and the steps beside it check it. There are no other TypeScript tests.
 package's Python tests. Features run against `examples/fleet.json` and never
 contact a real machine.
 
-Every pull request runs these checks ([`ci.yml`](.github/workflows/ci.yml)):
+Checks run in three tiers ([`ci.yml`](.github/workflows/ci.yml),
+[`nightly.yml`](.github/workflows/nightly.yml)):
 
-| Check                 | What it proves                                                                                                                    |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Check                 | `bun run check`                                                                                                                   |
-| Fleet state           | The pinned Litestream replicates the fleet state to a directory and to an S3 API, and a second manager restores it                |
-| Fresh worker over SSH | A new Ubuntu machine with only an SSH server and sudo is bootstrapped by the production code over real SSH, on amd64 and on arm64 |
-| Workflows             | The workflow files pass `actionlint`                                                                                              |
-| Playbooks             | Every playbook passes `ansible-lint` (production profile) and `--syntax-check`                                                    |
-| Manager on macOS      | Every feature on macOS, launchd jobs linted by macOS, and the manager playbook converged, then re-run and checked with no change  |
+| Tier         | When                                             | Target           | What runs                                                                                                                                                                                                              |
+| ------------ | ------------------------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pull request | A pull request, or a dispatch off `main`         | Under 5 minutes  | Format, typecheck, lint and the features the diff affects. Fleet state, workflows, playbooks, the manager, one fresh worker and the proxy run only when the diff reaches them. The monitoring agent does not run here. |
+| Release      | A push to `main`, or a dispatch on `main`        | Under 10 minutes | The full feature suite, fleet state, workflows, playbooks, the manager on macOS, the monitoring agent, and a fresh worker of the newest Ubuntu on amd64 and arm64.                                                     |
+| Nightly      | 07:17 UTC, or a dispatch of the Nightly workflow | Under 45 minutes | Every accepted Ubuntu release and architecture, both fresh-worker features, and the monitoring agent.                                                                                                                  |
+
+A pull request that changes the bootstrap runs one fresh worker: the newest
+Ubuntu, amd64, and the single-machine feature. The night runs the other
+release, arm64 and the multi-machine feature. A job the diff does not affect
+is skipped.
+
+| Check                 | What it proves                                                                                                                     |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| Check                 | Format, typecheck, lint, the features the diff affects, and the proxy package when it changes                                      |
+| Fleet state           | The pinned Litestream replicates the fleet state to a directory and to an S3 API, and a second manager restores it                 |
+| Fresh worker over SSH | A new Ubuntu machine with only an SSH server and sudo is bootstrapped by the production code over real SSH                         |
+| Workflows             | The workflow files pass `actionlint`                                                                                               |
+| Playbooks             | Every playbook passes `ansible-lint` (production profile) and `--syntax-check`, and every pinned package is in the pinned snapshot |
+| Manager on macOS      | The macOS features, and the manager playbook converged, then re-run and checked with no change                                     |
+| Monitoring agent      | The agent playbook applied on a machine running systemd, and the pinned T3 server's session limit                                  |
 
 The ruleset of `main` requires one check, **Required checks**, which passes
-only when every job above passed: a job that is added, renamed or split is
-required from the pull request that does it. The two fresh worker features
-run side by side, each in a job of its own for every release and
-architecture.
+when every job passed or was skipped, and fails when one failed. A job that
+is added, renamed or split is required from the pull request that does it.
+A failed job opens or updates one issue, `CI failure: <tier> / <job>`, and
+the next green run of that same job and tier closes it. The publish workflow
+still runs the Ubuntu VM and the tailnet test after the release tier; those
+are not part of the ten-minute budget.
 
 A pull request needs nobody attending
 ([`pull-requests.feature`](features/rules/pull-requests.feature)):

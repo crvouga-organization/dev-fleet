@@ -5,96 +5,79 @@ Feature: Every pull request is checked the way machines run
     Then there is at least one
     And each is pinned by tag and SHA-256 digest
 
-  Scenario: The fleet state check runs on every pull request and cannot skip
+  Scenario: The fleet state check runs when the diff affects it and cannot skip the tools
     Then the "CI" workflow runs on "pull_request"
-    And its "state" job has no condition
+    And its "state" job runs when the affected job selects "state"
     And its "state" job sets "DEVFLEET_TEST_LITESTREAM" to "required"
     And its "state" job points "DEVFLEET_TEST_S3" at a local S3 service
 
-  Scenario Outline: The <job> check runs on every pull request
+  Scenario Outline: The <job> check runs when the diff affects it
     Then the "CI" workflow runs on "pull_request"
-    And its "<job>" job has no condition
+    And its "<job>" job runs when the affected job selects "<output>"
 
     Examples:
-      | job       |
-      | check     |
-      | state     |
-      | fresh-box |
-      | agent-box |
-      | proxy-box |
-      | workflows |
-      | ansible   |
-      | manager   |
+      | job       | output    |
+      | check     | check     |
+      | state     | state     |
+      | fresh-box | fresh     |
+      | agent-box | agent     |
+      | proxy-box | proxy     |
+      | workflows | workflows |
+      | ansible   | ansible   |
+      | manager   | manager   |
 
-  Scenario: The fresh worker check covers every accepted release on both architectures a worker may have
-    A release is accepted when every fresh-box scenario passes on it, so each
-    release the Ubuntu policy accepts runs them on each architecture.
+  Scenario: A fresh worker is bootstrapped over SSH when the diff affects it
+    The cells come from the affected job. A pull request runs one, a release
+    runs the newest Ubuntu on both architectures, and the night runs the rest.
+    A job that names a feature that does not exist fails instead of passing
+    with nothing run.
     Then the "CI" workflow runs on "pull_request"
-    And its "fresh-box" job runs once for each of:
-      | release | architecture | runner           | feature   |
-      | 26.04   | amd64        | ubuntu-latest    | fresh-box |
-      | 26.04   | amd64        | ubuntu-latest    | fleet     |
-      | 26.04   | arm64        | ubuntu-24.04-arm | fresh-box |
-      | 26.04   | arm64        | ubuntu-24.04-arm | fleet     |
-      | 24.04   | amd64        | ubuntu-latest    | fresh-box |
-      | 24.04   | amd64        | ubuntu-latest    | fleet     |
-      | 24.04   | arm64        | ubuntu-24.04-arm | fresh-box |
-      | 24.04   | arm64        | ubuntu-24.04-arm | fleet     |
-    And its "fresh-box" job runs every release the Ubuntu policy accepts
-    And its "fresh-box" job sets "DEVFLEET_TEST_FRESH_BOX_RELEASE" to "${{ matrix.release }}"
-
-  Scenario: Each fresh worker feature runs in a job of its own, and none is left out
-    Side by side they end in the time of the longer one. A job that names a
-    feature that does not exist fails instead of passing with nothing run.
-    Then the "CI" workflow runs on "pull_request"
-    And its "fresh-box" job runs every feature of "features/fresh-box"
-    And its "fresh-box" job sets "DEVFLEET_TEST_FRESH_BOX_FEATURE" to "${{ matrix.feature }}"
-
-  Scenario: A fresh worker is bootstrapped over SSH on every pull request
-    Then the "CI" workflow runs on "pull_request"
-    And its "fresh-box" job has no condition
+    And its "fresh-box" job runs when the affected job selects "fresh"
+    And its "fresh-box" job takes its matrix from the affected job
     And its "fresh-box" job runs "bun test features/fresh-box"
     And its "fresh-box" job sets "DEVFLEET_TEST_FRESH_BOX" to "required"
+    And its "fresh-box" job sets "DEVFLEET_TEST_FRESH_BOX_RELEASE" to "${{ matrix.release }}"
+    And its "fresh-box" job sets "DEVFLEET_TEST_FRESH_BOX_FEATURE" to "${{ matrix.feature }}"
 
-  Scenario: The monitoring agent is applied on a systemd machine on every pull request
+  Scenario: The monitoring agent is applied on a systemd machine when the diff affects it
     Then the "CI" workflow runs on "pull_request"
-    And its "agent-box" job has no condition
+    And its "agent-box" job runs when the affected job selects "agent"
     And its "agent-box" job runs "bun test features/monitoring"
     And its "agent-box" job sets "DEVFLEET_TEST_AGENT_BOX" to "required"
 
-  Scenario: The pinned CLI proxy is asked about an account it holds back on every pull request
+  Scenario: The pinned CLI proxy is asked about an account it holds back when the diff affects it
     Then the "CI" workflow runs on "pull_request"
-    And its "proxy-box" job has no condition
+    And its "proxy-box" job runs when the affected job selects "proxy"
     And its "proxy-box" job runs "bun test features/accounts"
     And its "proxy-box" job sets "DEVFLEET_TEST_PROXY_BOX" to "required"
 
-  Scenario: The agents play renders every CLI's configuration on every pull request and cannot skip
+  Scenario: The agents play renders every CLI's configuration when the diff affects it and cannot skip
     Then the "CI" workflow runs on "pull_request"
-    And its "check" job has no condition
+    And its "check" job runs when the affected job selects "check"
     And its "check" job sets "DEVFLEET_TEST_ANSIBLE" to "required"
 
   Scenario: Every playbook is linted in the production profile and syntax-checked
     Then the "CI" workflow runs on "pull_request"
-    And its "ansible" job has no condition
+    And its "ansible" job runs when the affected job selects "ansible"
     And its "ansible" job runs "ansible-lint"
     And its "ansible" job runs "--syntax-check"
     And ".ansible-lint.yml" requires the profile "production"
 
-  Scenario: Every pinned Ubuntu package is found in the pinned snapshot on every pull request
+  Scenario: Every pinned Ubuntu package is found in the pinned snapshot when the diff affects it
     A pin moved without its snapshot has no installation candidate, which a
     machine only learns when its baseline fails.
     Then the "CI" workflow runs on "pull_request"
-    And its "ansible" job has no condition
+    And its "ansible" job runs when the affected job selects "ansible"
     And its "ansible" job runs "ansible/ubuntu/tests/snapshot-pins.py"
 
-  Scenario: The manager is checked on macOS on every pull request
+  Scenario: The manager is checked on macOS when the diff affects it
     The manager runs only on macOS: launchd, pmset and Docker Desktop are
     proven there and not by stand-ins alone. The manager playbook is converged
     on the runner, then applied again and checked, and neither may change
     anything. The one administrator grant (sudoers, newsyslog drop-in, T3
     policy) is applied the same way, with the runner's sudo.
     Then the "CI" workflow runs on "pull_request"
-    And its "manager" job has no condition
+    And its "manager" job runs when the affected job selects "manager"
     And its "manager" job runs on "macos-latest"
     And its "manager" job runs "bun test"
     And its "manager" job runs "ansible/macos/manager.yml"

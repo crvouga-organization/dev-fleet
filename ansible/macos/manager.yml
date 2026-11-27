@@ -117,18 +117,31 @@
   hosts: localhost
   connection: local
   become: false
-  gather_facts: true
-  gather_subset: ['!all']
+  # gather_subset: ['!all'] still gathers the minimal facts, and those ask
+  # Homebrew, which blocks on the lock a brew update holds. HOME and the user
+  # id are read directly instead.
+  gather_facts: false
   vars_files:
     - policy.json
   vars:
-    watch_home: '{{ ansible_facts.env.HOME }}'
+    watch_home: "{{ lookup('ansible.builtin.env', 'HOME') }}"
     watch_label: '{{ fleetWatch.label }}'
     watch_minutes: '{{ fleet_watch_minutes | default(fleetWatch.intervalMinutes) | int }}'
     watch_logs: '{{ watch_home }}/{{ jobLogs.directory }}'
     watch_plist: '{{ watch_home }}/Library/LaunchAgents/{{ watch_label }}.plist'
-    watch_domain: 'gui/{{ ansible_facts.user_uid }}'
   tasks:
+    - name: Read the user id for the launchd domain
+      ansible.builtin.command:
+        argv: [/usr/bin/id, -u]
+      check_mode: false
+      changed_when: false
+      register: watch_uid
+    - name: Name the launchd domain
+      ansible.builtin.set_fact:
+        watch_domain: 'gui/{{ watch_uid.stdout }}'
+      # A fact is not a change to the machine. The second converge must report
+      # changed=0.
+      changed_when: false
     - name: Find the launcher in the applied checkout
       ansible.builtin.stat:
         path: '{{ watch_home }}/.local/share/personal/fleet/current/bootstrap/devfleet'
@@ -222,19 +235,29 @@
   hosts: localhost
   connection: local
   become: false
-  gather_facts: true
-  gather_subset: ['!all']
+  # Same as the watch play: the minimal fact subset asks Homebrew and blocks
+  # on its lock. HOME and the user id are read directly instead.
+  gather_facts: false
   vars_files:
     - policy.json
   vars:
-    gc_home: '{{ ansible_facts.env.HOME }}'
+    gc_home: "{{ lookup('ansible.builtin.env', 'HOME') }}"
     gc_label: '{{ diskGc.label }}'
     gc_logs: '{{ gc_home }}/{{ jobLogs.directory }}'
     gc_script: '{{ gc_home }}/{{ diskGc.script }}'
     gc_plist: '{{ gc_home }}/Library/LaunchAgents/{{ gc_label }}.plist'
-    gc_domain: 'gui/{{ ansible_facts.user_uid }}'
     gc_on_disposable: '{{ fleet_storage_disposable | default(false) | bool }}'
   tasks:
+    - name: Read the user id for the disk GC launchd domain
+      ansible.builtin.command:
+        argv: [/usr/bin/id, -u]
+      check_mode: false
+      changed_when: false
+      register: gc_uid
+    - name: Name the disk GC launchd domain
+      ansible.builtin.set_fact:
+        gc_domain: 'gui/{{ gc_uid.stdout }}'
+      changed_when: false
     - name: Read the workers' disk GC policy
       ansible.builtin.include_vars:
         file: '{{ playbook_dir }}/../ubuntu/policy.json'

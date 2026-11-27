@@ -150,6 +150,7 @@ Feature: What a machine becomes is declared, once
         | .github/workflows/vm.yml         |
         | .github/workflows/tailnet.yml    |
         | .github/workflows/cliproxy-health.yml |
+        | .github/workflows/nightly.yml    |
         | .github/actions/mise/action.yml  |
 
     Scenario Outline: <workflow> takes nothing from the runner's distribution
@@ -160,6 +161,7 @@ Feature: What a machine becomes is declared, once
         | workflow                      |
         | .github/workflows/ci.yml      |
         | .github/workflows/release.yml |
+        | .github/workflows/nightly.yml |
 
     Scenario: The package manager is the Bun that mise pins
       Then package.json names the Bun version mise.toml pins as its package manager

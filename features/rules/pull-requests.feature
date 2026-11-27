@@ -4,10 +4,12 @@ Feature: A pull request reaches a release with nobody attending
 
   Scenario: One check stands for every job of a pull request
     The ruleset of main requires this one check, so a job that is added,
-    renamed or split is required from the pull request that does it.
+    renamed or split is required from the pull request that does it. A job
+    the diff does not affect is skipped, and a skipped job still lets the
+    pull request pass. A job that failed does not.
     Then every other job of the "CI" workflow is needed by its "required" job
     And its "required" job runs whatever became of them
-    And its "required" job runs "all(.[]; .result == \"success\")"
+    And its "required" job runs "all(.[]; .result == \"success\" or .result == \"skipped\")"
 
   Scenario: A newer push replaces the run of a pull request, and a run on main is never cut short
     A run that is cut short on main releases nothing, so merges that follow

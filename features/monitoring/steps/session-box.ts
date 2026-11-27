@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { nativeT3Artifact } from '../../../bootstrap/native-t3';
 import { runCommand } from '../../../src/runner';
+import { readHashed, writeHashed } from './download-cache';
 import { agentBox, must, on } from './agent-box';
 import { monitoring, type MonitoringWorld } from './world';
 
@@ -83,11 +84,7 @@ async function pinnedServer(container: string): Promise<void> {
   const artifact = nativeT3Artifact(config, process.arch, 'linux');
   const scratch = await mkdtemp(join(tmpdir(), 'fleet-session-box-'));
   try {
-    const response = await fetch(artifact.url, {
-      signal: AbortSignal.timeout(300_000),
-    });
-    if (!response.ok) throw new Error('The pinned T3 server is unavailable.');
-    const bytes = Buffer.from(await response.arrayBuffer());
+    const bytes = await pinnedBytes(artifact.url, artifact.sha256);
     expect(createHash('sha256').update(bytes).digest('hex')).toBe(
       artifact.sha256
     );
@@ -102,6 +99,18 @@ async function pinnedServer(container: string): Promise<void> {
     `tar -xzf /opt/t3.tar.gz -C /opt && rm /opt/t3.tar.gz && ln -sfn /opt/${artifact.name} /opt/t3 && ${T3} --version`
   );
   expect(unpacked.stdout.trim()).toBe(`t3 v${artifact.version}`);
+}
+
+/** The pinned archive, from the download cache when one is configured. */
+async function pinnedBytes(url: string, sha256: string): Promise<Buffer> {
+  const cached = await readHashed(sha256);
+  if (cached) return cached;
+  const response = await fetch(url, { signal: AbortSignal.timeout(300_000) });
+  if (!response.ok) throw new Error('The pinned T3 server is unavailable.');
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (createHash('sha256').update(bytes).digest('hex') === sha256)
+    await writeHashed(sha256, bytes);
+  return bytes;
 }
 
 /** The machine as a worker with a T3 server: the user's lingering manager,

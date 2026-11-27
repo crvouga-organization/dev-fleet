@@ -4,6 +4,7 @@ import './contracts';
 import './fresh-box-image';
 import './heartbeat-steps';
 import './worker-requirements';
+import './ci-tiers';
 
 runFeatures({
   directory: import.meta.dir,
