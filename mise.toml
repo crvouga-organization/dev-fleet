@@ -39,7 +39,7 @@ ripgrep = "16.0.0"
 tmux = { version = "3.8", os = ["linux", "macos"] }
 fd = "10.5.2"
 fzf = "0.75.0"
-bat = "0.26.1"
+bat = "0.27.0"
 delta = "0.22.0"
 git-lfs = "3.8.1"
 docker-cli = "29.10.1"
