@@ -179,31 +179,61 @@ export async function fleetSync(
     });
   if (options.schedule === 'status') return scheduleStatus(settings, run);
   if (options.only === 'accounts') return onlyAccounts(options, settings, run);
-  const sync = () =>
-    managerSync(options, settings, {
+  const sync = (request = options): Promise<CommandOutcome> =>
+    managerSync(request, settings, {
       run,
       root: machineRoot(),
-      restart: sync,
+      restart: () => sync(request),
     });
   if (options.dryRun || options.schedule) return sync();
   const trigger = runTrigger();
+  // A scheduled run applies installed updates on workers that run no agent
+  // turn. A busy worker stays up and warns; the next run tries again.
+  const request = convergeRequest(options);
   const startedAt = new Date();
-  const outcome = await sync();
+  const outcome = await sync(request);
+  const locked = outcome.data as { checks?: { summary?: string }[] };
+  // A schedule that finds a live sync leaves that run alone. The skip is
+  // recorded, and it is not a failed converge.
+  const skipped = locked.checks?.some(
+    (check) => check.summary === 'FLEET_SCHEDULE_OVERLAP'
+  );
   await recordRun(
     summarizeRun(
       outcome.data,
       { startedAt, finishedAt: new Date() },
-      trigger,
+      skipped ? 'skipped' : trigger,
       outcome.exitCode
     ),
     run
   );
+  if (skipped)
+    return {
+      exitCode: 0,
+      data: outcome.data,
+      ...(outcome.text ? { text: outcome.text } : {}),
+    };
   return outcome;
 }
 
 /** Runs the manager's schedule starts say so in their environment. */
 function runTrigger(env = process.env): Trigger {
   return env['HOMELAB_TRIGGER'] === 'schedule' ? 'schedule' : 'operator';
+}
+
+/** A scheduled converge also applies updates that wait for a reboot, and
+ * never forces a worker that is mid-turn.
+ */
+function maintenance(options: FleetSyncOptions): FleetSyncOptions {
+  return { ...options, maintenanceReboot: true, force: false };
+}
+
+/** The request a converge runs: a scheduled one maintains idle workers. */
+export function convergeRequest(
+  options: FleetSyncOptions,
+  env = process.env
+): FleetSyncOptions {
+  return runTrigger(env) === 'schedule' ? maintenance(options) : options;
 }
 
 /** Appends the run to the history in the fleet state and uploads it. A
@@ -731,7 +761,9 @@ function applyLocked(
   }).catch((error: unknown) => {
     if (error instanceof FleetLockError)
       return actionRequired(
-        'FLEET_MANAGER_LOCKED',
+        request.maintenanceReboot && runTrigger() === 'schedule'
+          ? 'FLEET_SCHEDULE_OVERLAP'
+          : 'FLEET_MANAGER_LOCKED',
         'Another manager run or interrupted lock exists. Inspect manager and remote processes before removing an abandoned sync.lock; never steal active package-manager locks.'
       );
     throw error;

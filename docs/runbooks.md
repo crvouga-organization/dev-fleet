@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones converge reports are here.
 
-There are 494 codes; 105 need a person.
+There are 495 codes; 105 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -634,6 +634,7 @@ runaway, write `1` to that agent scope’s `cgroup.kill`.
 - `FLEET_REVISION_UNMERGED`: the revision is not on the default branch of the source repository.
 - `FLEET_REVISION_UNVERIFIED`: the source repository could not be asked whether its default branch holds the revision.
 - `FLEET_ROLLBACK_UNAVAILABLE`: fleet rollback unavailable.
+- `FLEET_SCHEDULE_OVERLAP`: a scheduled converge found another sync already running and left it alone. The next interval runs again. It is not a failed converge.
 - `FLEET_SCHEDULE_PREVIEW`: fleet schedule preview.
 - `FLEET_SOURCE_MISMATCH`: the manager's own copy of the source repository is a clone of another repository, and the declared one could not be cloned to replace it.
 - `FLEET_SOURCE_UNAVAILABLE`: fleet source unavailable.

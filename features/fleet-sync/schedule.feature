@@ -47,16 +47,20 @@ Feature: The manager's schedule changes only when that is authorized
         | node                                                        |
         | {root}/runtime/node_modules/@crvouga/homelab/bin/homelab.mjs |
         | converge                                                  |
-        | --revision                                                  |
-        | aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa                    |
         | --apply                                                     |
         | --yes                                                       |
         | --non-interactive                                           |
         | --json                                                      |
+      And the scheduled job starts in the project that holds fleet.json
       And the scheduled job runs with "HOMELAB_TRIGGER" set to "schedule"
+      And a converge the schedule starts reboots workers for pending updates without forcing one
       And the scheduled job's PATH names only the fleet's own tools and the system's
       And the fleet state records the schedule as on, every 30 minutes
       And the report does not mention "raw output"
+
+    Scenario: A converge a person starts leaves pending updates for an explicit maintenance run
+      When the converge request is read
+      Then it does not reboot workers for pending updates
 
     Scenario: A build that names no commit cannot be scheduled
       Given the CLI is the published release "1.4.0" built from no commit
@@ -64,6 +68,16 @@ Feature: The manager's schedule changes only when that is authorized
       When the schedule action "enable" is requested with authorization
       Then the command exits with 1
       And no command was run
+      And no scheduled job was installed
+
+    Scenario: Enabling outside a project that holds fleet.json installs nothing
+      The job starts in that project, so a run from elsewhere has no fleet to converge.
+      Given the CLI is the published release "1.4.0" of the commit "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      And npm installs any package it is asked to
+      And the platform installs a scheduled job it is asked to
+      And the command is run outside any project
+      When the schedule action "enable" is requested with authorization
+      Then the command exits with 1
       And no scheduled job was installed
 
     Scenario: A checkout's development version cannot be scheduled
@@ -111,6 +125,17 @@ Feature: The manager's schedule changes only when that is authorized
         | 2026-11-01T10:00:00Z | 2026-11-01T11:00:00Z | passes  |
         | 2026-11-01T10:00:00Z | 2026-11-01T11:00:01Z | fails   |
         | 2026-11-01T08:30:00Z | 2026-11-01T11:00:00Z | fails   |
+
+    Scenario: A scheduled run that found another sync already going is a skip
+      A live sync holds the lock. The schedule leaves it alone, and that
+      overlap is not a failed converge.
+      Given the schedule was turned on at "2026-11-01T08:00:00Z", every 30 minutes
+      And converge recorded these runs:
+        | finished             | trigger  | ok  |
+        | 2026-11-01T10:00:00Z | schedule | yes |
+        | 2026-11-01T10:30:00Z | skipped  | no  |
+      When the schedule is checked at "2026-11-01T11:00:00Z"
+      Then the check "manager:schedule" passes
 
     Scenario: A schedule turned on a moment ago has not failed yet
       Given the schedule was turned on at "2026-11-01T10:00:00Z", every 30 minutes

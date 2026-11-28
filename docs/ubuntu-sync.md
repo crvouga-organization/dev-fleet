@@ -359,10 +359,15 @@ homelab converge --schedule disable --apply --yes
 
 These are manager setup/maintenance operations, not per-node commands. Enable
 and resume install the exact published CLI version in the managed manager
-runtime and schedule the same whole-fleet command every 30 minutes at the explicit
-approved SHA. They refuse dirty artifacts. Pause/disable remove only the manager
-schedule. Re-enable with the new approved SHA when promoting a release; the timer
-does not resolve `latest`. Linux user scheduling requires lingering; macOS uses
+runtime and start the job in the project that holds `fleet.json`, so each run
+follows that project's homelab pin. The interval is `manager.schedule.syncMinutes`,
+or 30 minutes. They refuse dirty artifacts and a directory that holds no
+`fleet.json`. Pause/disable remove only the manager schedule. Update the
+project's pin and run converge once; the next scheduled run follows it.
+A scheduled run also reboots a worker whose installed updates are waiting,
+and only while that worker runs no agent turn. A run that finds another
+sync already going exits without changing anything (`FLEET_SCHEDULE_OVERLAP`).
+Linux user scheduling requires lingering; macOS uses
 the existing LaunchAgent and requires a user session. Unattended manager boot
 acceptance and log-retention configuration remain gates. No node pull scheduler
 is installed or necessary.
