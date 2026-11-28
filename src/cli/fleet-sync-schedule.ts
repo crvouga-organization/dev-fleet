@@ -11,6 +11,7 @@ import {
 } from '../state/history';
 import macos from '../../ansible/macos/policy.json';
 import { fleet } from '../fleet-config';
+import { projectDirectory } from './project';
 import {
   scheduleCheck,
   scheduleIntervals,
@@ -84,7 +85,7 @@ export function publishedRelease(release: Release): boolean {
  */
 export function scheduledCommand(
   release: Release,
-  revision: string,
+  _revision: string,
   prefix: string
 ): string[] {
   return [
@@ -92,8 +93,6 @@ export function scheduledCommand(
     'node',
     join(prefix, 'node_modules', release.name, release.bin ?? ''),
     'converge',
-    '--revision',
-    revision,
     '--apply',
     '--yes',
     '--non-interactive',
@@ -216,11 +215,17 @@ async function enableSchedule(
     );
   const intervalSeconds =
     input.intervalSeconds ?? scheduleIntervals(fleet.manager).syncSeconds;
+  const directory = projectDirectory();
+  if (!directory)
+    return required(
+      'Scheduling starts in the project that holds fleet.json. Run homelab converge --schedule enable --apply --yes from that project; no schedule was enabled.'
+    );
   const result = platform.installScheduledJob({
     label: LABEL,
     intervalSeconds,
     command: scheduledCommand(published, input.revision, prefix),
     logDir: join(root, 'logs'),
+    workingDirectory: directory,
     env: scheduledEnvironment(),
   });
   if (result.ok) remember(input, true, intervalSeconds);

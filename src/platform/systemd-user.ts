@@ -36,6 +36,9 @@ export function systemdUnits(job: ScheduledJob): {
     '[Service]',
     'Type=oneshot',
     'Nice=10',
+    ...(job.workingDirectory
+      ? [`WorkingDirectory=${quote(job.workingDirectory)}`]
+      : []),
     ...env,
     `ExecStart=${job.command.map(quote).join(' ')}`,
     `StandardOutput=append:${join(job.logDir, `${job.label}.out.log`)}`,

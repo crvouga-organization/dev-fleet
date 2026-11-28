@@ -59,6 +59,8 @@ export type ScheduledJob = {
   readonly intervalSeconds: number;
   /** Directory for the job's stdout/stderr logs. */
   readonly logDir: string;
+  /** Where the job starts. A schedule starts in the project that holds fleet.json. */
+  readonly workingDirectory?: string;
   /** Extra environment (e.g. PATH so `bun` resolves outside a login shell). */
   readonly env: Readonly<Record<string, string>>;
 };

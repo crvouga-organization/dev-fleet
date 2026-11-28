@@ -66,7 +66,8 @@ Then(
   /^the check "([^"]+)" (warns|fails) with "([^"]+)"$/,
   (world, id: string, verdict: string, summary: string) => {
     const check = world.checks.find(
-      (candidate) => candidate.id === id && candidate.summary === summary
+      (candidate) =>
+        candidate.id === id && candidate.summary === withPin(summary)
     );
     expect(check, `no ${id} with ${summary}`).toBeDefined();
     expect(check!.status).toBe(verdict === 'warns' ? 'warn' : 'fail');

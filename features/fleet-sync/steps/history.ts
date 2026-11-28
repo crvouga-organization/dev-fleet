@@ -75,7 +75,12 @@ function runFrom(row: Record<string, string>): SyncRun {
     startedAt: new Date(finished - durationMs).toISOString(),
     finishedAt: new Date(finished).toISOString(),
     durationMs,
-    trigger: row['trigger'] === 'schedule' ? 'schedule' : 'operator',
+    trigger:
+      row['trigger'] === 'schedule'
+        ? 'schedule'
+        : row['trigger'] === 'skipped'
+          ? 'skipped'
+          : 'operator',
     revision: 'a'.repeat(40),
     ok,
     exitCode: ok ? 0 : 1,

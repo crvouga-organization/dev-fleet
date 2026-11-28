@@ -93,4 +93,4 @@ and published themes. Workers install changed files and remove retired files
 with `ansible/t3/customizations.yml`. The manager uses the same playbook when
 recovering these files from fleet state.
 
-The manager switches a running desktop to its verified release with `ansible/macos/t3-activate.yml`.
+The manager switches a running desktop to its verified release with `ansible/macos/t3-activate.yml` only when that desktop's release differs from the pin. The same release stays running, including a copy that is not the managed path. A converge started inside the desktop that would be quit stages the new bundle and leaves the process running (`T3_DESKTOP_SWITCH_DEFERRED`); the next converge from another session switches it.

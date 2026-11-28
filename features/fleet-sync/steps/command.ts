@@ -2,7 +2,7 @@ import { expect } from 'bun:test';
 import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { mergeEnrollment } from '../../../src/cli/fleet-sync-enrollment';
-import { machineRoot } from '../../../src/cli/fleet-sync';
+import { convergeRequest, machineRoot } from '../../../src/cli/fleet-sync';
 import { selected } from '../../../src/cli/fleet-sync-remote';
 import {
   managerSchedule,
@@ -15,12 +15,14 @@ import { capabilities } from '../../../src/cli/options';
 import { execute } from '../../../src/cli/program';
 import { CAPABILITIES } from '../../../src/config';
 import type { Platform, ScheduledJob } from '../../../src/platform/types';
+import type { FleetSyncOptions } from '../../../src/cli/fleet-sync';
 import type { Capability, FleetNode } from '../../../src/types';
 import type { DataTable } from '../../support/gherkin';
 import {
   fleetSync,
   request,
   rosterEntry,
+  setEnv,
   temporary,
   type FleetSyncWorld,
 } from '../support/world';
@@ -43,6 +45,7 @@ interface Command {
   recorded: ScheduleRecord[];
   platform: Platform;
   removed: string[];
+  request: FleetSyncOptions | undefined;
   discovered: FleetNode[];
   merged: FleetNode[] | undefined;
 }
@@ -60,6 +63,7 @@ function state(world: FleetSyncWorld): Command {
       removed: [],
       discovered: [],
       merged: undefined,
+      request: undefined,
     };
     states.set(world, found);
   }
@@ -138,6 +142,14 @@ Given(
   }
 );
 
+Given('the command is run outside any project', (world) => {
+  const empty = temporary(world, 'fleet-schedule-empty-');
+  setEnv(world, 'HOMELAB_CONFIG', undefined);
+  const before = process.cwd();
+  process.chdir(empty);
+  world.defer(() => process.chdir(before));
+});
+
 Given('npm installs any package it is asked to', (world) => {
   world.commands.answer((command) => command[0] === 'npm', succeeded());
 });
@@ -169,6 +181,36 @@ Then(
     const root = state(world).schedule!.root!;
     expect(job!.command.map((part) => part.replace(root, '{root}'))).toEqual(
       table.list()
+    );
+  }
+);
+
+Then(
+  'a converge the schedule starts reboots workers for pending updates without forcing one',
+  () => {
+    const request = convergeRequest(
+      {},
+      { ...process.env, HOMELAB_TRIGGER: 'schedule' }
+    );
+    expect(request.maintenanceReboot).toBe(true);
+    expect(request.force).toBe(false);
+  }
+);
+
+When('the converge request is read', (world) => {
+  state(world).request = convergeRequest({});
+});
+
+Then('it does not reboot workers for pending updates', (world) => {
+  expect(state(world).request?.maintenanceReboot).toBeUndefined();
+});
+
+Then(
+  'the scheduled job starts in the project that holds fleet.json',
+  (world) => {
+    const config = process.env['HOMELAB_CONFIG'];
+    expect(state(world).installed[0]?.workingDirectory).toBe(
+      config ? dirname(config) : ''
     );
   }
 );

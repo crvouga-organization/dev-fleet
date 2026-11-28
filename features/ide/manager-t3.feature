@@ -36,10 +36,26 @@ Feature: The manager runs the T3 release the workers run
     Scenario: A sync switches the running manager to its verified desktop
       Given the running desktop on the manager reports "0.1.9-nightly.20261111.4501"
       And the managed desktop is absent until its play succeeds
+      And this converge is running outside the desktop
       And the activation play opens the verified desktop
       When the T3 desktop of the manager is applied
       Then the check "t3:desktop-installed" passes
       And the check "t3:version" passes
+
+    Scenario: A sync of the pinned release leaves the running desktop alone
+      Given the running desktop on the manager reports "<pinned>" from another installation
+      When the T3 desktop of the manager is applied
+      Then the check "t3:version" warns with "T3 on the manager runs <pinned> from another installation."
+      And the playbook "ansible/macos/t3-activate.yml" was not run
+
+    Scenario: A sync started inside the desktop does not quit it for a new release
+      Given the running desktop on the manager reports "0.1.9-nightly.20261111.4501"
+      And the managed desktop is absent until its play succeeds
+      And this converge is running inside the desktop
+      When the T3 desktop of the manager is applied
+      Then the check "t3:desktop-installed" passes
+      And the check "t3:version" warns with "T3_DESKTOP_SWITCH_DEFERRED"
+      And the playbook "ansible/macos/t3-activate.yml" was not run
 
     @t3-desktop @slow
     Scenario: macOS verifies the published desktop and a repeat sync reuses it

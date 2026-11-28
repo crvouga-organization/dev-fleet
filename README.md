@@ -508,11 +508,15 @@ fleet.json contents.
   `sync` fetches that copy again when it is deleted, but the proxy then
   needs `homelab proxy install` once more.
 - The manager is a Mac host. There is no container image of the manager.
-- `converge --schedule enable --apply --yes` (unattended runs every 30
-  minutes) is installed by that command on the manager, not yet by the
-  manager's playbook, and its interval is not yet part of `fleet.json`.
-  `converge --schedule status` lists its last runs, and `status` fails
-  `manager:schedule` when it has not converged the fleet for two intervals.
+- `converge --schedule enable --apply --yes` is installed by that command
+  on the manager, not yet by the manager's playbook. Run it from the
+  project that holds `fleet.json`: the job starts there, so each run follows
+  that project's homelab pin. The interval is `manager.schedule.syncMinutes`
+  in `fleet.json`, or 30 minutes. A scheduled run also reboots a worker
+  whose installed updates are waiting, and only while that worker runs no
+  agent turn. `converge --schedule status` lists its last runs, and
+  `status` fails `manager:schedule` when it has not converged the fleet for
+  two intervals.
 - Not everything on a machine is pinned. [What is declared, and
   where](docs/declared.md) lists what is and what is not: most of a worker's
   own packages, the manager's applications and every login are outside it.
