@@ -124,11 +124,12 @@ export function measure(
   const whoami = exec.capture(['npm', 'whoami']);
   const tag = `v${version}`;
   const view = exec.capture(['npm', 'view', `${name}@${version}`, 'gitHead']);
-  const any = exec.capture(['npm', 'view', name, 'name']);
+  const any = exec.capture(['npm', 'view', name, 'version']);
   if (!any.ok && !/E404/.test(any.stderr))
     throw new Error('Could not reach the npm registry. Check the network.');
-  const published = any.ok;
-  const trust = published
+  // npm can reserve the package name with a placeholder while the seed is absent.
+  const published = view.ok || (any.ok && any.stdout.trim() !== '0.0.0-stage');
+  const trust = any.ok
     ? exec.capture(['npm', 'trust', 'list', name, '--json'])
     : null;
   const configs = trust?.ok ? trustConfigs(trust.stdout) : [];
@@ -351,6 +352,12 @@ export async function bootstrap(
       return 1;
     }
     state = measure(exec, target, version);
+    if (step.id === 'publish' && !state.published) {
+      log(
+        'npm accepted the seed. Wait for it to appear in the registry, then run bun run bootstrap again.'
+      );
+      return 1;
+    }
   }
   show(deps, state, plan(state, version));
   return plan(state, version).every((step) => step.done) ? 0 : 1;

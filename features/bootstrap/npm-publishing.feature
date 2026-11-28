@@ -23,6 +23,16 @@ Feature: The one-time npm setup for publishing
         | git tag v0.1.0 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa                                |
         | git push origin refs/tags/v0.1.0                                                       |
 
+    Scenario: A placeholder alone does not finish the setup
+      Given "someone" is signed in to npm
+      And the registry lists only the placeholder "0.0.0-stage"
+      And npm accepts the seed before the registry lists it
+      When the setup is run with "--yes --skip-check"
+      Then it exits with 1
+      And it runs, in order:
+        | publish the seed version |
+      And the last thing it says contains "Wait for it to appear"
+
     Scenario: Running it again after it finished changes nothing
       Given "someone" is signed in to npm
       And the seed version is published
