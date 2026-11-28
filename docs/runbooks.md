@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones converge reports are here.
 
-There are 496 codes; 105 need a person.
+There are 495 codes; 105 need a person.
 
 ## Bootstrap of a new or returning worker
 
