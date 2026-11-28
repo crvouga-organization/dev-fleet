@@ -325,39 +325,75 @@ dependency_prereleases = "allow"
 with = '["pip"]'
 
 [[tools.bat]]
-version = "0.26.1"
+version = "0.27.0"
 backend = "aqua:sharkdp/bat"
-specifiers = ["0.26.1"]
+specifiers = ["0.27.0"]
 
 [tools.bat."platforms.linux-arm64"]
-checksum = "sha256:422eb73e11c854fddd99f5ca8461c2f1d6e6dce0a2a8c3d5daade5ffcb6564aa"
+checksum = "sha256:42227d776ba1ee48f7f66d666264e36fbfcb826104bea565b740a6240727635e"
 checksum_source = "mise-versions"
-url = "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-aarch64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/323548647"
+url = "https://github.com/sharkdp/bat/releases/download/v0.27.0/bat-v0.27.0-aarch64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/803661087"
+
+[tools.bat."platforms.linux-arm64-musl"]
+checksum = "sha256:4a071fc6bcf3cd6eca70981b172cf0f0e25ba8caa286daddaf4303576172f9bd"
+checksum_source = "mise-versions"
+url = "https://github.com/sharkdp/bat/releases/download/v0.27.0/bat-v0.27.0-aarch64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/803660755"
 
 [tools.bat."platforms.linux-x64"]
-checksum = "sha256:726f04c8f576a7fd18b7634f1bbf2f915c43494c1c0f013baa3287edb0d5a2a3"
+checksum = "sha256:0ac86f417ef02d5dc07ac641c84ee979d3781a6482656fa957b3803737955223"
 checksum_source = "mise-versions"
-url = "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-x86_64-unknown-linux-gnu.tar.gz"
-url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/323549181"
+url = "https://github.com/sharkdp/bat/releases/download/v0.27.0/bat-v0.27.0-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/803662118"
+
+[tools.bat."platforms.linux-x64-baseline"]
+checksum = "sha256:0ac86f417ef02d5dc07ac641c84ee979d3781a6482656fa957b3803737955223"
+checksum_source = "mise-versions"
+url = "https://github.com/sharkdp/bat/releases/download/v0.27.0/bat-v0.27.0-x86_64-unknown-linux-gnu.tar.gz"
+url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/803662118"
+
+[tools.bat."platforms.linux-x64-musl"]
+checksum = "sha256:350b244087c555d316f82c3c2ee45e3273b4dac2530890be892452eb8aa3d22c"
+checksum_source = "mise-versions"
+url = "https://github.com/sharkdp/bat/releases/download/v0.27.0/bat-v0.27.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/803660760"
+
+[tools.bat."platforms.linux-x64-musl-baseline"]
+checksum = "sha256:350b244087c555d316f82c3c2ee45e3273b4dac2530890be892452eb8aa3d22c"
+checksum_source = "mise-versions"
+url = "https://github.com/sharkdp/bat/releases/download/v0.27.0/bat-v0.27.0-x86_64-unknown-linux-musl.tar.gz"
+url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/803660760"
 
 [tools.bat."platforms.macos-arm64"]
-checksum = "sha256:e30beff26779c9bf60bb541e1d79046250cb74378f2757f8eb250afddb19e114"
+checksum = "sha256:3bd50d70e1a2c52c57b4ffaaee3113595ec970604bf1b4e2e0992e3e1752c23b"
 checksum_source = "mise-versions"
-url = "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-aarch64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/323548442"
+url = "https://github.com/sharkdp/bat/releases/download/v0.27.0/bat-v0.27.0-aarch64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/803663887"
 
 [tools.bat."platforms.macos-x64"]
-checksum = "sha256:830d63b0bba1fa040542ec569e3cf77f60d3356b9de75116a344b061e0894245"
+checksum = "sha256:29029a4aaecef1ec873aa319047bf70803026bd3eaff664011fff650f73355f9"
 checksum_source = "mise-versions"
-url = "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-x86_64-apple-darwin.tar.gz"
-url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/323549786"
+url = "https://github.com/sharkdp/bat/releases/download/v0.27.0/bat-v0.27.0-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/803676239"
+
+[tools.bat."platforms.macos-x64-baseline"]
+checksum = "sha256:29029a4aaecef1ec873aa319047bf70803026bd3eaff664011fff650f73355f9"
+checksum_source = "mise-versions"
+url = "https://github.com/sharkdp/bat/releases/download/v0.27.0/bat-v0.27.0-x86_64-apple-darwin.tar.gz"
+url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/803676239"
 
 [tools.bat."platforms.windows-x64"]
-checksum = "sha256:0f729b4b6f5f28d395c641eacc2e9ff68d0096b85aa0eec344aa62425144b69b"
+checksum = "sha256:3c0b0a9765bd4679de82a1f2772c522025eea5a1de5f7b97c6fa119c25721b1b"
 checksum_source = "mise-versions"
-url = "https://github.com/sharkdp/bat/releases/download/v0.26.1/bat-v0.26.1-x86_64-pc-windows-msvc.zip"
-url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/323549116"
+url = "https://github.com/sharkdp/bat/releases/download/v0.27.0/bat-v0.27.0-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/803668054"
+
+[tools.bat."platforms.windows-x64-baseline"]
+checksum = "sha256:3c0b0a9765bd4679de82a1f2772c522025eea5a1de5f7b97c6fa119c25721b1b"
+checksum_source = "mise-versions"
+url = "https://github.com/sharkdp/bat/releases/download/v0.27.0/bat-v0.27.0-x86_64-pc-windows-msvc.zip"
+url_api = "https://api.github.com/repos/sharkdp/bat/releases/assets/803668054"
 
 [[tools.bun]]
 version = "1.4.5"
