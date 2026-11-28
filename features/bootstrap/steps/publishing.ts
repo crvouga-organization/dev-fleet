@@ -50,6 +50,8 @@ const setup = part(() => {
     npm: '',
     user: null as string | null,
     published: false,
+    registryVersion: '',
+    delaySeed: false,
     /** Whether npm recorded the commit the seed was published from. */
     recorded: true,
     trusted: false,
@@ -77,6 +79,12 @@ const setup = part(() => {
         return state.user ? ok(state.user) : no('ENEEDAUTH');
       if (line.endsWith('gitHead'))
         return state.published ? ok(state.recorded ? state.main : '') : no();
+      if (line === `npm view ${state.target.name} version`)
+        return state.published
+          ? ok('0.1.0')
+          : state.registryVersion
+            ? ok(state.registryVersion)
+            : no('E404');
       if (line.startsWith('npm view'))
         return state.published
           ? ok(state.target.name)
@@ -134,7 +142,7 @@ const setup = part(() => {
     ask: () => Promise.resolve(state.confirms),
     seed: () => {
       state.ran.push(SEED);
-      state.published = true;
+      state.published = !state.delaySeed;
       return true;
     },
   };
@@ -161,6 +169,17 @@ Given(
 
 Given('{string} is signed in to npm', (world, user: string) => {
   setup(world).state.user = user;
+});
+
+Given(
+  'the registry lists only the placeholder {string}',
+  (world, version: string) => {
+    setup(world).state.registryVersion = version;
+  }
+);
+
+Given('npm accepts the seed before the registry lists it', (world) => {
+  setup(world).state.delaySeed = true;
 });
 
 Given('the seed version is published', (world) => {
