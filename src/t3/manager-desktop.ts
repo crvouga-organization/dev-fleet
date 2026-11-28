@@ -94,31 +94,12 @@ async function runningDesktop(
 ): Promise<Check> {
   const { app, version, installed } = pin;
   const observed = await observeDesktop(context.run, app);
-  if (
-    context.apply &&
-    installed &&
-    observed &&
-    observed[0] !== 'managed ' + version
-  ) {
-    const switched = await runAnsible(
-      context.run,
-      join(context.workspace, 'ansible/macos/t3-activate.yml'),
-      {
-        input: JSON.stringify({ bundle_id: BUNDLE_ID, desktop_path: app }),
-        timeoutMs: 90_000,
-      }
-    );
-    if (!switched.ok)
-      return {
-        id: 't3:version',
-        status: 'fail',
-        summary: 'T3_DESKTOP_ACTIVATION_FAILED',
-        remedy: {
-          action: `Open the verified desktop with open ${shellQuote(app)} and rerun converge.`,
-        },
-      };
-    return runningDesktop({ ...context, apply: false }, pin);
-  }
+  // A repeat converge of the same release is a no-op: the path can differ
+  // (Dock copy, a previous digest directory) without there being an update.
+  // Quitting that process kills a converge started in its terminal.
+  const update = observed !== null && observed[2] !== version;
+  if (context.apply && installed && update)
+    return switchDesktop(context, pin, observed[2]!);
   const action = installed
     ? `When manager sessions have finished, quit T3 Code, then run open ${shellQuote(app)}. Pin that copy in the Dock.`
     : 'Stage the verified desktop with converge before opening it.';
@@ -140,6 +121,69 @@ async function runningDesktop(
       remedy: { action },
     };
   return running;
+}
+
+/** Quit the running release and open the verified bundle. A converge that is
+ * itself a child of that desktop only warns: quitting it would end the run. */
+async function switchDesktop(
+  context: MachineContext,
+  pin: { app: string; version: string; installed: boolean },
+  runningVersion: string
+): Promise<Check> {
+  if (await convergeRunsInsideDesktop(context.run))
+    return {
+      id: 't3:version',
+      status: 'warn',
+      summary: 'T3_DESKTOP_SWITCH_DEFERRED',
+      remedy: {
+        action: `The verified desktop for ${pin.version} is staged at ${pin.app}. This converge is running inside T3 ${runningVersion}, so the switch waits. Run homelab converge from Terminal or another session once this one has finished.`,
+      },
+    };
+  const switched = await runAnsible(
+    context.run,
+    join(context.workspace, 'ansible/macos/t3-activate.yml'),
+    {
+      input: JSON.stringify({ bundle_id: BUNDLE_ID, desktop_path: pin.app }),
+      timeoutMs: 90_000,
+    }
+  );
+  if (!switched.ok)
+    return {
+      id: 't3:version',
+      status: 'fail',
+      summary: 'T3_DESKTOP_ACTIVATION_FAILED',
+      remedy: {
+        action: `Open the verified desktop with open ${shellQuote(pin.app)} and rerun converge.`,
+      },
+    };
+  return runningDesktop({ ...context, apply: false }, pin);
+}
+
+const DESKTOP_PROCESS = /(?:^|\/)t3code(?:\s|$)|T3 Code \(Nightly\)\.app/;
+
+/** True when this process descends from the live T3 desktop. `ps` goes
+ * through the runner so a test can answer it; a host with no answer is
+ * treated as outside the desktop, which is the safe switch. */
+async function convergeRunsInsideDesktop(
+  run: MachineContext['run']
+): Promise<boolean> {
+  const listed = await run(['ps', '-A', '-o', 'pid=,ppid=,command=']);
+  if (!listed.ok) return false;
+  const rows = new Map<number, { ppid: number; command: string }>();
+  for (const line of listed.stdout.split('\n')) {
+    const row = /^\s*(\d+)\s+(\d+)\s+(.*)$/.exec(line);
+    if (!row) continue;
+    rows.set(Number(row[1]), { ppid: Number(row[2]), command: row[3] ?? '' });
+  }
+  const seen = new Set<number>();
+  for (let pid = process.pid; rows.has(pid) && !seen.has(pid);) {
+    seen.add(pid);
+    const row = rows.get(pid)!;
+    if (DESKTOP_PROCESS.test(row.command)) return true;
+    if (row.ppid === pid || row.ppid === 0) break;
+    pid = row.ppid;
+  }
+  return false;
 }
 
 async function observeDesktop(run: MachineContext['run'], app: string) {

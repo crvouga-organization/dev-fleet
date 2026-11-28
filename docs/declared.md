@@ -47,10 +47,10 @@ stays in the playbook: the playbook is its declaration.
 
 ## Not declared yet
 
-- **A schedule.** Nothing re-applies the fleet on a timer, so a machine drifts
-  until someone runs `sync`. `converge --schedule enable` writes a
-  launchd job from TypeScript and has never worked from the published package.
-  It should become a playbook.
+- **A schedule as a playbook.** `converge --schedule enable` writes a
+  launchd job or systemd timer from TypeScript. The job starts in the
+  project that holds `fleet.json` and runs the published package, so each
+  run follows that project's homelab pin. It should become a playbook.
 - **The rest of a worker's packages.** Only the packages in `policy.json` are
   pinned. The T3 desktop libraries are installed at whatever version the
   machine's own archive holds, and Ubuntu's security updates move everything

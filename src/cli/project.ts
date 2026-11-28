@@ -40,6 +40,18 @@ export function projectConfig(cwd: string): string | null {
  * run in directories that belong to other projects and read the copy
  * converge installed.
  */
+/** The directory that holds the project's fleet.json, or null. A scheduled
+ * run starts here, so it reads the same configuration a person does.
+ */
+export function projectDirectory(
+  env: NodeJS.ProcessEnv = process.env,
+  cwd = process.cwd()
+): string | null {
+  const named = env['HOMELAB_CONFIG'];
+  const path = named ? resolve(cwd, named) : projectConfig(cwd);
+  return path ? dirname(path) : null;
+}
+
 export function useProjectConfig(
   env: NodeJS.ProcessEnv = process.env,
   cwd = process.cwd()

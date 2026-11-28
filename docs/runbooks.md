@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones converge reports are here.
 
-There are 494 codes; 105 need a person.
+There are 496 codes; 105 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -343,6 +343,7 @@ runaway, write `1` to that agent scope’s `cgroup.kill`.
 - `T3_PRIVATE_ROUTE_UNVERIFIED`: t3 private route unverified.
 - `T3_CLIENT_SETTINGS_UNVERIFIED`: check the manager’s T3 client-settings.json, fleet state availability and the worker desktop service, then rerun converge. A pending desktop restart is retried.
 - `T3_DESKTOP_ACTIVATION_FAILED`: open the verified manager bundle named in the remedy and rerun converge.
+- `T3_DESKTOP_SWITCH_DEFERRED`: a warning of `t3:version`. The pinned desktop is staged, and the running desktop is another release, but this converge is a child of that desktop. Quitting it would end the converge. Run `homelab converge` again from Terminal or another session; that run switches to the verified bundle.
 - `T3_CUSTOMIZATIONS_CONFLICT`: inspect the ownership marker in the manager’s T3 userdata directory. Move an unrelated marker aside before recovering the saved snapshot.
 - `T3_CUSTOMIZATIONS_INVALID`: check that keybindings are a JSON array, theme files are regular files listed by the pinned T3 CLI, and the encoded customization snapshot fits the 1 MiB fleet state document limit.
 - `T3_CLIENT_SETTINGS_INVALID`: repair the manager’s client-settings.json so its settings are a JSON object.
@@ -370,7 +371,7 @@ runaway, write `1` to that agent scope’s `cgroup.kill`.
 - `T3_SERVER_STOPPED`: t3 server stopped: the lingering `t3code-headless.service` of a headless worker is not running.
 - `T3_SETTINGS_BUSY`: t3 settings busy.
 - `T3_VERSION_UNKNOWN`: a warning of `t3:version`: T3 on the machine the check names has not recorded the version it runs, so it cannot be compared with the pin. Start T3 there once, then run `homelab converge`.
-- `T3_VERSION_SKEW`: a warning of `t3:version`: T3 on the machine the check names runs another release than the fleet pins; the remedy names both. `homelab converge` installs the pinned release on a worker and restarts T3. On the manager, converge switches a running desktop to the verified bundle.
+- `T3_VERSION_SKEW`: a warning of `t3:version`: T3 on the machine the check names runs another release than the fleet pins; the remedy names both. `homelab converge` installs the pinned release on a worker and restarts T3. On the manager, converge switches a running desktop to the verified bundle when the running release differs from the pin and this converge is not a child of that desktop. The same release is left running. See `T3_DESKTOP_SWITCH_DEFERRED`.
 - `T3_UPDATES_UNMANAGED`: a warning of `t3:updates`: the administrator policy of T3 on the manager does not turn its own updater off, so T3 may update itself away from the pinned release. Stage the fleet's policy once, as an administrator, with the command the remedy prints. **Needs a person.**
 - `T3_RUNNING_VERSION_UNKNOWN`: `t3:running-version` could not read the version of the running server from its local API, or the release installed on the worker. Read `worker:t3-health`, then run `homelab converge`, which reinstalls the pinned T3.
 - `T3_RUNNING_VERSION_MISMATCH`: logged by `personal-worker-recovery` on the worker: T3 was restarted once for the installed release and still reports another version. It is not restarted again for that release and the run fails (`WORKER_RECOVERY_LAST_RUN_FAILED`). Run `homelab converge`, which reinstalls the pinned T3.
@@ -634,6 +635,7 @@ runaway, write `1` to that agent scope’s `cgroup.kill`.
 - `FLEET_REVISION_UNMERGED`: the revision is not on the default branch of the source repository.
 - `FLEET_REVISION_UNVERIFIED`: the source repository could not be asked whether its default branch holds the revision.
 - `FLEET_ROLLBACK_UNAVAILABLE`: fleet rollback unavailable.
+- `FLEET_SCHEDULE_OVERLAP`: a scheduled converge found another sync already running and left it alone. The next interval runs again. It is not a failed converge.
 - `FLEET_SCHEDULE_PREVIEW`: fleet schedule preview.
 - `FLEET_SOURCE_MISMATCH`: the manager's own copy of the source repository is a clone of another repository, and the declared one could not be cloned to replace it.
 - `FLEET_SOURCE_UNAVAILABLE`: fleet source unavailable.

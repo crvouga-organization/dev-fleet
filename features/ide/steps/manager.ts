@@ -58,19 +58,52 @@ Then('no archive is pinned', (world) => {
   expect(of(world).artifact).toBeNull();
 });
 
+function reportDesktop(world: IdeWorld, version: string, owner: string) {
+  world.commands.answer(
+    (argv) => argv[0] === '/usr/bin/osascript',
+    succeeded(version ? owner + ' ' + withPin(version) : 'absent-or-ambiguous')
+  );
+  world.commands.answer((argv) => argv[0] === '/usr/bin/codesign', succeeded());
+}
+
 Given(
   'the running desktop on the manager reports {string}',
   (world, version: string) => {
-    world.commands.answer(
-      (argv) => argv[0] === '/usr/bin/osascript',
-      succeeded(version ? 'managed ' + withPin(version) : 'absent-or-ambiguous')
-    );
-    world.commands.answer(
-      (argv) => argv[0] === '/usr/bin/codesign',
-      succeeded()
-    );
+    reportDesktop(world, version, 'managed');
   }
 );
+
+Given(
+  'the running desktop on the manager reports {string} from another installation',
+  (world, version: string) => {
+    reportDesktop(world, version, 'other');
+  }
+);
+
+Given('this converge is running inside the desktop', (world) => {
+  world.commands.answer(
+    (argv) => argv[0] === 'ps',
+    succeeded(
+      [
+        '1 0 /sbin/launchd',
+        '40 1 /Applications/T3 Code (Nightly).app/Contents/MacOS/t3code',
+        `${process.pid} 40 homelab converge`,
+      ].join('\n')
+    )
+  );
+});
+
+Given('this converge is running outside the desktop', (world) => {
+  world.commands.answer(
+    (argv) => argv[0] === 'ps',
+    succeeded(
+      [
+        '1 0 /sbin/launchd',
+        `${process.pid} 1 /bin/zsh -c homelab converge`,
+      ].join('\n')
+    )
+  );
+});
 
 Given('the managed desktop is absent until its play succeeds', (world) => {
   let staged = false;
@@ -138,6 +171,12 @@ Given(
 );
 
 When('the manager applies the same macOS desktop again', stagePublishedDesktop);
+
+Then('the playbook {string} was not run', (world, playbook: string) => {
+  expect(
+    world.commands.calls.some((call) => call.command.includes(playbook))
+  ).toBe(false);
+});
 
 Then(
   'macOS verified the installed app again without running the installer',

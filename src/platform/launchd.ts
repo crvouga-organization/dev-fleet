@@ -38,6 +38,11 @@ export function launchdPlist(job: ScheduledJob): string {
     ...env,
     '  </dict>',
     `  <key>StartInterval</key><integer>${job.intervalSeconds}</integer>`,
+    ...(job.workingDirectory
+      ? [
+          `  <key>WorkingDirectory</key><string>${xml(job.workingDirectory)}</string>`,
+        ]
+      : []),
     '  <key>RunAtLoad</key><true/>',
     '  <key>LowPriorityIO</key><true/>',
     '  <key>Nice</key><integer>10</integer>',

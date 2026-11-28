@@ -6,7 +6,7 @@ import { readDocument, writeDocument } from './store';
 /** Who started a converge run: a person (or an agent) at the manager, or
  * the manager's own schedule.
  */
-export type Trigger = 'operator' | 'schedule';
+export type Trigger = 'operator' | 'schedule' | 'skipped';
 
 /** One converge run, as the history keeps it: codes and node names only,
  * never a remedy, a path or anything a subprocess printed.
@@ -78,7 +78,7 @@ function syncRun(value: unknown): value is SyncRun {
     typeof value['startedAt'] === 'string' &&
     typeof value['finishedAt'] === 'string' &&
     typeof value['durationMs'] === 'number' &&
-    ['operator', 'schedule'].includes(String(value['trigger'])) &&
+    ['operator', 'schedule', 'skipped'].includes(String(value['trigger'])) &&
     (value['revision'] === null || typeof value['revision'] === 'string') &&
     typeof value['ok'] === 'boolean' &&
     typeof value['exitCode'] === 'number' &&
