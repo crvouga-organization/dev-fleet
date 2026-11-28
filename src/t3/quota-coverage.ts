@@ -89,7 +89,7 @@ export function quotaCoverage(
         summary: `T3_QUOTA_COVERAGE_MISSING: account positions ${missing.join(', ')} of ${accounts.length}.`,
         remedy: {
           action:
-            'Check the CLI proxy usage-limit source on the manager in T3 Settings. Refresh the affected account on the hub and rerun converge.',
+            'Run homelab accounts on the manager. For a usable account, refresh the CLI proxy usage-limit source in T3 Settings on the manager. For needs-login, renew the account on the manager using the approved sign-in method for its plan. Then rerun converge.',
         },
       }
     : {

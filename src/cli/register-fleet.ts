@@ -669,6 +669,10 @@ function registerAccounts({ program, defaults, complete }: Registration) {
     'accounts [args...]',
     'List the provider accounts signed in on the CLI proxy and their state; add, sign in again or remove one'
   )
+    .option(
+      '--auth-plan',
+      'List the provider accounts that require a sign-in on the manager'
+    )
     .option('--diff', 'Also compare what this machine offers with the roster')
     .option('--add', 'Sign a new account in: --add PROVIDER')
     .option('--relogin', 'Sign one account in again: --relogin PROVIDER INDEX')

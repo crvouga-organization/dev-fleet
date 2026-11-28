@@ -18,6 +18,11 @@ Feature: Adding, signing in again and removing one provider account
     And it lists claude account 2 as "needs-login"
     And the proxy was asked for nothing but its roster
 
+  Scenario: The manager plans a single sign-in for each expired account
+    When the operator runs accounts with "--auth-plan"
+    Then the sign-in plan contains only claude account 2
+    And the proxy was asked for nothing but its roster
+
   Scenario Outline: <change> runs one proxy command, then propagates the accounts
     When the operator runs accounts with "<arguments>"
     Then the proxy ran "<proxy command>"

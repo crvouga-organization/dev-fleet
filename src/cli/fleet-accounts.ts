@@ -20,6 +20,7 @@ import type { Settings } from './settings';
 import { fleetSync } from './fleet-sync';
 
 export interface FleetAccountsOptions {
+  authPlan?: boolean;
   diff?: boolean;
   add?: boolean;
   relogin?: boolean;
@@ -51,6 +52,7 @@ export async function fleetAccounts(
   settings: Settings,
   dependencies: AccountsDependencies = {}
 ): Promise<CommandOutcome> {
+  if (options.authPlan) return authPlan(options, args, settings, dependencies);
   const home = dependencies.home ?? homedir();
   if (options.removeNativeLogins)
     return removeNativeLogins(Boolean(options.yes), home);
@@ -60,6 +62,44 @@ export async function fleetAccounts(
     : undefined;
   if (changed && !changed.data) return failedChange();
   return report(options, settings, dependencies, { change, changed });
+}
+
+async function authPlan(
+  options: FleetAccountsOptions,
+  args: string[],
+  settings: Settings,
+  dependencies: AccountsDependencies
+): Promise<CommandOutcome> {
+  if (
+    args.length ||
+    options.add ||
+    options.relogin ||
+    options.remove ||
+    options.removeNativeLogins ||
+    options.diff ||
+    options.yes
+  )
+    throw new FleetUsageError('Run --auth-plan on its own.');
+  const roster = await readRoster(
+    dependencies.run ?? runCommand,
+    settings.workspace
+  );
+  return {
+    exitCode: roster.managementApi ? 0 : 1,
+    data: {
+      version: 1,
+      command: 'accounts',
+      ok: roster.managementApi,
+      managementApi: roster.managementApi,
+      signIns: roster.accounts
+        .filter((account) => account.state === 'needs-login')
+        .map(({ provider, index }) => ({ provider, index })),
+      ...(!roster.managementApi && {
+        summary:
+          'The proxy management API is unavailable. The sign-in plan may be incomplete.',
+      }),
+    },
+  };
 }
 
 async function report(
