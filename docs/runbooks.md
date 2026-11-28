@@ -14,7 +14,7 @@ It reads a code by where it stands, never by the word it ends with. The CLI
 proxy documents the codes of its own commands in
 [its README](../cliproxy/README.md); the ones converge reports are here.
 
-There are 496 codes; 105 need a person.
+There are 495 codes; 105 need a person.
 
 ## Bootstrap of a new or returning worker
 
@@ -355,7 +355,6 @@ runaway, write `1` to that agent scope’s `cgroup.kill`.
 - `T3_PROVIDERS_PENDING`: t3 providers pending.
 - `T3_RECONCILIATION_UNAVAILABLE`: a local reconciliation precondition failed. Follow the stage-specific remedy to inspect the receipt, installed definition or T3 settings and ownership record locally. Restore a valid backup or correct permissions, then retry `homelab t3-reconcile --dry-run`. Never share raw file contents.
 - `T3_ACCOUNT_ROSTER_UNAVAILABLE`: the proxy account roster could not be read. Run `homelab accounts` on the affected machine to verify proxy access and the proxy-client-key secret, then retry `homelab t3-reconcile --dry-run`. Existing providers are preserved. If access still fails, report this code without credentials.
-- `T3_QUOTA_COVERAGE_MISSING`: the manager could not match a hub quota reading to each declared Antigravity account. Check its T3 usage-limit source and the account on the proxy.
 - `T3_CLI_MISSING`: the provider check could not start the T3 CLI from PATH or its user installation. Restore the executable and rerun converge to verify the account sessions.
 - `T3_ANTIGRAVITY_SESSION_UNVERIFIED`: T3 could not open an authenticated ACP session for the reported account positions. Check that T3 is running on this machine, refresh those instances in Settings > Providers, and compare their proxy account session checks before rerunning converge.
 - `T3_PROVIDERS_UNVERIFIED`: provider reconciliation stopped before it could report a plan. The remedy is the authored cause (a stale plan, a held lock, or the credential playbook). An unexpected error stays out of the report, because it can carry a secret. Run `homelab t3-reconcile --dry-run` on the machine.

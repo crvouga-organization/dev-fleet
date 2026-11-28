@@ -137,16 +137,17 @@ propagates the instance configuration to the workers. Where the provider
 requires its own client, complete its sign-in there. A successful proxy login
 alone does not establish permission to use a subscription through a proxy.
 
-For Antigravity, “Sign in with Google to see Antigravity limits” is a prompt
-from the limits display. If the roster shows the account as usable, check
-the CLI proxy usage-limit source in T3 Settings on the manager and refresh
-it. Run `homelab converge` and look for `t3:quota-coverage`, which checks for
-recent quota windows for every managed Antigravity account. A passing check
-covers the manager's source. Individual native clients can still request
-their own sign-in. If you need that native view, follow the prompt in that
-client, including starting a turn if it asks you to renew an expired session.
-Keep browser sessions, OAuth tokens and device codes on the machine or in
-the provider flow that issued them.
+If T3 displays “Sign in with Google to see Antigravity limits” or asks
+for a turn to renew limits, update the consumer project's homelab pin to
+the release containing the T3 quota fix and run `homelab converge` on the
+manager. Check the T3 version on the manager and each worker. An offline
+worker needs to converge when it reconnects.
+
+Google supports ACP for external Antigravity clients. The T3 release pinned
+by homelab removes the native and proxy quota readers that called Google's
+internal APIs. Antigravity subscription windows are unavailable in T3 until
+Google exposes them over a supported interface. Use the official Antigravity
+client for limits. [Upstream change](https://github.com/pingdotgg/t3code/pull/43026)
 
 ## Adding, signing in again, removing
 

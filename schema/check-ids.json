@@ -1833,14 +1833,6 @@
       }
     },
     {
-      "id": "t3:quota-coverage",
-      "meaning": "The manager reads quota windows for each managed Antigravity account from its proxy.",
-      "severity": "required",
-      "repair": {
-        "manual": "Approve first T3 pairing in interactive converge or with t3.pairOnEnrollment; a replaced worker is paired by replace or the next converge, and converge applies the rest."
-      }
-    },
-    {
       "id": "t3:reconciliation",
       "meaning": "T3 reconciliation can read and validate its local inputs.",
       "severity": "required",

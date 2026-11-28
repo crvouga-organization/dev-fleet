@@ -438,8 +438,6 @@ export const CHECK_MEANINGS: Record<string, string> = {
     'The proxy account roster can be read without changing providers.',
   't3:reconciliation':
     'T3 reconciliation can read and validate its local inputs.',
-  't3:quota-coverage':
-    'The manager reads quota windows for each managed Antigravity account from its proxy.',
   't3:providers': "T3's provider instances are the declared ones.",
   't3:running-version':
     'The running T3 server is the installed release and no restart of it is pending; a pending restart waits for running agent turns, until its deadline.',

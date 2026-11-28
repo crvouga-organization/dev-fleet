@@ -403,13 +403,3 @@ Feature: The manager converges itself before any worker
       When the manager's Vault session is measured
       Then the check's summary is "VAULT_LOGIN_EXPIRY_PENDING"
       And the checks do not mention "hvs.PRIVATE_SENTINEL_TOKEN"
-
-  Scenario Outline: The manager measures account quota separately from native inference
-    When a proxy source at "<source>" reports Antigravity windows last read <age> minutes ago
-    Then the account quota check reports "<status>"
-
-    Examples:
-      | source | age | status |
-      | /hub   | 1   | pass   |
-      | /other | 1   | warn   |
-      | /hub   | 30  | warn   |
