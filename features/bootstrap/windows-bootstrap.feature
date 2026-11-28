@@ -15,7 +15,7 @@ Feature: The Windows bootstrap installs the pinned mise, and never replaces mise
 
   Rule: The pinned release is installed, checked against the publisher's checksum list
 
-    @pwsh
+    @pwsh @slow
     Scenario: A Windows machine without mise gets the pinned release
       Given a Windows machine that has no mise
       And a checkout whose mise.toml pins mise "2026.10.24", whose Windows release is published
