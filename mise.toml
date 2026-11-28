@@ -107,16 +107,16 @@ mise_macos_x64_sha256 = "19c0e3dff9eddaab7a3519e9556be35580ade53b2bffb550f307343
 mise_macos_arm64_sha256 = "f7bd19aa4e6b7a58d7296f98e2c6af68b2e2643dfd608b0bc46c2b5fdbc8749b"
 # Official native server distribution (Ubuntu workers, and the manager's
 # pinned CLI); bootstrap/native-t3.ts owns installation. From the release's SHA256SUMS.
-t3_version = "0.1.12-nightly.20261123.5124"
-t3_linux_x64_sha256 = "851c285a8e59a713b00e94fed15c359b9624f58567adfdfbf002d498234580cd"
-t3_linux_arm64_sha256 = "a423986905f457d463fd76cbee85c4948fec9c31e9553df17cb648e3cef13771"
-t3_darwin_arm64_sha256 = "cf2f43cf972d6a07abb3200c8f181d8046659cc8a4842984c87fbf79d67d5071"
+t3_version = "0.1.14-nightly.20261128.5372"
+t3_linux_x64_sha256 = "ed47136d5696a6933038d0a6716e60269c5030bb2b64fae277c13d8e9d1b3022"
+t3_linux_arm64_sha256 = "9cb327604bd56ad997b6827913ad292010f7f66da171ce8a9b46392a0a0d3ba5"
+t3_darwin_arm64_sha256 = "a760a18dc24a6c49aa77e37d5a11c199897eb77295feffd14da40efa0fde70b9"
 # Official T3 Code desktop .deb (same release). Workers run this GUI app as their
 # only T3 process; it embeds the server. Upstream SHA256SUMS omits .deb files,
 # so these digests were computed from the release assets.
-t3_desktop_darwin_arm64_sha256 = "67ea227870abc7a8a70335a305c4bd506b34bc467c0612da760e202598031bc0"
-t3_desktop_amd64_sha256 = "167a47c94cde7881324970a336da3b2c95138f6492b563e1b928f34751827c7a"
-t3_desktop_arm64_sha256 = "66986a6501b0da8fd9e64e05de5e01e0c050ac208d1db86fac63a5343140812b"
+t3_desktop_darwin_arm64_sha256 = "7b3b7003cf4cf23e684437e34c5536b82a2d84319d335e08b32e4134b6b8f2a9"
+t3_desktop_amd64_sha256 = "ada83b8c7991fe04889fd163b70c33b11098856e1ffae1dd72b9f2e03fdc1bab"
+t3_desktop_arm64_sha256 = "ab899391c7174d6990efb0de9d68472a2fc93c3ecc937d915b5ab789f765e92a"
 # Official AWS v2 Windows MSI, same version as tools.aws; checked before execution.
 aws_windows_msi_sha256 = "65b82923074b154e3ec5375716b886e3c5bd5483714cc94ba1e67a04dfbb6715"
 # Docker Desktop supplies the macOS engine, Compose and Buildx as one vendor bundle.

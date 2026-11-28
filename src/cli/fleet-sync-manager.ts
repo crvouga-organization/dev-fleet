@@ -7,7 +7,6 @@ import { toolchainChecks } from '../toolchain-checks';
 import { pinnedT3Version, versionCheck } from '../t3/version';
 import { liveServerVersion } from '../platform/t3-service';
 import { loopbackOrigin } from '../t3/local-rpc';
-import { managerQuotaCoverage } from '../t3/quota-coverage';
 import { quotaLimited, verifyFleetProviders } from '../agents/fleet-verify';
 import { verifyNativeAgents } from '../agents/native-verify';
 import { accountContext, nodeAccountChecks } from '../accounts/context';
@@ -267,12 +266,7 @@ async function managerSessions(
       })
     )
   );
-  return [
-    ...providers,
-    ...roster,
-    ...sessions,
-    ...(await managerQuotaCoverage(accounts?.live ?? [], run)),
-  ];
+  return [...providers, ...roster, ...sessions];
 }
 
 function playbookPassed(cached: boolean): Check {
