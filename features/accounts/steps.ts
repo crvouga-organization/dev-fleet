@@ -317,6 +317,15 @@ When(
   }
 );
 
+Then(
+  'the sign-in plan contains only {word} account {int}',
+  (world, provider: string, index: number) => {
+    expect(world.outcome?.data).toMatchObject({
+      signIns: [{ provider, index }],
+    });
+  }
+);
+
 Then('it exits with {int}', (world, code: number) => {
   expect(world.refusal).toBeUndefined();
   expect(world.outcome?.exitCode).toBe(code);

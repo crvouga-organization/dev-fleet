@@ -118,6 +118,36 @@ otherwise.
 its tool's preferred defaults (it then starts on its first model by name) or
 nothing of T3's catalogue.
 
+## When T3 asks for sign-in on several machines
+
+Start on the manager, in the project that pins homelab. To list the sign-ins
+that need attention across providers, run:
+
+```sh
+npx @crvouga/homelab accounts --auth-plan --json
+```
+
+If the command reports an error or the roster is unavailable, resolve that
+before interpreting an empty list. For each result, check the current account
+label with `homelab accounts` before renewing it. Use the provider's documented
+sign-in method for the client, account plan and intended use. Where the
+provider permits proxy access, renew the account once on the manager using
+the command below. Complete consent and any MFA yourself. Homelab then
+propagates the instance configuration to the workers. Where the provider
+requires its own client, complete its sign-in there. A successful proxy login
+alone does not establish permission to use a subscription through a proxy.
+
+For Antigravity, “Sign in with Google to see Antigravity limits” is a prompt
+from the limits display. If the roster shows the account as usable, check
+the CLI proxy usage-limit source in T3 Settings on the manager and refresh
+it. Run `homelab converge` and look for `t3:quota-coverage`, which checks for
+recent quota windows for every managed Antigravity account. A passing check
+covers the manager's source. Individual native clients can still request
+their own sign-in. If you need that native view, follow the prompt in that
+client, including starting a turn if it asks you to renew an expired session.
+Keep browser sessions, OAuth tokens and device codes on the machine or in
+the provider flow that issued them.
+
 ## Adding, signing in again, removing
 
 ```sh
